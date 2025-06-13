@@ -1,9 +1,9 @@
+
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { RatingSystem } from "@/components/figures/RatingSystem";
 import { CommentSection } from "@/components/comments/CommentSection";
-import { getFigureById, FIGURES_DATA } from "@/lib/placeholder-data";
+import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { Figure } from "@/lib/types";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
@@ -14,21 +14,25 @@ interface FigurePageProps {
   params: { id: string };
 }
 
+export const revalidate = 0; // Or a reasonable time
+
 // export async function generateStaticParams() {
-//   return FIGURES_DATA.map((figure) => ({
-//     id: figure.id,
-//   }));
+//   // To re-enable static generation, fetch all figure IDs from Firestore at build time
+//   // const figures = await getAllFiguresFromFirestore();
+//   // return figures.map((figure) => ({
+//   //   id: figure.id,
+//   // }));
+//   return []; // For now, disable static params to ensure dynamic rendering from Firestore
 // }
 
 export default async function FigurePage({ params }: FigurePageProps) {
-  // In a real app, fetch data from a database
-  const figure = getFigureById(params.id);
+  const figure = await getFigureFromFirestore(params.id);
 
   if (!figure) {
     return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Figure Not Found</h1>
-        <p className="text-muted-foreground">The profile you're looking for doesn't exist.</p>
+        <p className="text-muted-foreground">The profile (ID: {params.id}) you're looking for doesn't exist in Firestore.</p>
         <Button asChild className="mt-4">
           <Link href="/">Go to Homepage</Link>
         </Button>
@@ -36,7 +40,9 @@ export default async function FigurePage({ params }: FigurePageProps) {
     );
   }
 
-  const relatedFigures = FIGURES_DATA.filter(f => f.id !== figure.id).slice(0, 2);
+  // Fetch a few other figures for "You Might Also Like", excluding the current one
+  const allFigures = await getAllFiguresFromFirestore();
+  const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 2);
 
 
   return (

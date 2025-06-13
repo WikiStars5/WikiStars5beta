@@ -13,8 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Loader2, UploadCloud, Image as ImageIcon } from "lucide-react";
-import { addFigure, updateFigure } from "@/lib/placeholder-data"; // Simulated data ops
-import { storage } from "@/lib/firebase"; // Firebase storage instance
+import { addFigureToFirestore, updateFigureInFirestore } from "@/lib/placeholder-data"; // Updated data ops
+import { storage } from "@/lib/firebase"; 
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
 
@@ -74,38 +74,50 @@ export function FigureForm({ initialData }: FigureFormProps) {
         console.error("Error uploading image: ", error);
         toast({
           title: "Image Upload Failed",
-          description: "Could not upload image to Firebase Storage. Please try again. Using previous or placeholder image.",
+          description: "Could not upload image. Please try again.",
           variant: "destructive",
         });
-        // Keep previous URL or placeholder if upload fails
-        photoUrlToSave = initialData?.photoUrl || `https://placehold.co/300x400.png?text=${encodeURIComponent(values.name.substring(0,2))}`;
+        setIsLoading(false);
+        return; 
       }
     }
     
+    const figureId = initialData?.id || `figure-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
+    
     const figureData: Figure = {
-      id: initialData?.id || `figure-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
+      id: figureId,
       name: values.name,
       photoUrl: photoUrlToSave,
-      description: values.description,
+      description: values.description || "",
       averageRating: initialData?.averageRating || 0,
       totalRatings: initialData?.totalRatings || 0,
       perceptionCounts: initialData?.perceptionCounts || { neutral: 0, fan: 0, simp: 0, hater: 0 },
     };
 
-    if (initialData) {
-      updateFigure(figureData); // Simulate update
-    } else {
-      addFigure(figureData); // Simulate add
-    }
-    
-    setIsLoading(false);
-    toast({
-      title: initialData ? "Figure Updated!" : "Figure Created!",
-      description: `${figureData.name}'s profile has been saved. Note: Data is currently simulated. Implement Firestore for real persistence.`,
-    });
+    try {
+      if (initialData) {
+        await updateFigureInFirestore(figureData); 
+      } else {
+        await addFigureToFirestore(figureData); 
+      }
+      
+      toast({
+        title: initialData ? "Figure Updated!" : "Figure Created!",
+        description: `${figureData.name}'s profile has been saved to Firestore.`,
+      });
 
-    router.push(`/admin/figures`);
-    router.refresh(); 
+      router.push(`/admin/figures`);
+      router.refresh(); // Important to re-fetch data on the admin list page
+    } catch (error) {
+      console.error("Error saving figure to Firestore: ", error);
+      toast({
+        title: "Save Failed",
+        description: `Could not save ${figureData.name}'s profile to Firestore. Please check console for errors.`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -137,7 +149,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
             />
           </FormControl>
           <FormDescription>
-            Upload an image for the figure. If no image is uploaded, a placeholder will be used for new figures.
+            Upload an image for the figure. If no image is uploaded, a placeholder will be used for new figures or the existing one kept for edits.
           </FormDescription>
           {previewUrl && (
             <div className="mt-4 w-32 h-40 relative rounded-md overflow-hidden border">

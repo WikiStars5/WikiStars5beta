@@ -1,5 +1,7 @@
-import type { Figure, Comment, UserRating, PerceptionOption, PerceptionKeys } from './types';
-import { Meh, Star, Heart, ThumbsDown, ThumbsUp } from 'lucide-react';
+import type { Figure, Comment, UserRating, PerceptionOption } from './types';
+import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
+import { db } from './firebase';
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit } from "firebase/firestore";
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -8,36 +10,8 @@ export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'hater', label: 'Hater', icon: ThumbsDown },
 ];
 
-export let FIGURES_DATA: Figure[] = [
-  {
-    id: 'elon-musk',
-    name: 'Elon Musk',
-    photoUrl: 'https://placehold.co/300x400.png',
-    description: 'Entrepreneur and Business Magnate',
-    averageRating: 4.2,
-    totalRatings: 1250,
-    perceptionCounts: { neutral: 300, fan: 500, simp: 200, hater: 250 },
-  },
-  {
-    id: 'taylor-swift',
-    name: 'Taylor Swift',
-    photoUrl: 'https://placehold.co/300x400.png',
-    description: 'Singer-Songwriter',
-    averageRating: 4.8,
-    totalRatings: 2500,
-    perceptionCounts: { neutral: 200, fan: 1500, simp: 600, hater: 200 },
-  },
-  {
-    id: 'cristiano-ronaldo',
-    name: 'Cristiano Ronaldo',
-    photoUrl: 'https://placehold.co/300x400.png',
-    description: 'Professional Footballer',
-    averageRating: 4.5,
-    totalRatings: 1800,
-    perceptionCounts: { neutral: 400, fan: 900, simp: 300, hater: 200 },
-  },
-];
-
+// USER_RATINGS_DATA and COMMENTS_DATA remain as placeholders for now
+// They are not part of this Firestore migration for "figures"
 export const USER_RATINGS_DATA: UserRating[] = [
   { userId: 'user123', figureId: 'elon-musk', perception: 'fan', stars: 5, timestamp: new Date().toISOString() },
   { userId: 'user456', figureId: 'elon-musk', perception: 'hater', stars: 1, timestamp: new Date().toISOString() },
@@ -47,7 +21,7 @@ export const USER_RATINGS_DATA: UserRating[] = [
 export let COMMENTS_DATA: Comment[] = [
   {
     id: 'comment1',
-    figureId: 'elon-musk',
+    figureId: 'elon-musk', // This would be a Firestore ID in a full system
     userId: 'user123',
     userDisplayName: 'TechBro',
     userAvatarUrl: 'https://placehold.co/40x40.png?text=TB',
@@ -58,71 +32,105 @@ export let COMMENTS_DATA: Comment[] = [
     dislikes: 2,
     likedBy: [],
     dislikedBy: [],
-    timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 mins ago
+    timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), 
   },
-  {
-    id: 'comment2',
-    figureId: 'elon-musk',
-    userId: 'user456',
-    userDisplayName: 'SustainableSue',
-    userAvatarUrl: 'https://placehold.co/40x40.png?text=SS',
-    userStarRating: 1,
-    text: 'I have some concerns about his environmental impact.',
-    parentId: null,
-    likes: 8,
-    dislikes: 1,
-    likedBy: [],
-    dislikedBy: [],
-    timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(), // 10 mins ago
-  },
-  {
-    id: 'comment3',
-    figureId: 'elon-musk',
-    userId: 'user789',
-    userDisplayName: 'NeutralNed',
-    userAvatarUrl: 'https://placehold.co/40x40.png?text=NN',
-    // No star rating given by this user or commented before rating
-    text: 'Interesting character, for sure. Lots of ups and downs.',
-    parentId: null,
-    likes: 5,
-    dislikes: 0,
-    likedBy: [],
-    dislikedBy: [],
-    timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // 15 mins ago
-  },
-  {
-    id: 'reply1-to-comment1',
-    figureId: 'elon-musk',
-    userId: 'user456',
-    userDisplayName: 'SustainableSue',
-    userAvatarUrl: 'https://placehold.co/40x40.png?text=SS',
-    userStarRating: 1,
-    text: 'Visionary perhaps, but at what cost?',
-    parentId: 'comment1',
-    likes: 3,
-    dislikes: 0,
-    likedBy: [],
-    dislikedBy: [],
-    timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(), // 2 mins ago
-  },
-  {
-    id: 'comment-ts-1',
-    figureId: 'taylor-swift',
-    userId: 'user123',
-    userDisplayName: 'SwiftieForever',
-    userAvatarUrl: 'https://placehold.co/40x40.png?text=SF',
-    userStarRating: 5,
-    text: 'Taylor is queen! Eras tour was amazing!',
-    parentId: null,
-    likes: 22,
-    dislikes: 0,
-    likedBy: [],
-    dislikedBy: [],
-    timestamp: new Date(Date.now() - 1000 * 60 * 8).toISOString(), // 8 mins ago
-  },
+  // ... other comments
 ];
 
-// Helper to get comments for a figure, including replies
+
+// --- Firestore Figure Operations ---
+
+export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
+  try {
+    const figureRef = doc(db, "figures", figure.id);
+    await setDoc(figureRef, figure);
+    console.log("Figure added to Firestore:", figure);
+  } catch (error) {
+    console.error("Error adding figure to Firestore: ", error);
+    throw error; // Re-throw to be handled by the caller
+  }
+};
+
+export const updateFigureInFirestore = async (figure: Figure): Promise<void> => {
+  try {
+    const figureRef = doc(db, "figures", figure.id);
+    await updateDoc(figureRef, { ...figure }); // Use updateDoc or setDoc with merge:true
+    console.log("Figure updated in Firestore:", figure);
+  } catch (error) {
+    console.error("Error updating figure in Firestore: ", error);
+    throw error;
+  }
+};
+
+export const deleteFigureFromFirestore = async (figureId: string): Promise<void> => {
+  try {
+    const figureRef = doc(db, "figures", figureId);
+    await deleteDoc(figureRef);
+    console.log("Figure deleted from Firestore:", figureId);
+  } catch (error) {
+    console.error("Error deleting figure from Firestore: ", error);
+    throw error;
+  }
+};
+
+export const getFigureFromFirestore = async (id: string): Promise<Figure | undefined> => {
+  try {
+    const figureRef = doc(db, "figures", id);
+    const figureSnap = await getDoc(figureRef);
+    if (figureSnap.exists()) {
+      return { id: figureSnap.id, ...figureSnap.data() } as Figure;
+    } else {
+      console.log("No such figure in Firestore!");
+      return undefined;
+    }
+  } catch (error) {
+    console.error("Error fetching figure from Firestore: ", error);
+    throw error;
+  }
+};
+
+export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
+  try {
+    const figuresCollectionRef = collection(db, "figures");
+    const q = query(figuresCollectionRef, orderBy("name")); // Optional: order by name
+    const querySnapshot = await getDocs(q);
+    const figures: Figure[] = [];
+    querySnapshot.forEach((doc) => {
+      figures.push({ id: doc.id, ...doc.data() } as Figure);
+    });
+    return figures;
+  } catch (error) {
+    console.error("Error fetching all figures from Firestore: ", error);
+    throw error; // Or return empty array: return [];
+  }
+};
+
+export const getFeaturedFiguresFromFirestore = async (count: number = 3): Promise<Figure[]> => {
+  try {
+    const figuresCollectionRef = collection(db, "figures");
+    // Example: order by totalRatings descending and take the top 'count'
+    // You might want a more sophisticated way to determine "featured"
+    const q = query(figuresCollectionRef, orderBy("totalRatings", "desc"), limit(count));
+    const querySnapshot = await getDocs(q);
+    const figures: Figure[] = [];
+    querySnapshot.forEach((doc) => {
+      figures.push({ id: doc.id, ...doc.data() } as Figure);
+    });
+    // If fewer than 'count' figures match the query, fill with any other figures up to 'count'
+    if (figures.length < count) {
+      const allFigures = await getAllFiguresFromFirestore();
+      const additionalFigures = allFigures.filter(af => !figures.find(f => f.id === af.id));
+      figures.push(...additionalFigures.slice(0, count - figures.length));
+    }
+    return figures;
+  } catch (error) {
+    console.error("Error fetching featured figures from Firestore: ", error);
+    return []; // Return empty on error or re-throw
+  }
+}
+
+
+// --- Functions for Comments and UserRatings (still using placeholder data) ---
 export const getCommentsForFigure = (figureId: string): Comment[] => {
   const allComments = COMMENTS_DATA.filter(comment => comment.figureId === figureId);
   const topLevelComments = allComments.filter(comment => !comment.parentId);
@@ -134,30 +142,7 @@ export const getCommentsForFigure = (figureId: string): Comment[] => {
   })).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 };
 
-export const getFigureById = (id: string): Figure | undefined => {
-  return FIGURES_DATA.find(figure => figure.id === id);
-};
-
 export const getUserRatingForFigure = (userId: string, figureId: string): UserRating | undefined => {
+  // This would also fetch from Firestore in a full implementation
   return USER_RATINGS_DATA.find(rating => rating.userId === userId && rating.figureId === figureId);
-};
-
-// Functions to simulate data manipulation (in a real app, these would be API calls to Firestore)
-export const addFigure = (figure: Figure): void => {
-  // Simulates adding a new figure. `figure.photoUrl` will be the Firebase Storage URL or placeholder.
-  FIGURES_DATA.push(figure);
-  console.log("Simulated Add Figure:", figure);
-};
-
-export const updateFigure = (updatedFigure: Figure): void => {
-  // Simulates updating an existing figure. `updatedFigure.photoUrl` will be the new Firebase Storage URL or existing one.
-  const index = FIGURES_DATA.findIndex(f => f.id === updatedFigure.id);
-  if (index !== -1) {
-    FIGURES_DATA[index] = updatedFigure;
-  }
-  console.log("Simulated Update Figure:", updatedFigure);
-};
-
-export const deleteFigure = (figureId: string): void => {
-  FIGURES_DATA = FIGURES_DATA.filter(f => f.id !== figureId);
 };

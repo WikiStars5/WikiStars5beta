@@ -2,32 +2,24 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FIGURES_DATA } from "@/lib/placeholder-data"; // Use the mutable import
+import { getAllFiguresFromFirestore } from "@/lib/placeholder-data"; 
 import type { Figure } from "@/lib/types";
 import { PlusCircle, Edit3 } from "lucide-react";
 import Link from "next/link";
 import { AdminFigureImage } from "@/components/admin/AdminFigureImage";
 import { AdminDeleteFigureButton } from "@/components/admin/AdminDeleteFigureButton";
 
-// This page will be server-rendered for now.
-// For client-side interactions like delete without full reload, a client component would be needed.
-
-async function getFigures(): Promise<Figure[]> {
-  // Simulate fetching data
-  // In a real app, this would fetch from a database.
-  // The FIGURES_DATA is imported directly, which is fine for this simulation.
-  return Promise.resolve(FIGURES_DATA);
-}
+export const revalidate = 0; // Ensure data is re-fetched on each request
 
 export default async function AdminFiguresPage() {
-  const figures = await getFigures();
+  const figures = await getAllFiguresFromFirestore();
 
   return (
     <Card>
       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <CardTitle className="text-2xl font-headline">Manage Figures</CardTitle>
-          <CardDescription>Create, edit, or delete public figure profiles.</CardDescription>
+          <CardDescription>Create, edit, or delete public figure profiles from Firestore.</CardDescription>
         </div>
         <Button asChild>
           <Link href="/admin/figures/new">
@@ -55,8 +47,7 @@ export default async function AdminFiguresPage() {
                       <AdminFigureImage 
                         figure={{
                           name: figure.name,
-                          photoUrl: figure.photoUrl,
-                          dataAiHint: figure.dataAiHint
+                          photoUrl: figure.photoUrl
                         }} 
                       />
                     </TableCell>
@@ -85,7 +76,7 @@ export default async function AdminFiguresPage() {
             </Table>
           </div>
         ) : (
-          <p className="text-center text-muted-foreground py-8">No figures found. Add one to get started!</p>
+          <p className="text-center text-muted-foreground py-8">No figures found in Firestore. Add one to get started!</p>
         )}
       </CardContent>
     </Card>

@@ -1,12 +1,15 @@
+
 import { SearchBar } from "@/components/shared/SearchBar";
 import { FigureListItem } from "@/components/figures/FigureListItem";
-import { FIGURES_DATA } from "@/lib/placeholder-data";
+import { getFeaturedFiguresFromFirestore } from "@/lib/placeholder-data";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Lightbulb, Users, MessageSquareText, Share2 } from "lucide-react";
 
-export default function HomePage() {
-  const featuredFigures = FIGURES_DATA.slice(0, 3); // Show first 3 as featured
+export const revalidate = 0; // Or a reasonable time
+
+export default async function HomePage() {
+  const featuredFigures = await getFeaturedFiguresFromFirestore(3);
 
   return (
     <div className="space-y-16">
@@ -69,7 +72,7 @@ export default function HomePage() {
             ))}
           </div>
         ) : (
-          <p className="text-center text-muted-foreground">No figures available at the moment.</p>
+          <p className="text-center text-muted-foreground">No figures available in Firestore at the moment.</p>
         )}
         <div className="text-center mt-8">
           <Button size="lg" variant="outline" asChild>

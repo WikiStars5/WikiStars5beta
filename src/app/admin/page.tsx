@@ -2,21 +2,23 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Users, BarChart3, MessageSquareWarning, PlusCircle, ListOrdered } from "lucide-react";
-import { FIGURES_DATA } from "@/lib/placeholder-data"; // Assuming this holds all figures
+import { Users, ListOrdered, MessageSquareWarning, PlusCircle } from "lucide-react"; // BarChart3 removed as it was for ratings
+import { getAllFiguresFromFirestore } from "@/lib/placeholder-data"; 
 
-export default function AdminDashboardPage() {
-  // These would be dynamic in a real app
-  const totalFigures = FIGURES_DATA.length;
-  const totalUsers = 150; // Placeholder
-  const pendingModeration = 5; // Placeholder
+export const revalidate = 0; // Ensure data is re-fetched
+
+export default async function AdminDashboardPage() {
+  const figures = await getAllFiguresFromFirestore();
+  const totalFigures = figures.length;
+  const totalUsers = 150; // Placeholder, as user management is not in Firestore yet
+  const pendingModeration = 5; // Placeholder, as comment management is not in Firestore yet
 
   return (
     <div className="space-y-8">
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Admin Dashboard</CardTitle>
-          <CardDescription>Overview of WikiStars5 application status.</CardDescription>
+          <CardDescription>Overview of WikiStars5 application status. Figure data from Firestore.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-3 gap-6">
@@ -27,7 +29,7 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{totalFigures}</div>
-                <p className="text-xs text-muted-foreground">profiles managed</p>
+                <p className="text-xs text-muted-foreground">profiles managed in Firestore</p>
               </CardContent>
             </Card>
             <Card className="hover:shadow-md transition-shadow">
