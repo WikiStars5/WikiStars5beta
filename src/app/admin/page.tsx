@@ -1,9 +1,9 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Users, ListOrdered, MessageSquareWarning, PlusCircle } from "lucide-react"; // BarChart3 removed as it was for ratings
+import { Users, ListOrdered, MessageSquareWarning, PlusCircle } from "lucide-react";
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data"; 
+import { getPendingCommentsCount } from "@/lib/actions/commentActions"; // Updated action
 
 export const revalidate = 0; // Ensure data is re-fetched
 
@@ -11,14 +11,14 @@ export default async function AdminDashboardPage() {
   const figures = await getAllFiguresFromFirestore();
   const totalFigures = figures.length;
   const totalUsers = 150; // Placeholder, as user management is not in Firestore yet
-  const pendingModeration = 5; // Placeholder, as comment management is not in Firestore yet
+  const pendingModeration = await getPendingCommentsCount(); // Fetch actual count
 
   return (
     <div className="space-y-8">
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Admin Dashboard</CardTitle>
-          <CardDescription>Overview of WikiStars5 application status. Figure data from Firestore.</CardDescription>
+          <CardDescription>Overview of StarSage application status. Figure data and comment counts from Firestore.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-3 gap-6">
@@ -44,12 +44,12 @@ export default async function AdminDashboardPage() {
             </Card>
             <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Comments for Moderation (Simulated)</CardTitle>
+                <CardTitle className="text-sm font-medium">Comments for Moderation</CardTitle>
                 <MessageSquareWarning className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{pendingModeration}</div>
-                <p className="text-xs text-muted-foreground">items needing review</p>
+                <p className="text-xs text-muted-foreground">items needing review from Firestore</p>
               </CardContent>
             </Card>
           </div>
@@ -67,8 +67,8 @@ export default async function AdminDashboardPage() {
           <Button variant="outline" asChild>
             <Link href="/admin/figures"><ListOrdered className="mr-2 h-4 w-4" /> Manage Figures</Link>
           </Button>
-           <Button variant="outline" disabled asChild>
-            <Link href="/admin/comments">Moderate Comments</Link>
+           <Button variant="outline" asChild> {/* Enabled this button */}
+            <Link href="/admin/comments"><MessageSquareWarning className="mr-2 h-4 w-4" />Moderate Comments</Link>
           </Button>
            <Button variant="outline" disabled asChild>
             <Link href="/admin/users">Manage Users</Link>

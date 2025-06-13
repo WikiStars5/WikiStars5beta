@@ -4,20 +4,25 @@ import { useState } from 'react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { mockUser } from '@/lib/types';
+import { mockUser, Figure } from '@/lib/types'; // Assuming Figure might be needed for figureName
 import { useToast } from '@/hooks/use-toast';
-import { Send } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
+import { addComment } from '@/lib/actions/commentActions';
+import { useRouter } from 'next/navigation';
+
 
 interface CommentFormProps {
   figureId: string;
-  parentId?: string | null; // For replies
-  onCommentSubmitted: (commentText: string, parentId?: string | null) => void;
+  figureName: string; // For denormalization
+  parentId?: string | null;
+  onCommentSubmitted?: () => void; // Optional: To trigger actions in parent like closing reply form
   placeholder?: string;
   submitButtonText?: string;
 }
 
 export function CommentForm({
   figureId,
+  figureName,
   parentId = null,
   onCommentSubmitted,
   placeholder = "Write your comment...",
@@ -26,6 +31,7 @@ export function CommentForm({
   const [commentText, setCommentText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,13 +45,25 @@ export function CommentForm({
     }
 
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 700));
-    
-    onCommentSubmitted(commentText, parentId);
-    setCommentText(""); // Clear textarea after submission
+    const result = await addComment(
+      figureId,
+      figureName,
+      mockUser.id,
+      mockUser.displayName || "Anonymous User",
+      mockUser.avatarUrl,
+      commentText,
+      parentId
+    );
     setIsLoading(false);
-    toast({ title: "Comment Posted!", description: "Your wisdom has been shared with the world."});
+
+    if (result.success) {
+      toast({ title: "Comment Submitted!", description: "Your comment is pending moderation."});
+      setCommentText("");
+      if (onCommentSubmitted) onCommentSubmitted();
+      router.refresh(); // Refresh to show pending (if admin) or new approved comments (if auto-approved)
+    } else {
+      toast({ title: "Comment Failed", description: result.message || "Could not post your comment.", variant: "destructive"});
+    }
   };
 
   if (!mockUser) {
@@ -73,7 +91,7 @@ export function CommentForm({
         />
         <div className="flex justify-end">
           <Button type="submit" disabled={isLoading || !commentText.trim()} size={parentId ? "sm" : "default"}>
-            <Send className="mr-2 h-4 w-4" />
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
             {isLoading ? "Posting..." : submitButtonText}
           </Button>
         </div>

@@ -9,14 +9,15 @@ export interface PerceptionOption {
 export interface Figure {
   id: string;
   name: string;
-  photoUrl: string; // Will store Firebase Storage URL or placeholder
-  description?: string; // Short bio or category
-  averageRating: number;
-  totalRatings: number;
-  perceptionCounts: Record<PerceptionKeys, number>;
+  photoUrl: string;
+  description?: string;
+  averageRating: number; // Will be calculated and updated
+  totalRatings: number;  // Will be calculated and updated
+  perceptionCounts: Record<PerceptionKeys, number>; // This might be updated too, or kept simple
 }
 
 export interface UserRating {
+  id?: string; // Document ID from Firestore (userId_figureId)
   userId: string;
   figureId: string;
   perception: PerceptionKeys;
@@ -25,21 +26,20 @@ export interface UserRating {
 }
 
 export interface Comment {
-  id: string;
+  id: string; // Document ID from Firestore
   figureId: string;
+  figureName?: string; // Denormalized for admin panel
   userId: string;
-  userDisplayName: string;
-  userAvatarUrl: string;
-  userStarRating?: number; // User's star rating for the figure at time of comment
-  text: string;
-  parentId: string | null; // For replies
-  likes: number;
-  dislikes: number;
-  likedBy: string[];
-  dislikedBy: string[];
+  userName: string; // Denormalized
+  userAvatarUrl?: string; // Denormalized
+  commentText: string;
+  parentCommentId: string | null;
+  likesCount: number;
+  dislikesCount: number;
   timestamp: string; // ISO date string
-  replies?: Comment[]; // Nested replies
-  isModerated?: boolean; // If comment was hidden by admin
+  status: 'pending' | 'approved' | 'rejected';
+  replies?: Comment[]; // For client-side structuring of fetched replies
+  userStarRatingForFigure?: number; // Fetched and added client-side for display
 }
 
 export interface UserProfile {
@@ -47,7 +47,6 @@ export interface UserProfile {
   displayName?: string | null;
   email?: string | null;
   avatarUrl?: string | null;
-  // roles?: ('admin' | 'user')[]; // For future role-based access
 }
 
 // Simulated current user - in a real app, this would come from an auth context

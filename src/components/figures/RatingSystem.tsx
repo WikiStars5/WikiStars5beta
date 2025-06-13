@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import type { PerceptionOption, UserRating, Figure, PerceptionKeys } from '@/lib/types';
-import { PERCEPTION_OPTIONS, getUserRatingForFigure } from '@/lib/placeholder-data';
-import { mockUser } from '@/lib/types'; // Simulate user session
+import { PERCEPTION_OPTIONS } from '@/lib/placeholder-data'; // Keep this for UI options
+import { mockUser } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/shared/StarRating';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { ThumbsUp } from 'lucide-react';
+import { ThumbsUp, Loader2 } from 'lucide-react';
+import { submitUserRating, getUserRating } from '@/lib/actions/ratingActions';
+import { useRouter } from 'next/navigation';
 
 interface RatingSystemProps {
   figure: Figure;
@@ -17,22 +19,29 @@ interface RatingSystemProps {
 
 export function RatingSystem({ figure }: RatingSystemProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [selectedPerception, setSelectedPerception] = useState<PerceptionKeys | null>(null);
   const [starRating, setStarRating] = useState<number>(0);
   const [currentUserRating, setCurrentUserRating] = useState<UserRating | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isClient, setIsClient] = useState(false);
+  const [isFetchingInitialRating, setIsFetchingInitialRating] = useState(true);
 
   useEffect(() => {
-    setIsClient(true);
-    if (mockUser) {
-      const existingRating = getUserRatingForFigure(mockUser.id, figure.id);
-      if (existingRating) {
-        setSelectedPerception(existingRating.perception);
-        setStarRating(existingRating.stars);
-        setCurrentUserRating(existingRating);
+    async function fetchInitialRating() {
+      if (mockUser) {
+        setIsFetchingInitialRating(true);
+        const existingRating = await getUserRating(mockUser.id, figure.id);
+        if (existingRating) {
+          setSelectedPerception(existingRating.perception);
+          setStarRating(existingRating.stars);
+          setCurrentUserRating(existingRating);
+        }
+        setIsFetchingInitialRating(false);
+      } else {
+        setIsFetchingInitialRating(false);
       }
     }
+    fetchInitialRating();
   }, [figure.id]);
 
   const handleSubmitRating = async () => {
@@ -50,29 +59,44 @@ export function RatingSystem({ figure }: RatingSystemProps) {
     }
 
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newRating: UserRating = {
-      userId: mockUser.id,
-      figureId: figure.id,
-      perception: selectedPerception,
-      stars: starRating,
-      timestamp: new Date().toISOString(),
-    };
-    // In a real app, update this in DB and refresh data
-    setCurrentUserRating(newRating); 
-    // This is where USER_RATINGS_DATA would be updated if it were stateful or a DB call made.
-    console.log("Submitting rating:", newRating);
+    const result = await submitUserRating(mockUser.id, figure.id, selectedPerception, starRating);
     setIsLoading(false);
-    toast({
-      title: "Rating Submitted!",
-      description: `You rated ${figure.name} as ${selectedPerception} with ${starRating} stars.`,
-      action: <Button variant="outline" size="sm" onClick={() => console.log('Undo action')}><ThumbsUp className="mr-2 h-4 w-4" />Got it!</Button>
-    });
+
+    if (result.success) {
+      toast({
+        title: "Rating Submitted!",
+        description: `You rated ${figure.name} as ${selectedPerception} with ${starRating} stars. Aggregates updated.`,
+        action: <Button variant="outline" size="sm"><ThumbsUp className="mr-2 h-4 w-4" />Got it!</Button>
+      });
+      // Update local state for immediate feedback, though refresh will get latest
+      setCurrentUserRating({
+        userId: mockUser.id,
+        figureId: figure.id,
+        perception: selectedPerception,
+        stars: starRating,
+        timestamp: new Date().toISOString()
+      });
+      router.refresh(); // Refresh to get updated figure aggregates and potentially other parts of the page
+    } else {
+      toast({
+        title: "Rating Failed",
+        description: result.message || "Could not submit your rating.",
+        variant: "destructive",
+      });
+    }
   };
   
-  if (!isClient) return <Card><CardContent className="p-6"><div className="h-48 animate-pulse bg-muted rounded-md"></div></CardContent></Card>;
+  if (isFetchingInitialRating) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="h-48 animate-pulse bg-muted rounded-md flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!mockUser) {
     return (
@@ -107,6 +131,7 @@ export function RatingSystem({ figure }: RatingSystemProps) {
                   "flex flex-col h-auto p-3 items-center justify-center space-y-1 text-center transition-all duration-150 ease-in-out transform hover:scale-105",
                   selectedPerception === option.key && "ring-2 ring-primary shadow-md"
                 )}
+                disabled={isLoading}
               >
                 <option.icon className={cn("w-7 h-7 mb-1", selectedPerception === option.key ? "text-primary-foreground" : "text-foreground/80")} />
                 <span className="text-sm">{option.label}</span>
@@ -118,12 +143,13 @@ export function RatingSystem({ figure }: RatingSystemProps) {
         <div>
           <h4 className="text-md font-medium mb-3">2. Give a star rating (1-5):</h4>
           <div className="flex justify-center sm:justify-start">
-            <StarRating rating={starRating} onRatingChange={setStarRating} size={32} />
+            <StarRating rating={starRating} onRatingChange={setStarRating} size={32} readOnly={isLoading} />
           </div>
         </div>
         
         <Button onClick={handleSubmitRating} disabled={isLoading || !selectedPerception || starRating === 0} className="w-full sm:w-auto text-lg py-3 px-6">
-          {isLoading ? "Submitting..." : (currentUserRating ? "Update Your Rating" : "Submit Your Rating")}
+          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          {isLoading ? "Submitting..." : (currentUserRating?.perception ? "Update Your Rating" : "Submit Your Rating")}
         </Button>
 
         {currentUserRating && (
