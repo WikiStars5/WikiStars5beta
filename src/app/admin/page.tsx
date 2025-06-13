@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Users, ListOrdered, MessageSquareWarning, PlusCircle, AlertTriangle } from "lucide-react";
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { getPendingCommentsCount } from "@/lib/actions/commentActions";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Added AlertTitle
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; 
 
 export const revalidate = 0; // Ensure data is re-fetched
 
@@ -91,13 +91,25 @@ export default async function AdminDashboardPage() {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
           <Button asChild>
-            <Link href="/admin/figures/new"><PlusCircle className="mr-2 h-4 w-4" /> Add New Figure</Link>
+            <Link href="/admin/figures/new">
+              <span className="flex items-center">
+                <PlusCircle className="mr-2 h-4 w-4" /> Add New Figure
+              </span>
+            </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/admin/figures"><ListOrdered className="mr-2 h-4 w-4" /> Manage Figures</Link>
+            <Link href="/admin/figures">
+              <span className="flex items-center">
+                <ListOrdered className="mr-2 h-4 w-4" /> Manage Figures
+              </span>
+            </Link>
           </Button>
-           <Button variant="outline" asChild> {/* Enabled this button */}
-            <Link href="/admin/comments"><MessageSquareWarning className="mr-2 h-4 w-4" />Moderate Comments</Link>
+           <Button variant="outline" asChild> 
+            <Link href="/admin/comments">
+              <span className="flex items-center">
+                <MessageSquareWarning className="mr-2 h-4 w-4" />Moderate Comments
+              </span>
+            </Link>
           </Button>
            <Button variant="outline" disabled asChild>
             <Link href="/admin/users">Manage Users</Link>
@@ -107,5 +119,3 @@ export default async function AdminDashboardPage() {
     </div>
   );
 }
-
-    
