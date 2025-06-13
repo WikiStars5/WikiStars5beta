@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import type { UserRating, Figure, PerceptionKeys } from '@/lib/types';
-import { doc, setDoc, getDoc, runTransaction } from 'firebase/firestore';
+import { doc, setDoc, getDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
 
 // Get a user's perception for a specific figure
 export async function getUserPerception(userId: string, figureId: string): Promise<UserRating | null> {
@@ -13,8 +13,14 @@ export async function getUserPerception(userId: string, figureId: string): Promi
     const ratingRef = doc(db, 'userRatings', ratingDocId);
     const ratingSnap = await getDoc(ratingRef);
     if (ratingSnap.exists()) {
-      // Ensure we cast to UserRating, which no longer expects 'stars' from this collection
-      return { id: ratingSnap.id, ...ratingSnap.data() } as Omit<UserRating, 'stars'> & { perception: PerceptionKeys, timestamp: string };
+      const data = ratingSnap.data();
+      return { 
+        id: ratingSnap.id, 
+        userId: data.userId,
+        figureId: data.figureId,
+        perception: data.perception,
+        timestamp: data.timestamp?.toDate ? data.timestamp.toDate().toISOString() : new Date(data.timestamp).toISOString(),
+      } as UserRating;
     }
     return null;
   } catch (error) {
@@ -23,11 +29,11 @@ export async function getUserPerception(userId: string, figureId: string): Promi
   }
 }
 
-// Submit or update a user's perception for a figure
+// Submit or update a user's perception for a figure. This does NOT handle star ratings.
 export async function submitUserPerception(
   userId: string,
   figureId: string,
-  perception: PerceptionKeys
+  newPerception: PerceptionKeys
 ): Promise<{ success: boolean; message: string }> {
   if (!userId) {
     return { success: false, message: 'User not authenticated.' };
@@ -35,7 +41,7 @@ export async function submitUserPerception(
   if (!figureId) {
     return { success: false, message: 'Figure ID is missing.' };
   }
-  if (!perception) {
+  if (!newPerception) {
     return { success: false, message: 'Perception is required.'};
   }
 
@@ -53,37 +59,39 @@ export async function submitUserPerception(
       const previousUserRatingDoc = await transaction.get(userRatingRef);
       const previousPerception = previousUserRatingDoc.exists() ? (previousUserRatingDoc.data() as UserRating).perception : null;
 
-      const newPerceptionData: Omit<UserRating, 'id'> = { // id is doc name
+      // Create/Update user's perception document
+      const newPerceptionData: Omit<UserRating, 'id' | 'timestamp'> & { timestamp: any } = {
         userId,
         figureId,
-        perception,
-        timestamp: new Date().toISOString(),
+        perception: newPerception,
+        timestamp: serverTimestamp(), // Use serverTimestamp for consistency
       };
-      transaction.set(userRatingRef, newPerceptionData);
+      transaction.set(userRatingRef, newPerceptionData, { merge: true }); // Merge true to allow update if exists
 
+      // Update perceptionCounts on the figure document
       const currentPerceptionCounts = { ...(figureData.perceptionCounts || { neutral: 0, fan: 0, simp: 0, hater: 0 }) };
 
-      if (previousPerception && previousPerception !== perception) {
+      if (previousPerception && previousPerception !== newPerception) {
         currentPerceptionCounts[previousPerception] = Math.max(0, (currentPerceptionCounts[previousPerception] || 0) - 1);
       }
       
-      if (previousPerception !== perception) {
-         currentPerceptionCounts[perception] = (currentPerceptionCounts[perception] || 0) + 1;
+      // Increment new perception count only if it's different from previous or if there was no previous one.
+      if (previousPerception !== newPerception) {
+         currentPerceptionCounts[newPerception] = (currentPerceptionCounts[newPerception] || 0) + 1;
       }
       
-      // Only update perceptionCounts. averageRating and totalRatings are handled by comments with stars.
       transaction.update(figureRef, {
         perceptionCounts: currentPerceptionCounts,
       });
     });
 
-    return { success: true, message: 'Perception submitted and aggregates updated.' };
+    return { success: true, message: 'Perception submitted and figure aggregates updated.' };
   } catch (error: any) {
-    console.error('Error submitting perception or updating aggregates:', error.code, error.message, error);
+    console.error('Error submitting perception or updating figure aggregates:', error.code, error.message, error);
     let message = 'Failed to submit perception. Please try again.';
-    if (error.code === 'permission-denied' || (error.message && error.message.toLowerCase().includes('permission'))) {
+    if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes('permission'))) {
         message = 'Failed to submit perception due to insufficient permissions. Please check your Firestore Security Rules.';
-    } else if (error.message && error.message.toLowerCase().includes('not found')) {
+    } else if (error.message && String(error.message).toLowerCase().includes('not found')) {
         message = `Failed to submit perception: The figure could not be found. ${error.message}`;
     }
     return { success: false, message: message };

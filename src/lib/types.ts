@@ -12,19 +12,18 @@ export interface Figure {
   name: string;
   photoUrl: string;
   description?: string;
-  averageRating: number; // Average of stars submitted WITH comments
-  totalRatings: number;   // Count of comments that INCLUDED a star rating
+  averageRating: number; // Average of stars submitted WITH new top-level comments
+  totalRatings: number;   // Count of new top-level comments that INCLUDED a star rating
   perceptionCounts: Record<PerceptionKeys, number>; // From independent perception submissions
 }
 
-// UserRating now primarily for perception. Stars are not stored here from independent perception submission.
+// UserRating now ONLY for perception. Stars are not stored here.
 export interface UserRating {
   id?: string; // Document ID: userId_figureId
   userId: string;
   figureId: string;
   perception: PerceptionKeys;
   timestamp: string;
-  // stars field is removed as per the new logic. Stars are now only with comments.
 }
 
 export interface Comment {
@@ -39,9 +38,9 @@ export interface Comment {
   likesCount: number;
   dislikesCount: number;
   timestamp: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected'; // Will be 'approved' by default now
   replies?: Comment[];
-  starRatingGivenByAuthor?: number; // Optional star rating submitted with this comment
+  starRatingGivenByAuthor?: number; // Optional star rating submitted with this comment (1-5)
 }
 
 export interface UserProfile {

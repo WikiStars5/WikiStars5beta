@@ -6,18 +6,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from '@/hooks/use-toast';
-import { Send, Loader2, Star } from 'lucide-react'; // Added Star
+import { Send, Loader2 } from 'lucide-react';
 import { addComment } from '@/lib/actions/commentActions';
 import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import Link from 'next/link';
-import { StarRating } from '@/components/shared/StarRating'; // Import StarRating
+import { StarRating } from '@/components/shared/StarRating';
 
 interface CommentFormProps {
   figureId: string;
   figureName: string;
-  parentId?: string | null;
+  parentId?: string | null; // If present, this is a reply
   onCommentSubmitted?: () => void;
   placeholder?: string;
   submitButtonText?: string;
@@ -32,12 +32,14 @@ export function CommentForm({
   submitButtonText = "Post Comment"
 }: CommentFormProps) {
   const [commentText, setCommentText] = useState("");
-  const [selectedStars, setSelectedStars] = useState(0); // State for optional stars
+  const [selectedStars, setSelectedStars] = useState(0); // For optional stars with new comments
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
+
+  const isReply = parentId !== null;
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -59,6 +61,9 @@ export function CommentForm({
     }
 
     setIsLoading(true);
+    // Pass stars only if it's not a reply and stars are selected (greater than 0)
+    const starsToSubmit = !isReply && selectedStars > 0 ? selectedStars : undefined;
+
     const result = await addComment(
       figureId,
       figureName,
@@ -67,7 +72,7 @@ export function CommentForm({
       currentUser.photoURL,
       commentText,
       parentId,
-      selectedStars > 0 ? selectedStars : undefined // Pass stars if selected
+      starsToSubmit 
     );
     setIsLoading(false);
 
@@ -93,7 +98,7 @@ export function CommentForm({
   if (!currentUser) {
     return (
       <div className="p-4 border rounded-lg bg-muted/50 text-center">
-        <p className="text-muted-foreground">Please <Link href="/login" className="text-primary hover:underline">log in</Link> to post a comment.</p>
+        <p className="text-muted-foreground">Please <Link href={`/login?redirect=/figures/${figureId}`} className="text-primary hover:underline">log in</Link> to post a comment.</p>
       </div>
     );
   }
@@ -105,11 +110,13 @@ export function CommentForm({
         <AvatarFallback>{currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : "U"}</AvatarFallback>
       </Avatar>
       <div className="flex-grow space-y-3">
-        {/* Optional Star Rating */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <span className="text-sm text-muted-foreground whitespace-nowrap">Rate (optional):</span>
-          <StarRating rating={selectedStars} onRatingChange={setSelectedStars} size={22} readOnly={isLoading} />
-        </div>
+        {/* Optional Star Rating - ONLY for new, top-level comments */}
+        {!isReply && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Rate (optional with comment):</span>
+            <StarRating rating={selectedStars} onRatingChange={setSelectedStars} size={22} readOnly={isLoading} />
+          </div>
+        )}
         
         <Textarea
           placeholder={placeholder}

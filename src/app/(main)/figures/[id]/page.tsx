@@ -1,7 +1,7 @@
 
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { RatingSystem } from "@/components/figures/RatingSystem"; // This now only handles perception
-import { CommentSection } from "@/components/comments/CommentSection"; // This now handles comments + optional stars
+import { CommentSection } from "@/components/comments/CommentSection"; // This now handles comments + optional stars for NEW comments
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { Figure } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -43,7 +43,7 @@ export default async function FigurePage({ params }: FigurePageProps) {
         <div className="lg:col-span-2 space-y-8">
           {/* RatingSystem now only for perception */}
           <RatingSystem figure={figure} /> 
-          {/* CommentSection handles comments and optional star ratings for comments */}
+          {/* CommentSection handles comments and optional star ratings for NEW comments */}
           <CommentSection figure={figure} />
         </div>
         
@@ -52,9 +52,9 @@ export default async function FigurePage({ params }: FigurePageProps) {
             <Terminal className="h-4 w-4" />
             <AlertTitle className="font-headline">How It Works</AlertTitle>
             <AlertDescription className="text-sm">
-              Share your perception (Fan, Simp, etc.) for {figure.name}.
-              When commenting, you can optionally add a 1-5 star rating with your comment.
-              Figure's average star rating is based on stars given with comments.
+              1. Share your overall perception (Fan, Simp, etc.) for {figure.name}. This is independent.
+              2. When writing a NEW comment, you can optionally add a 1-5 star rating. This rating is tied to your comment.
+              The figure's average star rating is based on stars given with new comments. Replies to comments do not include star ratings.
             </AlertDescription>
           </Alert>
 
