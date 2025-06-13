@@ -1,7 +1,8 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Users, BarChart3, MessageSquareWarning, PlusCircle } from "lucide-react";
+import { Users, BarChart3, MessageSquareWarning, PlusCircle, ListOrdered } from "lucide-react";
 import { FIGURES_DATA } from "@/lib/placeholder-data"; // Assuming this holds all figures
 
 export default function AdminDashboardPage() {
@@ -31,7 +32,7 @@ export default function AdminDashboardPage() {
             </Card>
             <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Users (Simulated)</CardTitle>
                 <Users className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -41,7 +42,7 @@ export default function AdminDashboardPage() {
             </Card>
             <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Comments for Moderation</CardTitle>
+                <CardTitle className="text-sm font-medium">Comments for Moderation (Simulated)</CardTitle>
                 <MessageSquareWarning className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -62,12 +63,12 @@ export default function AdminDashboardPage() {
             <Link href="/admin/figures/new"><PlusCircle className="mr-2 h-4 w-4" /> Add New Figure</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/admin/figures">Manage Figures</Link>
+            <Link href="/admin/figures"><ListOrdered className="mr-2 h-4 w-4" /> Manage Figures</Link>
           </Button>
-          <Button variant="outline" asChild>
+           <Button variant="outline" disabled asChild>
             <Link href="/admin/comments">Moderate Comments</Link>
           </Button>
-           <Button variant="outline" asChild>
+           <Button variant="outline" disabled asChild>
             <Link href="/admin/users">Manage Users</Link>
           </Button>
         </CardContent>

@@ -8,7 +8,7 @@ export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'hater', label: 'Hater', icon: ThumbsDown },
 ];
 
-export const FIGURES_DATA: Figure[] = [
+export let FIGURES_DATA: Figure[] = [
   {
     id: 'elon-musk',
     name: 'Elon Musk',
@@ -47,7 +47,7 @@ export const USER_RATINGS_DATA: UserRating[] = [
   { userId: 'user123', figureId: 'taylor-swift', perception: 'simp', stars: 5, timestamp: new Date().toISOString() },
 ];
 
-export const COMMENTS_DATA: Comment[] = [
+export let COMMENTS_DATA: Comment[] = [
   {
     id: 'comment1',
     figureId: 'elon-musk',
@@ -143,4 +143,20 @@ export const getFigureById = (id: string): Figure | undefined => {
 
 export const getUserRatingForFigure = (userId: string, figureId: string): UserRating | undefined => {
   return USER_RATINGS_DATA.find(rating => rating.userId === userId && rating.figureId === figureId);
+};
+
+// Functions to simulate data manipulation (in a real app, these would be API calls)
+export const addFigure = (figure: Figure): void => {
+  FIGURES_DATA.push(figure);
+};
+
+export const updateFigure = (updatedFigure: Figure): void => {
+  const index = FIGURES_DATA.findIndex(f => f.id === updatedFigure.id);
+  if (index !== -1) {
+    FIGURES_DATA[index] = updatedFigure;
+  }
+};
+
+export const deleteFigure = (figureId: string): void => {
+  FIGURES_DATA = FIGURES_DATA.filter(f => f.id !== figureId);
 };

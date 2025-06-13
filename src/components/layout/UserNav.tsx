@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -12,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { mockUser } from '@/lib/types'; // In a real app, this would come from an auth context/hook
-import { User, LogIn, UserPlus, LogOut, ShieldCheck } from 'lucide-react';
+import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, LayoutDashboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export function UserNav() {
@@ -36,6 +37,8 @@ export function UserNav() {
   }
 
   if (currentUser) {
+    const isAdmin = currentUser.id === 'user123'; // Simulated admin check
+
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -58,12 +61,15 @@ export function UserNav() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
+          <DropdownMenuItem disabled>
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </DropdownMenuItem>
-          {/* Simulate admin role */}
-          {currentUser.id === 'user123' && ( 
+          <DropdownMenuItem disabled>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Settings</span>
+          </DropdownMenuItem>
+          {isAdmin && ( 
             <Link href="/admin">
               <DropdownMenuItem>
                 <ShieldCheck className="mr-2 h-4 w-4" />
@@ -72,7 +78,7 @@ export function UserNav() {
             </Link>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => alert('Logout action triggered')}>
+          <DropdownMenuItem onClick={() => alert('Logout action triggered (Simulated)')}>
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>
           </DropdownMenuItem>

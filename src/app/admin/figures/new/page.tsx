@@ -1,12 +1,13 @@
+
 import { FigureForm } from "@/components/admin/FigureForm";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function NewFigurePage() {
   return (
     <div>
       <CardHeader className="px-0 mb-4">
         <CardTitle className="text-2xl font-headline">Create New Figure Profile</CardTitle>
-        <CardDescription>Fill in the details for the new public figure.</CardDescription>
+        <CardDescription>Fill in the details for the new public figure. The photo URL is for an image link; direct uploads are not supported in this version.</CardDescription>
       </CardHeader>
       <FigureForm />
     </div>
