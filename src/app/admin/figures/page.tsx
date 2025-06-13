@@ -3,12 +3,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FIGURES_DATA, deleteFigure as deleteFigureData } from "@/lib/placeholder-data"; // Use the mutable import
+import { FIGURES_DATA } from "@/lib/placeholder-data"; // Use the mutable import
 import type { Figure } from "@/lib/types";
-import { PlusCircle, Edit3, Trash2 } from "lucide-react";
+import { PlusCircle, Edit3 } from "lucide-react";
 import Link from "next/link";
 import { AdminFigureImage } from "@/components/admin/AdminFigureImage";
-// import { AdminDeleteFigureButton } from "@/components/admin/AdminDeleteFigureButton"; // For client-side deletion if needed
+import { AdminDeleteFigureButton } from "@/components/admin/AdminDeleteFigureButton";
 
 // This page will be server-rendered for now.
 // For client-side interactions like delete without full reload, a client component would be needed.
@@ -67,25 +67,7 @@ export default async function AdminFiguresPage() {
                           <span className="sr-only">Edit</span>
                         </Link>
                       </Button>
-                      {/* Basic delete confirmation for now. In a real app, use a modal and proper state management. */}
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-destructive hover:text-destructive" 
-                        onClick={() => {
-                          if(confirm(`Are you sure you want to delete ${figure.name}? This cannot be undone.`)){
-                            // This is a server component, so direct state manipulation isn't straightforward.
-                            // For simulation, we'd need a client component or form action.
-                            // For now, it will just alert.
-                            alert(`Simulating delete for ${figure.name}. In a real app, this would refresh the list.`);
-                            // deleteFigureData(figure.id); // This would modify in-memory store if server actions were set up or if this was a client component.
-                            // router.refresh(); // Needs client component
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Delete</span>
-                      </Button>
+                      <AdminDeleteFigureButton figure={figure} />
                     </TableCell>
                   </TableRow>
                 ))}
