@@ -22,10 +22,10 @@ export default async function FigurePage({ params }: FigurePageProps) {
   if (!figure) {
     return (
       <div className="text-center py-10">
-        <h1 className="text-2xl font-bold">Figure Not Found</h1>
-        <p className="text-muted-foreground">The profile (ID: {params.id}) you're looking for doesn't exist in Firestore.</p>
+        <h1 className="text-2xl font-bold">Figura No Encontrada</h1>
+        <p className="text-muted-foreground">El perfil (ID: {params.id}) que buscas no existe en Firestore.</p>
         <Button asChild className="mt-4">
-          <Link href="/">Go to Homepage</Link>
+          <Link href="/">Ir a la Página Principal</Link>
         </Button>
       </div>
     );
@@ -50,17 +50,17 @@ export default async function FigurePage({ params }: FigurePageProps) {
         <aside className="lg:col-span-1 space-y-6">
           <Alert>
             <Terminal className="h-4 w-4" />
-            <AlertTitle className="font-headline">How It Works</AlertTitle>
+            <AlertTitle className="font-headline">Cómo Funciona</AlertTitle>
             <AlertDescription className="text-sm">
-              1. Share your overall perception of {figure.name} (Fan, Simp, etc.) by clicking one of the perception buttons. Your choice is saved automatically. Click again to remove your perception.
-              2. When writing a NEW comment, you can optionally add a 1-5 star rating. This rating is tied to your comment and contributes to the figure&apos;s average star rating.
-              3. Replies to comments do not include star ratings.
+              1. Comparte tu percepción general de {figure.name} (Fan, Simp, etc.) haciendo clic en uno de los botones de percepción. Tu elección se guarda automáticamente. Vuelve a hacer clic en el mismo botón para eliminar tu percepción.
+              2. Al escribir un NUEVO comentario de nivel superior, puedes opcionalmente añadir una calificación de 1-5 estrellas. Esta calificación está ligada a tu comentario y contribuye a la calificación promedio de estrellas de la figura.
+              3. Las respuestas a comentarios no incluyen calificación por estrellas.
             </AlertDescription>
           </Alert>
 
           {relatedFigures.length > 0 && (
             <div>
-              <h3 className="text-xl font-headline mb-4">You Might Also Like</h3>
+              <h3 className="text-xl font-headline mb-4">También te podría interesar</h3>
               <div className="space-y-4">
                 {relatedFigures.map(relatedFigure => (
                   <FigureListItem key={relatedFigure.id} figure={relatedFigure} />

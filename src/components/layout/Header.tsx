@@ -15,7 +15,7 @@ export function Header() {
               Hogar
             </Link>
             <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">
-              Browse Figures
+              Explorar Figuras
             </Link>
             {/* Add more nav links if needed */}
           </nav>

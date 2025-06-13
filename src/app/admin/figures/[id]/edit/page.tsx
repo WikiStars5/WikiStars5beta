@@ -23,10 +23,10 @@ export default async function EditFigurePage({ params }: EditFigurePageProps) {
   if (!figure) {
     return (
       <div className="text-center py-10">
-        <CardTitle className="text-2xl font-headline">Figure Not Found</CardTitle>
-        <CardDescription>The profile you're trying to edit (ID: {params.id}) was not found in Firestore.</CardDescription>
+        <CardTitle className="text-2xl font-headline">Figura No Encontrada</CardTitle>
+        <CardDescription>El perfil que intentas editar (ID: {params.id}) no se encontró en Firestore.</CardDescription>
         <Button asChild className="mt-4">
-          <Link href="/admin/figures">Back to Manage Figures</Link>
+          <Link href="/admin/figures">Volver a Gestionar Figuras</Link>
         </Button>
       </div>
     );
@@ -36,8 +36,8 @@ export default async function EditFigurePage({ params }: EditFigurePageProps) {
   return (
     <div>
       <CardHeader className="px-0 mb-4">
-        <CardTitle className="text-2xl font-headline">Edit Profile: {figure.name}</CardTitle>
-        <CardDescription>Update the details for this public figure. Data will be saved to Firestore.</CardDescription>
+        <CardTitle className="text-2xl font-headline">Editar Perfil: {figure.name}</CardTitle>
+        <CardDescription>Actualiza los detalles de esta figura pública. Los datos se guardarán en Firestore.</CardDescription>
       </CardHeader>
       <FigureForm initialData={figure} />
     </div>

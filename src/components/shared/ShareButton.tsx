@@ -24,45 +24,40 @@ export function ShareButton({ figureName, figureId }: ShareButtonProps) {
   }, []);
 
   const handleShare = async () => {
-    if (typeof window === 'undefined') return; // Ensure window is defined
+    if (typeof window === 'undefined') return; 
 
     const shareUrl = `${window.location.origin}/figures/${figureId}`;
-    const shareTitle = `Check out ${figureName} on WikiStars5!`;
+    const shareTitle = `¡Mira a ${figureName} en WikiStars5!`;
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: shareTitle,
-          text: `Rate and discuss ${figureName} on WikiStars5.`,
+          text: `Califica y discute sobre ${figureName} en WikiStars5.`,
           url: shareUrl,
         });
-        toast({ title: "Shared successfully!" });
+        toast({ title: "¡Compartido exitosamente!" });
       } catch (error) {
         console.error("Error sharing:", error);
-        // Avoid toast if error is "AbortError" (user cancelled share dialog)
         if ((error as DOMException)?.name !== 'AbortError') {
-          toast({ title: "Could not share", description: "Sharing was cancelled or failed.", variant: "destructive" });
+          toast({ title: "No se pudo compartir", description: "Se canceló o falló la acción de compartir.", variant: "destructive" });
         }
       }
     } else {
-      // Fallback for browsers that don't support navigator.share
       try {
         await navigator.clipboard.writeText(shareUrl);
-        toast({ title: "Link Copied!", description: "Profile link copied to clipboard." });
+        toast({ title: "¡Enlace Copiado!", description: "Enlace del perfil copiado al portapapeles." });
       } catch (error) {
         console.error("Error copying to clipboard:", error);
-        toast({ title: "Could not copy link", variant: "destructive" });
+        toast({ title: "No se pudo copiar el enlace", variant: "destructive" });
       }
     }
   };
 
-  // Render a placeholder or the fallback icon until client-side check is complete
-  // to avoid hydration mismatch if initial server render differs too much.
-  // For this specific case, LinkIcon is a safe default.
   const ShareOrLinkIcon = canShareNatively ? Share2 : LinkIcon;
 
   return (
-    <Button variant="outline" onClick={handleShare} size="icon" aria-label={`Share ${figureName}'s profile`}>
+    <Button variant="outline" onClick={handleShare} size="icon" aria-label={`Compartir perfil de ${figureName}`}>
       {isClient ? <ShareOrLinkIcon className="h-5 w-5" /> : <LinkIcon className="h-5 w-5" /> }
     </Button>
   );

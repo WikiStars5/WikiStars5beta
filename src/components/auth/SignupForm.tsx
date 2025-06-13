@@ -15,9 +15,9 @@ import { useRouter } from "next/navigation";
 import { auth } from '@/lib/firebase'; // Main auth instance
 
 const signupSchema = z.object({
-  displayName: z.string().min(2, { message: "Display name must be at least 2 characters." }),
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  displayName: z.string().min(2, { message: "El nombre de usuario debe tener al menos 2 caracteres." }),
+  email: z.string().email({ message: "Dirección de correo electrónico inválida." }),
+  password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
@@ -47,18 +47,18 @@ export function SignupForm() {
         });
       }
       toast({
-        title: "Account Created!",
-        description: "Welcome to WikiStars5! You can now log in.",
+        title: "¡Cuenta Creada!",
+        description: "¡Bienvenido a WikiStars5! Ahora puedes iniciar sesión.",
       });
       router.push('/login'); // Redirect to login page after successful signup
     } catch (error: any) {
       console.error("Signup error:", error);
-      let errorMessage = "Failed to create account. Please try again.";
+      let errorMessage = "No se pudo crear la cuenta. Por favor, inténtalo de nuevo.";
       if (error.code === 'auth/email-already-in-use') {
-        errorMessage = "This email address is already in use.";
+        errorMessage = "Esta dirección de correo electrónico ya está en uso.";
       }
       toast({
-        title: "Signup Failed",
+        title: "Registro Fallido",
         description: errorMessage,
         variant: "destructive",
       });
@@ -75,9 +75,9 @@ export function SignupForm() {
           name="displayName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Display Name</FormLabel>
+              <FormLabel>Nombre de Usuario</FormLabel>
               <FormControl>
-                <Input placeholder="Your Name" {...field} disabled={isLoading} />
+                <Input placeholder="Tu Nombre" {...field} disabled={isLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -88,9 +88,9 @@ export function SignupForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Correo Electrónico</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="you@example.com" {...field} disabled={isLoading} />
+                <Input type="email" placeholder="tu@ejemplo.com" {...field} disabled={isLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -101,7 +101,7 @@ export function SignupForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Contraseña</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} disabled={isLoading} />
               </FormControl>
@@ -111,7 +111,7 @@ export function SignupForm() {
         />
         <Button type="submit" className="w-full text-lg py-3" disabled={isLoading}>
           {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
-          {isLoading ? "Creating Account..." : "Sign Up"}
+          {isLoading ? "Creando cuenta..." : "Registrarse"}
         </Button>
       </form>
     </Form>

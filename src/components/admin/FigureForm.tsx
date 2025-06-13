@@ -19,8 +19,8 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
 
 const figureFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters."),
-  description: z.string().min(5, "Description must be at least 5 characters.").optional().or(z.literal('')),
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
+  description: z.string().min(5, "La descripción debe tener al menos 5 caracteres.").optional().or(z.literal('')),
 });
 
 type FigureFormValues = z.infer<typeof figureFormSchema>;
@@ -69,12 +69,12 @@ export function FigureForm({ initialData }: FigureFormProps) {
         const storageRef = ref(storage, filePath);
         await uploadBytes(storageRef, selectedFile);
         photoUrlToSave = await getDownloadURL(storageRef);
-        toast({ title: "Image Uploaded", description: "Your image has been saved to Firebase Storage." });
+        toast({ title: "Imagen Subida", description: "Tu imagen ha sido guardada en Firebase Storage." });
       } catch (error) {
         console.error("Error uploading image: ", error);
         toast({
-          title: "Image Upload Failed",
-          description: "Could not upload image. Please try again.",
+          title: "Error al Subir Imagen",
+          description: "No se pudo subir la imagen. Por favor, inténtalo de nuevo.",
           variant: "destructive",
         });
         setIsLoading(false);
@@ -102,17 +102,17 @@ export function FigureForm({ initialData }: FigureFormProps) {
       }
       
       toast({
-        title: initialData ? "Figure Updated!" : "Figure Created!",
-        description: `${figureData.name}'s profile has been saved to Firestore.`,
+        title: initialData ? "¡Figura Actualizada!" : "¡Figura Creada!",
+        description: `El perfil de ${figureData.name} ha sido guardado en Firestore.`,
       });
 
       router.push(`/admin/figures`);
-      router.refresh(); // Important to re-fetch data on the admin list page
+      router.refresh(); 
     } catch (error) {
       console.error("Error saving figure to Firestore: ", error);
       toast({
-        title: "Save Failed",
-        description: `Could not save ${figureData.name}'s profile to Firestore. Please check console for errors.`,
+        title: "Error al Guardar",
+        description: `No se pudo guardar el perfil de ${figureData.name} en Firestore. Por favor, revisa la consola para ver errores.`,
         variant: "destructive",
       });
     } finally {
@@ -128,9 +128,9 @@ export function FigureForm({ initialData }: FigureFormProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Figure Name</FormLabel>
+              <FormLabel>Nombre de la Figura</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Ada Lovelace" {...field} disabled={isLoading} />
+                <Input placeholder="ej., Ada Lovelace" {...field} disabled={isLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -138,7 +138,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
         />
         
         <FormItem>
-          <FormLabel>Photo</FormLabel>
+          <FormLabel>Foto</FormLabel>
           <FormControl>
             <Input 
               type="file" 
@@ -149,11 +149,11 @@ export function FigureForm({ initialData }: FigureFormProps) {
             />
           </FormControl>
           <FormDescription>
-            Upload an image for the figure. If no image is uploaded, a placeholder will be used for new figures or the existing one kept for edits.
+            Sube una imagen para la figura. Si no se sube ninguna imagen, se usará un marcador de posición para nuevas figuras o se mantendrá la existente para las ediciones.
           </FormDescription>
           {previewUrl && (
             <div className="mt-4 w-32 h-40 relative rounded-md overflow-hidden border">
-              <Image src={previewUrl} alt="Preview" layout="fill" objectFit="cover" />
+              <Image src={previewUrl} alt="Vista Previa" layout="fill" objectFit="cover" />
             </div>
           )}
           {!previewUrl && (
@@ -169,9 +169,9 @@ export function FigureForm({ initialData }: FigureFormProps) {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description / Category</FormLabel>
+              <FormLabel>Descripción / Categoría</FormLabel>
               <FormControl>
-                <Textarea placeholder="e.g., Mathematician and Writer" {...field} disabled={isLoading} rows={3} />
+                <Textarea placeholder="ej., Matemática y Escritora" {...field} disabled={isLoading} rows={3} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -180,7 +180,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
         
         <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-         {isLoading ? (initialData ? "Updating..." : "Creating...") : (initialData ? "Save Changes" : "Create Figure")}
+         {isLoading ? (initialData ? "Actualizando..." : "Creando...") : (initialData ? "Guardar Cambios" : "Crear Figura")}
         </Button>
       </form>
     </Form>

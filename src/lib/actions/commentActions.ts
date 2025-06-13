@@ -5,8 +5,6 @@ import { db } from '@/lib/firebase';
 import type { Comment, Figure } from '@/lib/types';
 import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, doc, updateDoc, increment, runTransaction, setDoc } from 'firebase/firestore';
 
-// Añadir un nuevo comentario a Firestore. Ahora el status es 'approved' por defecto.
-// StarRating es opcional y solo para comentarios de nivel superior.
 export async function addComment(
   figureId: string,
   figureName: string,
@@ -14,25 +12,22 @@ export async function addComment(
   userName: string,
   userAvatarUrl: string | undefined,
   commentText: string,
-  parentCommentId: string | null, // null si es un comentario de nivel superior
-  starRatingGivenByAuthor?: number // Opcional (1-5), solo para comentarios de nivel superior
+  parentCommentId: string | null, 
+  starRatingGivenByAuthor?: number 
 ): Promise<{ success: boolean; commentId?: string; message: string }> {
   if (!userId) {
-    return { success: false, message: 'User not authenticated.' };
+    return { success: false, message: 'Usuario no autenticado.' };
   }
   if (!figureId || !commentText.trim()) {
-    return { success: false, message: 'Figure ID and comment text are required.' };
+    return { success: false, message: 'Se requiere el ID de la figura y el texto del comentario.' };
   }
   
   let actualStarRating: number | undefined = undefined;
-  // Solo permitir estrellas si es un comentario de nivel superior Y se proporcionan estrellas válidas
   if (parentCommentId === null && starRatingGivenByAuthor !== undefined && starRatingGivenByAuthor >= 1 && starRatingGivenByAuthor <= 5) {
     actualStarRating = starRatingGivenByAuthor;
   } else if (parentCommentId !== null && starRatingGivenByAuthor !== undefined) {
-    // Las respuestas no deben tener calificación por estrellas
-    console.warn("Attempted to submit star rating with a reply. Stars ignored.");
+    console.warn("Se intentó enviar una calificación por estrellas con una respuesta. Estrellas ignoradas.");
   }
-
 
   try {
     const commentData: Omit<Comment, 'id' | 'replies' | 'timestamp'> & { timestamp: any } = {
@@ -45,20 +40,19 @@ export async function addComment(
       parentCommentId,
       likesCount: 0,
       dislikesCount: 0,
-      status: 'approved', // Los comentarios ahora se aprueban directamente
+      status: 'approved', 
       timestamp: serverTimestamp(),
       starRatingGivenByAuthor: actualStarRating,
     };
 
     const newCommentRef = doc(collection(db, 'comments'));
 
-    // Si se proporcionan estrellas válidas para un comentario de nivel superior, actualizar los agregados de la figura
     if (parentCommentId === null && actualStarRating !== undefined) {
       const figureRef = doc(db, 'figures', figureId);
       await runTransaction(db, async (transaction) => {
         const figureDoc = await transaction.get(figureRef);
         if (!figureDoc.exists()) {
-          throw new Error(`Figure with ID ${figureId} not found. Cannot add comment with rating.`);
+          throw new Error(`Figura con ID ${figureId} no encontrada. No se puede añadir comentario con calificación.`);
         }
         const figureData = figureDoc.data() as Figure;
 
@@ -77,32 +71,30 @@ export async function addComment(
         transaction.set(newCommentRef, commentData);
       });
     } else {
-      // Si no hay estrellas, o es una respuesta, solo añadir el comentario
       await setDoc(newCommentRef, commentData);
     }
     
-    return { success: true, commentId: newCommentRef.id, message: 'Comment published successfully.' };
+    return { success: true, commentId: newCommentRef.id, message: 'Comentario publicado exitosamente.' };
 
   } catch (error)
  {
     console.error('Error adding comment to Firestore:', error);
-    let message = 'Failed to add comment.';
+    let message = 'Error al añadir comentario.';
      if ((error as any).code === 'permission-denied' || (error as any).message?.toLowerCase().includes('permission')) {
-        message = 'Failed to add comment due to insufficient permissions.';
+        message = 'Error al añadir comentario debido a permisos insuficientes.';
     } else if ((error as any).message?.toLowerCase().includes('not found')) {
-        message = `Failed to add comment: The figure could not be found.`;
+        message = `Error al añadir comentario: No se pudo encontrar la figura.`;
     }
     return { success: false, message: message };
   }
 }
 
-// Obtener comentarios aprobados para una figura.
 export async function getFigureCommentsWithRatings(figureId: string): Promise<Comment[]> {
   try {
     const commentsQuery = query(
       collection(db, 'comments'),
       where('figureId', '==', figureId),
-      where('status', '==', 'approved'), // Solo obtener comentarios aprobados
+      where('status', '==', 'approved'), 
       orderBy('timestamp', 'desc')
     );
     const querySnapshot = await getDocs(commentsQuery);
@@ -136,13 +128,12 @@ export async function getFigureCommentsWithRatings(figureId: string): Promise<Co
   }
 }
 
-// Actualizar reacción de like/dislike para un comentario
 export async function updateCommentReaction(
   commentId: string,
   reactionType: 'like' | 'dislike',
 ): Promise<{ success: boolean; message: string }> {
   if (!commentId) {
-    return { success: false, message: 'Comment ID is missing.' };
+    return { success: false, message: 'Falta el ID del comentario.' };
   }
   
   const commentRef = doc(db, 'comments', commentId);
@@ -152,9 +143,9 @@ export async function updateCommentReaction(
     await updateDoc(commentRef, {
       [fieldToIncrement]: increment(1)
     });
-    return { success: true, message: 'Reaction updated.' };
+    return { success: true, message: 'Reacción actualizada.' };
   } catch (error) {
     console.error('Error updating comment reaction:', error);
-    return { success: false, message: 'Failed to update reaction.' };
+    return { success: false, message: 'Error al actualizar la reacción.' };
   }
 }

@@ -10,8 +10,8 @@ export function MobileSearchButton() {
 
   const handleSearchClick = () => {
     toast({
-      title: "Search Not Implemented",
-      description: "Mobile search will be available soon. Please use the search bar on the homepage.",
+      title: "Búsqueda No Implementada",
+      description: "La búsqueda móvil estará disponible pronto. Por favor, usa la barra de búsqueda en la página de inicio.",
     });
   };
 
@@ -21,10 +21,10 @@ export function MobileSearchButton() {
       size="icon" 
       className="md:hidden" 
       onClick={handleSearchClick}
-      aria-label="Search (placeholder)"
+      aria-label="Buscar (marcador de posición)"
     >
       <Search className="h-5 w-5" />
-      <span className="sr-only">Search</span>
+      <span className="sr-only">Buscar</span>
     </Button>
   );
 }

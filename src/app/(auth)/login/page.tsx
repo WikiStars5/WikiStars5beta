@@ -1,13 +1,14 @@
+
 import { AuthFormCard } from "@/components/auth/AuthFormCard";
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export default function LoginPage() {
   return (
     <AuthFormCard
-      title="Welcome Back!"
-      description="Log in to your WikiStars5 account to continue."
-      footerText="Don't have an account?"
-      footerLinkText="Sign Up"
+      title="¡Bienvenido de Nuevo!"
+      description="Inicia sesión en tu cuenta de WikiStars5 para continuar."
+      footerText="¿No tienes una cuenta?"
+      footerLinkText="Regístrate"
       footerLinkHref="/signup"
     >
       <LoginForm />

@@ -34,7 +34,7 @@ export function FigureListItem({ figure }: FigureListItemProps) {
         </CardHeader>
         <CardContent className="p-4 flex-grow">
           <CardTitle className="text-xl font-headline mb-1 group-hover:text-primary">{figure.name}</CardTitle>
-          <p className="text-sm text-muted-foreground line-clamp-2">{figure.description || "No description available."}</p>
+          <p className="text-sm text-muted-foreground line-clamp-2">{figure.description || "Sin descripción disponible."}</p>
         </CardContent>
         <CardFooter className="p-4 flex justify-between items-center border-t">
           <div className="flex items-center gap-1 text-sm text-amber-500">
@@ -42,7 +42,7 @@ export function FigureListItem({ figure }: FigureListItemProps) {
             <span>{figure.averageRating.toFixed(1)}</span>
             <span className="text-xs text-muted-foreground ml-1">({figure.totalRatings})</span>
           </div>
-          <Badge variant="secondary">View Profile</Badge>
+          <Badge variant="secondary">Ver Perfil</Badge>
         </CardFooter>
       </Card>
     </Link>

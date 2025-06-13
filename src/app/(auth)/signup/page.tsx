@@ -1,13 +1,14 @@
+
 import { AuthFormCard } from "@/components/auth/AuthFormCard";
 import { SignupForm } from "@/components/auth/SignupForm";
 
 export default function SignupPage() {
   return (
     <AuthFormCard
-      title="Create an Account"
-      description="Join WikiStars5 to rate and discuss public figures."
-      footerText="Already have an account?"
-      footerLinkText="Log In"
+      title="Crear una Cuenta"
+      description="Únete a WikiStars5 para calificar y discutir sobre figuras públicas."
+      footerText="¿Ya tienes una cuenta?"
+      footerLinkText="Iniciar Sesión"
       footerLinkHref="/login"
     >
       <SignupForm />

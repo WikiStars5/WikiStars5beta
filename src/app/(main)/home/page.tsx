@@ -16,57 +16,57 @@ export default async function HomePage() {
       <section className="text-center py-12 md:py-20 bg-gradient-to-br from-primary/10 via-background to-accent/10 rounded-lg shadow-sm">
         <div className="container max-w-3xl mx-auto flex flex-col items-center">
           <h1 className="text-4xl md:text-5xl font-bold font-headline mb-6 text-primary">
-            Welcome to WikiStars5
+            Bienvenido a WikiStars5
           </h1>
           <p className="text-lg md:text-xl text-foreground/80 mb-8 text-center">
-            Discover, rate, and discuss public perception of your favorite (and not-so-favorite) famous figures. 
-            Share your take and see what the world thinks!
+            Descubre, califica y discute la percepción pública de tus figuras famosas favoritas (y no tan favoritas). 
+            ¡Comparte tu opinión y mira lo que piensa el mundo!
           </p>
           <div className="w-full max-w-xl">
             <SearchBar />
           </div>
            <p className="text-sm text-muted-foreground mt-4 text-center">
-            Type a name and hit enter or click search.
+            Escribe un nombre y presiona enter o haz clic en buscar.
           </p>
         </div>
       </section>
 
       <section id="how-it-works" className="py-12">
-        <h2 className="text-3xl font-bold font-headline text-center mb-10">How WikiStars5 Works</h2>
+        <h2 className="text-3xl font-bold font-headline text-center mb-10">Cómo Funciona WikiStars5</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
             <Lightbulb className="w-12 h-12 text-accent mb-4" />
-            <h3 className="text-xl font-headline mb-2">Discover Figures</h3>
+            <h3 className="text-xl font-headline mb-2">Descubre Figuras</h3>
             <p className="text-sm text-muted-foreground">
-              Search or browse through profiles of public figures from various fields.
+              Busca o navega a través de perfiles de figuras públicas de diversos campos.
             </p>
           </div>
           <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
             <Users className="w-12 h-12 text-accent mb-4" />
-            <h3 className="text-xl font-headline mb-2">Rate Perception</h3>
+            <h3 className="text-xl font-headline mb-2">Califica la Percepción</h3>
             <p className="text-sm text-muted-foreground">
-              Cast your vote: Fan, Simp, Hater, or Neutral. Then give a 1-5 star rating.
+              Emite tu voto: Fan, Simp, Detractor o Neutral. Opcionalmente, da una calificación de 1-5 estrellas al comentar.
             </p>
           </div>
           <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
             <MessageSquareText className="w-12 h-12 text-accent mb-4" />
-            <h3 className="text-xl font-headline mb-2">Join Discussions</h3>
+            <h3 className="text-xl font-headline mb-2">Únete a las Discusiones</h3>
             <p className="text-sm text-muted-foreground">
-              Share your opinions in the comment sections and react to others.
+              Comparte tus opiniones en las secciones de comentarios y reacciona a los demás.
             </p>
           </div>
           <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
             <Share2 className="w-12 h-12 text-accent mb-4" />
-            <h3 className="text-xl font-headline mb-2">Share Profiles</h3>
+            <h3 className="text-xl font-headline mb-2">Comparte Perfiles</h3>
             <p className="text-sm text-muted-foreground">
-              Easily share profiles with your friends on social media.
+              Comparte fácilmente perfiles con tus amigos en redes sociales.
             </p>
           </div>
         </div>
       </section>
 
       <section id="browse" className="py-12">
-        <h2 className="text-3xl font-bold font-headline text-center mb-10">Featured Figures</h2>
+        <h2 className="text-3xl font-bold font-headline text-center mb-10">Figuras Destacadas</h2>
         {featuredFigures.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredFigures.map((figure) => (
@@ -74,11 +74,11 @@ export default async function HomePage() {
             ))}
           </div>
         ) : (
-          <p className="text-center text-muted-foreground">No figures available in Firestore at the moment.</p>
+          <p className="text-center text-muted-foreground">No hay figuras disponibles en Firestore en este momento.</p>
         )}
         <div className="text-center mt-8">
           <Button size="lg" variant="outline" asChild>
-            <Link href="/figures">Browse All Figures</Link>
+            <Link href="/figures">Explorar Todas las Figuras</Link>
           </Button>
         </div>
       </section>

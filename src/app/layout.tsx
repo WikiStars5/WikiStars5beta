@@ -1,10 +1,11 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'WikiStars5 - Public Figure Perception',
-  description: 'Rate and discuss public figures on WikiStars5.',
+  title: 'WikiStars5 - Percepción de Figuras Públicas',
+  description: 'Califica y discute sobre figuras públicas en WikiStars5.',
 };
 
 export default function RootLayout({
@@ -13,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

@@ -12,12 +12,12 @@ import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import Link from 'next/link';
-import { StarRating } from '@/components/shared/StarRating'; // Importar StarRating
+import { StarRating } from '@/components/shared/StarRating'; 
 
 interface CommentFormProps {
   figureId: string;
   figureName: string;
-  parentId?: string | null; // Si está presente, es una respuesta
+  parentId?: string | null; 
   onCommentSubmitted?: () => void;
   placeholder?: string;
   submitButtonText?: string;
@@ -26,13 +26,13 @@ interface CommentFormProps {
 export function CommentForm({
   figureId,
   figureName,
-  parentId = null, // null por defecto para comentarios de nivel superior
+  parentId = null, 
   onCommentSubmitted,
-  placeholder = "Write your comment...",
-  submitButtonText = "Post Comment"
+  placeholder, 
+  submitButtonText 
 }: CommentFormProps) {
   const [commentText, setCommentText] = useState("");
-  const [selectedStars, setSelectedStars] = useState(0); // Para estrellas opcionales
+  const [selectedStars, setSelectedStars] = useState(0); 
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -40,6 +40,9 @@ export function CommentForm({
   const router = useRouter();
 
   const isReply = parentId !== null;
+  const actualPlaceholder = placeholder || (isReply ? `Respondiendo a...` : "Escribe tu comentario...");
+  const actualSubmitButtonText = submitButtonText || (isReply ? "Publicar Respuesta" : "Publicar Comentario");
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -52,23 +55,22 @@ export function CommentForm({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) {
-      toast({ title: "Empty Comment", description: "Please write something before submitting.", variant: "destructive"});
+      toast({ title: "Comentario Vacío", description: "Por favor, escribe algo antes de enviar.", variant: "destructive"});
       return;
     }
     if (!currentUser) {
-      toast({ title: "Login Required", description: "Please log in to comment.", variant: "destructive"});
+      toast({ title: "Inicio de Sesión Requerido", description: "Por favor, inicia sesión para comentar.", variant: "destructive"});
       return;
     }
 
     setIsLoading(true);
-    // Solo enviar estrellas si no es una respuesta y se han seleccionado estrellas
     const starsToSubmit = !isReply && selectedStars > 0 ? selectedStars : undefined;
 
     const result = await addComment(
       figureId,
       figureName,
       currentUser.uid,
-      currentUser.displayName || "Anonymous User",
+      currentUser.displayName || "Usuario Anónimo",
       currentUser.photoURL,
       commentText,
       parentId,
@@ -77,13 +79,13 @@ export function CommentForm({
     setIsLoading(false);
 
     if (result.success) {
-      toast({ title: "Comment Submitted!", description: result.message });
+      toast({ title: "¡Comentario Enviado!", description: result.message });
       setCommentText("");
-      setSelectedStars(0); // Resetear estrellas
+      setSelectedStars(0); 
       if (onCommentSubmitted) onCommentSubmitted();
       router.refresh(); 
     } else {
-      toast({ title: "Comment Failed", description: result.message || "Could not post your comment.", variant: "destructive"});
+      toast({ title: "Error al Comentar", description: result.message || "No se pudo publicar tu comentario.", variant: "destructive"});
     }
   };
 
@@ -98,7 +100,7 @@ export function CommentForm({
   if (!currentUser) {
     return (
       <div className="p-4 border rounded-lg bg-muted/50 text-center">
-        <p className="text-muted-foreground">Please <Link href={`/login?redirect=/figures/${figureId}`} className="text-primary hover:underline">log in</Link> to post a comment.</p>
+        <p className="text-muted-foreground">Por favor <Link href={`/login?redirect=/figures/${figureId}`} className="text-primary hover:underline">inicia sesión</Link> para publicar un comentario.</p>
       </div>
     );
   }
@@ -110,26 +112,25 @@ export function CommentForm({
         <AvatarFallback>{currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : "U"}</AvatarFallback>
       </Avatar>
       <div className="flex-grow space-y-3">
-        {/* Calificación por estrellas opcional - SOLO para comentarios nuevos, de nivel superior */}
         {!isReply && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-            <span className="text-sm text-muted-foreground whitespace-nowrap">Rate (optional with comment):</span>
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Califica (opcional con comentario):</span>
             <StarRating rating={selectedStars} onRatingChange={setSelectedStars} size={22} readOnly={isLoading} />
           </div>
         )}
         
         <Textarea
-          placeholder={placeholder}
+          placeholder={actualPlaceholder}
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
-          rows={isReply ? 2 : 3} // Menos filas para respuestas
+          rows={isReply ? 2 : 3} 
           className="w-full text-sm"
           disabled={isLoading}
         />
         <div className="flex justify-end">
           <Button type="submit" disabled={isLoading || !commentText.trim()} size={isReply ? "sm" : "default"}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-            {isLoading ? "Posting..." : submitButtonText}
+            {isLoading ? "Publicando..." : actualSubmitButtonText}
           </Button>
         </div>
       </div>

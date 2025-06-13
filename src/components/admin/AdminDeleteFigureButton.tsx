@@ -17,14 +17,14 @@ export function AdminDeleteFigureButton({ figure }: AdminDeleteFigureButtonProps
   const { toast } = useToast();
 
   const handleDelete = async () => {
-    if (confirm(`Are you sure you want to delete ${figure.name}? This cannot be undone.`)) {
+    if (confirm(`¿Estás seguro de que quieres eliminar a ${figure.name}? Esta acción no se puede deshacer.`)) {
       try {
         await deleteFigureFromFirestore(figure.id);
-        toast({ title: "Figure Deleted", description: `${figure.name} has been removed from Firestore.`});
+        toast({ title: "Figura Eliminada", description: `${figure.name} ha sido eliminado de Firestore.`});
         router.refresh(); // Re-fetch server-side data
       } catch (error) {
         console.error("Error deleting figure from Firestore:", error);
-        toast({ title: "Error Deleting", description: `Could not delete ${figure.name}.`, variant: "destructive"});
+        toast({ title: "Error al Eliminar", description: `No se pudo eliminar a ${figure.name}.`, variant: "destructive"});
       }
     }
   };
@@ -37,7 +37,7 @@ export function AdminDeleteFigureButton({ figure }: AdminDeleteFigureButtonProps
       onClick={handleDelete}
     >
       <Trash2 className="h-4 w-4" />
-      <span className="sr-only">Delete {figure.name}</span>
+      <span className="sr-only">Eliminar {figure.name}</span>
     </Button>
   );
 }

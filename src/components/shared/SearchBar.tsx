@@ -34,7 +34,7 @@ export function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
         if (searchTerm.trim().length === 0) {
             setIsDropdownOpen(false);
         } else if (searchTerm.trim().length > 0) {
-            setIsDropdownOpen(true); // Keep open to show "type more" or "no results" for 1 char
+            setIsDropdownOpen(true); 
         }
         return;
       }
@@ -49,7 +49,7 @@ export function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
       } finally {
         setIsLoading(false);
       }
-    }, 300), // 300ms debounce
+    }, 300), 
     []
   );
 
@@ -93,7 +93,7 @@ export function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
         <Input
           type="text"
-          placeholder="Search for a public figure..."
+          placeholder="Buscar una figura pública..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => { 
@@ -109,7 +109,7 @@ export function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
             type="button"
             onClick={clearSearch}
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
-            aria-label="Clear search"
+            aria-label="Limpiar búsqueda"
           >
             <XCircle className="h-5 w-5" />
           </button>
@@ -119,13 +119,13 @@ export function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
       {isDropdownOpen && query.trim().length > 0 && (
         <div className="absolute z-50 w-full mt-2 bg-card border border-border rounded-lg shadow-xl max-h-96 overflow-y-auto">
           {isLoading && query.trim().length >=2 && (
-            <div className="p-4 text-sm text-center text-muted-foreground">Searching...</div>
+            <div className="p-4 text-sm text-center text-muted-foreground">Buscando...</div>
           )}
           {!isLoading && query.trim().length >= 2 && results.length === 0 && (
-            <div className="p-4 text-sm text-center text-muted-foreground">No figures found for "{query}".</div>
+            <div className="p-4 text-sm text-center text-muted-foreground">No se encontraron figuras para "{query}".</div>
           )}
           {!isLoading && query.trim().length < 2 && (
-             <div className="p-4 text-sm text-center text-muted-foreground">Please type at least 2 characters.</div>
+             <div className="p-4 text-sm text-center text-muted-foreground">Por favor, escribe al menos 2 caracteres.</div>
           )}
           {!isLoading && results.length > 0 && (
             <ul className="divide-y divide-border">

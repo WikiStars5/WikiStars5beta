@@ -40,12 +40,12 @@ export function UserNav() {
   const handleLogout = async () => {
     try {
       await firebaseSignOut(auth);
-      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       router.push('/login'); // Redirect to login after logout
       router.refresh(); // Refresh to update any server-side auth checks
     } catch (error) {
       console.error("Error logging out: ", error);
-      toast({ title: "Logout Failed", description: "Could not log you out. Please try again.", variant: "destructive" });
+      toast({ title: "Cierre de Sesión Fallido", description: "No se pudo cerrar tu sesión. Por favor, inténtalo de nuevo.", variant: "destructive" });
     }
   };
 
@@ -81,7 +81,7 @@ export function UserNav() {
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{userProfile.displayName || "User"}</p>
+              <p className="text-sm font-medium leading-none">{userProfile.displayName || "Usuario"}</p>
               <p className="text-xs leading-none text-muted-foreground">
                 {userProfile.email}
               </p>
@@ -90,24 +90,24 @@ export function UserNav() {
           <DropdownMenuSeparator />
           <DropdownMenuItem disabled>
             <User className="mr-2 h-4 w-4" />
-            <span>Profile</span>
+            <span>Perfil</span>
           </DropdownMenuItem>
           <DropdownMenuItem disabled>
             <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
+            <span>Configuración</span>
           </DropdownMenuItem>
           {isAdmin && (
             <Link href="/admin">
               <DropdownMenuItem>
                 <ShieldCheck className="mr-2 h-4 w-4" />
-                <span>Admin Panel</span>
+                <span>Panel de Administración</span>
               </DropdownMenuItem>
             </Link>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
+            <span>Cerrar Sesión</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -118,12 +118,12 @@ export function UserNav() {
     <div className="flex items-center gap-2">
       <Button variant="outline" asChild>
         <Link href="/login">
-          <LogIn className="mr-2 h-4 w-4" /> Login
+          <LogIn className="mr-2 h-4 w-4" /> Iniciar Sesión
         </Link>
       </Button>
       <Button asChild>
         <Link href="/signup">
-          <UserPlus className="mr-2 h-4 w-4" /> Sign Up
+          <UserPlus className="mr-2 h-4 w-4" /> Registrarse
         </Link>
       </Button>
     </div>

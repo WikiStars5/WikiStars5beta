@@ -6,8 +6,8 @@ export default function NewFigurePage() {
   return (
     <div>
       <CardHeader className="px-0 mb-4">
-        <CardTitle className="text-2xl font-headline">Create New Figure Profile</CardTitle>
-        <CardDescription>Fill in the details for the new public figure. Upload an image for their profile.</CardDescription>
+        <CardTitle className="text-2xl font-headline">Crear Nuevo Perfil de Figura</CardTitle>
+        <CardDescription>Completa los detalles para la nueva figura pública. Sube una imagen para su perfil.</CardDescription>
       </CardHeader>
       <FigureForm />
     </div>

@@ -18,12 +18,12 @@ export default async function AdminFiguresPage() {
     <Card>
       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <CardTitle className="text-2xl font-headline">Manage Figures</CardTitle>
-          <CardDescription>Create, edit, or delete public figure profiles from Firestore.</CardDescription>
+          <CardTitle className="text-2xl font-headline">Gestionar Figuras</CardTitle>
+          <CardDescription>Crea, edita o elimina perfiles de figuras públicas de Firestore.</CardDescription>
         </div>
         <Button asChild>
           <Link href="/admin/figures/new">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add New Figure
+            <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nueva Figura
           </Link>
         </Button>
       </CardHeader>
@@ -33,11 +33,11 @@ export default async function AdminFiguresPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px]">Image</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-center w-[120px]">Avg. Rating</TableHead>
-                  <TableHead className="text-right w-[100px]">Actions</TableHead>
+                  <TableHead className="w-[80px]">Imagen</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead className="text-center w-[120px]">Calif. Prom.</TableHead>
+                  <TableHead className="text-right w-[100px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -60,7 +60,7 @@ export default async function AdminFiguresPage() {
                       <Button variant="ghost" size="icon" asChild className="mr-1">
                         <Link href={`/admin/figures/${figure.id}/edit`}>
                           <Edit3 className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
+                          <span className="sr-only">Editar</span>
                         </Link>
                       </Button>
                       <AdminDeleteFigureButton 
@@ -76,7 +76,7 @@ export default async function AdminFiguresPage() {
             </Table>
           </div>
         ) : (
-          <p className="text-center text-muted-foreground py-8">No figures found in Firestore. Add one to get started!</p>
+          <p className="text-center text-muted-foreground py-8">No se encontraron figuras en Firestore. ¡Añade una para empezar!</p>
         )}
       </CardContent>
     </Card>

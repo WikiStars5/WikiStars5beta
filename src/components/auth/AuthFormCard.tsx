@@ -1,8 +1,9 @@
+
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { ReactNode } from "react";
 import { Logo } from "@/components/shared/Logo";
-import { Button } from "@/components/ui/button"; // Added this import
+import { Button } from "@/components/ui/button"; 
 
 interface AuthFormCardProps {
   title: string;
@@ -33,7 +34,7 @@ export function AuthFormCard({ title, description, children, footerLinkHref, foo
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-card px-2 text-muted-foreground">
-                    Or continue with
+                    O continuar con
                   </span>
                 </div>
               </div>

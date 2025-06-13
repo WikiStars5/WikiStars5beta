@@ -14,19 +14,14 @@ export default async function AdminDashboardPage() {
   let fetchError: string | null = null;
 
   try {
-    // These calls need to succeed for the admin dashboard to populate.
-    // Ensure the authenticated admin user (UID: fjEZpqVvG4VOzwUdGyes7ufhqYH2)
-    // has read permissions on 'figures' collection in Firestore Security Rules.
     figures = await getAllFiguresFromFirestore();
     totalFigures = figures.length;
   } catch (error: any) {
     console.error("Error fetching admin dashboard data:", error);
-    // Firebase permission errors often have a code like 'permission-denied'
-    // or include "permission" in the message.
     if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
-      fetchError = "Failed to fetch dashboard data due to missing or insufficient Firestore permissions. Please check your Firebase Security Rules in the Firebase console. Ensure the admin user (UID: fjEZpqVvG4VOzwUdGyes7ufhqYH2) has read access to 'figures' and 'comments' collections.";
+      fetchError = "No se pudieron obtener los datos del panel debido a permisos de Firestore faltantes o insuficientes. Por favor, revisa tus Reglas de Seguridad de Firebase en la consola de Firebase. Asegúrate de que el usuario administrador (UID: fjEZpqVvG4VOzwUdGyes7ufhqYH2) tenga acceso de lectura a las colecciones 'figures' y 'comments'.";
     } else {
-      fetchError = `An unexpected error occurred while fetching dashboard data: ${error.message || 'Unknown error'}`;
+      fetchError = `Ocurrió un error inesperado al obtener los datos del panel: ${error.message || 'Error desconocido'}`;
     }
   }
 
@@ -36,36 +31,36 @@ export default async function AdminDashboardPage() {
     <div className="space-y-8">
       {fetchError && (
         <Alert variant="destructive" className="mb-6">
-          <AlertTriangle className="h-5 w-5" /> {/* Ensure icon is visible */}
-          <AlertTitle>Permission Error</AlertTitle>
+          <AlertTriangle className="h-5 w-5" /> 
+          <AlertTitle>Error de Permiso</AlertTitle>
           <AlertDescription>{fetchError}</AlertDescription>
         </Alert>
       )}
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-headline">Admin Dashboard</CardTitle>
-          <CardDescription>Overview of StarSage application status. Figure data from Firestore.</CardDescription>
+          <CardTitle className="text-2xl font-headline">Panel de Administración</CardTitle>
+          <CardDescription>Resumen del estado de la aplicación WikiStars5. Datos de figuras desde Firestore.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-2 gap-6">
             <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Figures</CardTitle>
+                <CardTitle className="text-sm font-medium">Total de Figuras</CardTitle>
                 <Users className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{fetchError ? 'N/A' : totalFigures}</div>
-                <p className="text-xs text-muted-foreground">profiles managed in Firestore</p>
+                <p className="text-xs text-muted-foreground">perfiles gestionados en Firestore</p>
               </CardContent>
             </Card>
             <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Users (Simulated)</CardTitle>
+                <CardTitle className="text-sm font-medium">Total de Usuarios (Simulado)</CardTitle>
                 <Users className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{totalUsers}</div>
-                <p className="text-xs text-muted-foreground">registered users</p>
+                <p className="text-xs text-muted-foreground">usuarios registrados</p>
               </CardContent>
             </Card>
           </div>
@@ -74,25 +69,25 @@ export default async function AdminDashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-headline">Quick Actions</CardTitle>
+          <CardTitle className="text-xl font-headline">Acciones Rápidas</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
           <Button asChild>
             <Link href="/admin/figures/new">
               <span className="flex items-center">
-                <PlusCircle className="mr-2 h-4 w-4" /> Add New Figure
+                <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nueva Figura
               </span>
             </Link>
           </Button>
           <Button variant="outline" asChild>
             <Link href="/admin/figures">
               <span className="flex items-center">
-                <ListOrdered className="mr-2 h-4 w-4" /> Manage Figures
+                <ListOrdered className="mr-2 h-4 w-4" /> Gestionar Figuras
               </span>
             </Link>
           </Button>
            <Button variant="outline" disabled asChild>
-            <Link href="/admin/users">Manage Users</Link>
+            <Link href="/admin/users">Gestionar Usuarios</Link>
           </Button>
         </CardContent>
       </Card>

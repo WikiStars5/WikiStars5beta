@@ -16,7 +16,7 @@ import { auth } from '@/lib/firebase';
 import Link from 'next/link';
 
 interface RatingSystemProps {
-  figure: Figure; // Recibe el objeto figura completo para acceder a perceptionCounts
+  figure: Figure; 
 }
 
 export function RatingSystem({ figure }: RatingSystemProps) {
@@ -24,7 +24,7 @@ export function RatingSystem({ figure }: RatingSystemProps) {
   const router = useRouter();
   const [selectedPerception, setSelectedPerception] = useState<PerceptionKeys | null>(null);
   const [currentUserFb, setCurrentUserFb] = useState<FirebaseUser | null>(null);
-  const [isLoading, setIsLoading] = useState<PerceptionKeys | null>(null); // Track loading state por botón de percepción
+  const [isLoading, setIsLoading] = useState<PerceptionKeys | null>(null); 
   const [isFetchingInitial, setIsFetchingInitial] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -38,7 +38,6 @@ export function RatingSystem({ figure }: RatingSystemProps) {
           setSelectedPerception(existingPerceptionData?.perception || null);
           setIsFetchingInitial(false);
         }).catch(() => {
-           // Si hay error al cargar, no bloquear la UI
           setIsFetchingInitial(false);
         });
       } else {
@@ -51,31 +50,28 @@ export function RatingSystem({ figure }: RatingSystemProps) {
 
   const handlePerceptionClick = async (perceptionKey: PerceptionKeys) => {
     if (!currentUserFb) {
-      toast({ title: "Login Required", description: "Please log in to share your perception.", variant: "destructive" });
+      toast({ title: "Inicio de Sesión Requerido", description: "Por favor, inicia sesión para compartir tu percepción.", variant: "destructive" });
       return;
     }
 
-    setIsLoading(perceptionKey); // Indicar carga para este botón específico
+    setIsLoading(perceptionKey); 
 
     let newPerceptionToSubmit: PerceptionKeys | null = perceptionKey;
-    // Si el usuario hace clic en la percepción ya seleccionada, se deselecciona
     if (selectedPerception === perceptionKey) {
       newPerceptionToSubmit = null;
     }
 
-    const result = await submitOrUpdateUserPerception(currentUserFb.uid, figure.id, newPerceptionToSubmit);
-    setIsLoading(null); // Terminar carga
+    const result = await submitOrUpdateUserPerception(currentUserFb.uid, figure.id, newPerceptionToSubmit, selectedPerception);
+    setIsLoading(null); 
 
     if (result.success) {
-      // Optimistic update of selectedPerception for immediate UI feedback
       setSelectedPerception(newPerceptionToSubmit);
-      // No toast on every click to avoid being too noisy, unless it's a significant action
       // router.refresh() will update perceptionCounts displayed on figure object
       router.refresh(); 
     } else {
       toast({
-        title: "Perception Update Failed",
-        description: result.message || "Could not update your perception.",
+        title: "Error al Actualizar Percepción",
+        description: result.message || "No se pudo actualizar tu percepción.",
         variant: "destructive",
       });
     }
@@ -97,11 +93,11 @@ export function RatingSystem({ figure }: RatingSystemProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className='font-headline text-2xl'>Share Your Perception</CardTitle>
-          <CardDescription>Log in to let us know if you're a fan, hater, or something else regarding {figure.name}.</CardDescription>
+          <CardTitle className='font-headline text-2xl'>Tu Percepción de {figure.name}</CardTitle>
+          <CardDescription>Inicia sesión para compartir si eres fan, detractor, etc., respecto a {figure.name}.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button asChild><Link href={`/login?redirect=/figures/${figure.id}`}>Login to Share Perception</Link></Button>
+          <Button asChild><Link href={`/login?redirect=/figures/${figure.id}`}>Inicia Sesión para Compartir Percepción</Link></Button>
         </CardContent>
       </Card>
     );
@@ -112,8 +108,8 @@ export function RatingSystem({ figure }: RatingSystemProps) {
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="font-headline text-2xl">Your Perception of {figure.name}</CardTitle>
-        <CardDescription>Click a button to share or update your perception. Click again to remove it.</CardDescription>
+        <CardTitle className="font-headline text-2xl">Tu Percepción de {figure.name}</CardTitle>
+        <CardDescription>Haz clic en un botón para compartir o actualizar tu percepción. Vuelve a hacer clic para eliminarla.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
@@ -128,7 +124,7 @@ export function RatingSystem({ figure }: RatingSystemProps) {
                   selectedPerception === option.key && "ring-2 ring-primary shadow-md",
                   isLoading === option.key && "opacity-70 cursor-not-allowed"
                 )}
-                disabled={isLoading !== null && isLoading !== option.key} // Disable other buttons when one is loading
+                disabled={isLoading !== null && isLoading !== option.key} 
               >
                 {isLoading === option.key ? <Loader2 className="w-7 h-7 mb-1 animate-spin" /> : <option.icon className={cn("w-7 h-7 mb-1", selectedPerception === option.key ? "text-primary-foreground" : "text-foreground/80")} />}
                 <span className="text-sm font-medium">{option.label}</span>
@@ -137,7 +133,6 @@ export function RatingSystem({ figure }: RatingSystemProps) {
             ))}
           </div>
         </div>
-        {/* No hay botón de envío separado para percepciones */}
       </CardContent>
     </Card>
   );

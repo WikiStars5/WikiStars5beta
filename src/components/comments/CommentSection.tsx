@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -6,7 +7,6 @@ import { getFigureCommentsWithRatings } from '@/lib/actions/commentActions'; // 
 import { CommentForm } from './CommentForm';
 import { CommentItem } from './CommentItem';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockUser } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
 interface CommentSectionProps {
@@ -25,7 +25,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
       setIsLoadingComments(false);
     }
     fetchComments();
-  }, [figure.id]); // Re-fetch if figure.id changes (e.g. navigation) or after router.refresh()
+  }, [figure.id]); 
 
   // Handler for deleting comments (passed down to CommentItem)
   // This would typically call a server action. For now, it's a placeholder.
@@ -47,8 +47,8 @@ export function CommentSection({ figure }: CommentSectionProps) {
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="font-headline text-2xl">Discussion</CardTitle>
-        <CardDescription>Share your thoughts on {figure.name}. Comments are moderated.</CardDescription>
+        <CardTitle className="font-headline text-2xl">Discusión</CardTitle>
+        <CardDescription>Comparte tus pensamientos sobre {figure.name}.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <CommentForm 
@@ -60,7 +60,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
           {isLoadingComments ? (
             <div className="flex justify-center items-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <p className="ml-2 text-muted-foreground">Loading comments...</p>
+              <p className="ml-2 text-muted-foreground">Cargando comentarios...</p>
             </div>
           ) : comments.length > 0 ? (
             comments.map((comment) => (
@@ -73,7 +73,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
               />
             ))
           ) : (
-            <p className="text-center text-muted-foreground py-4">No comments yet. Be the first to share your thoughts!</p>
+            <p className="text-center text-muted-foreground py-4">Aún no hay comentarios. ¡Sé el primero en compartir tus pensamientos!</p>
           )}
         </div>
       </CardContent>

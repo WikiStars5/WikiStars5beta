@@ -40,16 +40,16 @@ export function ProfileHeader({ figure }: ProfileHeaderProps) {
                 <CardTitle className="text-3xl lg:text-4xl font-headline text-primary">{figure.name}</CardTitle>
                 <ShareButton figureName={figure.name} figureId={figure.id} />
               </div>
-              <CardDescription className="text-lg text-muted-foreground">{figure.description || "No description provided."}</CardDescription>
+              <CardDescription className="text-lg text-muted-foreground">{figure.description || "Sin descripción proporcionada."}</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Average Public Rating</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Calificación Pública Promedio</h3>
                   <div className="flex items-center gap-2">
                     <StarRating rating={figure.averageRating} readOnly size={24} />
                     <span className="text-2xl font-bold text-amber-500">{figure.averageRating.toFixed(1)}</span>
-                    <span className="text-sm text-muted-foreground">({figure.totalRatings} ratings)</span>
+                    <span className="text-sm text-muted-foreground">({figure.totalRatings} valoraciones)</span>
                   </div>
                 </div>
                 {/* Placeholder for perception counts summary if needed here */}
