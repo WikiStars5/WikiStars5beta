@@ -13,7 +13,7 @@ export default function HomePage() {
       <section className="text-center py-12 md:py-20 bg-gradient-to-br from-primary/10 via-background to-accent/10 rounded-lg shadow-sm">
         <div className="container max-w-3xl">
           <h1 className="text-4xl md:text-5xl font-bold font-headline mb-6 text-primary">
-            Welcome to StarSage
+            Welcome to WikiStars5
           </h1>
           <p className="text-lg md:text-xl text-foreground/80 mb-8">
             Discover, rate, and discuss public perception of your favorite (and not-so-favorite) famous figures. 
@@ -27,7 +27,7 @@ export default function HomePage() {
       </section>
 
       <section id="how-it-works" className="py-12">
-        <h2 className="text-3xl font-bold font-headline text-center mb-10">How StarSage Works</h2>
+        <h2 className="text-3xl font-bold font-headline text-center mb-10">How WikiStars5 Works</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
             <Lightbulb className="w-12 h-12 text-accent mb-4" />

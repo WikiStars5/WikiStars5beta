@@ -10,7 +10,7 @@ export function Logo({ className }: LogoProps) {
     <Link href="/" className={`inline-flex items-center gap-2 ${className}`}>
       <Sparkles className="h-7 w-7 text-primary" />
       <span className="text-2xl font-bold font-headline text-primary">
-        StarSage
+        WikiStars5
       </span>
     </Link>
   );

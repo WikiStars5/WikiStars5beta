@@ -39,7 +39,7 @@ export function SignupForm() {
     setIsLoading(false);
     toast({
       title: "Account Created (Simulated)",
-      description: "Welcome to StarSage! You can now log in.",
+      description: "Welcome to WikiStars5! You can now log in.",
     });
     // Redirect user to login page or dashboard
     // window.location.href = '/login';

@@ -14,13 +14,13 @@ export function ShareButton({ figureName, figureId }: ShareButtonProps) {
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/figures/${figureId}`;
-    const shareTitle = `Check out ${figureName} on StarSage!`;
+    const shareTitle = `Check out ${figureName} on WikiStars5!`;
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: shareTitle,
-          text: `Rate and discuss ${figureName} on StarSage.`,
+          text: `Rate and discuss ${figureName} on WikiStars5.`,
           url: shareUrl,
         });
         toast({ title: "Shared successfully!" });

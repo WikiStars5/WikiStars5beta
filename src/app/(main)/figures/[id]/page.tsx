@@ -54,7 +54,7 @@ export default async function FigurePage({ params }: FigurePageProps) {
             <Terminal className="h-4 w-4" />
             <AlertTitle className="font-headline">How Ratings Work</AlertTitle>
             <AlertDescription className="text-sm">
-              Your perception (Fan, Simp, etc.) and star rating contribute to {figure.name}'s overall public image on StarSage. Ratings can be updated anytime.
+              Your perception (Fan, Simp, etc.) and star rating contribute to {figure.name}'s overall public image on WikiStars5. Ratings can be updated anytime.
             </AlertDescription>
           </Alert>
 

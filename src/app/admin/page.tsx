@@ -15,7 +15,7 @@ export default function AdminDashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Admin Dashboard</CardTitle>
-          <CardDescription>Overview of StarSage application status.</CardDescription>
+          <CardDescription>Overview of WikiStars5 application status.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-3 gap-6">

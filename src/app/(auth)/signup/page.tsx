@@ -5,7 +5,7 @@ export default function SignupPage() {
   return (
     <AuthFormCard
       title="Create an Account"
-      description="Join StarSage to rate and discuss public figures."
+      description="Join WikiStars5 to rate and discuss public figures."
       footerText="Already have an account?"
       footerLinkText="Log In"
       footerLinkHref="/login"

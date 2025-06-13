@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'StarSage - Public Figure Perception',
-  description: 'Rate and discuss public figures on StarSage.',
+  title: 'WikiStars5 - Public Figure Perception',
+  description: 'Rate and discuss public figures on WikiStars5.',
 };
 
 export default function RootLayout({

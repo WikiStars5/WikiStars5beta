@@ -4,8 +4,8 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Browse Figures - StarSage",
-  description: "Explore all public figure profiles on StarSage.",
+  title: "Browse Figures - WikiStars5",
+  description: "Explore all public figure profiles on WikiStars5.",
 };
 
 export default function BrowseFiguresPage() {
