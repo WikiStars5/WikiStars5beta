@@ -1,8 +1,10 @@
+
 import { Logo } from '@/components/shared/Logo';
 import { UserNav } from './UserNav';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
+import { MobileSearchButton } from './MobileSearchButton';
 
 export function Header() {
   return (
@@ -14,17 +16,12 @@ export function Header() {
             <Link href="/" className="text-foreground/70 hover:text-foreground transition-colors">
               Home
             </Link>
-            <Link href="/#browse" className="text-foreground/70 hover:text-foreground transition-colors">
+            <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">
               Browse Figures
             </Link>
             {/* Add more nav links if needed */}
           </nav>
-           <Button variant="ghost" size="icon" className="md:hidden" asChild>
-            <Link href="/search">
-              <Search className="h-5 w-5" />
-              <span className="sr-only">Search</span>
-            </Link>
-          </Button>
+           <MobileSearchButton />
           <UserNav />
         </div>
       </div>
