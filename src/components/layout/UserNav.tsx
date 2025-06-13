@@ -21,7 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
 // IMPORTANT: Replace this with your actual Admin User ID from Firebase Authentication
-const ADMIN_UID = 'YOUR_ACTUAL_ADMIN_UID';
+const ADMIN_UID = 'fjEZpqVvG4VOzwUdGyes7ufhqYH2';
 
 export function UserNav() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);

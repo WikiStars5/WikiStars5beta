@@ -16,7 +16,7 @@ import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth
 import { auth } from '@/lib/firebase';
 
 // IMPORTANT: Replace this with your actual Admin User ID from Firebase Authentication
-const ADMIN_UID = 'YOUR_ACTUAL_ADMIN_UID';
+const ADMIN_UID = 'fjEZpqVvG4VOzwUdGyes7ufhqYH2';
 
 interface CommentItemProps {
   comment: CommentType;

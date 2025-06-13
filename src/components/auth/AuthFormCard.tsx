@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import Link from "next/link";
 import { ReactNode } from "react";
 import { Logo } from "@/components/shared/Logo";
+import { Button } from "@/components/ui/button"; // Added this import
 
 interface AuthFormCardProps {
   title: string;
