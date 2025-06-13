@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
 import type { Comment as CommentType, Figure } from '@/lib/types';
-import { getCommentsForFigure, COMMENTS_DATA } from '@/lib/placeholder-data'; // Using placeholder data
+import { getCommentsForFigure, getUserRatingForFigure } from '@/lib/placeholder-data'; // Using placeholder data
 import { CommentForm } from './CommentForm';
 import { CommentItem } from './CommentItem';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,8 +31,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
       userId: mockUser.id,
       userDisplayName: mockUser.displayName || "Anonymous",
       userAvatarUrl: mockUser.avatarUrl || 'https://placehold.co/40x40.png?text=A',
-      // Fetch user's current star rating for this figure
-      userStarRating: COMMENTS_DATA.find(c => c.userId === mockUser?.id && c.figureId === figure.id)?.userStarRating || undefined, 
+      userStarRating: getUserRatingForFigure(mockUser.id, figure.id)?.stars || undefined, 
       text: commentText,
       parentId: parentId || null,
       likes: 0,
