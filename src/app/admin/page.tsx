@@ -2,9 +2,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Users, ListOrdered, MessageSquareWarning, PlusCircle, AlertTriangle } from "lucide-react";
+import { Users, ListOrdered, PlusCircle, AlertTriangle } from "lucide-react";
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
-import { getPendingCommentsCount } from "@/lib/actions/commentActions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; 
 
 export const revalidate = 0; // Ensure data is re-fetched
@@ -12,16 +11,14 @@ export const revalidate = 0; // Ensure data is re-fetched
 export default async function AdminDashboardPage() {
   let figures = [];
   let totalFigures = 0;
-  let pendingModeration = 0;
   let fetchError: string | null = null;
 
   try {
     // These calls need to succeed for the admin dashboard to populate.
     // Ensure the authenticated admin user (UID: fjEZpqVvG4VOzwUdGyes7ufhqYH2)
-    // has read permissions on 'figures' and 'comments' collections in Firestore Security Rules.
+    // has read permissions on 'figures' collection in Firestore Security Rules.
     figures = await getAllFiguresFromFirestore();
     totalFigures = figures.length;
-    pendingModeration = await getPendingCommentsCount();
   } catch (error: any) {
     console.error("Error fetching admin dashboard data:", error);
     // Firebase permission errors often have a code like 'permission-denied'
@@ -47,10 +44,10 @@ export default async function AdminDashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Admin Dashboard</CardTitle>
-          <CardDescription>Overview of StarSage application status. Figure data and comment counts from Firestore.</CardDescription>
+          <CardDescription>Overview of StarSage application status. Figure data from Firestore.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
             <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Figures</CardTitle>
@@ -69,16 +66,6 @@ export default async function AdminDashboardPage() {
               <CardContent>
                 <div className="text-2xl font-bold">{totalUsers}</div>
                 <p className="text-xs text-muted-foreground">registered users</p>
-              </CardContent>
-            </Card>
-            <Card className="hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Comments for Moderation</CardTitle>
-                <MessageSquareWarning className="h-5 w-5 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{fetchError ? 'N/A' : pendingModeration}</div>
-                <p className="text-xs text-muted-foreground">items needing review from Firestore</p>
               </CardContent>
             </Card>
           </div>
@@ -101,13 +88,6 @@ export default async function AdminDashboardPage() {
             <Link href="/admin/figures">
               <span className="flex items-center">
                 <ListOrdered className="mr-2 h-4 w-4" /> Manage Figures
-              </span>
-            </Link>
-          </Button>
-           <Button variant="outline" asChild> 
-            <Link href="/admin/comments">
-              <span className="flex items-center">
-                <MessageSquareWarning className="mr-2 h-4 w-4" />Moderate Comments
               </span>
             </Link>
           </Button>

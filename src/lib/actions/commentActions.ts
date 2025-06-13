@@ -25,11 +25,11 @@ export async function addComment(
   }
   
   let actualStarRating: number | undefined = undefined;
+  // Solo permitir estrellas si es un comentario de nivel superior Y se proporcionan estrellas válidas
   if (parentCommentId === null && starRatingGivenByAuthor !== undefined && starRatingGivenByAuthor >= 1 && starRatingGivenByAuthor <= 5) {
     actualStarRating = starRatingGivenByAuthor;
   } else if (parentCommentId !== null && starRatingGivenByAuthor !== undefined) {
     // Las respuestas no deben tener calificación por estrellas
-    // Aunque la UI no debería permitirlo, es una salvaguarda.
     console.warn("Attempted to submit star rating with a reply. Stars ignored.");
   }
 
@@ -156,64 +156,5 @@ export async function updateCommentReaction(
   } catch (error) {
     console.error('Error updating comment reaction:', error);
     return { success: false, message: 'Failed to update reaction.' };
-  }
-}
-
-// Obtener todos los comentarios para moderación (admin). Ahora todos estarán 'approved' por defecto.
-export async function getAllCommentsForModeration(): Promise<Comment[]> {
-  try {
-    const commentsQuery = query(
-      collection(db, 'comments'),
-      orderBy('timestamp', 'desc') 
-    );
-    const querySnapshot = await getDocs(commentsQuery);
-    const comments: Comment[] = [];
-    querySnapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      comments.push({ 
-        id: docSnap.id,
-         ...data,
-        timestamp: data.timestamp?.toDate ? data.timestamp.toDate().toISOString() : new Date(data.timestamp).toISOString(),
-      } as Comment);
-    });
-    return comments;
-  } catch (error) {
-    console.error('Error fetching all comments for moderation:', error);
-    return [];
-  }
-}
-
-// Moderar un comentario (aprobar o rechazar). Menos relevante si el default es 'approved'.
-// Podría usarse si un admin quiere rechazar un comentario después de que se aprobó automáticamente.
-export async function moderateComment(
-  commentId: string,
-  newStatus: 'approved' | 'rejected'
-): Promise<{ success: boolean; message: string }> {
-  if (!commentId) {
-    return { success: false, message: 'Comment ID is missing.' };
-  }
-  const commentRef = doc(db, 'comments', commentId);
-  try {
-    // IMPORTANTE: Si se rechaza un comentario que TENÍA estrellas, se necesitaría
-    // revertir su impacto en averageRating/totalRatings de la figura.
-    // Esto es complejo y no se implementa aquí por brevedad, pero es una consideración.
-    await updateDoc(commentRef, { status: newStatus });
-    return { success: true, message: `Comment status updated to ${newStatus}.` };
-  } catch (error) {
-    console.error('Error moderating comment:', error);
-    return { success: false, message: 'Failed to moderate comment.' };
-  }
-}
-
-// Esta función es menos relevante si los comentarios siempre son 'approved'.
-// Podría contar comentarios que estén explícitamente marcados como 'pending' por un admin.
-export async function getPendingCommentsCount(): Promise<number> {
-  try {
-    const q = query(collection(db, 'comments'), where('status', '==', 'pending'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.size;
-  } catch (error) {
-    console.error('Error fetching pending comments count:', error);
-    return 0;
   }
 }

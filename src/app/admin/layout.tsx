@@ -3,13 +3,14 @@
 
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
-import { ShieldCheck, MessageSquareWarning, Loader2 } from 'lucide-react';
+import { ShieldCheck, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { redirect, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState, ReactNode } from 'react';
-import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { useToast } from "@/hooks/use-toast";
 
 // IMPORTANT: Replace this with your actual Admin User ID from Firebase Authentication
 const ADMIN_UID = 'fjEZpqVvG4VOzwUdGyes7ufhqYH2'; 
@@ -22,6 +23,7 @@ export default function AdminLayout({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -43,7 +45,7 @@ export default function AdminLayout({
     });
 
     return () => unsubscribe(); // Cleanup subscription
-  }, [router]);
+  }, [router, toast]);
 
   if (isLoading) {
     return (
@@ -73,11 +75,6 @@ export default function AdminLayout({
           <nav className="flex flex-wrap gap-2">
             <Button variant="outline" asChild><Link href="/admin">Dashboard</Link></Button>
             <Button variant="outline" asChild><Link href="/admin/figures">Manage Figures</Link></Button>
-            <Button variant="outline" asChild>
-              <Link href="/admin/comments">
-                <MessageSquareWarning className="mr-2 h-4 w-4" /> Moderate Comments
-              </Link>
-            </Button>
             <Button variant="outline" disabled asChild><Link href="/admin/users">Manage Users</Link></Button>
           </nav>
         </div>
@@ -87,14 +84,3 @@ export default function AdminLayout({
     </div>
   );
 }
-
-// Helper for toast, assuming useToast is available globally or via context
-// For simplicity, defining a basic toast function here if not available.
-// Ideally, use the existing useToast hook.
-const toast = (options: { title: string; description?: string; variant?: "default" | "destructive" }) => {
-  // This is a placeholder. In a real app, integrate with your actual toast system.
-  console.log(`Toast: ${options.title} - ${options.description} (${options.variant})`);
-  if (typeof window !== "undefined" && window.alert) {
-    window.alert(`${options.title}${options.description ? ': ' + options.description : ''}`);
-  }
-};
