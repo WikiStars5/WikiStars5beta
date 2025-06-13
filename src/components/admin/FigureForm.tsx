@@ -10,21 +10,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import type { Figure } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Loader2 } from "lucide-react";
+import { Save, Loader2, UploadCloud, Image as ImageIcon } from "lucide-react";
 import { addFigure, updateFigure } from "@/lib/placeholder-data"; // Simulated data ops
+import { storage } from "@/lib/firebase"; // Firebase storage instance
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Image from "next/image";
 
-const figureSchema = z.object({
+const figureFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
-  photoUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
   description: z.string().min(5, "Description must be at least 5 characters.").optional().or(z.literal('')),
-  dataAiHint: z.string().optional().refine(value => !value || value.split(' ').length <= 2, {
-    message: "AI hint can have at most two words."
-  }).or(z.literal('')),
 });
 
-type FigureFormValues = z.infer<typeof figureSchema>;
+type FigureFormValues = z.infer<typeof figureFormSchema>;
 
 interface FigureFormProps {
   initialData?: Figure | null;
@@ -34,29 +33,60 @@ export function FigureForm({ initialData }: FigureFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(initialData?.photoUrl || null);
 
   const form = useForm<FigureFormValues>({
-    resolver: zodResolver(figureSchema),
+    resolver: zodResolver(figureFormSchema),
     defaultValues: {
       name: initialData?.name || "",
-      photoUrl: initialData?.photoUrl || "",
       description: initialData?.description || "",
-      dataAiHint: initialData?.dataAiHint || "",
     },
   });
 
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setSelectedFile(null);
+      setPreviewUrl(initialData?.photoUrl || null);
+    }
+  };
+
   async function onSubmit(values: FigureFormValues) {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    let photoUrlToSave = initialData?.photoUrl || `https://placehold.co/300x400.png?text=${encodeURIComponent(values.name.substring(0,2))}`;
+
+    if (selectedFile) {
+      try {
+        const filePath = `figures/${Date.now()}_${selectedFile.name}`;
+        const storageRef = ref(storage, filePath);
+        await uploadBytes(storageRef, selectedFile);
+        photoUrlToSave = await getDownloadURL(storageRef);
+        toast({ title: "Image Uploaded", description: "Your image has been saved to Firebase Storage." });
+      } catch (error) {
+        console.error("Error uploading image: ", error);
+        toast({
+          title: "Image Upload Failed",
+          description: "Could not upload image to Firebase Storage. Please try again. Using previous or placeholder image.",
+          variant: "destructive",
+        });
+        // Keep previous URL or placeholder if upload fails
+        photoUrlToSave = initialData?.photoUrl || `https://placehold.co/300x400.png?text=${encodeURIComponent(values.name.substring(0,2))}`;
+      }
+    }
     
     const figureData: Figure = {
       id: initialData?.id || `figure-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       name: values.name,
-      photoUrl: values.photoUrl || `https://placehold.co/300x400.png`,
+      photoUrl: photoUrlToSave,
       description: values.description,
-      dataAiHint: values.dataAiHint || values.name.toLowerCase().split(' ').slice(0,2).join(' ') || "person",
-      // Default values for new figures if not editing, or carry over existing
       averageRating: initialData?.averageRating || 0,
       totalRatings: initialData?.totalRatings || 0,
       perceptionCounts: initialData?.perceptionCounts || { neutral: 0, fan: 0, simp: 0, hater: 0 },
@@ -68,11 +98,10 @@ export function FigureForm({ initialData }: FigureFormProps) {
       addFigure(figureData); // Simulate add
     }
     
-    console.log("Figure data submitted:", figureData);
     setIsLoading(false);
     toast({
       title: initialData ? "Figure Updated!" : "Figure Created!",
-      description: `${figureData.name}'s profile has been saved.`,
+      description: `${figureData.name}'s profile has been saved. Note: Data is currently simulated. Implement Firestore for real persistence.`,
     });
 
     router.push(`/admin/figures`);
@@ -81,7 +110,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}
           name="name"
@@ -95,22 +124,34 @@ export function FigureForm({ initialData }: FigureFormProps) {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="photoUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Photo URL</FormLabel>
-              <FormControl>
-                <Input type="url" placeholder="https://example.com/photo.jpg" {...field} disabled={isLoading} />
-              </FormControl>
-              <FormDescription>
-                Link to an image of the figure. If left blank, a placeholder will be used.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
+        
+        <FormItem>
+          <FormLabel>Photo</FormLabel>
+          <FormControl>
+            <Input 
+              type="file" 
+              accept="image/*" 
+              onChange={handleFileChange} 
+              disabled={isLoading} 
+              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+            />
+          </FormControl>
+          <FormDescription>
+            Upload an image for the figure. If no image is uploaded, a placeholder will be used for new figures.
+          </FormDescription>
+          {previewUrl && (
+            <div className="mt-4 w-32 h-40 relative rounded-md overflow-hidden border">
+              <Image src={previewUrl} alt="Preview" layout="fill" objectFit="cover" />
+            </div>
           )}
-        />
+          {!previewUrl && (
+             <div className="mt-4 w-32 h-40 flex items-center justify-center bg-muted rounded-md border">
+                <ImageIcon className="w-10 h-10 text-muted-foreground" />
+             </div>
+          )}
+          <FormMessage />
+        </FormItem>
+
         <FormField
           control={form.control}
           name="description"
@@ -124,22 +165,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="dataAiHint"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>AI Image Hint</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., scientist, athlete (max 2 words)" {...field} disabled={isLoading} />
-              </FormControl>
-              <FormDescription>
-                Optional. One or two keywords for AI image search if a placeholder is used (e.g., &quot;female musician&quot;, &quot;politician&quot;).
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        
         <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
          {isLoading ? (initialData ? "Updating..." : "Creating...") : (initialData ? "Save Changes" : "Create Figure")}

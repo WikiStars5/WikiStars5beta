@@ -25,7 +25,6 @@ export function ProfileHeader({ figure }: ProfileHeaderProps) {
               height={500}
               className="w-full h-auto md:h-full object-cover"
               priority // Prioritize loading the main image
-              data-ai-hint={figure.dataAiHint || "person formal portrait"}
               onError={(e) => { e.currentTarget.src = 'https://placehold.co/400x500.png?text=Error'; e.currentTarget.srcset = '' }}
             />
           ) : (

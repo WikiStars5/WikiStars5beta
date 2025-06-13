@@ -13,7 +13,6 @@ export let FIGURES_DATA: Figure[] = [
     id: 'elon-musk',
     name: 'Elon Musk',
     photoUrl: 'https://placehold.co/300x400.png',
-    dataAiHint: 'technology entrepreneur',
     description: 'Entrepreneur and Business Magnate',
     averageRating: 4.2,
     totalRatings: 1250,
@@ -23,7 +22,6 @@ export let FIGURES_DATA: Figure[] = [
     id: 'taylor-swift',
     name: 'Taylor Swift',
     photoUrl: 'https://placehold.co/300x400.png',
-    dataAiHint: 'female singer',
     description: 'Singer-Songwriter',
     averageRating: 4.8,
     totalRatings: 2500,
@@ -33,7 +31,6 @@ export let FIGURES_DATA: Figure[] = [
     id: 'cristiano-ronaldo',
     name: 'Cristiano Ronaldo',
     photoUrl: 'https://placehold.co/300x400.png',
-    dataAiHint: 'soccer player',
     description: 'Professional Footballer',
     averageRating: 4.5,
     totalRatings: 1800,
@@ -145,16 +142,20 @@ export const getUserRatingForFigure = (userId: string, figureId: string): UserRa
   return USER_RATINGS_DATA.find(rating => rating.userId === userId && rating.figureId === figureId);
 };
 
-// Functions to simulate data manipulation (in a real app, these would be API calls)
+// Functions to simulate data manipulation (in a real app, these would be API calls to Firestore)
 export const addFigure = (figure: Figure): void => {
+  // Simulates adding a new figure. `figure.photoUrl` will be the Firebase Storage URL or placeholder.
   FIGURES_DATA.push(figure);
+  console.log("Simulated Add Figure:", figure);
 };
 
 export const updateFigure = (updatedFigure: Figure): void => {
+  // Simulates updating an existing figure. `updatedFigure.photoUrl` will be the new Firebase Storage URL or existing one.
   const index = FIGURES_DATA.findIndex(f => f.id === updatedFigure.id);
   if (index !== -1) {
     FIGURES_DATA[index] = updatedFigure;
   }
+  console.log("Simulated Update Figure:", updatedFigure);
 };
 
 export const deleteFigure = (figureId: string): void => {

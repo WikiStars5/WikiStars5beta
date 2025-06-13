@@ -28,7 +28,7 @@ export default async function EditFigurePage({ params }: EditFigurePageProps) {
     <div>
       <CardHeader className="px-0 mb-4">
         <CardTitle className="text-2xl font-headline">Edit Profile: {figure.name}</CardTitle>
-        <CardDescription>Update the details for this public figure. The photo URL is for an image link.</CardDescription>
+        <CardDescription>Update the details for this public figure. You can upload a new photo or keep the existing one.</CardDescription>
       </CardHeader>
       <FigureForm initialData={figure} />
     </div>

@@ -6,7 +6,7 @@ import { ImageOff } from "lucide-react";
 import type { Figure } from "@/lib/types";
 
 interface AdminFigureImageProps {
-  figure: Pick<Figure, "photoUrl" | "name" | "dataAiHint">;
+  figure: Pick<Figure, "photoUrl" | "name">;
   width?: number;
   height?: number;
 }
@@ -21,7 +21,6 @@ export function AdminFigureImage({ figure, width = 50, height = 70 }: AdminFigur
           width={width}
           height={height}
           className="rounded object-cover aspect-[3/4]"
-          data-ai-hint={figure.dataAiHint || "person"}
           onError={(e) => { 
             const target = e.currentTarget as HTMLImageElement;
             target.src = `https://placehold.co/${width}x${height}.png?text=Error`;

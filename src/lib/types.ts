@@ -9,12 +9,11 @@ export interface PerceptionOption {
 export interface Figure {
   id: string;
   name: string;
-  photoUrl: string;
+  photoUrl: string; // Will store Firebase Storage URL or placeholder
   description?: string; // Short bio or category
   averageRating: number;
   totalRatings: number;
   perceptionCounts: Record<PerceptionKeys, number>;
-  dataAiHint?: string; // Hint for AI image generation/search
 }
 
 export interface UserRating {
