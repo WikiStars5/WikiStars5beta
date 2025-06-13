@@ -1,20 +1,49 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Users, ListOrdered, MessageSquareWarning, PlusCircle } from "lucide-react";
-import { getAllFiguresFromFirestore } from "@/lib/placeholder-data"; 
-import { getPendingCommentsCount } from "@/lib/actions/commentActions"; // Updated action
+import { Users, ListOrdered, MessageSquareWarning, PlusCircle, AlertTriangle } from "lucide-react";
+import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
+import { getPendingCommentsCount } from "@/lib/actions/commentActions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Added AlertTitle
 
 export const revalidate = 0; // Ensure data is re-fetched
 
 export default async function AdminDashboardPage() {
-  const figures = await getAllFiguresFromFirestore();
-  const totalFigures = figures.length;
+  let figures = [];
+  let totalFigures = 0;
+  let pendingModeration = 0;
+  let fetchError: string | null = null;
+
+  try {
+    // These calls need to succeed for the admin dashboard to populate.
+    // Ensure the authenticated admin user (UID: fjEZpqVvG4VOzwUdGyes7ufhqYH2)
+    // has read permissions on 'figures' and 'comments' collections in Firestore Security Rules.
+    figures = await getAllFiguresFromFirestore();
+    totalFigures = figures.length;
+    pendingModeration = await getPendingCommentsCount();
+  } catch (error: any) {
+    console.error("Error fetching admin dashboard data:", error);
+    // Firebase permission errors often have a code like 'permission-denied'
+    // or include "permission" in the message.
+    if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
+      fetchError = "Failed to fetch dashboard data due to missing or insufficient Firestore permissions. Please check your Firebase Security Rules in the Firebase console. Ensure the admin user (UID: fjEZpqVvG4VOzwUdGyes7ufhqYH2) has read access to 'figures' and 'comments' collections.";
+    } else {
+      fetchError = `An unexpected error occurred while fetching dashboard data: ${error.message || 'Unknown error'}`;
+    }
+  }
+
   const totalUsers = 150; // Placeholder, as user management is not in Firestore yet
-  const pendingModeration = await getPendingCommentsCount(); // Fetch actual count
 
   return (
     <div className="space-y-8">
+      {fetchError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-5 w-5" /> {/* Ensure icon is visible */}
+          <AlertTitle>Permission Error</AlertTitle>
+          <AlertDescription>{fetchError}</AlertDescription>
+        </Alert>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Admin Dashboard</CardTitle>
@@ -28,7 +57,7 @@ export default async function AdminDashboardPage() {
                 <Users className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{totalFigures}</div>
+                <div className="text-2xl font-bold">{fetchError ? 'N/A' : totalFigures}</div>
                 <p className="text-xs text-muted-foreground">profiles managed in Firestore</p>
               </CardContent>
             </Card>
@@ -48,7 +77,7 @@ export default async function AdminDashboardPage() {
                 <MessageSquareWarning className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{pendingModeration}</div>
+                <div className="text-2xl font-bold">{fetchError ? 'N/A' : pendingModeration}</div>
                 <p className="text-xs text-muted-foreground">items needing review from Firestore</p>
               </CardContent>
             </Card>
@@ -78,3 +107,5 @@ export default async function AdminDashboardPage() {
     </div>
   );
 }
+
+    
