@@ -12,12 +12,12 @@ import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import Link from 'next/link';
-import { StarRating } from '@/components/shared/StarRating';
+import { StarRating } from '@/components/shared/StarRating'; // Importar StarRating
 
 interface CommentFormProps {
   figureId: string;
   figureName: string;
-  parentId?: string | null; // If present, this is a reply
+  parentId?: string | null; // Si está presente, es una respuesta
   onCommentSubmitted?: () => void;
   placeholder?: string;
   submitButtonText?: string;
@@ -26,13 +26,13 @@ interface CommentFormProps {
 export function CommentForm({
   figureId,
   figureName,
-  parentId = null,
+  parentId = null, // null por defecto para comentarios de nivel superior
   onCommentSubmitted,
   placeholder = "Write your comment...",
   submitButtonText = "Post Comment"
 }: CommentFormProps) {
   const [commentText, setCommentText] = useState("");
-  const [selectedStars, setSelectedStars] = useState(0); // For optional stars with new comments
+  const [selectedStars, setSelectedStars] = useState(0); // Para estrellas opcionales
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -61,7 +61,7 @@ export function CommentForm({
     }
 
     setIsLoading(true);
-    // Pass stars only if it's not a reply and stars are selected (greater than 0)
+    // Solo enviar estrellas si no es una respuesta y se han seleccionado estrellas
     const starsToSubmit = !isReply && selectedStars > 0 ? selectedStars : undefined;
 
     const result = await addComment(
@@ -79,7 +79,7 @@ export function CommentForm({
     if (result.success) {
       toast({ title: "Comment Submitted!", description: result.message });
       setCommentText("");
-      setSelectedStars(0); // Reset stars
+      setSelectedStars(0); // Resetear estrellas
       if (onCommentSubmitted) onCommentSubmitted();
       router.refresh(); 
     } else {
@@ -110,9 +110,9 @@ export function CommentForm({
         <AvatarFallback>{currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : "U"}</AvatarFallback>
       </Avatar>
       <div className="flex-grow space-y-3">
-        {/* Optional Star Rating - ONLY for new, top-level comments */}
+        {/* Calificación por estrellas opcional - SOLO para comentarios nuevos, de nivel superior */}
         {!isReply && (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
             <span className="text-sm text-muted-foreground whitespace-nowrap">Rate (optional with comment):</span>
             <StarRating rating={selectedStars} onRatingChange={setSelectedStars} size={22} readOnly={isLoading} />
           </div>
@@ -122,12 +122,12 @@ export function CommentForm({
           placeholder={placeholder}
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
-          rows={parentId ? 2 : 3}
+          rows={isReply ? 2 : 3} // Menos filas para respuestas
           className="w-full text-sm"
           disabled={isLoading}
         />
         <div className="flex justify-end">
-          <Button type="submit" disabled={isLoading || !commentText.trim()} size={parentId ? "sm" : "default"}>
+          <Button type="submit" disabled={isLoading || !commentText.trim()} size={isReply ? "sm" : "default"}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
             {isLoading ? "Posting..." : submitButtonText}
           </Button>

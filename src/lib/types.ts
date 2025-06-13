@@ -12,18 +12,18 @@ export interface Figure {
   name: string;
   photoUrl: string;
   description?: string;
-  averageRating: number; // Average of stars submitted WITH new top-level comments
-  totalRatings: number;   // Count of new top-level comments that INCLUDED a star rating
-  perceptionCounts: Record<PerceptionKeys, number>; // From independent perception submissions
+  averageRating: number; // Promedio de estrellas de comentarios de nivel superior que incluyeron estrellas
+  totalRatings: number;   // Conteo de comentarios de nivel superior que INCLUYERON una calificación por estrellas
+  perceptionCounts: Record<PerceptionKeys, number>; // Conteo de cada tipo de percepción enviada independientemente
 }
 
-// UserRating now ONLY for perception. Stars are not stored here.
+// UserRating ahora SOLO para percepción. Las estrellas no se almacenan aquí.
 export interface UserRating {
   id?: string; // Document ID: userId_figureId
   userId: string;
   figureId: string;
-  perception: PerceptionKeys;
-  timestamp: string;
+  perception: PerceptionKeys; // Solo la percepción
+  timestamp: string; // Marca de tiempo de la última selección de percepción
 }
 
 export interface Comment {
@@ -38,9 +38,9 @@ export interface Comment {
   likesCount: number;
   dislikesCount: number;
   timestamp: string;
-  status: 'pending' | 'approved' | 'rejected'; // Will be 'approved' by default now
+  status: 'pending' | 'approved' | 'rejected'; // Ahora siempre será 'approved' al crear
   replies?: Comment[];
-  starRatingGivenByAuthor?: number; // Optional star rating submitted with this comment (1-5)
+  starRatingGivenByAuthor?: number; // Calificación opcional (1-5) dada CON este comentario
 }
 
 export interface UserProfile {

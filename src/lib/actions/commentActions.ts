@@ -5,7 +5,8 @@ import { db } from '@/lib/firebase';
 import type { Comment, Figure } from '@/lib/types';
 import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, doc, updateDoc, increment, runTransaction, setDoc } from 'firebase/firestore';
 
-// Add a new comment to Firestore
+// Añadir un nuevo comentario a Firestore. Ahora el status es 'approved' por defecto.
+// StarRating es opcional y solo para comentarios de nivel superior.
 export async function addComment(
   figureId: string,
   figureName: string,
@@ -13,8 +14,8 @@ export async function addComment(
   userName: string,
   userAvatarUrl: string | undefined,
   commentText: string,
-  parentCommentId: string | null,
-  starRatingGivenByAuthor?: number // Optional star rating (1-5), only for new top-level comments
+  parentCommentId: string | null, // null si es un comentario de nivel superior
+  starRatingGivenByAuthor?: number // Opcional (1-5), solo para comentarios de nivel superior
 ): Promise<{ success: boolean; commentId?: string; message: string }> {
   if (!userId) {
     return { success: false, message: 'User not authenticated.' };
@@ -23,14 +24,15 @@ export async function addComment(
     return { success: false, message: 'Figure ID and comment text are required.' };
   }
   
-  // Validate star rating only if provided and it's a top-level comment
-  if (parentCommentId === null && starRatingGivenByAuthor !== undefined) {
-    if (starRatingGivenByAuthor < 1 || starRatingGivenByAuthor > 5) {
-      return { success: false, message: 'Star rating must be between 1 and 5.'};
-    }
+  let actualStarRating: number | undefined = undefined;
+  if (parentCommentId === null && starRatingGivenByAuthor !== undefined && starRatingGivenByAuthor >= 1 && starRatingGivenByAuthor <= 5) {
+    actualStarRating = starRatingGivenByAuthor;
+  } else if (parentCommentId !== null && starRatingGivenByAuthor !== undefined) {
+    // Las respuestas no deben tener calificación por estrellas
+    // Aunque la UI no debería permitirlo, es una salvaguarda.
+    console.warn("Attempted to submit star rating with a reply. Stars ignored.");
   }
-  // If it's a reply, starRatingGivenByAuthor should be ignored/nulled even if sent by client
-  const actualStarRating = parentCommentId === null ? starRatingGivenByAuthor : undefined;
+
 
   try {
     const commentData: Omit<Comment, 'id' | 'replies' | 'timestamp'> & { timestamp: any } = {
@@ -43,15 +45,15 @@ export async function addComment(
       parentCommentId,
       likesCount: 0,
       dislikesCount: 0,
-      status: 'approved', // Comments are approved by default
+      status: 'approved', // Los comentarios ahora se aprueban directamente
       timestamp: serverTimestamp(),
-      starRatingGivenByAuthor: actualStarRating, // Save the validated or nulled star rating
+      starRatingGivenByAuthor: actualStarRating,
     };
 
-    const newCommentRef = doc(collection(db, 'comments')); // Create a new doc ref to get ID
+    const newCommentRef = doc(collection(db, 'comments'));
 
-    // If stars are provided for a new, top-level comment, update figure aggregates
-    if (parentCommentId === null && actualStarRating !== undefined && actualStarRating >= 1 && actualStarRating <= 5) {
+    // Si se proporcionan estrellas válidas para un comentario de nivel superior, actualizar los agregados de la figura
+    if (parentCommentId === null && actualStarRating !== undefined) {
       const figureRef = doc(db, 'figures', figureId);
       await runTransaction(db, async (transaction) => {
         const figureDoc = await transaction.get(figureRef);
@@ -75,13 +77,14 @@ export async function addComment(
         transaction.set(newCommentRef, commentData);
       });
     } else {
-      // If no stars, or it's a reply, just add the comment
+      // Si no hay estrellas, o es una respuesta, solo añadir el comentario
       await setDoc(newCommentRef, commentData);
     }
     
     return { success: true, commentId: newCommentRef.id, message: 'Comment published successfully.' };
 
-  } catch (error) {
+  } catch (error)
+ {
     console.error('Error adding comment to Firestore:', error);
     let message = 'Failed to add comment.';
      if ((error as any).code === 'permission-denied' || (error as any).message?.toLowerCase().includes('permission')) {
@@ -93,13 +96,13 @@ export async function addComment(
   }
 }
 
-// Get approved comments for a figure. Star rating is now directly on the comment.
+// Obtener comentarios aprobados para una figura.
 export async function getFigureCommentsWithRatings(figureId: string): Promise<Comment[]> {
   try {
     const commentsQuery = query(
       collection(db, 'comments'),
       where('figureId', '==', figureId),
-      where('status', '==', 'approved'),
+      where('status', '==', 'approved'), // Solo obtener comentarios aprobados
       orderBy('timestamp', 'desc')
     );
     const querySnapshot = await getDocs(commentsQuery);
@@ -133,7 +136,7 @@ export async function getFigureCommentsWithRatings(figureId: string): Promise<Co
   }
 }
 
-// Update like/dislike count for a comment
+// Actualizar reacción de like/dislike para un comentario
 export async function updateCommentReaction(
   commentId: string,
   reactionType: 'like' | 'dislike',
@@ -156,12 +159,12 @@ export async function updateCommentReaction(
   }
 }
 
-// Get all comments for moderation (admin) - will show all, including approved/rejected
+// Obtener todos los comentarios para moderación (admin). Ahora todos estarán 'approved' por defecto.
 export async function getAllCommentsForModeration(): Promise<Comment[]> {
   try {
     const commentsQuery = query(
       collection(db, 'comments'),
-      orderBy('timestamp', 'desc') // Order by newest first, status can be filtered/sorted client-side if needed
+      orderBy('timestamp', 'desc') 
     );
     const querySnapshot = await getDocs(commentsQuery);
     const comments: Comment[] = [];
@@ -180,20 +183,20 @@ export async function getAllCommentsForModeration(): Promise<Comment[]> {
   }
 }
 
-// Moderate a comment (approve or reject) - less relevant if default is 'approved'
+// Moderar un comentario (aprobar o rechazar). Menos relevante si el default es 'approved'.
+// Podría usarse si un admin quiere rechazar un comentario después de que se aprobó automáticamente.
 export async function moderateComment(
   commentId: string,
-  newStatus: 'approved' | 'rejected' // Could be expanded to 'pending' if admin wants to hide one
+  newStatus: 'approved' | 'rejected'
 ): Promise<{ success: boolean; message: string }> {
   if (!commentId) {
     return { success: false, message: 'Comment ID is missing.' };
   }
   const commentRef = doc(db, 'comments', commentId);
   try {
-    // IMPORTANT: If rejecting a comment that HAD stars, you'd need to
-    // reverse its impact on the figure's averageRating/totalRatings.
-    // This is complex and not implemented here for brevity.
-    // For now, this action mainly serves to hide/unhide if 'pending' was used.
+    // IMPORTANTE: Si se rechaza un comentario que TENÍA estrellas, se necesitaría
+    // revertir su impacto en averageRating/totalRatings de la figura.
+    // Esto es complejo y no se implementa aquí por brevedad, pero es una consideración.
     await updateDoc(commentRef, { status: newStatus });
     return { success: true, message: `Comment status updated to ${newStatus}.` };
   } catch (error) {
@@ -202,12 +205,10 @@ export async function moderateComment(
   }
 }
 
-// This function might become less relevant if comments are always 'approved'.
-// However, it can still count comments that are NOT 'rejected' if that's a status you use.
+// Esta función es menos relevante si los comentarios siempre son 'approved'.
+// Podría contar comentarios que estén explícitamente marcados como 'pending' por un admin.
 export async function getPendingCommentsCount(): Promise<number> {
   try {
-    // If 'pending' is no longer a primary status, this query needs adjustment
-    // For now, assuming it might still be used by an admin to manually mark a comment.
     const q = query(collection(db, 'comments'), where('status', '==', 'pending'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.size;
