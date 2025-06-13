@@ -1,7 +1,7 @@
 
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
-import { RatingSystem } from "@/components/figures/RatingSystem";
-import { CommentSection } from "@/components/comments/CommentSection";
+import { RatingSystem } from "@/components/figures/RatingSystem"; // This now only handles perception
+import { CommentSection } from "@/components/comments/CommentSection"; // This now handles comments + optional stars
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { Figure } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -14,16 +14,7 @@ interface FigurePageProps {
   params: { id: string };
 }
 
-export const revalidate = 0; // Or a reasonable time
-
-// export async function generateStaticParams() {
-//   // To re-enable static generation, fetch all figure IDs from Firestore at build time
-//   // const figures = await getAllFiguresFromFirestore();
-//   // return figures.map((figure) => ({
-//   //   id: figure.id,
-//   // }));
-//   return []; // For now, disable static params to ensure dynamic rendering from Firestore
-// }
+export const revalidate = 0; 
 
 export default async function FigurePage({ params }: FigurePageProps) {
   const figure = await getFigureFromFirestore(params.id);
@@ -40,7 +31,6 @@ export default async function FigurePage({ params }: FigurePageProps) {
     );
   }
 
-  // Fetch a few other figures for "You Might Also Like", excluding the current one
   const allFigures = await getAllFiguresFromFirestore();
   const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 2);
 
@@ -51,16 +41,20 @@ export default async function FigurePage({ params }: FigurePageProps) {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2 space-y-8">
-          <RatingSystem figure={figure} />
+          {/* RatingSystem now only for perception */}
+          <RatingSystem figure={figure} /> 
+          {/* CommentSection handles comments and optional star ratings for comments */}
           <CommentSection figure={figure} />
         </div>
         
         <aside className="lg:col-span-1 space-y-6">
           <Alert>
             <Terminal className="h-4 w-4" />
-            <AlertTitle className="font-headline">How Ratings Work</AlertTitle>
+            <AlertTitle className="font-headline">How It Works</AlertTitle>
             <AlertDescription className="text-sm">
-              Your perception (Fan, Simp, etc.) and star rating contribute to {figure.name}'s overall public image on WikiStars5. Ratings can be updated anytime.
+              Share your perception (Fan, Simp, etc.) for {figure.name}.
+              When commenting, you can optionally add a 1-5 star rating with your comment.
+              Figure's average star rating is based on stars given with comments.
             </AlertDescription>
           </Alert>
 

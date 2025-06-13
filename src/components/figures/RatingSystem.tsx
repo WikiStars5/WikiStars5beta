@@ -5,12 +5,12 @@ import { useState, useEffect } from 'react';
 import type { PerceptionKeys, UserRating, Figure } from '@/lib/types';
 import { PERCEPTION_OPTIONS } from '@/lib/placeholder-data';
 import { Button } from '@/components/ui/button';
-import { StarRating } from '@/components/shared/StarRating';
+// StarRating is removed from here
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { ThumbsUp, Loader2 } from 'lucide-react';
-import { submitUserRating, getUserRating } from '@/lib/actions/ratingActions';
+import { ThumbsUp, Loader2, Send } from 'lucide-react'; // Added Send icon
+import { submitUserPerception, getUserPerception } from '@/lib/actions/ratingActions'; // submitUserRating renamed to submitUserPerception
 import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -20,18 +20,15 @@ interface RatingSystemProps {
   figure: Figure;
 }
 
-// IMPORTANT: Replace this with your actual Admin User ID from Firebase Authentication if needed for specific logic
-// const ADMIN_UID = 'YOUR_ACTUAL_ADMIN_UID'; 
-
 export function RatingSystem({ figure }: RatingSystemProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [selectedPerception, setSelectedPerception] = useState<PerceptionKeys | null>(null);
-  const [starRating, setStarRating] = useState<number>(0);
+  // starRating state is removed
   const [currentUserFb, setCurrentUserFb] = useState<FirebaseUser | null>(null);
-  const [currentUserRating, setCurrentUserRating] = useState<UserRating | null>(null);
+  const [currentUserDbPerception, setCurrentUserDbPerception] = useState<UserRating | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isFetchingInitialRating, setIsFetchingInitialRating] = useState(true);
+  const [isFetchingInitial, setIsFetchingInitial] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
@@ -39,68 +36,63 @@ export function RatingSystem({ figure }: RatingSystemProps) {
       setCurrentUserFb(user);
       setAuthLoading(false);
       if (user) {
-        setIsFetchingInitialRating(true);
-        getUserRating(user.uid, figure.id).then(existingRating => {
-          if (existingRating) {
-            setSelectedPerception(existingRating.perception);
-            setStarRating(existingRating.stars);
-            setCurrentUserRating(existingRating);
+        setIsFetchingInitial(true);
+        getUserPerception(user.uid, figure.id).then(existingPerception => {
+          if (existingPerception) {
+            setSelectedPerception(existingPerception.perception);
+            setCurrentUserDbPerception(existingPerception);
           }
-          setIsFetchingInitialRating(false);
+          setIsFetchingInitial(false);
         });
       } else {
-        setIsFetchingInitialRating(false);
+        setIsFetchingInitial(false);
       }
     });
     return () => unsubscribe();
   }, [figure.id]);
 
-  const handleSubmitRating = async () => {
+  const handleSubmitPerception = async () => {
     if (!currentUserFb) {
-      toast({ title: "Login Required", description: "Please log in to submit your rating.", variant: "destructive" });
+      toast({ title: "Login Required", description: "Please log in to submit your perception.", variant: "destructive" });
       return;
     }
     if (!selectedPerception) {
       toast({ title: "Perception Missing", description: "Please select your perception.", variant: "destructive" });
       return;
     }
-    if (starRating === 0) {
-      toast({ title: "Star Rating Missing", description: "Please provide a star rating.", variant: "destructive" });
-      return;
-    }
 
     setIsLoading(true);
-    const result = await submitUserRating(currentUserFb.uid, figure.id, selectedPerception, starRating);
+    // Call the action that only submits perception
+    const result = await submitUserPerception(currentUserFb.uid, figure.id, selectedPerception);
     setIsLoading(false);
 
     if (result.success) {
       toast({
-        title: "Rating Submitted!",
-        description: `You rated ${figure.name} as ${selectedPerception} with ${starRating} stars. Aggregates updated.`,
+        title: "Perception Submitted!",
+        description: `Your perception of ${figure.name} as ${selectedPerception} has been recorded.`,
         action: <Button variant="outline" size="sm"><ThumbsUp className="mr-2 h-4 w-4" />Got it!</Button>
       });
-      setCurrentUserRating({
+      setCurrentUserDbPerception({ // Update local state
         userId: currentUserFb.uid,
         figureId: figure.id,
         perception: selectedPerception,
-        stars: starRating,
         timestamp: new Date().toISOString()
       });
       router.refresh();
     } else {
       toast({
-        title: "Rating Failed",
-        description: result.message || "Could not submit your rating.",
+        title: "Perception Submission Failed",
+        description: result.message || "Could not submit your perception.",
         variant: "destructive",
       });
     }
   };
   
-  if (authLoading || isFetchingInitialRating) {
+  if (authLoading || isFetchingInitial) {
     return (
       <Card>
         <CardContent className="p-6">
-          <div className="h-48 animate-pulse bg-muted rounded-md flex items-center justify-center">
+          <div className="h-32 animate-pulse bg-muted rounded-md flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         </CardContent>
@@ -112,11 +104,11 @@ export function RatingSystem({ figure }: RatingSystemProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Rate {figure.name}</CardTitle>
-          <CardDescription>Log in to share your perception and rating.</CardDescription>
+          <CardTitle>Your Perception of {figure.name}</CardTitle>
+          <CardDescription>Log in to share your perception.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button asChild><Link href="/login">Login to Rate</Link></Button>
+          <Button asChild><Link href="/login">Login to Share Perception</Link></Button>
         </CardContent>
       </Card>
     );
@@ -126,11 +118,11 @@ export function RatingSystem({ figure }: RatingSystemProps) {
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="font-headline text-2xl">Your Perception of {figure.name}</CardTitle>
-        <CardDescription>What do you consider yourself? Then, give a star rating.</CardDescription>
+        <CardDescription>What do you consider yourself?</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
-          <h4 className="text-md font-medium mb-3">1. Choose your perception:</h4>
+          <h4 className="text-md font-medium mb-3">Choose your perception:</h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {PERCEPTION_OPTIONS.map((option) => (
               <Button
@@ -149,22 +141,17 @@ export function RatingSystem({ figure }: RatingSystemProps) {
             ))}
           </div>
         </div>
-
-        <div>
-          <h4 className="text-md font-medium mb-3">2. Give a star rating (1-5):</h4>
-          <div className="flex justify-center sm:justify-start">
-            <StarRating rating={starRating} onRatingChange={setStarRating} size={32} readOnly={isLoading} />
-          </div>
-        </div>
         
-        <Button onClick={handleSubmitRating} disabled={isLoading || !selectedPerception || starRating === 0} className="w-full sm:w-auto text-lg py-3 px-6">
-          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {isLoading ? "Submitting..." : (currentUserRating?.perception ? "Update Your Rating" : "Submit Your Rating")}
+        {/* Star rating section removed from here */}
+        
+        <Button onClick={handleSubmitPerception} disabled={isLoading || !selectedPerception} className="w-full sm:w-auto text-lg py-3 px-6">
+          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+          {isLoading ? "Submitting..." : (currentUserDbPerception?.perception && currentUserDbPerception.perception === selectedPerception ? "Update Perception" : "Submit Perception")}
         </Button>
 
-        {currentUserRating && (
+        {currentUserDbPerception && (
           <p className="text-sm text-muted-foreground mt-2 text-center sm:text-left">
-            You previously rated as <span className="font-semibold text-foreground">{currentUserRating.perception}</span> with <span className="font-semibold text-foreground">{currentUserRating.stars} stars</span>.
+            You previously set your perception as <span className="font-semibold text-foreground">{currentUserDbPerception.perception}</span>.
           </p>
         )}
       </CardContent>

@@ -12,18 +12,19 @@ export interface Figure {
   name: string;
   photoUrl: string;
   description?: string;
-  averageRating: number;
-  totalRatings: number;
-  perceptionCounts: Record<PerceptionKeys, number>;
+  averageRating: number; // Average of stars submitted WITH comments
+  totalRatings: number;   // Count of comments that INCLUDED a star rating
+  perceptionCounts: Record<PerceptionKeys, number>; // From independent perception submissions
 }
 
+// UserRating now primarily for perception. Stars are not stored here from independent perception submission.
 export interface UserRating {
-  id?: string;
+  id?: string; // Document ID: userId_figureId
   userId: string;
   figureId: string;
   perception: PerceptionKeys;
-  stars: number;
   timestamp: string;
+  // stars field is removed as per the new logic. Stars are now only with comments.
 }
 
 export interface Comment {
@@ -40,35 +41,12 @@ export interface Comment {
   timestamp: string;
   status: 'pending' | 'approved' | 'rejected';
   replies?: Comment[];
-  userStarRatingForFigure?: number;
+  starRatingGivenByAuthor?: number; // Optional star rating submitted with this comment
 }
 
-// UserProfile now reflects common properties from firebase.User
 export interface UserProfile {
-  uid: string; // Changed from id to uid to match Firebase
+  uid: string;
   displayName?: string | null;
   email?: string | null;
-  photoURL?: string | null; // Changed from avatarUrl to photoURL
+  photoURL?: string | null;
 }
-
-// mockUser is now commented out as we are implementing real Firebase authentication.
-// You can uncomment for specific testing if needed, but the app will rely on Firebase Auth.
-/*
-export const mockUser: UserProfile | null = {
-  uid: 'YOUR_ACTUAL_ADMIN_UID', // This ID will be treated as admin if uncommented
-  displayName: 'DemoUser (Admin)',
-  email: 'admin@example.com',
-  photoURL: 'https://placehold.co/40x40.png?text=AD',
-};
-*/
-
-/*
-export const mockUser: UserProfile | null = {
-  uid: 'user456',
-  displayName: 'RegularUser',
-  email: 'user@example.com',
-  photoURL: 'https://placehold.co/40x40.png?text=RU',
-};
-*/
-
-// export const mockUser: UserProfile | null = null; // Simulate logged out state

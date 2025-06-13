@@ -6,12 +6,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from '@/hooks/use-toast';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, Star } from 'lucide-react'; // Added Star
 import { addComment } from '@/lib/actions/commentActions';
 import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import Link from 'next/link';
+import { StarRating } from '@/components/shared/StarRating'; // Import StarRating
 
 interface CommentFormProps {
   figureId: string;
@@ -31,6 +32,7 @@ export function CommentForm({
   submitButtonText = "Post Comment"
 }: CommentFormProps) {
   const [commentText, setCommentText] = useState("");
+  const [selectedStars, setSelectedStars] = useState(0); // State for optional stars
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -62,15 +64,17 @@ export function CommentForm({
       figureName,
       currentUser.uid,
       currentUser.displayName || "Anonymous User",
-      currentUser.photoURL, // Use photoURL from Firebase User
+      currentUser.photoURL,
       commentText,
-      parentId
+      parentId,
+      selectedStars > 0 ? selectedStars : undefined // Pass stars if selected
     );
     setIsLoading(false);
 
     if (result.success) {
-      toast({ title: "Comment Submitted!", description: "Your comment is pending moderation."});
+      toast({ title: "Comment Submitted!", description: result.message });
       setCommentText("");
+      setSelectedStars(0); // Reset stars
       if (onCommentSubmitted) onCommentSubmitted();
       router.refresh(); 
     } else {
@@ -100,7 +104,13 @@ export function CommentForm({
         <AvatarImage src={currentUser.photoURL || undefined} alt={currentUser.displayName || "User"} />
         <AvatarFallback>{currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : "U"}</AvatarFallback>
       </Avatar>
-      <div className="flex-grow space-y-2">
+      <div className="flex-grow space-y-3">
+        {/* Optional Star Rating */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Rate (optional):</span>
+          <StarRating rating={selectedStars} onRatingChange={setSelectedStars} size={22} readOnly={isLoading} />
+        </div>
+        
         <Textarea
           placeholder={placeholder}
           value={commentText}

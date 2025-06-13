@@ -3,31 +3,31 @@
 
 import { db } from '@/lib/firebase';
 import type { UserRating, Figure, PerceptionKeys } from '@/lib/types';
-import { doc, setDoc, getDoc, collection, query, where, getDocs, runTransaction } from 'firebase/firestore';
+import { doc, setDoc, getDoc, runTransaction } from 'firebase/firestore';
 
-// Get a user's rating for a specific figure
-export async function getUserRating(userId: string, figureId: string): Promise<UserRating | null> {
-  if (!userId) return null;
+// Get a user's perception for a specific figure
+export async function getUserPerception(userId: string, figureId: string): Promise<UserRating | null> {
+  if (!userId || !figureId) return null;
   try {
     const ratingDocId = `${userId}_${figureId}`;
     const ratingRef = doc(db, 'userRatings', ratingDocId);
     const ratingSnap = await getDoc(ratingRef);
     if (ratingSnap.exists()) {
-      return { id: ratingSnap.id, ...ratingSnap.data() } as UserRating;
+      // Ensure we cast to UserRating, which no longer expects 'stars' from this collection
+      return { id: ratingSnap.id, ...ratingSnap.data() } as Omit<UserRating, 'stars'> & { perception: PerceptionKeys, timestamp: string };
     }
     return null;
   } catch (error) {
-    console.error('Error fetching user rating:', error);
+    console.error('Error fetching user perception:', error);
     return null;
   }
 }
 
-// Submit or update a user's rating for a figure and update figure aggregates
-export async function submitUserRating(
+// Submit or update a user's perception for a figure
+export async function submitUserPerception(
   userId: string,
   figureId: string,
-  perception: PerceptionKeys, // Ensure this matches UserRating['perception']
-  stars: number
+  perception: PerceptionKeys
 ): Promise<{ success: boolean; message: string }> {
   if (!userId) {
     return { success: false, message: 'User not authenticated.' };
@@ -35,8 +35,8 @@ export async function submitUserRating(
   if (!figureId) {
     return { success: false, message: 'Figure ID is missing.' };
   }
-  if (!perception || stars < 1 || stars > 5) { // Assuming stars must be 1-5
-    return { success: false, message: 'Perception and a valid star rating (1-5) are required.'}
+  if (!perception) {
+    return { success: false, message: 'Perception is required.'};
   }
 
   const userRatingRef = doc(db, 'userRatings', `${userId}_${figureId}`);
@@ -46,62 +46,45 @@ export async function submitUserRating(
     await runTransaction(db, async (transaction) => {
       const figureDoc = await transaction.get(figureRef);
       if (!figureDoc.exists()) {
-        throw new Error(`Figure with ID ${figureId} not found. Cannot submit rating.`);
+        throw new Error(`Figure with ID ${figureId} not found. Cannot submit perception.`);
       }
       const figureData = figureDoc.data() as Figure;
 
       const previousUserRatingDoc = await transaction.get(userRatingRef);
-      const previousRating = previousUserRatingDoc.exists() ? previousUserRatingDoc.data() as UserRating : null;
+      const previousPerception = previousUserRatingDoc.exists() ? (previousUserRatingDoc.data() as UserRating).perception : null;
 
-      // New rating data
-      const newRatingData: UserRating = {
+      const newPerceptionData: Omit<UserRating, 'id'> = { // id is doc name
         userId,
         figureId,
         perception,
-        stars,
         timestamp: new Date().toISOString(),
       };
-      // Set the user's new rating (or overwrite existing)
-      transaction.set(userRatingRef, newRatingData);
+      transaction.set(userRatingRef, newPerceptionData);
 
-      // --- Recalculate Aggregates ---
-      let currentSumOfStars = figureData.averageRating * figureData.totalRatings;
-      let currentTotalRatings = figureData.totalRatings;
       const currentPerceptionCounts = { ...(figureData.perceptionCounts || { neutral: 0, fan: 0, simp: 0, hater: 0 }) };
 
-
-      if (previousRating) {
-        // User is updating a rating
-        // Adjust sum of stars: subtract old, add new
-        currentSumOfStars = currentSumOfStars - previousRating.stars + stars;
-        // Adjust perception counts
-        currentPerceptionCounts[previousRating.perception] = Math.max(0, (currentPerceptionCounts[previousRating.perception] || 0) - 1);
-        currentPerceptionCounts[perception] = (currentPerceptionCounts[perception] || 0) + 1;
-        // totalRatings does not change if it's an update of an existing rating
-      } else {
-        // User is submitting a brand new rating
-        currentSumOfStars = currentSumOfStars + stars;
-        currentTotalRatings = currentTotalRatings + 1;
-        currentPerceptionCounts[perception] = (currentPerceptionCounts[perception] || 0) + 1;
+      if (previousPerception && previousPerception !== perception) {
+        currentPerceptionCounts[previousPerception] = Math.max(0, (currentPerceptionCounts[previousPerception] || 0) - 1);
       }
-
-      const newAverageRating = currentTotalRatings > 0 ? currentSumOfStars / currentTotalRatings : 0;
-
+      
+      if (previousPerception !== perception) {
+         currentPerceptionCounts[perception] = (currentPerceptionCounts[perception] || 0) + 1;
+      }
+      
+      // Only update perceptionCounts. averageRating and totalRatings are handled by comments with stars.
       transaction.update(figureRef, {
-        averageRating: newAverageRating,
-        totalRatings: currentTotalRatings,
         perceptionCounts: currentPerceptionCounts,
       });
     });
 
-    return { success: true, message: 'Rating submitted and aggregates updated.' };
+    return { success: true, message: 'Perception submitted and aggregates updated.' };
   } catch (error: any) {
-    console.error('Error submitting rating or updating aggregates:', error.code, error.message, error);
-    let message = 'Failed to submit rating. Please try again.';
+    console.error('Error submitting perception or updating aggregates:', error.code, error.message, error);
+    let message = 'Failed to submit perception. Please try again.';
     if (error.code === 'permission-denied' || (error.message && error.message.toLowerCase().includes('permission'))) {
-        message = 'Failed to submit rating due to insufficient permissions. Please check your Firestore Security Rules.';
+        message = 'Failed to submit perception due to insufficient permissions. Please check your Firestore Security Rules.';
     } else if (error.message && error.message.toLowerCase().includes('not found')) {
-        message = `Failed to submit rating: The figure could not be found. ${error.message}`;
+        message = `Failed to submit perception: The figure could not be found. ${error.message}`;
     }
     return { success: false, message: message };
   }
