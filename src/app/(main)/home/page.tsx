@@ -14,16 +14,18 @@ export default async function HomePage() {
   return (
     <div className="space-y-16">
       <section className="text-center py-12 md:py-20 bg-gradient-to-br from-primary/10 via-background to-accent/10 rounded-lg shadow-sm">
-        <div className="container max-w-3xl">
+        <div className="container max-w-3xl mx-auto flex flex-col items-center">
           <h1 className="text-4xl md:text-5xl font-bold font-headline mb-6 text-primary">
             Welcome to WikiStars5
           </h1>
-          <p className="text-lg md:text-xl text-foreground/80 mb-8">
+          <p className="text-lg md:text-xl text-foreground/80 mb-8 text-center">
             Discover, rate, and discuss public perception of your favorite (and not-so-favorite) famous figures. 
             Share your take and see what the world thinks!
           </p>
-          <SearchBar />
-           <p className="text-sm text-muted-foreground mt-4">
+          <div className="w-full max-w-xl">
+            <SearchBar />
+          </div>
+           <p className="text-sm text-muted-foreground mt-4 text-center">
             Type a name and hit enter or click search.
           </p>
         </div>
