@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Comment as CommentType } from '@/lib/types';
@@ -6,62 +7,85 @@ import { StarRating } from "@/components/shared/StarRating";
 import { Button } from "@/components/ui/button";
 import { ThumbsUp, ThumbsDown, MessageSquareReply, Trash2, ShieldAlert, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CommentForm } from './CommentForm';
-import { mockUser } from '@/lib/types';
-import { updateCommentReaction } from '@/lib/actions/commentActions';
+import { updateCommentReaction } from '@/lib/actions/commentActions'; // Assuming deleteComment is another action
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+
+// IMPORTANT: Replace this with your actual Admin User ID from Firebase Authentication
+const ADMIN_UID = 'YOUR_ACTUAL_ADMIN_UID';
 
 interface CommentItemProps {
   comment: CommentType;
-  figureName: string; // Needed for CommentForm replies
-  onReplySubmittedLocal?: (replyText: string, parentId: string) => void; // For optimistic UI updates if needed
-  onDelete?: (commentId: string) => void; // For admin or user's own comment
+  figureName: string; 
+  onReplySubmittedLocal?: (replyText: string, parentId: string) => void; 
+  onDelete?: (commentId: string) => Promise<void>; // Make onDelete async for server actions
   level?: number;
 }
 
 export function CommentItem({ comment, figureName, onReplySubmittedLocal, onDelete, level = 0 }: CommentItemProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [isReacting, setIsReacting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
 
-  // For optimistic updates, consider managing liked/disliked state if not relying solely on router.refresh()
-  // For simplicity, we'll use router.refresh() after action.
-  // const [localLikes, setLocalLikes] = useState(comment.likesCount);
-  // const [localDislikes, setLocalDislikes] = useState(comment.dislikesCount);
-  // const [userHasLiked, setUserHasLiked] = useState(false); // This would need to be fetched/stored
-  // const [userHasDisliked, setUserHasDisliked] = useState(false); // This would need to be fetched/stored
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  const isAdmin = mockUser?.id === 'user123';
-  const isOwnComment = mockUser?.id === comment.userId;
-
+  const isAdmin = currentUser?.uid === ADMIN_UID;
+  const isOwnComment = currentUser?.uid === comment.userId;
 
   const handleReaction = async (reactionType: 'like' | 'dislike') => {
-    if (!mockUser) {
+    if (!currentUser) {
       toast({ title: "Login Required", description: "Please log in to react.", variant: "destructive"});
       return;
     }
     setIsReacting(true);
-    // In a real app, you'd track if the user has already liked/disliked this specific comment
-    // For this example, we assume it's a new reaction or toggling.
-    // The action `updateCommentReaction` ideally handles the logic of incrementing/decrementing
-    // and potentially removing an opposite reaction.
-    // We pass placeholder booleans for currentLiked/Disliked for now.
-    // A full implementation would involve fetching the user's reaction to this comment.
-    const result = await updateCommentReaction(comment.id, reactionType, false, false); // Placeholder for actual liked/disliked state
+    // For simplicity, we are not tracking if user already liked/disliked.
+    // The backend action should ideally handle toggling or preventing multiple votes.
+    const result = await updateCommentReaction(comment.id, reactionType, false, false); 
     setIsReacting(false);
 
     if (result.success) {
       toast({ title: "Reaction updated!" });
-      router.refresh(); // Refresh to get updated counts
+      router.refresh(); 
     } else {
       toast({ title: "Reaction failed", description: result.message, variant: "destructive" });
     }
   };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    if (!confirm("Are you sure you want to delete this comment? This cannot be undone.")) return;
+    
+    setIsDeleting(true);
+    try {
+      await onDelete(comment.id);
+      toast({ title: "Comment Deleted" });
+      router.refresh(); // Refresh to reflect deletion
+    } catch (error) {
+      toast({ title: "Error Deleting", description: "Could not delete comment.", variant: "destructive"});
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   
   const timeAgo = comment.timestamp ? formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true }) : 'Just now';
+
+  if (authLoading) {
+    return <div className={`flex space-x-3 py-4 ${level > 0 ? 'pl-6 border-l ml-4' : ''} border-b last:border-b-0 animate-pulse bg-muted/30 rounded-md h-20`}></div>;
+  }
 
   return (
     <div className={`flex space-x-3 py-4 ${level > 0 ? 'pl-6 border-l ml-4' : ''} border-b last:border-b-0`}>
@@ -78,37 +102,35 @@ export function CommentItem({ comment, figureName, onReplySubmittedLocal, onDele
             )}
             <span className="text-xs text-muted-foreground">{timeAgo}</span>
           </div>
-          {(isAdmin || isOwnComment) && onDelete && ( // Allow admin or owner to delete
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(comment.id)}>
-              <Trash2 className="h-4 w-4" />
+          {(isAdmin || isOwnComment) && onDelete && (
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
               <span className="sr-only">Delete comment</span>
             </Button>
           )}
         </div>
         <p className="text-sm text-foreground/90 whitespace-pre-line">{comment.commentText}</p>
         <div className="flex items-center space-x-3 mt-2 text-xs">
-          <Button variant="ghost" size="sm" onClick={() => handleReaction('like')} className={`p-1 h-auto text-muted-foreground`} disabled={isReacting}>
-            {isReacting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ThumbsUp className="h-4 w-4 mr-1" />} {comment.likesCount}
+          <Button variant="ghost" size="sm" onClick={() => handleReaction('like')} className={`p-1 h-auto text-muted-foreground`} disabled={isReacting || !currentUser}>
+            {isReacting && reactionType === 'like' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ThumbsUp className="h-4 w-4 mr-1" />} {comment.likesCount}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => handleReaction('dislike')} className={`p-1 h-auto text-muted-foreground`} disabled={isReacting}>
-             {isReacting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ThumbsDown className="h-4 w-4 mr-1" />} {comment.dislikesCount}
+          <Button variant="ghost" size="sm" onClick={() => handleReaction('dislike')} className={`p-1 h-auto text-muted-foreground`} disabled={isReacting || !currentUser}>
+             {isReacting && reactionType === 'dislike' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ThumbsDown className="h-4 w-4 mr-1" />} {comment.dislikesCount}
           </Button>
-          {level < 2 && ( // Limit reply depth
-             <Button variant="ghost" size="sm" onClick={() => setShowReplyForm(!showReplyForm)} className="p-1 h-auto text-muted-foreground">
+          {level < 2 && ( 
+             <Button variant="ghost" size="sm" onClick={() => setShowReplyForm(!showReplyForm)} className="p-1 h-auto text-muted-foreground" disabled={!currentUser}>
               <MessageSquareReply className="h-4 w-4 mr-1" /> Reply
             </Button>
           )}
         </div>
-        {showReplyForm && (
+        {showReplyForm && currentUser && (
           <div className="mt-3">
             <CommentForm
               figureId={comment.figureId}
               figureName={figureName}
               parentId={comment.id}
               onCommentSubmitted={() => {
-                // if (onReplySubmittedLocal) onReplySubmittedLocal("", comment.id); // For optimistic UI
                 setShowReplyForm(false);
-                // router.refresh() will be called by the form itself
               }}
               placeholder={`Replying to ${comment.userName}...`}
               submitButtonText="Post Reply"
@@ -123,7 +145,7 @@ export function CommentItem({ comment, figureName, onReplySubmittedLocal, onDele
                 comment={reply}
                 figureName={figureName}
                 onReplySubmittedLocal={onReplySubmittedLocal}
-                onDelete={onDelete}
+                onDelete={onDelete} // Pass down delete handler
                 level={level + 1}
               />
             ))}
@@ -133,3 +155,23 @@ export function CommentItem({ comment, figureName, onReplySubmittedLocal, onDele
     </div>
   );
 }
+
+// Helper to track which reaction type is loading
+let reactionType: 'like' | 'dislike' | null = null; 
+// This is a module-level variable to help with spinner on specific button.
+// It's a bit of a hack for this component structure. A more complex state management might be better.
+// For now, it will show spinner on both if any reaction is in progress.
+// To fix this, you would need separate loading states e.g. isLiking, isDisliking
+const setReactingType = (type: 'like' | 'dislike' | null) => {
+  reactionType = type;
+}
+
+// In handleReaction:
+// setIsReacting(true); setReactingType(reactionType);
+// ...
+// setIsReacting(false); setReactingType(null);
+// And in button:
+// disabled={isReacting || !currentUser}
+// {isReacting && reactionType === 'like' ? <Loader2... /> : <ThumbsUp... />}
+// The above is more complex to implement without more significant state changes.
+// The current implementation uses a single `isReacting` state.

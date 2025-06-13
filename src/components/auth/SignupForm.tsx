@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -8,7 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Loader2 } from "lucide-react";
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { auth } from '@/lib/firebase'; // Main auth instance
 
 const signupSchema = z.object({
   displayName: z.string().min(2, { message: "Display name must be at least 2 characters." }),
@@ -21,6 +25,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 export function SignupForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -33,16 +38,33 @@ export function SignupForm() {
 
   async function onSubmit(values: SignupFormValues) {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log("Signup submitted:", values);
-    setIsLoading(false);
-    toast({
-      title: "Account Created (Simulated)",
-      description: "Welcome to WikiStars5! You can now log in.",
-    });
-    // Redirect user to login page or dashboard
-    // window.location.href = '/login';
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      // Update Firebase user profile with displayName
+      if (userCredential.user) {
+        await updateProfile(userCredential.user, {
+          displayName: values.displayName,
+        });
+      }
+      toast({
+        title: "Account Created!",
+        description: "Welcome to WikiStars5! You can now log in.",
+      });
+      router.push('/login'); // Redirect to login page after successful signup
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      let errorMessage = "Failed to create account. Please try again.";
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "This email address is already in use.";
+      }
+      toast({
+        title: "Signup Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -88,7 +110,8 @@ export function SignupForm() {
           )}
         />
         <Button type="submit" className="w-full text-lg py-3" disabled={isLoading}>
-          {isLoading ? "Creating Account..." : <><UserPlus className="mr-2 h-5 w-5" /> Sign Up</>}
+          {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
+          {isLoading ? "Creating Account..." : "Sign Up"}
         </Button>
       </form>
     </Form>

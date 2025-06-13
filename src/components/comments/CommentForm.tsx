@@ -1,21 +1,23 @@
+
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { mockUser, Figure } from '@/lib/types'; // Assuming Figure might be needed for figureName
 import { useToast } from '@/hooks/use-toast';
 import { Send, Loader2 } from 'lucide-react';
 import { addComment } from '@/lib/actions/commentActions';
 import { useRouter } from 'next/navigation';
-
+import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import Link from 'next/link';
 
 interface CommentFormProps {
   figureId: string;
-  figureName: string; // For denormalization
+  figureName: string;
   parentId?: string | null;
-  onCommentSubmitted?: () => void; // Optional: To trigger actions in parent like closing reply form
+  onCommentSubmitted?: () => void;
   placeholder?: string;
   submitButtonText?: string;
 }
@@ -30,16 +32,26 @@ export function CommentForm({
 }: CommentFormProps) {
   const [commentText, setCommentText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) {
       toast({ title: "Empty Comment", description: "Please write something before submitting.", variant: "destructive"});
       return;
     }
-    if (!mockUser) {
+    if (!currentUser) {
       toast({ title: "Login Required", description: "Please log in to comment.", variant: "destructive"});
       return;
     }
@@ -48,9 +60,9 @@ export function CommentForm({
     const result = await addComment(
       figureId,
       figureName,
-      mockUser.id,
-      mockUser.displayName || "Anonymous User",
-      mockUser.avatarUrl,
+      currentUser.uid,
+      currentUser.displayName || "Anonymous User",
+      currentUser.photoURL, // Use photoURL from Firebase User
       commentText,
       parentId
     );
@@ -60,16 +72,24 @@ export function CommentForm({
       toast({ title: "Comment Submitted!", description: "Your comment is pending moderation."});
       setCommentText("");
       if (onCommentSubmitted) onCommentSubmitted();
-      router.refresh(); // Refresh to show pending (if admin) or new approved comments (if auto-approved)
+      router.refresh(); 
     } else {
       toast({ title: "Comment Failed", description: result.message || "Could not post your comment.", variant: "destructive"});
     }
   };
 
-  if (!mockUser) {
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!currentUser) {
     return (
       <div className="p-4 border rounded-lg bg-muted/50 text-center">
-        <p className="text-muted-foreground">Please <a href="/login" className="text-primary hover:underline">log in</a> to post a comment.</p>
+        <p className="text-muted-foreground">Please <Link href="/login" className="text-primary hover:underline">log in</Link> to post a comment.</p>
       </div>
     );
   }
@@ -77,8 +97,8 @@ export function CommentForm({
   return (
     <form onSubmit={handleSubmit} className="flex items-start space-x-3 p-1">
       <Avatar className="mt-1 flex-shrink-0">
-        <AvatarImage src={mockUser.avatarUrl || undefined} alt={mockUser.displayName || "User"} />
-        <AvatarFallback>{mockUser.displayName ? mockUser.displayName.charAt(0).toUpperCase() : "U"}</AvatarFallback>
+        <AvatarImage src={currentUser.photoURL || undefined} alt={currentUser.displayName || "User"} />
+        <AvatarFallback>{currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : "U"}</AvatarFallback>
       </Avatar>
       <div className="flex-grow space-y-2">
         <Textarea

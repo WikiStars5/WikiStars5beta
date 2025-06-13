@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -8,7 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { LogIn } from "lucide-react";
+import { LogIn, Loader2 } from "lucide-react";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { auth } from '@/lib/firebase'; // Main auth instance
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -20,6 +24,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export function LoginForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -31,17 +36,28 @@ export function LoginForm() {
 
   async function onSubmit(values: LoginFormValues) {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log("Login submitted:", values);
-    setIsLoading(false);
-    toast({
-      title: "Login Successful (Simulated)",
-      description: "Welcome back!",
-    });
-    // Redirect user or update auth state
-    // For now, just reload to reflect mockUser change if any
-    // window.location.href = '/'; 
+    try {
+      await signInWithEmailAndPassword(auth, values.email, values.password);
+      toast({
+        title: "Login Successful!",
+        description: "Welcome back!",
+      });
+      router.push('/admin'); // Redirect to admin panel on successful login
+      router.refresh(); // Important to update server-side state if any
+    } catch (error: any) {
+      console.error("Login error:", error);
+      let errorMessage = "Failed to log in. Please check your credentials.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMessage = "Invalid email or password.";
+      }
+      toast({
+        title: "Login Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -74,7 +90,8 @@ export function LoginForm() {
           )}
         />
         <Button type="submit" className="w-full text-lg py-3" disabled={isLoading}>
-          {isLoading ? "Logging in..." : <><LogIn className="mr-2 h-5 w-5" /> Log In</>}
+          {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <LogIn className="mr-2 h-5 w-5" />}
+          {isLoading ? "Logging in..." : "Log In"}
         </Button>
       </form>
     </Form>

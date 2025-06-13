@@ -1,9 +1,9 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { PerceptionOption, UserRating, Figure, PerceptionKeys } from '@/lib/types';
-import { PERCEPTION_OPTIONS } from '@/lib/placeholder-data'; // Keep this for UI options
-import { mockUser } from '@/lib/types';
+import type { PerceptionKeys, UserRating, Figure } from '@/lib/types';
+import { PERCEPTION_OPTIONS } from '@/lib/placeholder-data';
 import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/shared/StarRating';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,40 +12,51 @@ import { useToast } from '@/hooks/use-toast';
 import { ThumbsUp, Loader2 } from 'lucide-react';
 import { submitUserRating, getUserRating } from '@/lib/actions/ratingActions';
 import { useRouter } from 'next/navigation';
+import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import Link from 'next/link';
 
 interface RatingSystemProps {
   figure: Figure;
 }
+
+// IMPORTANT: Replace this with your actual Admin User ID from Firebase Authentication if needed for specific logic
+// const ADMIN_UID = 'YOUR_ACTUAL_ADMIN_UID'; 
 
 export function RatingSystem({ figure }: RatingSystemProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [selectedPerception, setSelectedPerception] = useState<PerceptionKeys | null>(null);
   const [starRating, setStarRating] = useState<number>(0);
+  const [currentUserFb, setCurrentUserFb] = useState<FirebaseUser | null>(null);
   const [currentUserRating, setCurrentUserRating] = useState<UserRating | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingInitialRating, setIsFetchingInitialRating] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchInitialRating() {
-      if (mockUser) {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUserFb(user);
+      setAuthLoading(false);
+      if (user) {
         setIsFetchingInitialRating(true);
-        const existingRating = await getUserRating(mockUser.id, figure.id);
-        if (existingRating) {
-          setSelectedPerception(existingRating.perception);
-          setStarRating(existingRating.stars);
-          setCurrentUserRating(existingRating);
-        }
-        setIsFetchingInitialRating(false);
+        getUserRating(user.uid, figure.id).then(existingRating => {
+          if (existingRating) {
+            setSelectedPerception(existingRating.perception);
+            setStarRating(existingRating.stars);
+            setCurrentUserRating(existingRating);
+          }
+          setIsFetchingInitialRating(false);
+        });
       } else {
         setIsFetchingInitialRating(false);
       }
-    }
-    fetchInitialRating();
+    });
+    return () => unsubscribe();
   }, [figure.id]);
 
   const handleSubmitRating = async () => {
-    if (!mockUser) {
+    if (!currentUserFb) {
       toast({ title: "Login Required", description: "Please log in to submit your rating.", variant: "destructive" });
       return;
     }
@@ -59,7 +70,7 @@ export function RatingSystem({ figure }: RatingSystemProps) {
     }
 
     setIsLoading(true);
-    const result = await submitUserRating(mockUser.id, figure.id, selectedPerception, starRating);
+    const result = await submitUserRating(currentUserFb.uid, figure.id, selectedPerception, starRating);
     setIsLoading(false);
 
     if (result.success) {
@@ -68,15 +79,14 @@ export function RatingSystem({ figure }: RatingSystemProps) {
         description: `You rated ${figure.name} as ${selectedPerception} with ${starRating} stars. Aggregates updated.`,
         action: <Button variant="outline" size="sm"><ThumbsUp className="mr-2 h-4 w-4" />Got it!</Button>
       });
-      // Update local state for immediate feedback, though refresh will get latest
       setCurrentUserRating({
-        userId: mockUser.id,
+        userId: currentUserFb.uid,
         figureId: figure.id,
         perception: selectedPerception,
         stars: starRating,
         timestamp: new Date().toISOString()
       });
-      router.refresh(); // Refresh to get updated figure aggregates and potentially other parts of the page
+      router.refresh();
     } else {
       toast({
         title: "Rating Failed",
@@ -86,7 +96,7 @@ export function RatingSystem({ figure }: RatingSystemProps) {
     }
   };
   
-  if (isFetchingInitialRating) {
+  if (authLoading || isFetchingInitialRating) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -98,7 +108,7 @@ export function RatingSystem({ figure }: RatingSystemProps) {
     );
   }
 
-  if (!mockUser) {
+  if (!currentUserFb) {
     return (
       <Card>
         <CardHeader>
@@ -106,7 +116,7 @@ export function RatingSystem({ figure }: RatingSystemProps) {
           <CardDescription>Log in to share your perception and rating.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button asChild><a href="/login">Login to Rate</a></Button>
+          <Button asChild><Link href="/login">Login to Rate</Link></Button>
         </CardContent>
       </Card>
     );

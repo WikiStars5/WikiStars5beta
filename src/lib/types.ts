@@ -1,3 +1,4 @@
+
 export type PerceptionKeys = "neutral" | "fan" | "simp" | "hater";
 
 export interface PerceptionOption {
@@ -11,57 +12,63 @@ export interface Figure {
   name: string;
   photoUrl: string;
   description?: string;
-  averageRating: number; // Will be calculated and updated
-  totalRatings: number;  // Will be calculated and updated
-  perceptionCounts: Record<PerceptionKeys, number>; // This might be updated too, or kept simple
+  averageRating: number;
+  totalRatings: number;
+  perceptionCounts: Record<PerceptionKeys, number>;
 }
 
 export interface UserRating {
-  id?: string; // Document ID from Firestore (userId_figureId)
+  id?: string;
   userId: string;
   figureId: string;
   perception: PerceptionKeys;
-  stars: number; // 1-5
-  timestamp: string; // ISO date string
+  stars: number;
+  timestamp: string;
 }
 
 export interface Comment {
-  id: string; // Document ID from Firestore
+  id: string;
   figureId: string;
-  figureName?: string; // Denormalized for admin panel
+  figureName?: string;
   userId: string;
-  userName: string; // Denormalized
-  userAvatarUrl?: string; // Denormalized
+  userName: string;
+  userAvatarUrl?: string;
   commentText: string;
   parentCommentId: string | null;
   likesCount: number;
   dislikesCount: number;
-  timestamp: string; // ISO date string
+  timestamp: string;
   status: 'pending' | 'approved' | 'rejected';
-  replies?: Comment[]; // For client-side structuring of fetched replies
-  userStarRatingForFigure?: number; // Fetched and added client-side for display
+  replies?: Comment[];
+  userStarRatingForFigure?: number;
 }
 
+// UserProfile now reflects common properties from firebase.User
 export interface UserProfile {
-  id: string;
+  uid: string; // Changed from id to uid to match Firebase
   displayName?: string | null;
   email?: string | null;
-  avatarUrl?: string | null;
+  photoURL?: string | null; // Changed from avatarUrl to photoURL
 }
 
-// Simulated current user - in a real app, this would come from an auth context
+// mockUser is now commented out as we are implementing real Firebase authentication.
+// You can uncomment for specific testing if needed, but the app will rely on Firebase Auth.
+/*
 export const mockUser: UserProfile | null = {
-  id: 'user123', // This ID will be treated as admin
+  uid: 'YOUR_ACTUAL_ADMIN_UID', // This ID will be treated as admin if uncommented
   displayName: 'DemoUser (Admin)',
   email: 'admin@example.com',
-  avatarUrl: 'https://placehold.co/40x40.png?text=AD',
+  photoURL: 'https://placehold.co/40x40.png?text=AD',
 };
+*/
 
-// export const mockUser: UserProfile | null = {
-//   id: 'user456',
-//   displayName: 'RegularUser',
-//   email: 'user@example.com',
-//   avatarUrl: 'https://placehold.co/40x40.png?text=RU',
-// };
+/*
+export const mockUser: UserProfile | null = {
+  uid: 'user456',
+  displayName: 'RegularUser',
+  email: 'user@example.com',
+  photoURL: 'https://placehold.co/40x40.png?text=RU',
+};
+*/
 
 // export const mockUser: UserProfile | null = null; // Simulate logged out state

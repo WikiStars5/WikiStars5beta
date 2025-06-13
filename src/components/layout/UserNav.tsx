@@ -12,41 +12,68 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { mockUser } from '@/lib/types'; // In a real app, this would come from an auth context/hook
-import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, LayoutDashboard } from 'lucide-react';
+import { User as FirebaseUser, getAuth, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, LayoutDashboard, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { auth } from '@/lib/firebase'; // Ensure auth is exported from firebase.ts
+import type { UserProfile } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+
+// IMPORTANT: Replace this with your actual Admin User ID from Firebase Authentication
+const ADMIN_UID = 'YOUR_ACTUAL_ADMIN_UID';
 
 export function UserNav() {
-  const [currentUser, setCurrentUser] = useState<typeof mockUser | null>(null);
-  const [isClient, setIsClient] = useState(false);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
-    setIsClient(true);
-    // Simulate fetching user data or checking auth state
-    setCurrentUser(mockUser); 
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setIsLoading(false);
+    });
+    return () => unsubscribe(); // Cleanup subscription on unmount
   }, []);
 
-  if (!isClient) {
-    // Render a placeholder or nothing during server render / hydration mismatch prevention
+  const handleLogout = async () => {
+    try {
+      await firebaseSignOut(auth);
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      router.push('/login'); // Redirect to login after logout
+      router.refresh(); // Refresh to update any server-side auth checks
+    } catch (error) {
+      console.error("Error logging out: ", error);
+      toast({ title: "Logout Failed", description: "Could not log you out. Please try again.", variant: "destructive" });
+    }
+  };
+
+  if (isLoading) {
     return (
       <div className="flex items-center gap-2">
-        <div className="h-8 w-20 rounded-md bg-muted animate-pulse"></div>
-        <div className="h-8 w-8 rounded-full bg-muted animate-pulse"></div>
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (currentUser) {
-    const isAdmin = currentUser.id === 'user123'; // Simulated admin check
+    const isAdmin = currentUser.uid === ADMIN_UID;
+    const userProfile: UserProfile = { // Adapt FirebaseUser to UserProfile
+        uid: currentUser.uid,
+        displayName: currentUser.displayName,
+        email: currentUser.email,
+        photoURL: currentUser.photoURL,
+    };
 
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-9 w-9 rounded-full">
             <Avatar className="h-9 w-9">
-              <AvatarImage src={currentUser.avatarUrl || undefined} alt={currentUser.displayName || "User Avatar"} />
+              <AvatarImage src={userProfile.photoURL || undefined} alt={userProfile.displayName || "User Avatar"} />
               <AvatarFallback>
-                {currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
+                {userProfile.displayName ? userProfile.displayName.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
               </AvatarFallback>
             </Avatar>
           </Button>
@@ -54,9 +81,9 @@ export function UserNav() {
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{currentUser.displayName || "User"}</p>
+              <p className="text-sm font-medium leading-none">{userProfile.displayName || "User"}</p>
               <p className="text-xs leading-none text-muted-foreground">
-                {currentUser.email}
+                {userProfile.email}
               </p>
             </div>
           </DropdownMenuLabel>
@@ -69,7 +96,7 @@ export function UserNav() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
-          {isAdmin && ( 
+          {isAdmin && (
             <Link href="/admin">
               <DropdownMenuItem>
                 <ShieldCheck className="mr-2 h-4 w-4" />
@@ -78,7 +105,7 @@ export function UserNav() {
             </Link>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => alert('Logout action triggered (Simulated)')}>
+          <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>
           </DropdownMenuItem>
