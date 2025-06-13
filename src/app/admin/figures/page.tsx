@@ -1,5 +1,4 @@
 
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -53,7 +52,13 @@ export default async function AdminFiguresPage() {
                 {figures.map((figure) => (
                   <TableRow key={figure.id}>
                     <TableCell>
-                      <AdminFigureImage figure={figure} />
+                      <AdminFigureImage 
+                        figure={{
+                          name: figure.name,
+                          photoUrl: figure.photoUrl,
+                          dataAiHint: figure.dataAiHint
+                        }} 
+                      />
                     </TableCell>
                     <TableCell className="font-medium">{figure.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground truncate max-w-xs">{figure.description}</TableCell>
@@ -67,7 +72,12 @@ export default async function AdminFiguresPage() {
                           <span className="sr-only">Edit</span>
                         </Link>
                       </Button>
-                      <AdminDeleteFigureButton figure={figure} />
+                      <AdminDeleteFigureButton 
+                        figure={{
+                          id: figure.id,
+                          name: figure.name
+                        }} 
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
