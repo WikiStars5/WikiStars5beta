@@ -1,3 +1,4 @@
+
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import { FIGURES_DATA } from "@/lib/placeholder-data";
 import { SearchBar } from "@/components/shared/SearchBar";
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
 };
 
 export default function BrowseFiguresPage() {
-  // In a real app, this would involve pagination and server-side filtering
+  // En una aplicación real, esto implicaría paginación y filtrado del lado del servidor.
+  // FIGURES_DATA es el array que se actualiza cuando creas figuras en el panel de admin.
   const allFigures = FIGURES_DATA;
 
   return (
@@ -32,10 +34,10 @@ export default function BrowseFiguresPage() {
         </div>
       ) : (
         <p className="text-center text-muted-foreground text-lg py-10">
-          No public figures found. Check back soon!
+          No public figures found. Check back soon or add some in the admin panel!
         </p>
       )}
-      {/* Add pagination controls here if needed */}
+      {/* Aquí se podrían añadir controles de paginación si fuera necesario */}
     </div>
   );
 }
