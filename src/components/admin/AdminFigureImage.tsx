@@ -1,7 +1,7 @@
 
 "use client";
 
-// import Image from "next/image"; // No longer using next/image directly here
+import Image from "next/image"; // Using next/image
 import { ImageOff } from "lucide-react";
 import type { Figure } from "@/lib/types";
 
@@ -15,19 +15,20 @@ export function AdminFigureImage({ figure, width = 50, height = 70 }: AdminFigur
   return (
     <>
       {figure.photoUrl ? (
-        <img
+        <Image
           src={figure.photoUrl}
           alt={figure.name}
-          style={{ width: `${width}px`, height: `${height}px` }}
-          className="rounded object-cover aspect-[3/4]"
-          loading="lazy"
+          width={width}
+          height={height}
+          className="rounded object-cover" // Removed aspect-[3/4] as width/height props define aspect
+          data-ai-hint="thumbnail person"
         />
       ) : (
         <div 
           className="bg-muted rounded flex items-center justify-center"
           style={{ width: `${width}px`, height: `${height}px` }}
         >
-          <ImageOff className="h-6 w-6 text-muted-foreground" />
+          <ImageOff className="h-6 w-6 text-muted-foreground" data-ai-hint="placeholder icon" />
         </div>
       )}
     </>

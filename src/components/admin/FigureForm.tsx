@@ -15,11 +15,11 @@ import { Save, Loader2, UploadCloud, Image as ImageIcon } from "lucide-react";
 import { addFigureToFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { storage } from "@/lib/firebase"; 
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import Image from "next/image";
+import Image from "next/image"; // Using next/image for preview
 
 const figureFormSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
-  description: z.string().min(5, "La descripción debe tener al menos 5 caracteres.").optional().or(z.literal('')),
+  photoUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
 });
 
 type FigureFormValues = z.infer<typeof figureFormSchema>;
@@ -33,15 +33,17 @@ export function FigureForm({ initialData }: FigureFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(initialData?.photoUrl || null);
+  const [previewUrlFromFile, setPreviewUrlFromFile] = useState<string | null>(null); // For local file preview
 
   const form = useForm<FigureFormValues>({
     resolver: zodResolver(figureFormSchema),
     defaultValues: {
       name: initialData?.name || "",
-      description: initialData?.description || "",
+      photoUrl: initialData?.photoUrl || "",
     },
   });
+
+  const watchedPhotoUrlInput = form.watch('photoUrl'); // For external URL preview
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -49,25 +51,26 @@ export function FigureForm({ initialData }: FigureFormProps) {
       setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
+        setPreviewUrlFromFile(reader.result as string);
       };
       reader.readAsDataURL(file);
+      form.setValue('photoUrl', ''); // Clear external URL if a file is chosen
     } else {
       setSelectedFile(null);
-      setPreviewUrl(initialData?.photoUrl || null);
+      setPreviewUrlFromFile(null);
     }
   };
 
   async function onSubmit(values: FigureFormValues) {
     setIsLoading(true);
-    let photoUrlToSave = initialData?.photoUrl || `https://placehold.co/300x400.png?text=${encodeURIComponent(values.name.substring(0,2))}`;
+    let finalPhotoUrl = initialData?.photoUrl || ""; 
 
     if (selectedFile) {
       try {
         const filePath = `figures/${Date.now()}_${selectedFile.name}`;
         const storageRef = ref(storage, filePath);
         await uploadBytes(storageRef, selectedFile);
-        photoUrlToSave = await getDownloadURL(storageRef);
+        finalPhotoUrl = await getDownloadURL(storageRef);
         toast({ title: "Imagen Subida", description: "Tu imagen ha sido guardada en Firebase Storage." });
       } catch (error) {
         console.error("Error uploading image: ", error);
@@ -79,27 +82,30 @@ export function FigureForm({ initialData }: FigureFormProps) {
         setIsLoading(false);
         return; 
       }
+    } else if (values.photoUrl !== undefined && values.photoUrl !== (initialData?.photoUrl || "")) {
+      // Use URL from text input if it's provided and different from initial, or if it's new
+      finalPhotoUrl = values.photoUrl;
+    } else if (!initialData && !values.photoUrl && !selectedFile) {
+      // New figure, no file, no URL input from text field
+      finalPhotoUrl = `https://placehold.co/300x400.png?text=${encodeURIComponent(values.name.substring(0,2))}`;
     }
-    
+    // If initialData exists, and selectedFile is null, and values.photoUrl is unchanged or undefined, finalPhotoUrl already holds initialData.photoUrl or became "" if initialData.photoUrl was ""
+
+
     const figureId = initialData?.id || `figure-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
     
     const figureData: Figure = {
       id: figureId,
       name: values.name,
       nameLower: values.name.toLowerCase(),
-      photoUrl: photoUrlToSave,
-      description: values.description || "",
+      photoUrl: finalPhotoUrl,
+      // Description is not in the form, preserve if editing, otherwise it will be undefined (or default in type)
+      description: initialData?.description || "", 
     };
 
     try {
       if (initialData) {
-        const dataToUpdate: Partial<Figure> = { 
-            name: values.name,
-            nameLower: values.name.toLowerCase(), 
-            photoUrl: photoUrlToSave,
-            description: values.description || initialData.description // Preserve existing description if form field is absent
-        };
-        await updateFigureInFirestore({ ...initialData, ...dataToUpdate } as Figure); 
+        await updateFigureInFirestore(figureData); 
       } else {
         await addFigureToFirestore(figureData); 
       }
@@ -122,6 +128,9 @@ export function FigureForm({ initialData }: FigureFormProps) {
       setIsLoading(false);
     }
   }
+  
+  const currentPhotoForPreview = previewUrlFromFile || watchedPhotoUrlInput || (selectedFile ? null : initialData?.photoUrl);
+
 
   return (
     <Form {...form}>
@@ -140,8 +149,37 @@ export function FigureForm({ initialData }: FigureFormProps) {
           )}
         />
         
+        <FormField
+          control={form.control}
+          name="photoUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>URL de la Imagen (Opcional)</FormLabel>
+              <FormControl>
+                <Input 
+                  type="url" 
+                  placeholder="https://ejemplo.com/imagen.jpg" 
+                  {...field} 
+                  disabled={isLoading || !!selectedFile} 
+                  onChange={(e) => {
+                    field.onChange(e);
+                    if (selectedFile) { // if user types in URL field, clear selected file
+                        setSelectedFile(null);
+                        setPreviewUrlFromFile(null);
+                    }
+                  }}
+                />
+              </FormControl>
+              <FormDescription>
+                Pega la URL de una imagen externa. Si también seleccionas un archivo, se priorizará el archivo subido.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormItem>
-          <FormLabel>Foto</FormLabel>
+          <FormLabel>Subir Foto (Opcional)</FormLabel>
           <FormControl>
             <Input 
               type="file" 
@@ -152,36 +190,19 @@ export function FigureForm({ initialData }: FigureFormProps) {
             />
           </FormControl>
           <FormDescription>
-            Sube una imagen para la figura. Si no se sube ninguna imagen, se usará un marcador de posición para nuevas figuras o se mantendrá la existente para las ediciones.
+            Sube una imagen para la figura. Esto tendrá prioridad sobre la URL de la imagen.
           </FormDescription>
-          {previewUrl && (
+          {currentPhotoForPreview ? (
             <div className="mt-4 w-32 h-40 relative rounded-md overflow-hidden border">
-              <Image src={previewUrl} alt="Vista Previa" layout="fill" objectFit="cover" />
+              <Image src={currentPhotoForPreview} alt="Vista Previa" layout="fill" objectFit="cover" data-ai-hint="figure preview" />
             </div>
-          )}
-          {!previewUrl && (
+          ) : (
              <div className="mt-4 w-32 h-40 flex items-center justify-center bg-muted rounded-md border">
-                <ImageIcon className="w-10 h-10 text-muted-foreground" />
+                <ImageIcon className="w-10 h-10 text-muted-foreground" data-ai-hint="placeholder icon" />
              </div>
           )}
           <FormMessage />
         </FormItem>
-
-        {/* El campo de descripción se ha eliminado de la UI
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Descripción / Categoría</FormLabel>
-              <FormControl>
-                <Textarea placeholder="ej., Matemática y Escritora" {...field} disabled={isLoading} rows={3} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        */}
         
         <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
