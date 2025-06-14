@@ -3,8 +3,7 @@
 
 import type { Figure } from "@/lib/types";
 import Image from "next/image";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-// REMOVIDO: import { StarRating } from "@/components/shared/StarRating";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { ImageOff } from "lucide-react";
 
@@ -14,39 +13,50 @@ interface ProfileHeaderProps {
 
 export function ProfileHeader({ figure }: ProfileHeaderProps) {
   return (
-    <Card className="overflow-hidden shadow-lg">
-      <div className="md:flex">
-        <div className="md:w-1/3 relative bg-muted">
+    <Card className="overflow-hidden shadow-lg p-4 md:p-6">
+      <div className="flex flex-col items-center w-full space-y-6">
+
+        {/* Text Section: Name, Description, Share Button */}
+        <div className="w-full">
+          <CardHeader className="p-0 text-left">
+            <div className="flex justify-between items-start mb-2">
+              <CardTitle className="text-3xl lg:text-4xl font-headline text-primary">
+                {figure.name}
+              </CardTitle>
+              <ShareButton figureName={figure.name} figureId={figure.id} />
+            </div>
+            <CardDescription className="text-lg text-muted-foreground">
+              {figure.description || "Sin descripción proporcionada."}
+            </CardDescription>
+          </CardHeader>
+        </div>
+
+        {/* Image Section: Centered and smaller */}
+        <div className="relative w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto aspect-[3/4] bg-muted rounded-lg overflow-hidden shadow-md">
           {figure.photoUrl ? (
             <Image
               src={figure.photoUrl}
               alt={figure.name}
-              width={400}
-              height={500}
-              className="w-full h-auto md:h-full object-cover"
-              priority 
-              onError={(e) => { e.currentTarget.src = 'https://placehold.co/400x500.png?text=Error'; e.currentTarget.srcset = '' }}
+              layout="fill"
+              objectFit="cover"
+              priority
+              onError={(e) => {
+                const target = e.currentTarget as HTMLImageElement;
+                // Attempt to replace with placeholder, though with layout="fill" direct src manipulation can be tricky.
+                // A state-based approach for placeholder might be more robust in complex scenarios.
+                target.style.display = 'none'; // Hide broken image
+                // Ideally, replace with a placeholder component or set a placeholder src if Image component re-renders on prop change.
+                // For now, if the image is critical and error handling complex, consider adding a sibling placeholder div controlled by state.
+              }}
+              data-ai-hint="portrait person"
             />
           ) : (
-            <div className="w-full aspect-[4/5] md:h-full flex items-center justify-center">
-               <ImageOff className="h-24 w-24 text-muted-foreground" />
+            <div className="w-full h-full flex items-center justify-center bg-muted" data-ai-hint="placeholder abstract">
+              <ImageOff className="h-24 w-24 text-muted-foreground" />
             </div>
           )}
         </div>
-        <div className="md:w-2/3 p-6 md:p-8 flex flex-col justify-between">
-          <div>
-            <CardHeader className="p-0 mb-4">
-              <div className="flex justify-between items-start">
-                <CardTitle className="text-3xl lg:text-4xl font-headline text-primary">{figure.name}</CardTitle>
-                <ShareButton figureName={figure.name} figureId={figure.id} />
-              </div>
-              <CardDescription className="text-lg text-muted-foreground">{figure.description || "Sin descripción proporcionada."}</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {/* Sección de Calificación Pública Promedio eliminada */}
-            </CardContent>
-          </div>
-        </div>
+        
       </div>
     </Card>
   );
