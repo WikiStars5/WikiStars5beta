@@ -9,17 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import type { Figure } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { useState, ChangeEvent } from "react";
+import { useState, ChangeEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Loader2, UploadCloud, Image as ImageIcon } from "lucide-react";
 import { addFigureToFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { storage } from "@/lib/firebase"; 
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import Image from "next/image"; // Using next/image for preview
+import Image from "next/image";
 
 const figureFormSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
   photoUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
+  // Description is intentionally omitted from the form schema as per previous request
 });
 
 type FigureFormValues = z.infer<typeof figureFormSchema>;
@@ -33,7 +34,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrlFromFile, setPreviewUrlFromFile] = useState<string | null>(null); // For local file preview
+  const [previewUrlFromFile, setPreviewUrlFromFile] = useState<string | null>(null);
 
   const form = useForm<FigureFormValues>({
     resolver: zodResolver(figureFormSchema),
@@ -43,7 +44,28 @@ export function FigureForm({ initialData }: FigureFormProps) {
     },
   });
 
-  const watchedPhotoUrlInput = form.watch('photoUrl'); // For external URL preview
+  // Effect to reset form when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      form.reset({
+        name: initialData.name || "",
+        photoUrl: initialData.photoUrl || "",
+      });
+      // Reset local file state if initialData is provided (editing existing)
+      setSelectedFile(null);
+      setPreviewUrlFromFile(null);
+    } else {
+      // Reset for new form
+      form.reset({
+        name: "",
+        photoUrl: "",
+      });
+      setSelectedFile(null);
+      setPreviewUrlFromFile(null);
+    }
+  }, [initialData, form.reset]);
+
+  const watchedPhotoUrlInput = form.watch('photoUrl');
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -83,15 +105,11 @@ export function FigureForm({ initialData }: FigureFormProps) {
         return; 
       }
     } else if (values.photoUrl !== undefined && values.photoUrl !== (initialData?.photoUrl || "")) {
-      // Use URL from text input if it's provided and different from initial, or if it's new
       finalPhotoUrl = values.photoUrl;
     } else if (!initialData && !values.photoUrl && !selectedFile) {
-      // New figure, no file, no URL input from text field
       finalPhotoUrl = `https://placehold.co/300x400.png?text=${encodeURIComponent(values.name.substring(0,2))}`;
     }
-    // If initialData exists, and selectedFile is null, and values.photoUrl is unchanged or undefined, finalPhotoUrl already holds initialData.photoUrl or became "" if initialData.photoUrl was ""
-
-
+    
     const figureId = initialData?.id || `figure-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
     
     const figureData: Figure = {
@@ -99,8 +117,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
       name: values.name,
       nameLower: values.name.toLowerCase(),
       photoUrl: finalPhotoUrl,
-      // Description is not in the form, preserve if editing, otherwise it will be undefined (or default in type)
-      description: initialData?.description || "", 
+      description: initialData?.description || "", // Preserve existing description or set empty for new
     };
 
     try {
@@ -130,7 +147,6 @@ export function FigureForm({ initialData }: FigureFormProps) {
   }
   
   const currentPhotoForPreview = previewUrlFromFile || watchedPhotoUrlInput || (selectedFile ? null : initialData?.photoUrl);
-
 
   return (
     <Form {...form}>
@@ -163,7 +179,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
                   disabled={isLoading || !!selectedFile} 
                   onChange={(e) => {
                     field.onChange(e);
-                    if (selectedFile) { // if user types in URL field, clear selected file
+                    if (selectedFile) {
                         setSelectedFile(null);
                         setPreviewUrlFromFile(null);
                     }
@@ -201,7 +217,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
                 <ImageIcon className="w-10 h-10 text-muted-foreground" data-ai-hint="placeholder icon" />
              </div>
           )}
-          <FormMessage />
+          <FormMessage /> {/* Added missing FormMessage for file input, though schema doesn't cover file input directly */}
         </FormItem>
         
         <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
