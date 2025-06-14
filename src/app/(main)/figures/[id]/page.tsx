@@ -1,6 +1,6 @@
+
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
-import { RatingSystem } from "@/components/figures/RatingSystem"; // Ahora solo para percepción
-// REMOVIDO: import { CommentSection } from "@/components/comments/CommentSection"; // Ya no usaremos la sección de comentarios de Firebase
+// REMOVIDO: import { RatingSystem } from "@/components/figures/RatingSystem"; 
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { Figure } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -8,7 +8,7 @@ import { Terminal } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import DisqusComments from '@/components/DisqusComments'; // <-- ¡Tu nueva importación para Disqus!
+import DisqusComments from '@/components/DisqusComments';
 
 interface FigurePageProps {
   params: { id: string };
@@ -34,8 +34,6 @@ export default async function FigurePage({ params }: FigurePageProps) {
   const allFigures = await getAllFiguresFromFirestore();
   const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 2);
 
-  // Define la URL base para el pageUrl de Disqus
-  // Usa tu variable de entorno NEXT_PUBLIC_BASE_URL en producción o localhost en desarrollo
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const pageUrl = `${baseUrl}/figures/${figure.id}`;
   const pageTitle = figure.name;
@@ -46,13 +44,10 @@ export default async function FigurePage({ params }: FigurePageProps) {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2 space-y-8">
-          {/* RatingSystem ahora es SOLO para percepción. Se guarda al hacer clic. */}
-          <RatingSystem figure={figure} /> 
+          {/* RatingSystem ha sido eliminado */}
           
-          {/* AHORA INTEGRAMOS DISQUS AQUÍ */}
-          {/* Asegúrate de que 'figure' exista antes de pasar sus props a DisqusComments */}
           {figure && (
-            <div className="mt-8"> {/* Añadimos un margen superior para separarlo del sistema de percepción */}
+            <div className="mt-8">
               <h3 className="text-xl font-headline mb-4 text-gray-900 dark:text-gray-50">Discusión y Comentarios</h3>
               <DisqusComments
                 pageUrl={pageUrl}
@@ -68,8 +63,7 @@ export default async function FigurePage({ params }: FigurePageProps) {
             <Terminal className="h-4 w-4" />
             <AlertTitle className="font-headline">Cómo Funciona</AlertTitle>
             <AlertDescription className="text-sm">
-              1. Comparte tu percepción general de {figure.name} (Fan, Simp, etc.) haciendo clic en uno de los botones de percepción. Tu elección se guarda automáticamente. Vuelve a hacer clic en el mismo botón para eliminar tu percepción.
-              2. Los comentarios y calificaciones por estrellas son gestionados por Disqus.
+              Las discusiones, comentarios y calificaciones de {figure.name} son gestionados a través de Disqus. ¡Únete a la conversación!
             </AlertDescription>
           </Alert>
 
@@ -88,4 +82,3 @@ export default async function FigurePage({ params }: FigurePageProps) {
     </div>
   );
 }
-

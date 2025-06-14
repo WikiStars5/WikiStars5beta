@@ -4,7 +4,7 @@
 import type { Figure } from "@/lib/types";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { StarRating } from "@/components/shared/StarRating";
+// REMOVIDO: import { StarRating } from "@/components/shared/StarRating";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { ImageOff } from "lucide-react";
 
@@ -24,7 +24,7 @@ export function ProfileHeader({ figure }: ProfileHeaderProps) {
               width={400}
               height={500}
               className="w-full h-auto md:h-full object-cover"
-              priority // Prioritize loading the main image
+              priority 
               onError={(e) => { e.currentTarget.src = 'https://placehold.co/400x500.png?text=Error'; e.currentTarget.srcset = '' }}
             />
           ) : (
@@ -43,21 +43,9 @@ export function ProfileHeader({ figure }: ProfileHeaderProps) {
               <CardDescription className="text-lg text-muted-foreground">{figure.description || "Sin descripción proporcionada."}</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Calificación Pública Promedio</h3>
-                  <div className="flex items-center gap-2">
-                    <StarRating rating={figure.averageRating} readOnly size={24} />
-                    <span className="text-2xl font-bold text-amber-500">{figure.averageRating.toFixed(1)}</span>
-                    <span className="text-sm text-muted-foreground">({figure.totalRatings} valoraciones)</span>
-                  </div>
-                </div>
-                {/* Placeholder for perception counts summary if needed here */}
-                {/* <PerceptionSummary counts={figure.perceptionCounts} /> */}
-              </div>
+              {/* Sección de Calificación Pública Promedio eliminada */}
             </CardContent>
           </div>
-          {/* Could add a footer here inside the content area if needed */}
         </div>
       </div>
     </Card>
