@@ -2,7 +2,7 @@
 "use client";
 
 import type { Figure } from "@/lib/types";
-import Image from "next/image";
+// import Image from "next/image"; // No longer using next/image directly here for figure.photoUrl
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { ImageOff } from "lucide-react";
@@ -34,13 +34,12 @@ export function ProfileHeader({ figure }: ProfileHeaderProps) {
         {/* Image Section: Centered and smaller */}
         <div className="relative w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto aspect-[3/4] bg-muted rounded-lg overflow-hidden shadow-md">
           {figure.photoUrl ? (
-            <Image
+            <img
               src={figure.photoUrl}
               alt={figure.name}
-              layout="fill"
-              objectFit="cover"
-              priority
+              className="absolute inset-0 w-full h-full object-cover"
               data-ai-hint="portrait person"
+              loading="lazy"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-muted" data-ai-hint="placeholder abstract">
