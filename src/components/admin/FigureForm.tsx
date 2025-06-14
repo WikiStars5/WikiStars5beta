@@ -20,7 +20,7 @@ import Image from "next/image";
 const figureFormSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
   photoUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
-  // Description is intentionally omitted from the form schema as per previous request
+  // Description is intentionally omitted from the form schema
 });
 
 type FigureFormValues = z.infer<typeof figureFormSchema>;
@@ -36,6 +36,10 @@ export function FigureForm({ initialData }: FigureFormProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrlFromFile, setPreviewUrlFromFile] = useState<string | null>(null);
 
+  // DEBUG: Log initialData as received by the component
+  console.log("FigureForm Render - initialData prop:", initialData);
+  console.log("FigureForm Render - initialData.photoUrl prop:", initialData?.photoUrl);
+
   const form = useForm<FigureFormValues>({
     resolver: zodResolver(figureFormSchema),
     defaultValues: {
@@ -44,31 +48,51 @@ export function FigureForm({ initialData }: FigureFormProps) {
     },
   });
 
-  // Effect to reset form when initialData changes
+  // DEBUG: Log defaultValues used by useForm
+  console.log("FigureForm Render - useForm defaultValues:", {
+    name: initialData?.name || "",
+    photoUrl: initialData?.photoUrl || "",
+  });
+
+  // Effect to reset form when initialData changes or on initial mount if initialData is present
   useEffect(() => {
-    console.log("FigureForm - initialData en useEffect:", initialData); // DEBUG as requested
-    console.log("FigureForm - initialData.photoUrl en useEffect:", initialData?.photoUrl); // DEBUG as requested
-    
+    console.log("FigureForm useEffect [initialData, form.reset] - Executed.");
+    console.log("FigureForm useEffect - initialData at start of effect:", initialData);
+    console.log("FigureForm useEffect - initialData.photoUrl at start of effect:", initialData?.photoUrl);
+
     if (initialData) {
-      form.reset({
+      const resetValues = {
         name: initialData.name || "",
         photoUrl: initialData.photoUrl || "",
-      });
-      // Reset local file state if initialData is provided (editing existing)
+      };
+      console.log("FigureForm useEffect - Calling form.reset with:", resetValues);
+      form.reset(resetValues);
       setSelectedFile(null);
       setPreviewUrlFromFile(null);
     } else {
-      // Reset for new form
-      form.reset({
+      const resetValues = {
         name: "",
         photoUrl: "",
-      });
+      };
+      console.log("FigureForm useEffect - Calling form.reset for new form with:", resetValues);
+      form.reset(resetValues);
       setSelectedFile(null);
       setPreviewUrlFromFile(null);
     }
+    // It's tricky to log the form state immediately after reset due to async nature,
+    // so we'll rely on watchedPhotoUrlInput log below.
   }, [initialData, form.reset]);
 
   const watchedPhotoUrlInput = form.watch('photoUrl');
+
+  // DEBUG: Log the watched photoUrl from react-hook-form state
+  console.log("FigureForm Render - form.watch('photoUrl'):", watchedPhotoUrlInput);
+
+  // Second useEffect: For observing changes in watchedPhotoUrlInput (form state) and depurating
+  useEffect(() => {
+    console.log("FigureForm useEffect [watchedPhotoUrlInput] - Form state photoUrl actual:", watchedPhotoUrlInput);
+  }, [watchedPhotoUrlInput]);
+
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -108,13 +132,10 @@ export function FigureForm({ initialData }: FigureFormProps) {
         return; 
       }
     } else if (values.photoUrl !== undefined && values.photoUrl !== (initialData?.photoUrl || "")) {
-      // Use the URL from the input field if it has changed or was explicitly set
       finalPhotoUrl = values.photoUrl;
     } else if (!initialData && !values.photoUrl && !selectedFile) {
-      // Creating new figure, no file, no URL -> use placeholder
       finalPhotoUrl = `https://placehold.co/300x400.png?text=${encodeURIComponent(values.name.substring(0,2))}`;
     }
-    // If editing and no new file and values.photoUrl is same as initialData.photoUrl, finalPhotoUrl remains initialData.photoUrl (already set)
     
     const figureId = initialData?.id || `figure-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
     
@@ -123,7 +144,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
       name: values.name,
       nameLower: values.name.toLowerCase(),
       photoUrl: finalPhotoUrl,
-      description: initialData?.description || "", // Preserve existing description or set empty for new
+      description: initialData?.description || "", 
     };
 
     try {
@@ -174,17 +195,17 @@ export function FigureForm({ initialData }: FigureFormProps) {
         <FormField
           control={form.control}
           name="photoUrl"
-          render={({ field }) => (
+          render={({ field }) => ( // field.value here is managed by react-hook-form
             <FormItem>
               <FormLabel>URL de la Imagen (Opcional)</FormLabel>
               <FormControl>
                 <Input 
                   type="url" 
                   placeholder="https://ejemplo.com/imagen.jpg" 
-                  {...field} 
+                  {...field} // This correctly binds react-hook-form's state to the input
                   disabled={isLoading || !!selectedFile} 
                   onChange={(e) => {
-                    field.onChange(e);
+                    field.onChange(e); // Update react-hook-form state
                     if (selectedFile) {
                         setSelectedFile(null);
                         setPreviewUrlFromFile(null);
@@ -223,7 +244,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
                 <ImageIcon className="w-10 h-10 text-muted-foreground" data-ai-hint="placeholder icon" />
              </div>
           )}
-          <FormMessage /> {/* Added missing FormMessage for file input, though schema doesn't cover file input directly */}
+          <FormMessage />
         </FormItem>
         
         <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
