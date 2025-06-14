@@ -1,7 +1,7 @@
 
-export type PerceptionKeys = "neutral" | "fan" | "simp" | "hater";
+export type PerceptionKeys = "neutral" | "fan" | "simp" | "hater"; // This might become unused if Disqus handles perception entirely.
 
-export interface PerceptionOption {
+export interface PerceptionOption { // This might become unused.
   key: PerceptionKeys;
   label: string;
   icon: React.ElementType;
@@ -12,36 +12,15 @@ export interface Figure {
   name: string;
   photoUrl: string;
   description?: string;
-  averageRating: number; // Promedio de estrellas de comentarios de nivel superior que incluyeron estrellas
-  totalRatings: number;   // Conteo de comentarios de nivel superior que INCLUYERON una calificación por estrellas
-  perceptionCounts: Record<PerceptionKeys, number>; // Conteo de cada tipo de percepción enviada independientemente
+  // averageRating, totalRatings, and perceptionCounts are removed
+  // as the app will no longer manage these. Disqus is expected to handle them
+  // or they are no longer displayed if not provided by Disqus.
 }
 
-// UserRating ahora SOLO para percepción. Las estrellas no se almacenan aquí.
-export interface UserRating {
-  id?: string; // Document ID: userId_figureId
-  userId: string;
-  figureId: string;
-  perception: PerceptionKeys; // Solo la percepción
-  timestamp: string; // Marca de tiempo de la última selección de percepción
-}
+// UserRating type is removed as the app no longer manages this in Firebase.
 
-export interface Comment {
-  id: string;
-  figureId: string;
-  figureName?: string;
-  userId: string;
-  userName: string;
-  userAvatarUrl?: string;
-  commentText: string;
-  parentCommentId: string | null;
-  likesCount: number;
-  dislikesCount: number;
-  timestamp: string;
-  status: 'pending' | 'approved' | 'rejected'; // Ahora siempre será 'approved' al crear
-  replies?: Comment[];
-  starRatingGivenByAuthor?: number; // Calificación opcional (1-5) dada CON este comentario
-}
+// Comment type is removed as the app no longer manages this in Firebase for creation/display.
+// DisqusComments component handles Disqus integration.
 
 export interface UserProfile {
   uid: string;

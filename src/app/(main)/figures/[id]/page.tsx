@@ -1,10 +1,13 @@
 
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
-import type { Figure } from "@/lib/types";
+// Figure type will be simplified, averageRating, totalRatings, perceptionCounts might be gone
+// if they are no longer sourced from Firebase by the app.
+// For now, assuming figure type still has these for potential display if Disqus populates them somehow.
+import type { Figure } from "@/lib/types"; 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Terminal, Smile } from "lucide-react";
+import { Terminal } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -37,23 +40,17 @@ export default async function FigurePage({ params }: FigurePageProps) {
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const pageUrl = `${baseUrl}/figures/${figure.id}`;
+  const commentsPageIdentifier = figure.id; // Identifier for general comments
   const pageTitle = figure.name;
-
-  // Identificadores únicos para cada instancia de Disqus
-  const commentsPageIdentifier = figure.id;
-  const emotionsPageIdentifier = `${figure.id}_emociones`;
-  const emotionsPageTitle = `${figure.name} - Reacciones Emocionales`;
-
 
   return (
     <div className="space-y-8 lg:space-y-12">
       <ProfileHeader figure={figure} />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-        {/* Contenido Principal (Pestañas) - ocupa 2/3 en pantallas grandes */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6"> {/* Ajustado a grid-cols-3 */}
+            <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="info" className="text-base py-2.5">Información Personal</TabsTrigger>
               <TabsTrigger value="comments" className="text-base py-2.5">Calificaciones y Comentarios</TabsTrigger>
               <TabsTrigger value="emotions" className="text-base py-2.5">Reacciones Emocionales</TabsTrigger>
@@ -68,55 +65,36 @@ export default async function FigurePage({ params }: FigurePageProps) {
                   <p className="text-foreground/80 whitespace-pre-line">
                     {figure.description || "No hay descripción detallada disponible para esta figura."}
                   </p>
-                  {/* Aquí podrías añadir más detalles de la figura si existieran en el modelo de datos
-                      Ejemplo:
-                      {figure.occupation && <p className="mt-4"><strong>Ocupación:</strong> {figure.occupation}</p>}
-                      {figure.nationality && <p className="mt-2"><strong>Nacionalidad:</strong> {figure.nationality}</p>}
-                  */}
+                  {/* Future fields for figure details can be added here */}
+                  {/* e.g., figure.occupation, figure.nationality */}
                 </CardContent>
               </Card>
             </TabsContent>
             
             <TabsContent value="comments">
-              {figure && ( 
-                <DisqusComments
-                  pageUrl={pageUrl}
-                  pageIdentifier={commentsPageIdentifier}
-                  pageTitle={pageTitle}
-                />
-              )}
+              {/* This is the MAIN Disqus widget for general comments and ratings */}
+              <DisqusComments
+                pageUrl={pageUrl}
+                pageIdentifier={commentsPageIdentifier}
+                pageTitle={pageTitle}
+              />
             </TabsContent>
 
             <TabsContent value="emotions">
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-2xl font-bold font-headline text-primary flex items-center">
-                    <Smile className="mr-2 h-6 w-6" /> Reacciones Emocionales
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2 text-sm">
-                  <p className="text-foreground/80 mb-4">
-                    Expresa tus emociones sobre {figure.name} utilizando el sistema de reacciones de Disqus a continuación. 
-                    Puedes configurar qué emojis de reacción están disponibles desde tu panel de administración de Disqus.
-                  </p>
-                  <p className="text-xs text-muted-foreground mb-6">
-                    Nota: Para usar solo las reacciones y no el campo de comentarios aquí, considera personalizar la configuración de tu foro en Disqus para este identificador de página específico o usar CSS personalizado si Disqus lo permite.
-                  </p>
-                  {figure && (
-                    <DisqusComments
-                      pageUrl={pageUrl + "#emotions"} // Se puede añadir un fragmento para URL única si es necesario
-                      pageIdentifier={emotionsPageIdentifier}
-                      pageTitle={emotionsPageTitle}
-                    />
-                  )}
-                </CardContent>
-              </Card>
+              {/* Placeholder for manual Disqus embed code for EMOTIONS */}
+              <div id="disqus_emociones_thread" className="mt-4 p-4 border rounded-lg bg-card text-card-foreground shadow">
+                <h3 className="text-xl font-headline mb-4">Zona para Código de Reacciones Emocionales</h3>
+                <p className="text-sm text-muted-foreground">
+                    Por favor, pega aquí el código de incrustación de Disqus para tus reacciones emocionales.
+                    Asegúrate de que Disqus.page.identifier sea único para este hilo (ej., {`${figure.id}_emociones`}).
+                </p>
+                {/* User will paste Disqus code for emotions here */}
+              </div>
             </TabsContent>
 
           </Tabs>
         </div>
         
-        {/* Barra Lateral (Cómo Funciona y También te podría interesar) - ocupa 1/3 en pantallas grandes */}
         <aside className="lg:col-span-1 space-y-6">
           <Alert>
             <Terminal className="h-4 w-4" />
