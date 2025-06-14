@@ -1,4 +1,5 @@
-import type { Figure, PerceptionOption } from './types'; // Removed Comment, UserRating as they are now in Firestore
+
+import type { Figure, PerceptionOption } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit } from "firebase/firestore";
@@ -10,23 +11,15 @@ export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'hater', label: 'Hater', icon: ThumbsDown },
 ];
 
-// USER_RATINGS_DATA and COMMENTS_DATA are now fully managed by Firestore actions.
-// They are removed from here.
-
 // --- Firestore Figure Operations ---
 
 export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    // Ensure perceptionCounts is initialized if not provided, or handle as needed
-    const figureDataWithDefaults = {
-      ...figure,
-      averageRating: figure.averageRating || 0,
-      totalRatings: figure.totalRatings || 0,
-      perceptionCounts: figure.perceptionCounts || { neutral: 0, fan: 0, simp: 0, hater: 0 },
-    };
-    await setDoc(figureRef, figureDataWithDefaults);
-    console.log("Figure added to Firestore:", figureDataWithDefaults);
+    // Ensure the figure object passed already conforms to the Figure type, including nameLower.
+    // averageRating, totalRatings, perceptionCounts are no longer part of Figure type.
+    await setDoc(figureRef, figure);
+    console.log("Figure added to Firestore:", figure);
   } catch (error) {
     console.error("Error adding figure to Firestore: ", error);
     throw error;
@@ -36,6 +29,8 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 export const updateFigureInFirestore = async (figure: Figure): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
+    // The figure object should conform to Figure type, including nameLower.
+    // Fields not in Figure type (like averageRating) won't be updated if not in the figure object.
     await updateDoc(figureRef, { ...figure }); 
     console.log("Figure updated in Firestore:", figure);
   } catch (error) {
@@ -49,8 +44,6 @@ export const deleteFigureFromFirestore = async (figureId: string): Promise<void>
     const figureRef = doc(db, "figures", figureId);
     await deleteDoc(figureRef);
     console.log("Figure deleted from Firestore:", figureId);
-    // Note: Deleting a figure might also require deleting related ratings and comments.
-    // This is not handled here for simplicity but important for production.
   } catch (error) {
     console.error("Error deleting figure from Firestore: ", error);
     throw error;
@@ -76,7 +69,7 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
 export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef, orderBy("name"));
+    const q = query(figuresCollectionRef, orderBy("name")); // Order by original name for display
     const querySnapshot = await getDocs(q);
     const figures: Figure[] = [];
     querySnapshot.forEach((docSnap) => {
@@ -85,22 +78,25 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
     return figures;
   } catch (error) {
     console.error("Error fetching all figures from Firestore: ", error);
-    return []; // Return empty on error
+    return []; 
   }
 };
 
 export const getFeaturedFiguresFromFirestore = async (count: number = 3): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef, orderBy("totalRatings", "desc"), limit(count));
+    // totalRatings has been removed from Figure type. Sorting by name as a fallback.
+    // Consider adding a specific 'isFeatured' field or similar for better featured logic.
+    const q = query(figuresCollectionRef, orderBy("name"), limit(count));
     const querySnapshot = await getDocs(q);
     const figures: Figure[] = [];
     querySnapshot.forEach((docSnap) => {
       figures.push({ id: docSnap.id, ...docSnap.data() } as Figure);
     });
     
+    // If not enough "featured" (name-sorted) figures, supplement with more from all figures
     if (figures.length < count) {
-      const allFigures = await getAllFiguresFromFirestore();
+      const allFigures = await getAllFiguresFromFirestore(); // This already sorts by name
       const additionalFigures = allFigures.filter(af => !figures.find(f => f.id === af.id));
       figures.push(...additionalFigures.slice(0, count - figures.length));
     }
@@ -110,8 +106,3 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 3): Promis
     return [];
   }
 }
-
-// Functions for Comments and UserRatings are now in their respective action files
-// e.g., src/lib/actions/commentActions.ts and src/lib/actions/ratingActions.ts
-// getUserRatingForFigure will be replaced by getUserRating from ratingActions.ts
-// getCommentsForFigure will be replaced by getFigureCommentsWithRatings from commentActions.ts

@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Loader2, UploadCloud, Image as ImageIcon } from "lucide-react";
-import { addFigureToFirestore, updateFigureInFirestore } from "@/lib/placeholder-data"; // Updated data ops
+import { addFigureToFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { storage } from "@/lib/firebase"; 
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
@@ -87,16 +87,24 @@ export function FigureForm({ initialData }: FigureFormProps) {
     const figureData: Figure = {
       id: figureId,
       name: values.name,
+      nameLower: values.name.toLowerCase(), // Add lowercase name
       photoUrl: photoUrlToSave,
       description: values.description || "",
-      averageRating: initialData?.averageRating || 0,
-      totalRatings: initialData?.totalRatings || 0,
-      perceptionCounts: initialData?.perceptionCounts || { neutral: 0, fan: 0, simp: 0, hater: 0 },
+      // averageRating, totalRatings, and perceptionCounts are removed to align with Figure type
     };
 
     try {
       if (initialData) {
-        await updateFigureInFirestore(figureData); 
+        // Ensure nameLower is also updated for existing figures
+        const dataToUpdate: Partial<Figure> = { 
+            ...values, 
+            nameLower: values.name.toLowerCase(), 
+            photoUrl: photoUrlToSave 
+        };
+        // Remove fields that are not part of Figure type if they exist in values from form.
+        // Or ensure figureData passed to updateFigureInFirestore is strictly of type Figure.
+        // The current `figureData` object created above is already correct for the Figure type.
+        await updateFigureInFirestore({ ...initialData, ...figureData }); 
       } else {
         await addFigureToFirestore(figureData); 
       }

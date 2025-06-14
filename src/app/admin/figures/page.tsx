@@ -36,7 +36,7 @@ export default async function AdminFiguresPage() {
                   <TableHead className="w-[80px]">Imagen</TableHead>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Descripción</TableHead>
-                  <TableHead className="text-center w-[120px]">Calif. Prom.</TableHead>
+                  {/* Removed Average Rating column as it's no longer part of Figure data */}
                   <TableHead className="text-right w-[100px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -53,9 +53,7 @@ export default async function AdminFiguresPage() {
                     </TableCell>
                     <TableCell className="font-medium">{figure.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground truncate max-w-xs">{figure.description}</TableCell>
-                    <TableCell className="text-center">
-                      {figure.averageRating.toFixed(1)} ({figure.totalRatings})
-                    </TableCell>
+                    {/* Removed TableCell for Average Rating */}
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" asChild className="mr-1">
                         <Link href={`/admin/figures/${figure.id}/edit`}>

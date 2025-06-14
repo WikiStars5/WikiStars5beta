@@ -10,6 +10,7 @@ export interface PerceptionOption { // This might become unused.
 export interface Figure {
   id: string;
   name: string;
+  nameLower: string; // For case-insensitive search
   photoUrl: string;
   description?: string;
   // averageRating, totalRatings, and perceptionCounts are removed
