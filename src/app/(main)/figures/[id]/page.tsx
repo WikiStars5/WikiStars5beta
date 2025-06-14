@@ -1,9 +1,5 @@
-
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
-// Figure type will be simplified, averageRating, totalRatings, perceptionCounts might be gone
-// if they are no longer sourced from Firebase by the app.
-// For now, assuming figure type still has these for potential display if Disqus populates them somehow.
 import type { Figure } from "@/lib/types"; 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,8 +7,10 @@ import { Terminal } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import DisqusComments from '@/components/DisqusComments';
+import DisqusComments from '@/components/DisqusComments'; // Componente para comentarios generales
+import DisqusEmotions from '@/components/DisqusEmotions'; // <-- ¡NUEVO COMPONENTE para emociones!
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React from 'react'; // Necesario para componentes React
 
 interface FigurePageProps {
   params: { id: string };
@@ -40,8 +38,12 @@ export default async function FigurePage({ params }: FigurePageProps) {
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const pageUrl = `${baseUrl}/figures/${figure.id}`;
-  const commentsPageIdentifier = figure.id; // Identifier for general comments
+  const commentsPageIdentifier = figure.id; // Identificador para el hilo de comentarios generales
   const pageTitle = figure.name;
+
+  // Variables para el hilo de Disqus de emociones
+  const emotionalPageIdentifier = `${figure.id}_emociones`; // Identificador ÚNICO para el hilo de emociones
+  const emotionalPageUrl = `${pageUrl}/emociones`; // URL ÚNICA para el hilo de emociones (Disqus la usa para identificar)
 
   return (
     <div className="space-y-8 lg:space-y-12">
@@ -65,14 +67,14 @@ export default async function FigurePage({ params }: FigurePageProps) {
                   <p className="text-foreground/80 whitespace-pre-line">
                     {figure.description || "No hay descripción detallada disponible para esta figura."}
                   </p>
-                  {/* Future fields for figure details can be added here */}
+                  {/* Futuros campos para detalles de la figura pueden ser añadidos aquí */}
                   {/* e.g., figure.occupation, figure.nationality */}
                 </CardContent>
               </Card>
             </TabsContent>
             
             <TabsContent value="comments">
-              {/* This is the MAIN Disqus widget for general comments and ratings */}
+              {/* Este es el widget PRINCIPAL de Disqus para comentarios generales y calificaciones */}
               <DisqusComments
                 pageUrl={pageUrl}
                 pageIdentifier={commentsPageIdentifier}
@@ -81,15 +83,14 @@ export default async function FigurePage({ params }: FigurePageProps) {
             </TabsContent>
 
             <TabsContent value="emotions">
-              {/* Placeholder for manual Disqus embed code for EMOTIONS */}
-              <div id="disqus_emociones_thread" className="mt-4 p-4 border rounded-lg bg-card text-card-foreground shadow">
-                <h3 className="text-xl font-headline mb-4">Zona para Código de Reacciones Emocionales</h3>
-                <p className="text-sm text-muted-foreground">
-                    Por favor, pega aquí el código de incrustación de Disqus para tus reacciones emocionales.
-                    Asegúrate de que Disqus.page.identifier sea único para este hilo (ej., {`${figure.id}_emociones`}).
-                </p>
-                {/* User will paste Disqus code for emotions here */}
-              </div>
+              {/* Renderizamos el NUEVO componente DisqusEmotions aquí */}
+              {figure && (
+                <DisqusEmotions
+                  pageUrl={emotionalPageUrl}
+                  pageIdentifier={emotionalPageIdentifier}
+                  pageTitle={`${pageTitle} - Emociones`}
+                />
+              )}
             </TabsContent>
 
           </Tabs>
