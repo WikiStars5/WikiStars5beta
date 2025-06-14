@@ -3,7 +3,7 @@ import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import type { Figure } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Terminal } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
