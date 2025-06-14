@@ -2,7 +2,7 @@
 import type { Figure, PerceptionOption } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, DocumentData } from "firebase/firestore";
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -11,13 +11,21 @@ export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'hater', label: 'Hater', icon: ThumbsDown },
 ];
 
-// --- Firestore Figure Operations ---
+// Helper to convert Firestore doc data to Figure, ensuring plain object
+const mapDocToFigure = (docSnap: DocumentData): Figure => {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    name: data.name || "",
+    nameLower: data.nameLower || (data.name ? data.name.toLowerCase() : ""),
+    photoUrl: data.photoUrl || "",
+    description: data.description || "",
+  };
+};
 
 export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    // Ensure the figure object passed already conforms to the Figure type, including nameLower.
-    // averageRating, totalRatings, perceptionCounts are no longer part of Figure type.
     await setDoc(figureRef, figure);
     console.log("Figure added to Firestore:", figure);
   } catch (error) {
@@ -29,9 +37,7 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 export const updateFigureInFirestore = async (figure: Figure): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    // The figure object should conform to Figure type, including nameLower.
-    // Fields not in Figure type (like averageRating) won't be updated if not in the figure object.
-    await updateDoc(figureRef, { ...figure }); 
+    await updateDoc(figureRef, { ...figure });
     console.log("Figure updated in Firestore:", figure);
   } catch (error) {
     console.error("Error updating figure in Firestore: ", error);
@@ -55,7 +61,7 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
     const figureRef = doc(db, "figures", id);
     const figureSnap = await getDoc(figureRef);
     if (figureSnap.exists()) {
-      return { id: figureSnap.id, ...figureSnap.data() } as Figure;
+      return mapDocToFigure(figureSnap);
     } else {
       console.log("No such figure in Firestore with ID:", id);
       return undefined;
@@ -69,38 +75,49 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
 export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef, orderBy("name")); // Order by original name for display
+    const q = query(figuresCollectionRef, orderBy("name"));
     const querySnapshot = await getDocs(q);
     const figures: Figure[] = [];
     querySnapshot.forEach((docSnap) => {
-      figures.push({ id: docSnap.id, ...docSnap.data() } as Figure);
+      figures.push(mapDocToFigure(docSnap));
     });
     return figures;
   } catch (error) {
     console.error("Error fetching all figures from Firestore: ", error);
-    return []; 
+    return [];
   }
 };
 
-export const getFeaturedFiguresFromFirestore = async (count: number = 3): Promise<Figure[]> => {
+export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    // totalRatings has been removed from Figure type. Sorting by name as a fallback.
-    // Consider adding a specific 'isFeatured' field or similar for better featured logic.
     const q = query(figuresCollectionRef, orderBy("name"), limit(count));
     const querySnapshot = await getDocs(q);
-    const figures: Figure[] = [];
+    let figures: Figure[] = [];
     querySnapshot.forEach((docSnap) => {
-      figures.push({ id: docSnap.id, ...docSnap.data() } as Figure);
+      figures.push(mapDocToFigure(docSnap));
     });
-    
-    // If not enough "featured" (name-sorted) figures, supplement with more from all figures
+
+    // If not enough figures from the initial query, try to get more.
+    // This part might be redundant if the initial query is expected to fetch enough
+    // or if the logic for "featured" is just the first 'count' by name.
+    // Kept original logic for supplementing if count is not met.
     if (figures.length < count) {
-      const allFigures = await getAllFiguresFromFirestore(); // This already sorts by name
+      const allFigures = await getAllFiguresFromFirestore();
       const additionalFigures = allFigures.filter(af => !figures.find(f => f.id === af.id));
       figures.push(...additionalFigures.slice(0, count - figures.length));
     }
-    return figures;
+    // Ensure uniqueness in case the supplemental logic adds duplicates (though unlikely with current logic)
+    const uniqueFigureIds = new Set<string>();
+    figures = figures.filter(figure => {
+        if (uniqueFigureIds.has(figure.id)) {
+            return false;
+        }
+        uniqueFigureIds.add(figure.id);
+        return true;
+    });
+
+    return figures.slice(0, count);
   } catch (error) {
     console.error("Error fetching featured figures from Firestore: ", error);
     return [];
