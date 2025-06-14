@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import type { Figure } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -87,24 +86,20 @@ export function FigureForm({ initialData }: FigureFormProps) {
     const figureData: Figure = {
       id: figureId,
       name: values.name,
-      nameLower: values.name.toLowerCase(), // Add lowercase name
+      nameLower: values.name.toLowerCase(),
       photoUrl: photoUrlToSave,
       description: values.description || "",
-      // averageRating, totalRatings, and perceptionCounts are removed to align with Figure type
     };
 
     try {
       if (initialData) {
-        // Ensure nameLower is also updated for existing figures
         const dataToUpdate: Partial<Figure> = { 
-            ...values, 
+            name: values.name,
             nameLower: values.name.toLowerCase(), 
-            photoUrl: photoUrlToSave 
+            photoUrl: photoUrlToSave,
+            description: values.description || initialData.description // Preserve existing description if form field is absent
         };
-        // Remove fields that are not part of Figure type if they exist in values from form.
-        // Or ensure figureData passed to updateFigureInFirestore is strictly of type Figure.
-        // The current `figureData` object created above is already correct for the Figure type.
-        await updateFigureInFirestore({ ...initialData, ...figureData }); 
+        await updateFigureInFirestore({ ...initialData, ...dataToUpdate } as Figure); 
       } else {
         await addFigureToFirestore(figureData); 
       }
@@ -172,6 +167,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
           <FormMessage />
         </FormItem>
 
+        {/* El campo de descripción se ha eliminado de la UI
         <FormField
           control={form.control}
           name="description"
@@ -185,6 +181,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
             </FormItem>
           )}
         />
+        */}
         
         <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}

@@ -39,7 +39,9 @@ export function FigureListItem({ figure }: FigureListItemProps) {
         </CardHeader>
         <CardContent className="p-4 flex-grow">
           <CardTitle className="text-xl font-headline mb-1 group-hover:text-primary">{figure.name}</CardTitle>
-          <p className="text-sm text-muted-foreground line-clamp-2">{figure.description || "Sin descripción disponible."}</p>
+          {figure.description && (
+            <p className="text-sm text-muted-foreground line-clamp-2">{figure.description}</p>
+          )}
         </CardContent>
         <CardFooter className="p-4 flex justify-end items-center border-t">
           <Badge variant="secondary">Ver Perfil</Badge>
