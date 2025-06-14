@@ -3,12 +3,12 @@ import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import type { Figure } from "@/lib/types"; 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"; // Asegurarse de que Card ya no se usa aqui si se elimina completamente
 import { Terminal } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import DisqusComments from '@/components/DisqusComments'; // Componente para comentarios generales
+import DisqusComments from '@/components/DisqusComments'; 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import React from 'react';
 
@@ -53,17 +53,10 @@ export default async function FigurePage({ params }: FigurePageProps) {
               <TabsTrigger value="comments" className="text-base py-2.5">Calificaciones y Comentarios</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="info">
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-2xl font-bold font-headline text-primary">Información Detallada</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2 text-sm">
-                  <p className="text-foreground/80 whitespace-pre-line">
-                    {figure.description || "No hay descripción detallada disponible para esta figura."}
-                  </p>
-                </CardContent>
-              </Card>
+            <TabsContent value="info" className="pt-2 text-sm">
+              <p className="text-foreground/80 whitespace-pre-line p-4 bg-card rounded-lg shadow-sm">
+                {figure.description || "No hay descripción detallada disponible para esta figura."}
+              </p>
             </TabsContent>
             
             <TabsContent value="comments">
@@ -83,7 +76,7 @@ export default async function FigurePage({ params }: FigurePageProps) {
             <Terminal className="h-4 w-4" />
             <AlertTitle className="font-headline">Cómo Funciona</AlertTitle>
             <AlertDescription className="text-sm">
-              Las discusiones, comentarios y calificaciones de {figure.name} son gestionados a través de Disqus. ¡Únete a la conversación!
+              Las discusiones y comentarios sobre {figure.name} son gestionados a través de Disqus. ¡Únete a la conversación!
             </AlertDescription>
           </Alert>
 
