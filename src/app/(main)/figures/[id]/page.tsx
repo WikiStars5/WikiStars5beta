@@ -1,9 +1,7 @@
 
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
-import type { Figure } from "@/lib/types"; 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"; // Asegurarse de que Card ya no se usa aqui si se elimina completamente
 import { Terminal } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
@@ -47,17 +45,10 @@ export default async function FigurePage({ params }: FigurePageProps) {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2">
-          <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="info" className="text-base py-2.5">Información Personal</TabsTrigger>
+          <Tabs defaultValue="comments" className="w-full">
+            <TabsList className="grid w-full grid-cols-1 mb-6"> {/* Updated to grid-cols-1 */}
               <TabsTrigger value="comments" className="text-base py-2.5">Calificaciones y Comentarios</TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="info" className="pt-2 text-sm">
-              <p className="text-foreground/80 whitespace-pre-line p-4 bg-card rounded-lg shadow-sm">
-                {figure.description || "No hay descripción detallada disponible para esta figura."}
-              </p>
-            </TabsContent>
             
             <TabsContent value="comments">
               {figure && (
