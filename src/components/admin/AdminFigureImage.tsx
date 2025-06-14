@@ -21,11 +21,6 @@ export function AdminFigureImage({ figure, width = 50, height = 70 }: AdminFigur
           width={width}
           height={height}
           className="rounded object-cover aspect-[3/4]"
-          onError={(e) => { 
-            const target = e.currentTarget as HTMLImageElement;
-            target.src = `https://placehold.co/${width}x${height}.png?text=Error`;
-            target.srcset = ''; 
-          }}
         />
       ) : (
         <div 

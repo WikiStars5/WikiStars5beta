@@ -24,11 +24,6 @@ export function FigureListItem({ figure }: FigureListItemProps) {
               width={300}
               height={400}
               className="w-full aspect-[3/4] object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
-              onError={(e) => { 
-                const target = e.currentTarget as HTMLImageElement;
-                target.src = 'https://placehold.co/300x400.png?text=Error'; 
-                target.srcset = '';
-              }}
               data-ai-hint="portrait person"
             />
           ) : (

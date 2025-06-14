@@ -40,14 +40,6 @@ export function ProfileHeader({ figure }: ProfileHeaderProps) {
               layout="fill"
               objectFit="cover"
               priority
-              onError={(e) => {
-                const target = e.currentTarget as HTMLImageElement;
-                // Attempt to replace with placeholder, though with layout="fill" direct src manipulation can be tricky.
-                // A state-based approach for placeholder might be more robust in complex scenarios.
-                target.style.display = 'none'; // Hide broken image
-                // Ideally, replace with a placeholder component or set a placeholder src if Image component re-renders on prop change.
-                // For now, if the image is critical and error handling complex, consider adding a sibling placeholder div controlled by state.
-              }}
               data-ai-hint="portrait person"
             />
           ) : (
