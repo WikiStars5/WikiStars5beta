@@ -46,6 +46,9 @@ export function FigureForm({ initialData }: FigureFormProps) {
 
   // Effect to reset form when initialData changes
   useEffect(() => {
+    console.log("FigureForm - initialData en useEffect:", initialData); // DEBUG as requested
+    console.log("FigureForm - initialData.photoUrl en useEffect:", initialData?.photoUrl); // DEBUG as requested
+    
     if (initialData) {
       form.reset({
         name: initialData.name || "",
@@ -105,10 +108,13 @@ export function FigureForm({ initialData }: FigureFormProps) {
         return; 
       }
     } else if (values.photoUrl !== undefined && values.photoUrl !== (initialData?.photoUrl || "")) {
+      // Use the URL from the input field if it has changed or was explicitly set
       finalPhotoUrl = values.photoUrl;
     } else if (!initialData && !values.photoUrl && !selectedFile) {
+      // Creating new figure, no file, no URL -> use placeholder
       finalPhotoUrl = `https://placehold.co/300x400.png?text=${encodeURIComponent(values.name.substring(0,2))}`;
     }
+    // If editing and no new file and values.photoUrl is same as initialData.photoUrl, finalPhotoUrl remains initialData.photoUrl (already set)
     
     const figureId = initialData?.id || `figure-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
     
@@ -187,7 +193,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
                 />
               </FormControl>
               <FormDescription>
-                Pega la URL de una imagen externa. Si también seleccionas un archivo, se priorizará el archivo subido.
+                Pega la URL de una imagen externa. Si también seleccionas un archivo, se priorizará el archivo subido. Si se deja vacío en la creación, se usará una imagen por defecto.
               </FormDescription>
               <FormMessage />
             </FormItem>
