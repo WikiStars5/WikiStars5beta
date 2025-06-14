@@ -5,7 +5,7 @@ import type { Figure } from "@/lib/types";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, ImageOff } from "lucide-react";
+import { ImageOff } from "lucide-react"; // Star icon import removed
 import { Badge } from "@/components/ui/badge";
 
 interface FigureListItemProps {
@@ -36,12 +36,8 @@ export function FigureListItem({ figure }: FigureListItemProps) {
           <CardTitle className="text-xl font-headline mb-1 group-hover:text-primary">{figure.name}</CardTitle>
           <p className="text-sm text-muted-foreground line-clamp-2">{figure.description || "Sin descripción disponible."}</p>
         </CardContent>
-        <CardFooter className="p-4 flex justify-between items-center border-t">
-          <div className="flex items-center gap-1 text-sm text-amber-500">
-            <Star className="w-4 h-4 fill-amber-500" />
-            <span>{figure.averageRating.toFixed(1)}</span>
-            <span className="text-xs text-muted-foreground ml-1">({figure.totalRatings})</span>
-          </div>
+        <CardFooter className="p-4 flex justify-end items-center border-t">
+          {/* Star rating display removed from here */}
           <Badge variant="secondary">Ver Perfil</Badge>
         </CardFooter>
       </Card>
