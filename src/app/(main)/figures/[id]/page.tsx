@@ -9,7 +9,6 @@ import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import DisqusComments from '@/components/DisqusComments'; // Componente para comentarios generales
-import DisqusEmotions from '@/components/DisqusEmotions'; // Componente para reacciones emocionales
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import React from 'react';
 
@@ -39,12 +38,8 @@ export default async function FigurePage({ params }: FigurePageProps) {
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const pageUrl = `${baseUrl}/figures/${figure.id}`;
-  const commentsPageIdentifier = figure.id; // Identificador para el hilo de comentarios generales
+  const commentsPageIdentifier = figure.id; 
   const pageTitle = figure.name;
-
-  // Variables para el hilo de Disqus de emociones
-  const emotionalPageIdentifier = `${figure.id}_emociones`; // Identificador ÚNICO para el hilo de emociones
-  const emotionalPageUrl = `${pageUrl}/emociones`; // URL ÚNICA para el hilo de emociones
 
   return (
     <div className="space-y-8 lg:space-y-12">
@@ -53,10 +48,9 @@ export default async function FigurePage({ params }: FigurePageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2">
           <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="info" className="text-base py-2.5">Información Personal</TabsTrigger>
               <TabsTrigger value="comments" className="text-base py-2.5">Calificaciones y Comentarios</TabsTrigger>
-              <TabsTrigger value="emotions" className="text-base py-2.5">Reacciones Emocionales</TabsTrigger>
             </TabsList>
             
             <TabsContent value="info">
@@ -81,17 +75,6 @@ export default async function FigurePage({ params }: FigurePageProps) {
                 />
               )}
             </TabsContent>
-
-            <TabsContent value="emotions">
-              {figure && (
-                <DisqusEmotions
-                  pageUrl={emotionalPageUrl}
-                  pageIdentifier={emotionalPageIdentifier}
-                  pageTitle={`${pageTitle} - Reacciones Emocionales`}
-                />
-              )}
-            </TabsContent>
-
           </Tabs>
         </div>
         
@@ -100,7 +83,7 @@ export default async function FigurePage({ params }: FigurePageProps) {
             <Terminal className="h-4 w-4" />
             <AlertTitle className="font-headline">Cómo Funciona</AlertTitle>
             <AlertDescription className="text-sm">
-              Las discusiones, comentarios, calificaciones y reacciones de {figure.name} son gestionados a través de Disqus. ¡Únete a la conversación!
+              Las discusiones, comentarios y calificaciones de {figure.name} son gestionados a través de Disqus. ¡Únete a la conversación!
             </AlertDescription>
           </Alert>
 
