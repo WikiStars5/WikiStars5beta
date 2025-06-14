@@ -1,7 +1,7 @@
 
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
-import type { Figure } from "@/lib/types"; // Asegúrate que Figure type no tenga campos que ya no usas
+import type { Figure } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Terminal } from "lucide-react";
@@ -9,6 +9,7 @@ import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import DisqusComments from '@/components/DisqusComments';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface FigurePageProps {
   params: { id: string };
@@ -32,7 +33,7 @@ export default async function FigurePage({ params }: FigurePageProps) {
   }
 
   const allFigures = await getAllFiguresFromFirestore();
-  const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 3); // Mostrar hasta 3 relacionados
+  const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 3);
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const pageUrl = `${baseUrl}/figures/${figure.id}`;
@@ -43,40 +44,42 @@ export default async function FigurePage({ params }: FigurePageProps) {
       <ProfileHeader figure={figure} />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-        {/* Contenido Principal (Información Personal y Disqus) - ocupa 2/3 en pantallas grandes */}
+        {/* Contenido Principal (Pestañas) - ocupa 2/3 en pantallas grandes */}
         <div className="lg:col-span-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <Tabs defaultValue="info" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="info" className="text-base py-2.5">Información Personal</TabsTrigger>
+              <TabsTrigger value="comments" className="text-base py-2.5">Calificaciones y Comentarios</TabsTrigger>
+            </TabsList>
             
-            {/* Columna Izquierda: Información Personal */}
-            <section className="space-y-4">
-              <h2 className="text-2xl font-bold font-headline text-primary">Información Personal</h2>
+            <TabsContent value="info">
               <Card className="shadow-sm">
-                <CardContent className="pt-6 text-sm">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold font-headline text-primary">Información Detallada</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-2 text-sm">
                   <p className="text-foreground/80 whitespace-pre-line">
                     {figure.description || "No hay descripción detallada disponible para esta figura."}
                   </p>
                   {/* Aquí podrías añadir más detalles de la figura si existieran en el modelo de datos
                       Ejemplo:
-                      {figure.occupation && <p className="mt-2"><strong>Ocupación:</strong> {figure.occupation}</p>}
+                      {figure.occupation && <p className="mt-4"><strong>Ocupación:</strong> {figure.occupation}</p>}
                       {figure.nationality && <p className="mt-2"><strong>Nacionalidad:</strong> {figure.nationality}</p>}
                   */}
                 </CardContent>
               </Card>
-            </section>
-
-            {/* Columna Derecha: Sistema de Calificación y Comentarios (Disqus) */}
-            <section className="space-y-4">
-              <h2 className="text-2xl font-bold font-headline text-primary">Calificaciones y Comentarios</h2>
-              {figure && ( // Condición para asegurar que figure existe antes de renderizar Disqus
+            </TabsContent>
+            
+            <TabsContent value="comments">
+              {figure && ( 
                 <DisqusComments
                   pageUrl={pageUrl}
                   pageIdentifier={figure.id}
                   pageTitle={pageTitle}
                 />
               )}
-            </section>
-
-          </div>
+            </TabsContent>
+          </Tabs>
         </div>
         
         {/* Barra Lateral (Cómo Funciona y También te podría interesar) - ocupa 1/3 en pantallas grandes */}
