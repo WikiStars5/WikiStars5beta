@@ -20,7 +20,7 @@ import Image from "next/image";
 const figureFormSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
   photoUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
-  // Description is intentionally omitted from the form schema
+  // Description is intentionally omitted from the form schema as per previous request
 });
 
 type FigureFormValues = z.infer<typeof figureFormSchema>;
@@ -67,9 +67,10 @@ export function FigureForm({ initialData }: FigureFormProps) {
       };
       console.log("FigureForm useEffect - Calling form.reset with:", resetValues);
       form.reset(resetValues);
-      setSelectedFile(null);
-      setPreviewUrlFromFile(null);
+      setSelectedFile(null); // Clear any selected file when editing existing data
+      setPreviewUrlFromFile(null); // Clear file preview
     } else {
+      // For a new form
       const resetValues = {
         name: "",
         photoUrl: "",
@@ -79,16 +80,14 @@ export function FigureForm({ initialData }: FigureFormProps) {
       setSelectedFile(null);
       setPreviewUrlFromFile(null);
     }
-    // It's tricky to log the form state immediately after reset due to async nature,
-    // so we'll rely on watchedPhotoUrlInput log below.
-  }, [initialData, form.reset]);
+  }, [initialData, form.reset]); // form.reset is stable, initialData is the key dependency
 
   const watchedPhotoUrlInput = form.watch('photoUrl');
 
   // DEBUG: Log the watched photoUrl from react-hook-form state
   console.log("FigureForm Render - form.watch('photoUrl'):", watchedPhotoUrlInput);
 
-  // Second useEffect: For observing changes in watchedPhotoUrlInput (form state) and depurating
+  // Second useEffect: For observing changes in watchedPhotoUrlInput (form state) and debugging
   useEffect(() => {
     console.log("FigureForm useEffect [watchedPhotoUrlInput] - Form state photoUrl actual:", watchedPhotoUrlInput);
   }, [watchedPhotoUrlInput]);
@@ -132,10 +131,13 @@ export function FigureForm({ initialData }: FigureFormProps) {
         return; 
       }
     } else if (values.photoUrl !== undefined && values.photoUrl !== (initialData?.photoUrl || "")) {
+      // Use the URL from the input if it's provided and different from the initial one, or if it's a new entry
       finalPhotoUrl = values.photoUrl;
-    } else if (!initialData && !values.photoUrl && !selectedFile) {
+    } else if (!values.photoUrl && !selectedFile && !initialData?.id) {
+      // If creating new and no file/URL is provided, use a placeholder
       finalPhotoUrl = `https://placehold.co/300x400.png?text=${encodeURIComponent(values.name.substring(0,2))}`;
     }
+    // If editing and no new file/URL is provided, finalPhotoUrl retains initialData.photoUrl (or "" if it was empty)
     
     const figureId = initialData?.id || `figure-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
     
@@ -144,18 +146,18 @@ export function FigureForm({ initialData }: FigureFormProps) {
       name: values.name,
       nameLower: values.name.toLowerCase(),
       photoUrl: finalPhotoUrl,
-      description: initialData?.description || "", 
+      description: initialData?.description || "", // Preserve existing description if editing, empty if new
     };
 
     try {
-      if (initialData) {
+      if (initialData?.id) { // Check if initialData.id exists to determine if editing
         await updateFigureInFirestore(figureData); 
       } else {
         await addFigureToFirestore(figureData); 
       }
       
       toast({
-        title: initialData ? "¡Figura Actualizada!" : "¡Figura Creada!",
+        title: initialData?.id ? "¡Figura Actualizada!" : "¡Figura Creada!",
         description: `El perfil de ${figureData.name} ha sido guardado en Firestore.`,
       });
 
@@ -173,6 +175,8 @@ export function FigureForm({ initialData }: FigureFormProps) {
     }
   }
   
+  // Determine the source for the preview image
+  // Priority: 1. Newly selected file, 2. URL from form input, 3. Initial photo URL (if editing)
   const currentPhotoForPreview = previewUrlFromFile || watchedPhotoUrlInput || (selectedFile ? null : initialData?.photoUrl);
 
   return (
@@ -195,18 +199,18 @@ export function FigureForm({ initialData }: FigureFormProps) {
         <FormField
           control={form.control}
           name="photoUrl"
-          render={({ field }) => ( // field.value here is managed by react-hook-form
+          render={({ field }) => ( 
             <FormItem>
               <FormLabel>URL de la Imagen (Opcional)</FormLabel>
               <FormControl>
                 <Input 
                   type="url" 
                   placeholder="https://ejemplo.com/imagen.jpg" 
-                  {...field} // This correctly binds react-hook-form's state to the input
+                  {...field} 
                   disabled={isLoading || !!selectedFile} 
                   onChange={(e) => {
-                    field.onChange(e); // Update react-hook-form state
-                    if (selectedFile) {
+                    field.onChange(e); 
+                    if (selectedFile) { // If user types in URL field, clear any selected file
                         setSelectedFile(null);
                         setPreviewUrlFromFile(null);
                     }
@@ -214,7 +218,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
                 />
               </FormControl>
               <FormDescription>
-                Pega la URL de una imagen externa. Si también seleccionas un archivo, se priorizará el archivo subido. Si se deja vacío en la creación, se usará una imagen por defecto.
+                Pega la URL de una imagen externa. Si también seleccionas un archivo, se priorizará el archivo subido. Si se deja vacío en la creación y no se sube archivo, se usará una imagen por defecto.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -249,7 +253,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
         
         <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-         {isLoading ? (initialData ? "Actualizando..." : "Creando...") : (initialData ? "Guardar Cambios" : "Crear Figura")}
+         {isLoading ? (initialData?.id ? "Actualizando..." : "Creando...") : (initialData?.id ? "Guardar Cambios" : "Crear Figura")}
         </Button>
       </form>
     </Form>
