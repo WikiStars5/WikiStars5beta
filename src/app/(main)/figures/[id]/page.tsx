@@ -4,7 +4,7 @@ import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeh
 import type { Figure } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Terminal } from "lucide-react";
+import { Terminal, Smile } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,12 @@ export default async function FigurePage({ params }: FigurePageProps) {
   const pageUrl = `${baseUrl}/figures/${figure.id}`;
   const pageTitle = figure.name;
 
+  // Identificadores únicos para cada instancia de Disqus
+  const commentsPageIdentifier = figure.id;
+  const emotionsPageIdentifier = `${figure.id}_emociones`;
+  const emotionsPageTitle = `${figure.name} - Reacciones Emocionales`;
+
+
   return (
     <div className="space-y-8 lg:space-y-12">
       <ProfileHeader figure={figure} />
@@ -47,9 +53,10 @@ export default async function FigurePage({ params }: FigurePageProps) {
         {/* Contenido Principal (Pestañas) - ocupa 2/3 en pantallas grandes */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className="grid w-full grid-cols-3 mb-6"> {/* Ajustado a grid-cols-3 */}
               <TabsTrigger value="info" className="text-base py-2.5">Información Personal</TabsTrigger>
               <TabsTrigger value="comments" className="text-base py-2.5">Calificaciones y Comentarios</TabsTrigger>
+              <TabsTrigger value="emotions" className="text-base py-2.5">Reacciones Emocionales</TabsTrigger>
             </TabsList>
             
             <TabsContent value="info">
@@ -74,11 +81,38 @@ export default async function FigurePage({ params }: FigurePageProps) {
               {figure && ( 
                 <DisqusComments
                   pageUrl={pageUrl}
-                  pageIdentifier={figure.id}
+                  pageIdentifier={commentsPageIdentifier}
                   pageTitle={pageTitle}
                 />
               )}
             </TabsContent>
+
+            <TabsContent value="emotions">
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold font-headline text-primary flex items-center">
+                    <Smile className="mr-2 h-6 w-6" /> Reacciones Emocionales
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-2 text-sm">
+                  <p className="text-foreground/80 mb-4">
+                    Expresa tus emociones sobre {figure.name} utilizando el sistema de reacciones de Disqus a continuación. 
+                    Puedes configurar qué emojis de reacción están disponibles desde tu panel de administración de Disqus.
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-6">
+                    Nota: Para usar solo las reacciones y no el campo de comentarios aquí, considera personalizar la configuración de tu foro en Disqus para este identificador de página específico o usar CSS personalizado si Disqus lo permite.
+                  </p>
+                  {figure && (
+                    <DisqusComments
+                      pageUrl={pageUrl + "#emotions"} // Se puede añadir un fragmento para URL única si es necesario
+                      pageIdentifier={emotionsPageIdentifier}
+                      pageTitle={emotionsPageTitle}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
           </Tabs>
         </div>
         
@@ -88,7 +122,7 @@ export default async function FigurePage({ params }: FigurePageProps) {
             <Terminal className="h-4 w-4" />
             <AlertTitle className="font-headline">Cómo Funciona</AlertTitle>
             <AlertDescription className="text-sm">
-              Las discusiones, comentarios y calificaciones de {figure.name} son gestionados a través de Disqus. ¡Únete a la conversación!
+              Las discusiones, comentarios, calificaciones y reacciones de {figure.name} son gestionados a través de Disqus. ¡Únete a la conversación!
             </AlertDescription>
           </Alert>
 
