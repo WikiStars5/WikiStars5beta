@@ -1,9 +1,9 @@
 
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
-// REMOVIDO: import { RatingSystem } from "@/components/figures/RatingSystem"; 
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
-import { Figure } from "@/lib/types";
+import type { Figure } from "@/lib/types"; // Asegúrate que Figure type no tenga campos que ya no usas
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
 import { Terminal } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
@@ -32,7 +32,7 @@ export default async function FigurePage({ params }: FigurePageProps) {
   }
 
   const allFigures = await getAllFiguresFromFirestore();
-  const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 2);
+  const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 3); // Mostrar hasta 3 relacionados
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const pageUrl = `${baseUrl}/figures/${figure.id}`;
@@ -43,21 +43,43 @@ export default async function FigurePage({ params }: FigurePageProps) {
       <ProfileHeader figure={figure} />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-        <div className="lg:col-span-2 space-y-8">
-          {/* RatingSystem ha sido eliminado */}
-          
-          {figure && (
-            <div className="mt-8">
-              <h3 className="text-xl font-headline mb-4 text-gray-900 dark:text-gray-50">Discusión y Comentarios</h3>
-              <DisqusComments
-                pageUrl={pageUrl}
-                pageIdentifier={figure.id}
-                pageTitle={pageTitle}
-              />
-            </div>
-          )}
+        {/* Contenido Principal (Información Personal y Disqus) - ocupa 2/3 en pantallas grandes */}
+        <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            {/* Columna Izquierda: Información Personal */}
+            <section className="space-y-4">
+              <h2 className="text-2xl font-bold font-headline text-primary">Información Personal</h2>
+              <Card className="shadow-sm">
+                <CardContent className="pt-6 text-sm">
+                  <p className="text-foreground/80 whitespace-pre-line">
+                    {figure.description || "No hay descripción detallada disponible para esta figura."}
+                  </p>
+                  {/* Aquí podrías añadir más detalles de la figura si existieran en el modelo de datos
+                      Ejemplo:
+                      {figure.occupation && <p className="mt-2"><strong>Ocupación:</strong> {figure.occupation}</p>}
+                      {figure.nationality && <p className="mt-2"><strong>Nacionalidad:</strong> {figure.nationality}</p>}
+                  */}
+                </CardContent>
+              </Card>
+            </section>
+
+            {/* Columna Derecha: Sistema de Calificación y Comentarios (Disqus) */}
+            <section className="space-y-4">
+              <h2 className="text-2xl font-bold font-headline text-primary">Calificaciones y Comentarios</h2>
+              {figure && ( // Condición para asegurar que figure existe antes de renderizar Disqus
+                <DisqusComments
+                  pageUrl={pageUrl}
+                  pageIdentifier={figure.id}
+                  pageTitle={pageTitle}
+                />
+              )}
+            </section>
+
+          </div>
         </div>
         
+        {/* Barra Lateral (Cómo Funciona y También te podría interesar) - ocupa 1/3 en pantallas grandes */}
         <aside className="lg:col-span-1 space-y-6">
           <Alert>
             <Terminal className="h-4 w-4" />
