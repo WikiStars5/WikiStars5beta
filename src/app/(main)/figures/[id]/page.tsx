@@ -1,3 +1,4 @@
+
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import type { Figure } from "@/lib/types"; 
@@ -8,9 +9,9 @@ import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import DisqusComments from '@/components/DisqusComments'; // Componente para comentarios generales
-import DisqusEmotions from '@/components/DisqusEmotions'; // <-- ¡NUEVO COMPONENTE para emociones!
+import DisqusEmotions from '@/components/DisqusEmotions'; // Componente para reacciones emocionales
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import React from 'react'; // Necesario para componentes React
+import React from 'react';
 
 interface FigurePageProps {
   params: { id: string };
@@ -43,7 +44,7 @@ export default async function FigurePage({ params }: FigurePageProps) {
 
   // Variables para el hilo de Disqus de emociones
   const emotionalPageIdentifier = `${figure.id}_emociones`; // Identificador ÚNICO para el hilo de emociones
-  const emotionalPageUrl = `${pageUrl}/emociones`; // URL ÚNICA para el hilo de emociones (Disqus la usa para identificar)
+  const emotionalPageUrl = `${pageUrl}/emociones`; // URL ÚNICA para el hilo de emociones
 
   return (
     <div className="space-y-8 lg:space-y-12">
@@ -67,28 +68,26 @@ export default async function FigurePage({ params }: FigurePageProps) {
                   <p className="text-foreground/80 whitespace-pre-line">
                     {figure.description || "No hay descripción detallada disponible para esta figura."}
                   </p>
-                  {/* Futuros campos para detalles de la figura pueden ser añadidos aquí */}
-                  {/* e.g., figure.occupation, figure.nationality */}
                 </CardContent>
               </Card>
             </TabsContent>
             
             <TabsContent value="comments">
-              {/* Este es el widget PRINCIPAL de Disqus para comentarios generales y calificaciones */}
-              <DisqusComments
-                pageUrl={pageUrl}
-                pageIdentifier={commentsPageIdentifier}
-                pageTitle={pageTitle}
-              />
+              {figure && (
+                <DisqusComments
+                  pageUrl={pageUrl}
+                  pageIdentifier={commentsPageIdentifier}
+                  pageTitle={pageTitle}
+                />
+              )}
             </TabsContent>
 
             <TabsContent value="emotions">
-              {/* Renderizamos el NUEVO componente DisqusEmotions aquí */}
               {figure && (
                 <DisqusEmotions
                   pageUrl={emotionalPageUrl}
                   pageIdentifier={emotionalPageIdentifier}
-                  pageTitle={`${pageTitle} - Emociones`}
+                  pageTitle={`${pageTitle} - Reacciones Emocionales`}
                 />
               )}
             </TabsContent>

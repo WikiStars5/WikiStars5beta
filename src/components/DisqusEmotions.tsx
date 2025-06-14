@@ -40,7 +40,7 @@ const DisqusEmotions: React.FC<DisqusEmotionsProps> = ({ pageUrl, pageIdentifier
     if (container) {
       // container.innerHTML = ''; // Let Disqus script handle the "loading..." message
     } else {
-      console.warn(`DisqusEmotions: Container div with id '${disqusContainerId}' not found. Disqus will not load.`);
+      console.warn(`DisqusEmotions: Container div con id '${disqusContainerId}' no encontrado. Disqus no cargará.`);
       return; // Stop if the target div isn't found
     }
 
@@ -54,7 +54,7 @@ const DisqusEmotions: React.FC<DisqusEmotionsProps> = ({ pageUrl, pageIdentifier
     if (document.body) {
       document.body.appendChild(script);
     } else {
-      console.error("DisqusEmotions: document.body is null, cannot append Disqus script.");
+      console.error("DisqusEmotions: document.body es null, no se puede añadir el script de Disqus.");
       return;
     }
 
@@ -78,9 +78,18 @@ const DisqusEmotions: React.FC<DisqusEmotionsProps> = ({ pageUrl, pageIdentifier
 
   return (
     // This div is where this instance of Disqus will render its content.
-    <div id={disqusContainerId} className="mt-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-inner">
-      <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Reacciones Emocionales</h2>
-      <p className="text-gray-600 dark:text-gray-400">Cargando reacciones emocionales...</p>
+    <div id={disqusContainerId} className="mt-8 p-4 bg-card rounded-lg shadow-inner">
+      <h2 className="text-2xl font-semibold text-card-foreground mb-4">Reacciones Emocionales</h2>
+      <p className="text-sm text-muted-foreground">
+        Cargando reacciones emocionales... (Gestionado por Disqus con el shortname '{DISQUS_EMOTIONS_SHORTNAME}')
+      </p>
+      {/* 
+        Nota para el desarrollador:
+        Asegúrate de que el sitio 'wikistars5emociones' esté configurado en Disqus para mostrar
+        solo las reacciones (emojis) y, si es posible, ocultar el campo de comentario principal
+        a través de la configuración de Disqus o CSS personalizado si Disqus lo permite para
+        su widget de reacciones.
+      */}
     </div>
   );
 };
