@@ -9,14 +9,14 @@ import { Lightbulb, Users, MessageSquareText, Share2 } from "lucide-react";
 export const revalidate = 0; // Or a reasonable time
 
 export default async function HomePage() {
-  const featuredFigures = await getFeaturedFiguresFromFirestore(3);
+  const featuredFigures = await getFeaturedFiguresFromFirestore(4); // Fetch 4 to fill the new grid
 
   return (
     <div className="space-y-16">
       <section className="text-center py-12 md:py-20 bg-gradient-to-br from-primary/10 via-background to-accent/10 rounded-lg shadow-sm">
         <div className="container max-w-3xl mx-auto flex flex-col items-center">
-          <h1 className="text-4xl md:text-5xl font-bold font-headline mb-6 text-primary">
-            Bienvenido a WikiStars5
+          <h1 className="text-4xl md:text-5xl font-bold font-headline mb-6 text-foreground">
+            Bienvenido a <span className="text-primary">WikiStars5</span>
           </h1>
           <p className="text-lg md:text-xl text-foreground/80 mb-8 text-center">
             Descubre, califica y discute la percepción pública de tus figuras famosas favoritas (y no tan favoritas). 
@@ -68,7 +68,7 @@ export default async function HomePage() {
       <section id="browse" className="py-12">
         <h2 className="text-3xl font-bold font-headline text-center mb-10">Figuras Destacadas</h2>
         {featuredFigures.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {featuredFigures.map((figure) => (
               <FigureListItem key={figure.id} figure={figure} />
             ))}
