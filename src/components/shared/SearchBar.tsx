@@ -99,7 +99,7 @@ export function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
           onFocus={() => { 
             if (query.trim().length > 0) setIsDropdownOpen(true);
           }}
-          className="text-base h-12 flex-grow pl-10 pr-10 rounded-md shadow-sm focus:ring-2 focus:ring-primary/50"
+          className="text-base h-12 flex-grow pl-10 pr-10 rounded-md shadow-sm border-primary focus:ring-2 focus:ring-primary/50"
         />
         {isLoading && query.length >= 2 && (
            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
@@ -167,3 +167,4 @@ export function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
     </div>
   );
 }
+
