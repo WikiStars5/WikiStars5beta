@@ -12,74 +12,75 @@ interface DisqusEmotionsProps {
 
 /**
  * Componente React para integrar el widget de Disqus específico para Reacciones Emocionales.
- * Utiliza useEffect para cargar el script de Disqus dinámicamente, asegurando un manejo correcto del DOM.
+ * Carga su propio script de Disqus para el shortname 'wikistars5emociones'.
  */
 const DisqusEmotions: React.FC<DisqusEmotionsProps> = ({ pageUrl, pageIdentifier, pageTitle }) => {
-  // Tu shortname específico para el foro de emociones de Disqus
-  const DISQUS_EMOTIONS_SHORTNAME = 'wikistars5emociones'; 
+  const DISQUS_EMOTIONS_SHORTNAME = 'wikistars5emociones';
+  const emotionsScriptId = 'dsq-emotions-script'; // Unique ID for this component's script
+  const disqusContainerId = 'disqus_emotions_thread'; // The ID of the div this component renders
 
   useEffect(() => {
-    // Estas variables de configuración son necesarias para que Disqus identifique el hilo correcto.
-    // Se asignan a window.disqus_config para que el script de Disqus pueda acceder a ellas.
+    // 1. Set the global Disqus configuration for this specific instance.
+    //    The embed.js script will pick this up when it loads.
     (window as any).disqus_config = function (this: any) {
       this.page.url = pageUrl;
       this.page.identifier = pageIdentifier;
       this.page.title = pageTitle;
-      // Puedes añadir otras variables de configuración específicas de Disqus para reacciones aquí si es necesario
-      // Por ejemplo, para configurar reacciones específicas si tu shortname lo permite
     };
 
-    // Asegúrate de que el elemento 'disqus_thread' exista en el DOM antes de intentar cargar el script.
-    // También, si ya existe un script de Disqus para este ID, evitamos cargarlo de nuevo.
-    if (!document.getElementById('disqus_emotions_thread')) {
-      const script = document.createElement('script');
-      script.id = 'dsq-emotions-script'; // Asigna un ID único al script para fácil remoción
-      script.src = `https://${DISQUS_EMOTIONS_SHORTNAME}.disqus.com/embed.js`;
-      script.setAttribute('data-timestamp', String(+new Date()));
-      script.async = true; 
-      // Añadimos el script al cuerpo del documento
-      document.body.appendChild(script);
-    } else {
-      // Si el div ya existe, podemos intentar resetear Disqus para recargar el hilo
-      if (typeof (window as any).DISQUS !== 'undefined') {
-        (window as any).DISQUS.reset({
-          reload: true,
-          config: (function (this: any) {
-            this.page.url = pageUrl;
-            this.page.identifier = pageIdentifier;
-            this.page.title = pageTitle;
-          })
-        });
-      }
+    // 2. Remove any old script for this component to ensure a fresh load.
+    const oldScript = document.getElementById(emotionsScriptId);
+    if (oldScript && oldScript.parentNode) {
+      oldScript.parentNode.removeChild(oldScript);
     }
 
+    // 3. Clear the target container's content (where Disqus will render).
+    //    This is important if the component re-renders or properties change.
+    const container = document.getElementById(disqusContainerId);
+    if (container) {
+      // container.innerHTML = ''; // Let Disqus script handle the "loading..." message
+    } else {
+      console.warn(`DisqusEmotions: Container div with id '${disqusContainerId}' not found. Disqus will not load.`);
+      return; // Stop if the target div isn't found
+    }
 
-    // Función de limpieza para cuando el componente se desmonte
+    // 4. Create and append the new script for this specific shortname.
+    const script = document.createElement('script');
+    script.id = emotionsScriptId;
+    script.src = `https://${DISQUS_EMOTIONS_SHORTNAME}.disqus.com/embed.js`;
+    script.setAttribute('data-timestamp', String(+new Date()));
+    script.async = true;
+    
+    if (document.body) {
+      document.body.appendChild(script);
+    } else {
+      console.error("DisqusEmotions: document.body is null, cannot append Disqus script.");
+      return;
+    }
+
+    // 5. Cleanup function when the component unmounts or dependencies change.
     return () => {
-      // Elimina el script de Disqus y limpia la configuración global para evitar conflictos
-      const disqusScript = document.getElementById('dsq-emotions-script');
-      if (disqusScript) {
-        document.body.removeChild(disqusScript);
+      const currentScript = document.getElementById(emotionsScriptId);
+      if (currentScript && currentScript.parentNode) {
+        currentScript.parentNode.removeChild(currentScript);
       }
-      delete (window as any).disqus_config;
+      
+      // It's generally unsafe to delete window.disqus_config if another Disqus widget might be active
+      // or re-rendering, as it's a shared global.
+      // delete (window as any).disqus_config;
 
-      // También limpia el contenido del div de Disqus para una recarga limpia
-      const disqusContainer = document.getElementById('disqus_emotions_thread');
+      const disqusContainer = document.getElementById(disqusContainerId);
       if (disqusContainer) {
-        disqusContainer.innerHTML = ''; 
+        disqusContainer.innerHTML = ''; // Clear content on unmount
       }
     };
-  }, [pageUrl, pageIdentifier, pageTitle]); // Dependencias: recarga el script si cambian estas propiedades
+  }, [pageUrl, pageIdentifier, pageTitle, DISQUS_EMOTIONS_SHORTNAME]); // Dependencies for the effect
 
   return (
-    // Es CRÍTICO que este div tenga el mismo ID que el que Disqus busca ('disqus_thread')
-    // para su carga estándar. Sin embargo, para múltiples instancias, a veces Disqus
-    // usa el ID que se le pasa en el script si es diferente.
-    // Usaremos un ID único para este div para evitar conflictos con el Disqus principal.
-    <div id="disqus_emotions_thread" className="mt-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-inner">
+    // This div is where this instance of Disqus will render its content.
+    <div id={disqusContainerId} className="mt-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-inner">
       <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Reacciones Emocionales</h2>
       <p className="text-gray-600 dark:text-gray-400">Cargando reacciones emocionales...</p>
-      {/* El contenido de Disqus se incrustará aquí */}
     </div>
   );
 };
