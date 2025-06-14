@@ -5,7 +5,7 @@ import type { Figure } from "@/lib/types";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ImageOff } from "lucide-react"; // Star icon import removed
+import { ImageOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface FigureListItemProps {
@@ -23,11 +23,16 @@ export function FigureListItem({ figure }: FigureListItemProps) {
               alt={figure.name}
               width={300}
               height={400}
-              className="w-full h-64 object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
-              onError={(e) => { e.currentTarget.src = 'https://placehold.co/300x400.png?text=Error'; e.currentTarget.srcset = '' }}
+              className="w-full aspect-[3/4] object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
+              onError={(e) => { 
+                const target = e.currentTarget as HTMLImageElement;
+                target.src = 'https://placehold.co/300x400.png?text=Error'; 
+                target.srcset = '';
+              }}
+              data-ai-hint="portrait person"
             />
           ) : (
-             <div className="w-full h-64 bg-muted flex items-center justify-center">
+             <div className="w-full aspect-[3/4] bg-muted flex items-center justify-center" data-ai-hint="placeholder abstract">
                <ImageOff className="h-16 w-16 text-muted-foreground" />
              </div>
           )}
@@ -37,7 +42,6 @@ export function FigureListItem({ figure }: FigureListItemProps) {
           <p className="text-sm text-muted-foreground line-clamp-2">{figure.description || "Sin descripción disponible."}</p>
         </CardContent>
         <CardFooter className="p-4 flex justify-end items-center border-t">
-          {/* Star rating display removed from here */}
           <Badge variant="secondary">Ver Perfil</Badge>
         </CardFooter>
       </Card>
