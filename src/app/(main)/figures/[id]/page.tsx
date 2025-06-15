@@ -12,6 +12,40 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import React from 'react';
 import { EnrichInfoButton } from "@/components/figures/EnrichInfoButton"; // Import the new button
 
+/*
+RECOMMENDED FIRESTORE RULES TO DEBUG PERMISSION ISSUES:
+(Apply these in your Firebase Console -> Firestore Database -> Rules)
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Rules for 'figures' collection ---
+
+    // Allow ANYONE to read (get) individual figure documents
+    match /figures/{figureId} {
+      allow get: if true;
+    }
+
+    // Allow ANYONE to list all documents in the figures collection
+    match /figures {
+      allow list: if true;
+    }
+
+    // Allow ONLY THE ADMIN (UID: JZP4A5GvZUbWuT0Y1DIiawWcSUp2) to write (create, update, delete)
+    // individual figure documents.
+    match /figures/{figureIdWrite} { // Using a distinct wildcard name for clarity
+      allow write: if request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+    }
+
+    // --- End of rules for 'figures' collection ---
+
+    // Add rules for other collections if needed
+  }
+}
+*/
+
 interface FigurePageProps {
   params: { id: string };
 }
