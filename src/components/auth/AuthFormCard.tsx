@@ -1,9 +1,10 @@
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Logo } from "@/components/shared/Logo";
-import { Button } from "@/components/ui/button"; 
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 interface AuthFormCardProps {
   title: string;
@@ -13,9 +14,17 @@ interface AuthFormCardProps {
   footerLinkText: string;
   footerText: string;
   showOAuth?: boolean;
+  onGoogleSignIn?: () => Promise<void>;
+  isGoogleLoading?: boolean;
 }
 
-export function AuthFormCard({ title, description, children, footerLinkHref, footerLinkText, footerText, showOAuth = true }: AuthFormCardProps) {
+const GoogleIcon = () => (
+  <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+    <path fill="currentColor" d="M488 261.8C488 403.3 381.5 512 244 512 110.3 512 0 401.8 0 265.5S110.3 19 244 19c70.5 0 131.5 30.4 176.1 79.9l-67.4 64.9C333.5 138.8 291.1 116.4 244 116.4c-84.3 0-153.9 68.7-153.9 153.1S159.7 412.6 244 412.6c97.7 0 135-71.2 139.1-105.3H244v-75.5h236.1c1.4 9.2 2.8 19.3 2.8 29.9z"></path>
+  </svg>
+);
+
+export function AuthFormCard({ title, description, children, footerLinkHref, footerLinkText, footerText, showOAuth = true, onGoogleSignIn, isGoogleLoading }: AuthFormCardProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] py-12">
       <Logo className="mb-8" />
@@ -26,7 +35,7 @@ export function AuthFormCard({ title, description, children, footerLinkHref, foo
         </CardHeader>
         <CardContent className="space-y-6">
           {children}
-          {showOAuth && (
+          {showOAuth && onGoogleSignIn && (
             <>
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
@@ -38,10 +47,20 @@ export function AuthFormCard({ title, description, children, footerLinkHref, foo
                   </span>
                 </div>
               </div>
-              {/* Placeholder for OAuth buttons */}
-              <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" disabled>Google</Button>
-                <Button variant="outline" disabled>Facebook</Button>
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={onGoogleSignIn}
+                  disabled={isGoogleLoading}
+                >
+                  {isGoogleLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <GoogleIcon />
+                  )}
+                  Continuar con Google
+                </Button>
               </div>
             </>
           )}
