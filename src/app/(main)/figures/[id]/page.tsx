@@ -1,16 +1,26 @@
 
-import { ProfileHeader } from "@/components/figures/ProfileHeader";
-import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
+"use client";
+
+import type { Figure } from "@/lib/types";
+import { getFigureFromFirestore, getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Info, UserCircle, Globe, Briefcase, Users2, Building, Edit } from "lucide-react"; // Added Building, Edit
+import { Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import DisqusComments from '@/components/DisqusComments'; 
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import DisqusComments from '@/components/DisqusComments';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import React from 'react';
-import { EnrichInfoButton } from "@/components/figures/EnrichInfoButton"; // Import the new button
+import React, { useState, useEffect, useCallback } from 'react';
+import { ProfileHeader } from "@/components/figures/ProfileHeader";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore"; // Removed updateDoc as it's in placeholder-data
+import { db, auth as firebaseAuth } from "@/lib/firebase"; // Renamed auth to firebaseAuth to avoid conflict
+import { onAuthStateChanged, signInAnonymously, type User } from "firebase/auth";
 
 /*
 RECOMMENDED FIRESTORE RULES TO DEBUG PERMISSION ISSUES:
@@ -26,6 +36,8 @@ service cloud.firestore {
     // Allow ANYONE to read (get) individual figure documents
     match /figures/{figureId} {
       allow get: if true;
+       // Allow authenticated users (including anonymous) to update
+      allow update: if request.auth != null;
     }
 
     // Allow ANYONE to list all documents in the figures collection
@@ -33,15 +45,11 @@ service cloud.firestore {
       allow list: if true;
     }
 
-    // Allow ONLY THE ADMIN (UID: JZP4A5GvZUbWuT0Y1DIiawWcSUp2) to write (create, update, delete)
-    // individual figure documents.
-    match /figures/{figureIdWrite} { // Using a distinct wildcard name for clarity
-      allow write: if request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+    // Allow ONLY THE ADMIN (UID: JZP4A5GvZUbWuT0Y1DIiawWcSUp2) to create or delete
+    match /figures/{figureIdWrite} { 
+      allow create, delete: if request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
-
     // --- End of rules for 'figures' collection ---
-
-    // Add rules for other collections if needed
   }
 }
 */
@@ -50,10 +58,133 @@ interface FigurePageProps {
   params: { id: string };
 }
 
-export const revalidate = 0; 
+// export const revalidate = 0; // Commented out to allow client-side state and interactions for editing
 
-export default async function FigurePage({ params }: FigurePageProps) {
-  const figure = await getFigureFromFirestore(params.id);
+export default function FigurePage({ params }: FigurePageProps) {
+  const [figure, setFigure] = useState<Figure | null | undefined>(undefined); // undefined for loading, null for not found
+  const [allFigures, setAllFigures] = useState<Figure[]>([]);
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedDescription, setEditedDescription] = useState("");
+  const [editedNationality, setEditedNationality] = useState("");
+  const [editedOccupation, setEditedOccupation] = useState("");
+  const [editedGender, setEditedGender] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authAttempted, setAuthAttempted] = useState(false);
+
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
+      setCurrentUser(user);
+      if (!user && !authAttempted) {
+        setAuthAttempted(true);
+        signInAnonymously(firebaseAuth)
+          .then((anonUserCredential) => {
+            setCurrentUser(anonUserCredential.user);
+            console.log("Signed in anonymously for editing.");
+          })
+          .catch((error) => {
+            console.error("Anonymous sign-in error:", error);
+            toast({ title: "Error de autenticación", description: "No se pudo iniciar sesión para habilitar la edición.", variant: "destructive" });
+          });
+      }
+    });
+    return () => unsubscribe();
+  }, [authAttempted, toast]);
+
+
+  const fetchFigureData = useCallback(async () => {
+    const fetchedFigure = await getFigureFromFirestore(params.id);
+    setFigure(fetchedFigure || null); // Set to null if not found
+    if (fetchedFigure) {
+      setEditedDescription(fetchedFigure.description || "");
+      setEditedNationality(fetchedFigure.nationality || "");
+      setEditedOccupation(fetchedFigure.occupation || "");
+      setEditedGender(fetchedFigure.gender || "");
+    }
+    const fetchedAllFigures = await getAllFiguresFromFirestore();
+    setAllFigures(fetchedAllFigures);
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchFigureData();
+  }, [fetchFigureData]);
+
+  useEffect(() => {
+    if (figure && isEditing) {
+      setEditedDescription(figure.description || "");
+      setEditedNationality(figure.nationality || "");
+      setEditedOccupation(figure.occupation || "");
+      setEditedGender(figure.gender || "");
+    }
+  }, [figure, isEditing]);
+
+
+  const handleEditToggle = () => {
+    if (isEditing) {
+      // If cancelling, revert changes
+      if (figure) {
+        setEditedDescription(figure.description || "");
+        setEditedNationality(figure.nationality || "");
+        setEditedOccupation(figure.occupation || "");
+        setEditedGender(figure.gender || "");
+      }
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const handleSave = async () => {
+    if (!figure || !currentUser) {
+      toast({ title: "Error", description: "No se puede guardar. Figura o usuario no disponible.", variant: "destructive" });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const figureToUpdate: Partial<Figure> = {
+        description: editedDescription,
+        nationality: editedNationality,
+        occupation: editedOccupation,
+        gender: editedGender,
+      };
+      // We are updating, so we need the full figure object or pass specific fields to updateDoc.
+      // updateFigureInFirestore expects a full Figure object.
+      const updatedFigureData : Figure = {
+        ...figure,
+        description: editedDescription,
+        nationality: editedNationality,
+        occupation: editedOccupation,
+        gender: editedGender,
+      };
+
+      await updateFigureInFirestore(updatedFigureData);
+      
+      toast({ title: "Éxito", description: "Información actualizada correctamente." });
+      setIsEditing(false);
+      router.refresh(); // Re-fetch server data and re-render
+      await fetchFigureData(); // Re-fetch client-side figure data to update local state
+    } catch (error: any) {
+      console.error("Error saving figure details:", error);
+      let errorMessage = "No se pudo guardar la información.";
+      if (error.message) {
+          errorMessage += ` Detalles: ${error.message}`;
+      }
+      toast({ title: "Error al Guardar", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (figure === undefined) { // Loading state
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!figure) {
     return (
@@ -67,15 +198,11 @@ export default async function FigurePage({ params }: FigurePageProps) {
     );
   }
 
-  const allFigures = await getAllFiguresFromFirestore();
   const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 3);
-
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
   const pageUrl = `${baseUrl}/figures/${figure.id}`;
-  const commentsPageIdentifier = figure.id; 
+  const commentsPageIdentifier = figure.id;
   const pageTitle = figure.name;
-
-  const needsEnrichment = !figure.description || !figure.nationality || !figure.occupation || !figure.gender;
 
   return (
     <div className="space-y-8 lg:space-y-12">
@@ -91,51 +218,118 @@ export default async function FigurePage({ params }: FigurePageProps) {
             
             <TabsContent value="personal-info">
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center text-2xl font-headline">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div className="flex items-center">
                     <Info className="mr-2 h-6 w-6 text-primary" />
-                    Sobre {figure.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {figure.description ? (
-                    <p className="text-base leading-relaxed text-foreground/90">{figure.description}</p>
-                  ) : (
-                    <p className="text-base text-muted-foreground">No hay una descripción adicional disponible para esta figura.</p>
-                  )}
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-start">
-                      <UserCircle className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                      <div>
-                        <p className="font-semibold text-foreground/90">Nombre Completo</p>
-                        <p className="text-sm text-muted-foreground">{figure.name || "No disponible"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start">
-                      <Globe className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                      <div>
-                        <p className="font-semibold text-foreground/90">Nacionalidad</p>
-                        <p className="text-sm text-muted-foreground">{figure.nationality || "No disponible"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start">
-                      <Briefcase className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                      <div>
-                        <p className="font-semibold text-foreground/90">Ocupación</p>
-                        <p className="text-sm text-muted-foreground">{figure.occupation || "No disponible"}</p>
-                      </div>
-                    </div>
-                     <div className="flex items-start">
-                        <Users2 className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" /> {/* Using Users2 as a stand-in for gender */}
-                        <div>
-                            <p className="font-semibold text-foreground/90">Género</p>
-                            <p className="text-sm text-muted-foreground">{figure.gender || "No disponible"}</p>
-                        </div>
-                    </div>
+                    <CardTitle className="text-2xl font-headline">
+                      Sobre {figure.name}
+                    </CardTitle>
                   </div>
-                  {needsEnrichment && (
-                    <EnrichInfoButton figure={figure} />
+                  {currentUser && !isEditing && (
+                    <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Editar
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-6 pt-4">
+                  {isEditing ? (
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="description" className="font-semibold text-foreground/90">Descripción</Label>
+                        <Textarea
+                          id="description"
+                          value={editedDescription}
+                          onChange={(e) => setEditedDescription(e.target.value)}
+                          placeholder="Añade una descripción..."
+                          rows={5}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="nationality" className="font-semibold text-foreground/90">Nacionalidad</Label>
+                        <Input
+                          id="nationality"
+                          value={editedNationality}
+                          onChange={(e) => setEditedNationality(e.target.value)}
+                          placeholder="Ej: Estadounidense"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="occupation" className="font-semibold text-foreground/90">Ocupación</Label>
+                        <Input
+                          id="occupation"
+                          value={editedOccupation}
+                          onChange={(e) => setEditedOccupation(e.target.value)}
+                          placeholder="Ej: Científico, Artista"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="gender" className="font-semibold text-foreground/90">Género</Label>
+                        <Input
+                          id="gender"
+                          value={editedGender}
+                          onChange={(e) => setEditedGender(e.target.value)}
+                          placeholder="Ej: Masculino, Femenino"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-2 pt-4">
+                        <Button variant="outline" onClick={handleEditToggle} disabled={isSaving}>
+                          <X className="mr-2 h-4 w-4" />
+                          Cancelar
+                        </Button>
+                        <Button onClick={handleSave} disabled={isSaving}>
+                          {isSaving ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="mr-2 h-4 w-4" />
+                          )}
+                          {isSaving ? "Guardando..." : "Guardar Cambios"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {figure.description ? (
+                        <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{figure.description}</p>
+                      ) : (
+                        <p className="text-base text-muted-foreground">No hay una descripción disponible. ¡Anímate a añadir una!</p>
+                      )}
+                      
+                      <div className="space-y-3 pt-4">
+                        <div className="flex items-start">
+                          <UserCircle className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                          <div>
+                            <p className="font-semibold text-foreground/90">Nombre Completo</p>
+                            <p className="text-sm text-muted-foreground">{figure.name || "No disponible"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start">
+                          <Globe className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                          <div>
+                            <p className="font-semibold text-foreground/90">Nacionalidad</p>
+                            <p className="text-sm text-muted-foreground">{figure.nationality || "No disponible"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start">
+                          <Briefcase className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                          <div>
+                            <p className="font-semibold text-foreground/90">Ocupación</p>
+                            <p className="text-sm text-muted-foreground">{figure.occupation || "No disponible"}</p>
+                          </div>
+                        </div>
+                         <div className="flex items-start">
+                            <Users2 className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                            <div>
+                                <p className="font-semibold text-foreground/90">Género</p>
+                                <p className="text-sm text-muted-foreground">{figure.gender || "No disponible"}</p>
+                            </div>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -159,6 +353,7 @@ export default async function FigurePage({ params }: FigurePageProps) {
             <AlertTitle className="font-headline">Cómo Funciona</AlertTitle>
             <AlertDescription className="text-sm">
               Las discusiones y comentarios sobre {figure.name} son gestionados a través de Disqus. ¡Únete a la conversación!
+              La información personal puede ser editada por la comunidad.
             </AlertDescription>
           </Alert>
 
@@ -166,8 +361,8 @@ export default async function FigurePage({ params }: FigurePageProps) {
             <div>
               <h3 className="text-xl font-headline mb-4">También te podría interesar</h3>
               <div className="space-y-4">
-                {relatedFigures.map(relatedFigure => (
-                  <FigureListItem key={relatedFigure.id} figure={relatedFigure} />
+                {relatedFigures.map(relatedFig => ( // Changed variable name to avoid conflict
+                  <FigureListItem key={relatedFig.id} figure={relatedFig} />
                 ))}
               </div>
             </div>
