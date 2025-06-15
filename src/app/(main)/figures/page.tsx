@@ -4,6 +4,49 @@ import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { SearchBar } from "@/components/shared/SearchBar";
 import { Metadata } from "next";
 
+/*
+RECOMMENDED FIRESTORE RULES TO DEBUG PERMISSION ISSUES:
+(Apply these in your Firebase Console -> Firestore Database -> Rules)
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Rules for 'figures' collection ---
+
+    // Rule for accessing individual figure documents
+    match /figures/{figureId} {
+      // PUBLIC ACCESS: Allow anyone to read (get) individual figure documents.
+      // This is for viewing figure profiles.
+      allow get: if true;
+
+      // AUTHENTICATED USER ACCESS: Allow any authenticated user (including anonymous) to update.
+      // This is for the "wiki-style" editing feature on the figure detail page.
+      allow update: if request.auth != null;
+
+      // ADMIN-ONLY ACCESS: Allow ONLY the admin (UID: JZP4A5GvZUbWuT0Y1DIiawWcSUp2)
+      // to create and delete figure documents.
+      allow create, delete: if request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+    }
+
+    // Rule for the 'figures' collection itself (listing)
+    match /figures {
+      // PUBLIC ACCESS: Allow anyone to list all documents in the figures collection.
+      // THIS IS CRUCIAL FOR THIS PAGE (BrowseFiguresPage) TO WORK.
+      allow list: if true;
+    }
+    // --- End of rules for 'figures' collection ---
+
+    // You can add rules for other collections here if needed.
+    // For example:
+    // match /users/{userId} {
+    //   allow read, write: if request.auth != null && request.auth.uid == userId;
+    // }
+  }
+}
+*/
+
 export const metadata: Metadata = {
   title: "Explorar Figuras - WikiStars5",
   description: "Explora todos los perfiles de figuras públicas en WikiStars5, obtenidos de Firestore.",

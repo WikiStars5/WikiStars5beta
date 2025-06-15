@@ -17,7 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter, useParams } from "next/navigation"; // Added useParams
+import { useRouter, useParams } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, signInAnonymously, type User } from "firebase/auth";
@@ -33,33 +33,38 @@ service cloud.firestore {
 
     // --- Rules for 'figures' collection ---
 
-    // Allow ANYONE to read (get) individual figure documents
+    // Rule for accessing individual figure documents
     match /figures/{figureId} {
+      // PUBLIC ACCESS: Allow anyone to read (get) individual figure documents.
+      // This is for viewing figure profiles.
       allow get: if true;
-       // Allow authenticated users (including anonymous) to update
+
+      // AUTHENTICATED USER ACCESS: Allow any authenticated user (including anonymous) to update.
+      // This is for the "wiki-style" editing feature on this figure detail page.
       allow update: if request.auth != null;
-    }
 
-    // Allow ANYONE to list all documents in the figures collection
-    match /figures {
-      allow list: if true;
-    }
-
-    // Allow ONLY THE ADMIN (UID: JZP4A5GvZUbWuT0Y1DIiawWcSUp2) to create or delete
-    match /figures/{figureIdWrite} { 
+      // ADMIN-ONLY ACCESS: Allow ONLY the admin (UID: JZP4A5GvZUbWuT0Y1DIiawWcSUp2)
+      // to create and delete figure documents.
       allow create, delete: if request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
+
+    // Rule for the 'figures' collection itself (listing)
+    match /figures {
+      // PUBLIC ACCESS: Allow anyone to list all documents in the figures collection.
+      // This is crucial for pages like "Browse All Figures".
+      allow list: if true;
+    }
     // --- End of rules for 'figures' collection ---
+
+    // You can add rules for other collections here if needed.
+    // For example:
+    // match /users/{userId} {
+    //   allow read, write: if request.auth != null && request.auth.uid == userId;
+    // }
   }
 }
 */
 
-// FigurePageProps is no longer needed if params is the only prop.
-// interface FigurePageProps {
-//   params: { id: string };
-// }
-
-// export const revalidate = 0; // Commented out to allow client-side state and interactions for editing
 
 export default function FigurePage() {
   const routeParams = useParams<{ id: string }>();
@@ -103,23 +108,29 @@ export default function FigurePage() {
 
   const fetchFigureData = useCallback(async () => {
     if (!id) {
-        setFigure(undefined); // Reset or set to loading if id is not available
+        setFigure(undefined); 
         return;
     }
     const fetchedFigure = await getFigureFromFirestore(id);
-    setFigure(fetchedFigure || null); // Set to null if not found
+    setFigure(fetchedFigure || null); 
     if (fetchedFigure) {
       setEditedDescription(fetchedFigure.description || "");
       setEditedNationality(fetchedFigure.nationality || "");
       setEditedOccupation(fetchedFigure.occupation || "");
       setEditedGender(fetchedFigure.gender || "");
     }
-    const fetchedAllFigures = await getAllFiguresFromFirestore();
-    setAllFigures(fetchedAllFigures);
+    // Fetch all figures for "related figures" section
+    try {
+      const fetchedAllFigures = await getAllFiguresFromFirestore();
+      setAllFigures(fetchedAllFigures);
+    } catch (error) {
+      console.error("Error fetching all figures for related section:", error);
+      // Potentially show a toast or message if this part is critical
+    }
   }, [id]);
 
   useEffect(() => {
-    if (id) { // Only fetch if id is available
+    if (id) { 
         fetchFigureData();
     }
   }, [id, fetchFigureData]);
@@ -136,7 +147,6 @@ export default function FigurePage() {
 
   const handleEditToggle = () => {
     if (isEditing) {
-      // If cancelling, revert changes
       if (figure) {
         setEditedDescription(figure.description || "");
         setEditedNationality(figure.nationality || "");
@@ -154,13 +164,6 @@ export default function FigurePage() {
     }
     setIsSaving(true);
     try {
-      const figureToUpdate: Partial<Figure> = {
-        description: editedDescription,
-        nationality: editedNationality,
-        occupation: editedOccupation,
-        gender: editedGender,
-      };
-
       const updatedFigureData : Figure = {
         ...figure,
         description: editedDescription,
@@ -173,8 +176,7 @@ export default function FigurePage() {
       
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
       setIsEditing(false);
-      // router.refresh(); // Re-fetch server data and re-render - can cause issues with client state
-      await fetchFigureData(); // Re-fetch client-side figure data to update local state
+      await fetchFigureData(); 
     } catch (error: any) {
       console.error("Error saving figure details:", error);
       let errorMessage = "No se pudo guardar la información.";
@@ -187,7 +189,7 @@ export default function FigurePage() {
     }
   };
 
-  if (!id && figure === undefined) { // If id isn't even available yet, treat as loading
+  if (!id && figure === undefined) { 
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -196,7 +198,7 @@ export default function FigurePage() {
     );
   }
   
-  if (figure === undefined) { // Loading state for figure data
+  if (figure === undefined) { 
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -390,5 +392,3 @@ export default function FigurePage() {
     </div>
   );
 }
-
-    
