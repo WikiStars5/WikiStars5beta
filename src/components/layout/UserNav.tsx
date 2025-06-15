@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User as FirebaseUser, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, LayoutDashboard, Loader2, UserCog } from 'lucide-react'; // Added UserCog
+import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, LayoutDashboard, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import type { UserProfile as AppUserProfile } from '@/lib/types'; // Renamed to avoid conflict
@@ -58,8 +58,6 @@ export function UserNav() {
 
   if (currentUser) {
     const isAdmin = currentUser.uid === ADMIN_UID;
-    // We don't have the full UserProfile here, just FirebaseUser.
-    // The UserProfile is fetched on the profile page itself.
     const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || "Usuario";
     const photoURL = currentUser.photoURL;
     const email = currentUser.email;
@@ -88,19 +86,12 @@ export function UserNav() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {currentUser && !currentUser.isAnonymous && (
-            <Link href="/profile">
-              <DropdownMenuItem>
-                <UserCog className="mr-2 h-4 w-4" />
-                <span>Editar Perfil</span>
-              </DropdownMenuItem>
-            </Link>
-          )}
+          {/* La opción de Editar Perfil ha sido eliminada */}
           <DropdownMenuItem disabled>
             <Settings className="mr-2 h-4 w-4" />
             <span>Configuración</span>
           </DropdownMenuItem>
-          {isAdmin && !currentUser.isAnonymous && ( // Admin panel only for non-anonymous admins
+          {isAdmin && !currentUser.isAnonymous && (
             <Link href="/admin">
               <DropdownMenuItem>
                 <ShieldCheck className="mr-2 h-4 w-4" />
