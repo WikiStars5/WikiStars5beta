@@ -2,7 +2,7 @@
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Info, UserCircle, Globe, Briefcase, Users2 } from "lucide-react";
+import { Terminal, Info, UserCircle, Globe, Briefcase, Users2, Building, Edit } from "lucide-react"; // Added Building, Edit
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import DisqusComments from '@/components/DisqusComments';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import React from 'react';
+import { EnrichInfoButton } from "@/components/figures/EnrichInfoButton"; // Import the new button
 
 interface FigurePageProps {
   params: { id: string };
@@ -39,6 +40,8 @@ export default async function FigurePage({ params }: FigurePageProps) {
   const pageUrl = `${baseUrl}/figures/${figure.id}`;
   const commentsPageIdentifier = figure.id; 
   const pageTitle = figure.name;
+
+  const needsEnrichment = !figure.description || !figure.nationality || !figure.occupation || !figure.gender;
 
   return (
     <div className="space-y-8 lg:space-y-12">
@@ -89,14 +92,17 @@ export default async function FigurePage({ params }: FigurePageProps) {
                         <p className="text-sm text-muted-foreground">{figure.occupation || "No disponible"}</p>
                       </div>
                     </div>
-                    <div className="flex items-start">
-                      <Users2 className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                      <div>
-                        <p className="font-semibold text-foreground/90">Género</p>
-                        <p className="text-sm text-muted-foreground">{figure.gender || "No disponible"}</p>
-                      </div>
+                     <div className="flex items-start">
+                        <Users2 className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" /> {/* Using Users2 as a stand-in for gender */}
+                        <div>
+                            <p className="font-semibold text-foreground/90">Género</p>
+                            <p className="text-sm text-muted-foreground">{figure.gender || "No disponible"}</p>
+                        </div>
                     </div>
                   </div>
+                  {needsEnrichment && (
+                    <EnrichInfoButton figure={figure} />
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
