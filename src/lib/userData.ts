@@ -3,11 +3,27 @@
 
 import { db } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData, Timestamp } from 'firebase/firestore';
 import type { User as FirebaseUser } from 'firebase/auth';
 
 // Helper to map Firestore document data to UserProfile interface
 const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
+  let createdAtString: string;
+  if (data.createdAt && data.createdAt instanceof Timestamp) {
+    createdAtString = data.createdAt.toDate().toISOString();
+  } else if (typeof data.createdAt === 'string') {
+    createdAtString = data.createdAt; // Already a string
+  } else {
+    createdAtString = new Date().toISOString(); // Fallback, should ideally not happen if data is well-formed
+  }
+
+  let lastLoginAtString: string | undefined = undefined;
+  if (data.lastLoginAt && data.lastLoginAt instanceof Timestamp) {
+    lastLoginAtString = data.lastLoginAt.toDate().toISOString();
+  } else if (typeof data.lastLoginAt === 'string') {
+    lastLoginAtString = data.lastLoginAt;
+  }
+
   return {
     uid,
     email: data.email || null,
@@ -16,8 +32,8 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     countryCode: data.countryCode || '',
     photoURL: data.photoURL || null,
     role: data.role || 'user',
-    createdAt: data.createdAt, // This will be a Firestore Timestamp object or null/undefined if not set
-    lastLoginAt: data.lastLoginAt, // Same as createdAt
+    createdAt: createdAtString,
+    lastLoginAt: lastLoginAtString,
   };
 };
 
@@ -80,7 +96,6 @@ export async function ensureUserProfileExists(user: FirebaseUser): Promise<UserP
         console.log(`[ensureUserProfileExists] Updating email to: ${user.email}`);
       }
 
-      // Update username if displayName from Auth is available and current Firestore username is default-like or different
       const currentUsername = existingProfileData.username;
       const authDisplayName = user.displayName;
       const isDefaultUsername = !currentUsername || currentUsername === (existingProfileData.email?.split('@')[0]) || currentUsername.startsWith('user_');
@@ -92,12 +107,13 @@ export async function ensureUserProfileExists(user: FirebaseUser): Promise<UserP
       
       console.log("[ensureUserProfileExists] Data for updateDoc:", updates);
       await updateDoc(userDocRef, updates);
-      // For immediate return, merge updates with existing data and approximate timestamp
-      userProfileDataForMapping = { ...existingProfileData, ...updates, lastLoginAt: new Date() };
+      
+      const updatedDocSnap = await getDoc(userDocRef); // Re-fetch to get actual server timestamp
+      userProfileDataForMapping = updatedDocSnap.data()!;
       console.log(`[ensureUserProfileExists] Successfully updated existing user profile for UID: ${user.uid}`);
     } else {
       console.log(`[ensureUserProfileExists] Profile NOT found for UID: ${user.uid}. Creating new profile...`);
-      const newProfile: UserProfile = {
+      const newProfileData: Omit<UserProfile, 'createdAt' | 'lastLoginAt'> & { createdAt: any; lastLoginAt: any } = {
         uid: user.uid,
         email: user.email || null,
         username: user.displayName || user.email?.split('@')[0] || `user_${user.uid.substring(0, 6)}`,
@@ -108,14 +124,13 @@ export async function ensureUserProfileExists(user: FirebaseUser): Promise<UserP
         createdAt: serverTimestamp(),
         lastLoginAt: serverTimestamp(),
       };
-      console.log("[ensureUserProfileExists] Data for setDoc (new profile):", newProfile);
-      await setDoc(userDocRef, newProfile);
-      // For immediate return, approximate timestamps
-      userProfileDataForMapping = { ...newProfile, createdAt: new Date(), lastLoginAt: new Date() };
+      console.log("[ensureUserProfileExists] Data for setDoc (new profile):", newProfileData);
+      await setDoc(userDocRef, newProfileData);
+      
+      const createdDocSnap = await getDoc(userDocRef); // Re-fetch to get actual server timestamp
+      userProfileDataForMapping = createdDocSnap.data()!;
       console.log(`[ensureUserProfileExists] Successfully created new user profile for UID: ${user.uid}`);
     }
-    // The mapDocToUserProfile function will correctly handle the Timestamps when data is fetched later.
-    // For the immediate return, this approximation is often fine for client-side updates.
     return mapDocToUserProfile(user.uid, userProfileDataForMapping);
 
   } catch (error: any) {
@@ -147,15 +162,12 @@ export async function updateUserProfile(
     const userDocRef = doc(db, 'users', uid);
     const updateData: any = { ...data, lastLoginAt: serverTimestamp() };
 
-    // Handle country and countryCode ensuring they are consistent
-    if (data.hasOwnProperty('countryCode')) { // Prioritize countryCode if provided
+    if (data.hasOwnProperty('countryCode')) { 
       if (data.countryCode === '') {
-        updateData.country = ''; // Clear country if countryCode is cleared
+        updateData.country = ''; 
       }
-      // If countryCode is set, country should also be set (or re-fetched if not provided with countryCode)
-      // For simplicity, we assume 'country' is also provided or is acceptable as is.
     } else if (data.hasOwnProperty('country') && data.country === '') {
-        updateData.countryCode = ''; // Clear countryCode if country is cleared
+        updateData.countryCode = ''; 
     }
     
     console.log("[updateUserProfile] Data for updateDoc:", updateData);

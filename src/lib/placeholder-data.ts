@@ -2,7 +2,7 @@
 import type { Figure, PerceptionOption, EmotionKey } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp } from "firebase/firestore";
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -23,6 +23,14 @@ const defaultPerceptionCounts: Record<EmotionKey, number> = {
 // Helper to convert Firestore doc data to Figure, ensuring plain object
 const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data();
+  let createdAtString: string | undefined = undefined;
+  if (data.createdAt && data.createdAt instanceof Timestamp) {
+    createdAtString = data.createdAt.toDate().toISOString();
+  } else if (typeof data.createdAt === 'string') { // Handle if it's already a string
+    createdAtString = data.createdAt;
+  }
+
+
   return {
     id: docSnap.id,
     name: data.name || "",
@@ -32,19 +40,26 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     nationality: data.nationality || "",
     occupation: data.occupation || "",
     gender: data.gender || "",
-    perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts }, // Asegurar que perceptionCounts exista
+    perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
+    createdAt: createdAtString,
   };
 };
 
 export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
+    // When adding, createdAt will be handled by serverTimestamp() in FigureForm or here if needed
     const figureDataWithDefaults = {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
     };
-    await setDoc(figureRef, figureDataWithDefaults);
-    console.log("Figure added to Firestore:", figureDataWithDefaults);
+    // If figure.createdAt is a string from client, don't pass it directly if Firestore expects a Timestamp for new docs.
+    // FigureForm handles serverTimestamp() for new figures.
+    const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
+
+
+    await setDoc(figureRef, figureDataForFirestore);
+    console.log("Figure added to Firestore:", figureDataForFirestore);
   } catch (error) {
     console.error("Error adding figure to Firestore: ", error);
     throw error;
@@ -54,8 +69,11 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: string }): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    await updateDoc(figureRef, { ...figure }); 
-    console.log("Figure updated in Firestore:", figure);
+    // If figure.createdAt is a string, don't try to update it as a string if Firestore has it as Timestamp.
+    // Updates typically don't modify createdAt.
+    const { createdAt, ...figureDataToUpdate } = figure;
+    await updateDoc(figureRef, { ...figureDataToUpdate });
+    console.log("Figure updated in Firestore:", figureDataToUpdate);
   } catch (error) {
     console.error("Error updating figure in Firestore: ", error);
     throw error;
