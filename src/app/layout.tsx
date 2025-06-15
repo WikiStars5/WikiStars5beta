@@ -4,8 +4,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'StarSage - Percepción de Figuras Públicas',
-  description: 'Califica y discute sobre figuras públicas en StarSage.',
+  title: 'WikiStars5 - Percepción de Figuras Públicas',
+  description: 'Califica y discute sobre figuras públicas en WikiStars5.',
 };
 
 export default function RootLayout({

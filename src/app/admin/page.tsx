@@ -41,7 +41,7 @@ export default async function AdminDashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Panel de Administración</CardTitle>
-          <CardDescription>Resumen del estado de la aplicación StarSage. Datos de figuras desde Firestore.</CardDescription>
+          <CardDescription>Resumen del estado de la aplicación WikiStars5. Datos de figuras desde Firestore.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-2 gap-6">
