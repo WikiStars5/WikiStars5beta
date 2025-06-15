@@ -1,0 +1,222 @@
+
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import type { Figure, UserAttitude, AttitudeKey } from '@/lib/types';
+import { db } from '@/lib/firebase';
+import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, serverTimestamp, type Unsubscribe } from 'firebase/firestore';
+import type { User } from 'firebase/auth';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, LogIn } from 'lucide-react';
+import Link from 'next/link';
+
+interface AttitudeVoteProps {
+  figureId: string;
+  figureName: string;
+  initialAttitudeCounts?: Record<AttitudeKey, number>;
+  currentUser: User | null;
+}
+
+const ATTITUDE_OPTIONS_CONFIG: { key: AttitudeKey; label: string; emoji: string; colorClass: string }[] = [
+  { key: 'neutral', label: 'Neutral', emoji: '😐', colorClass: 'hover:bg-gray-400/20 border-gray-500 text-gray-600 dark:text-gray-400 dark:border-gray-600' },
+  { key: 'fan', label: 'Fan', emoji: '😍', colorClass: 'hover:bg-yellow-400/20 border-yellow-500 text-yellow-600 dark:text-yellow-400 dark:border-yellow-600' },
+  { key: 'simp', label: 'Simp', emoji: '🥰', colorClass: 'hover:bg-pink-400/20 border-pink-500 text-pink-600 dark:text-pink-400 dark:border-pink-600' },
+  { key: 'hater', label: 'Hater', emoji: '😡', colorClass: 'hover:bg-red-400/20 border-red-500 text-red-600 dark:text-red-400 dark:border-red-600' },
+];
+
+const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
+  neutral: 0, fan: 0, simp: 0, hater: 0,
+};
+
+export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, initialAttitudeCounts, currentUser }) => {
+  const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
+  const [figureAttitudeCounts, setFigureAttitudeCounts] = useState<Record<AttitudeKey, number>>(initialAttitudeCounts || defaultAttitudeCountsData);
+  const [totalVotes, setTotalVotes] = useState(0);
+  const [isLoadingAttitudeAction, setIsLoadingAttitudeAction] = useState<AttitudeKey | null>(null);
+  const [isComponentLoading, setIsComponentLoading] = useState(true);
+  const { toast } = useToast();
+
+  const canUserVote = !!currentUser && !currentUser.isAnonymous;
+
+  useEffect(() => {
+    if (!figureId) return;
+    setIsComponentLoading(true);
+
+    const figureDocRef = doc(db, "figures", figureId);
+    const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as Figure;
+        const counts = data.attitudeCounts || defaultAttitudeCountsData;
+        setFigureAttitudeCounts(counts);
+        setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
+      } else {
+        setFigureAttitudeCounts(defaultAttitudeCountsData);
+        setTotalVotes(0);
+      }
+    }, (error) => {
+      console.error("Error fetching figure attitude counts:", error);
+      toast({ title: "Error", description: "No se pudieron cargar los conteos de actitudes.", variant: "destructive" });
+      setIsComponentLoading(false);
+    });
+
+    let unsubscribeUserAttitude: Unsubscribe | undefined;
+    if (currentUser && figureId) {
+      const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
+      const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
+      
+      unsubscribeUserAttitude = onSnapshot(userAttitudeDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const userAttitudeData = docSnap.data() as UserAttitude;
+          setSelectedAttitude(userAttitudeData.attitude);
+        } else {
+          setSelectedAttitude(null);
+        }
+        setIsComponentLoading(false);
+      }, (error) => {
+        console.error("Error fetching user's attitude:", error);
+        setSelectedAttitude(null);
+        setIsComponentLoading(false);
+      });
+    } else {
+      setSelectedAttitude(null);
+      setIsComponentLoading(false);
+    }
+    
+    return () => {
+      unsubscribeFigure();
+      if (unsubscribeUserAttitude) unsubscribeUserAttitude();
+    };
+  }, [figureId, currentUser, toast]);
+
+
+  const handleAttitudeClick = async (attitudeKey: AttitudeKey) => {
+    if (!canUserVote) {
+      toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para votar.", variant: "default" });
+      return;
+    }
+    if (isLoadingAttitudeAction) return;
+
+    setIsLoadingAttitudeAction(attitudeKey);
+
+    const figureDocRef = doc(db, "figures", figureId);
+    const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
+    const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
+
+    const newAttitudeToSet = selectedAttitude === attitudeKey ? null : attitudeKey;
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const figureDoc = await transaction.get(figureDocRef);
+        if (!figureDoc.exists()) {
+          throw new Error("Documento de figura no existe!");
+        }
+
+        const currentCounts = (figureDoc.data()?.attitudeCounts || { ...defaultAttitudeCountsData }) as Record<AttitudeKey, number>;
+        const newCounts = { ...currentCounts };
+
+        if (selectedAttitude && selectedAttitude !== attitudeKey) { // User is changing vote
+          newCounts[selectedAttitude] = Math.max(0, (newCounts[selectedAttitude] || 0) - 1);
+        }
+        if (selectedAttitude === attitudeKey) { // User is unvoting
+            newCounts[attitudeKey] = Math.max(0, (newCounts[attitudeKey] || 0) - 1);
+        }
+        if (newAttitudeToSet && newAttitudeToSet !== selectedAttitude) { // User is voting or changing vote
+          newCounts[newAttitudeToSet] = (newCounts[newAttitudeToSet] || 0) + 1;
+        }
+        
+        transaction.update(figureDocRef, { attitudeCounts: newCounts });
+      });
+
+      if (newAttitudeToSet) {
+        await setDoc(userAttitudeDocRef, {
+          userId: currentUser.uid,
+          figureId: figureId,
+          attitude: newAttitudeToSet,
+          timestamp: serverTimestamp(),
+        });
+        setSelectedAttitude(newAttitudeToSet);
+        toast({ title: "Voto Registrado", description: `Tu actitud como "${ATTITUDE_OPTIONS_CONFIG.find(e => e.key === newAttitudeToSet)?.label}" ha sido guardada.` });
+      } else { 
+        await deleteDoc(userAttitudeDocRef);
+        setSelectedAttitude(null);
+        toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
+      }
+
+    } catch (error: any) {
+      console.error("Error voting on attitude:", error);
+      toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
+    } finally {
+      setIsLoadingAttitudeAction(null);
+    }
+  };
+  
+  if (isComponentLoading) { 
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>¿Qué te consideras?</CardTitle>
+          <CardDescription>Cargando opciones de actitud...</CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center items-center h-40">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>¿Qué te consideras con respecto a {figureName}?</CardTitle>
+        <CardDescription>
+          {canUserVote 
+            ? "Selecciona una opción para compartir tu postura."
+            : "Debes iniciar sesión con una cuenta para poder participar."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {!canUserVote && (
+          <Alert variant="default" className="mb-4">
+            <LogIn className="h-4 w-4" />
+            <AlertTitle>Participación Restringida</AlertTitle>
+            <AlertDescription>
+              <Link href="/login" className="font-semibold text-primary hover:underline">
+                Inicia sesión con una cuenta
+              </Link>
+              {" "}para seleccionar tu actitud.
+            </AlertDescription>
+          </Alert>
+        )}
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, colorClass }) => (
+            <Button
+              key={key}
+              variant={selectedAttitude === key ? "default" : "outline"}
+              className={`flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 
+                ${selectedAttitude === key ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2' : `text-foreground ${colorClass}`}
+                ${isLoadingAttitudeAction === key ? 'opacity-50 cursor-not-allowed' : ''}
+                ${!canUserVote ? 'cursor-not-allowed opacity-60' : ''}
+              `}
+              onClick={() => handleAttitudeClick(key)}
+              disabled={!canUserVote || !!isLoadingAttitudeAction}
+              style={{ minHeight: '100px' }}
+            >
+              <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
+              <span className="text-xs font-medium">{label}</span>
+              <span className="text-sm font-bold">
+                {figureAttitudeCounts[key] || 0}
+              </span>
+              {isLoadingAttitudeAction === key && <Loader2 className="absolute h-5 w-5 animate-spin" />}
+            </Button>
+          ))}
+        </div>
+        <div className="text-center text-muted-foreground">
+          <p>Total de respuestas: <span className="font-bold">{totalVotes}</span></p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};

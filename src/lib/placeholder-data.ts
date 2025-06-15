@@ -1,5 +1,6 @@
 
-import type { Figure, PerceptionOption, EmotionKey } from './types';
+
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp } from "firebase/firestore";
@@ -20,6 +21,13 @@ const defaultPerceptionCounts: Record<EmotionKey, number> = {
   furia: 0,
 };
 
+const defaultAttitudeCounts: Record<AttitudeKey, number> = {
+  neutral: 0,
+  fan: 0,
+  simp: 0,
+  hater: 0,
+};
+
 // Helper to convert Firestore doc data to Figure, ensuring plain object
 const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data();
@@ -32,17 +40,14 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
       createdAtString = data.createdAt;
     } else if (typeof data.createdAt === 'object' && data.createdAt !== null && 
                typeof data.createdAt.seconds === 'number' && typeof data.createdAt.nanoseconds === 'number') {
-      // It looks like a Timestamp-like object (e.g., from JSON or manual construction), try to convert it
       try {
         const date = new Date(data.createdAt.seconds * 1000 + data.createdAt.nanoseconds / 1000000);
         createdAtString = date.toISOString();
-        // console.warn(`[mapDocToFigure] data.createdAt for ID ${docSnap.id} was an object but not an instanceof Timestamp. Attempted manual conversion.`);
       } catch (e) {
         console.error(`[mapDocToFigure] Failed to manually convert timestamp-like object for ID ${docSnap.id}:`, e);
         createdAtString = undefined; 
       }
     } else {
-      // console.warn(`[mapDocToFigure] data.createdAt for ID ${docSnap.id} has an unexpected type: ${typeof data.createdAt}. Value:`, data.createdAt);
       createdAtString = undefined; 
     }
   }
@@ -57,6 +62,7 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     occupation: data.occupation || "",
     gender: data.gender || "",
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
+    attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts }, // Initialize attitudeCounts
     createdAt: createdAtString,
   };
 };
@@ -67,12 +73,12 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
     const figureDataWithDefaults = {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
+      attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts }, // Add attitudeCounts
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
 
     await setDoc(figureRef, figureDataForFirestore);
-    // console.log("Figure added to Firestore:", figureDataForFirestore);
   } catch (error) {
     console.error("Error adding figure to Firestore: ", error);
     throw error;
@@ -84,7 +90,6 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
     const figureRef = doc(db, "figures", figure.id);
     const { createdAt, ...figureDataToUpdate } = figure;
     await updateDoc(figureRef, { ...figureDataToUpdate });
-    // console.log("Figure updated in Firestore:", figureDataToUpdate);
   } catch (error) {
     console.error("Error updating figure in Firestore: ", error);
     throw error;
@@ -95,7 +100,6 @@ export const deleteFigureFromFirestore = async (figureId: string): Promise<void>
   try {
     const figureRef = doc(db, "figures", figureId);
     await deleteDoc(figureRef);
-    // console.log("Figure deleted from Firestore:", figureId);
   } catch (error) {
     console.error("Error deleting figure from Firestore: ", error);
     throw error;
@@ -109,7 +113,6 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
     if (figureSnap.exists()) {
       return mapDocToFigure(figureSnap);
     } else {
-      // console.log("No such figure in Firestore with ID:", id);
       return undefined;
     }
   } catch (error) {
@@ -119,27 +122,22 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
 };
 
 export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
-  // console.log("Attempting to fetch all figures from Firestore...");
   try {
     const figuresCollectionRef = collection(db, "figures");
     const q = query(figuresCollectionRef, orderBy("name"));
     const querySnapshot = await getDocs(q);
     
-    // console.log(`Firestore query returned ${querySnapshot.size} documents.`);
 
     const figures: Figure[] = [];
     if (querySnapshot.empty) {
-      // console.log("No documents found in the 'figures' collection.");
     } else {
       querySnapshot.forEach((docSnap) => {
         figures.push(mapDocToFigure(docSnap));
       });
     }
-    // console.log(`Successfully mapped ${figures.length} figures.`);
     return figures;
   } catch (error: any) {
     console.error("Error fetching all figures from Firestore. Message:", error.message);
-    // console.error("Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
     return []; 
   }
 };
@@ -175,3 +173,4 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
     return [];
   }
 }
+

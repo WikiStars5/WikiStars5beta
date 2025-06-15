@@ -17,7 +17,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'; 
-import type { Figure, EmotionKey } from '@/lib/types';
+import type { Figure, EmotionKey, AttitudeKey } from '@/lib/types';
 import slugify from 'slugify'; 
 
 interface FigureFormProps {
@@ -33,6 +33,13 @@ const defaultPerceptionCounts: Record<EmotionKey, number> = {
   furia: 0,
 };
 
+const defaultAttitudeCounts: Record<AttitudeKey, number> = {
+  neutral: 0,
+  fan: 0,
+  simp: 0,
+  hater: 0,
+};
+
 const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
   const [name, setName] = useState(initialData?.name || '');
@@ -45,6 +52,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [gender, setGender] = useState(initialData?.gender || '');
   const [nationality, setNationality] = useState(initialData?.nationality || '');
   const [perceptionCounts, setPerceptionCounts] = useState(initialData?.perceptionCounts || { ...defaultPerceptionCounts });
+  const [attitudeCounts, setAttitudeCounts] = useState(initialData?.attitudeCounts || { ...defaultAttitudeCounts });
 
 
   const [isLoading, setIsLoading] = useState(false);
@@ -83,6 +91,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setGender(initialData.gender || '');
       setNationality(initialData.nationality || '');
       setPerceptionCounts(initialData.perceptionCounts || { ...defaultPerceptionCounts });
+      setAttitudeCounts(initialData.attitudeCounts || { ...defaultAttitudeCounts });
       setSelectedFile(null);
       setPreviewFileUrl(null);
     } else {
@@ -93,6 +102,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setGender('');
       setNationality('');
       setPerceptionCounts({ ...defaultPerceptionCounts });
+      setAttitudeCounts({ ...defaultAttitudeCounts });
       setSelectedFile(null);
       setPreviewFileUrl(null);
     }
@@ -158,7 +168,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       }
 
 
-      const figureData: Omit<Figure, 'id'> & { createdAt?: any } = { 
+      const figureData: Omit<Figure, 'id' | 'createdAt'> & { createdAt?: any } = { 
         name: name.trim(),
         nameLower: name.trim().toLowerCase(),
         description: description.trim() || initialData?.description || "", 
@@ -166,7 +176,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         occupation: occupation.trim(),
         gender: gender.trim(),
         nationality: nationality.trim(),
-        perceptionCounts: initialData?.perceptionCounts || { ...defaultPerceptionCounts }, // Asegurar que se guarde
+        perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
+        attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts }, // Ensure attitudeCounts is saved
       };
 
       if (!initialData?.id) { 
@@ -326,3 +337,4 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 };
 
 export default FigureForm;
+

@@ -1,4 +1,5 @@
 
+
 export type PerceptionKeys = "neutral" | "fan" | "simp" | "hater"; // This might become unused if Disqus handles perception entirely.
 
 export interface PerceptionOption { // This might become unused.
@@ -8,6 +9,7 @@ export interface PerceptionOption { // This might become unused.
 }
 
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
+export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 
 export interface Figure {
   id: string;
@@ -19,14 +21,22 @@ export interface Figure {
   occupation?: string;
   gender?: string;
   perceptionCounts?: Record<EmotionKey, number>;
-  createdAt?: string; // Was missing, now string after conversion
+  attitudeCounts?: Record<AttitudeKey, number>; // New field for attitude counts
+  createdAt?: string; 
 }
 
 export interface UserPerception {
   userId: string;
   figureId: string;
   emotion: EmotionKey;
-  timestamp: any; // Firestore Timestamp, usually handled on write
+  timestamp: any; 
+}
+
+export interface UserAttitude { // New type for user attitude votes
+  userId: string;
+  figureId: string;
+  attitude: AttitudeKey;
+  timestamp: any; 
 }
 
 export interface Country {
@@ -43,7 +53,8 @@ export interface UserProfile {
   countryCode?: string; // ISO 3166-1 alpha-2 code of the selected country
   photoURL?: string | null; // From Firebase Auth, can be updated if profile picture feature is added
   role: 'user' | 'admin'; // User role
-  createdAt: string; // Changed from any to string (after conversion)
-  lastLoginAt?: string; // Changed from any to string (after conversion)
+  createdAt: string; 
+  lastLoginAt?: string; 
 }
+
 
