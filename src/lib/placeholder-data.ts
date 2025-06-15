@@ -2,7 +2,7 @@
 import type { Figure, PerceptionOption } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, DocumentData } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData } from "firebase/firestore";
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -76,18 +76,29 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
 };
 
 export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
+  console.log("Attempting to fetch all figures from Firestore...");
   try {
     const figuresCollectionRef = collection(db, "figures");
     const q = query(figuresCollectionRef, orderBy("name"));
     const querySnapshot = await getDocs(q);
+    
+    console.log(`Firestore query returned ${querySnapshot.size} documents.`);
+
     const figures: Figure[] = [];
-    querySnapshot.forEach((docSnap) => {
-      figures.push(mapDocToFigure(docSnap));
-    });
+    if (querySnapshot.empty) {
+      console.log("No documents found in the 'figures' collection.");
+    } else {
+      querySnapshot.forEach((docSnap) => {
+        // console.log(`Mapping document ${docSnap.id} to Figure...`);
+        figures.push(mapDocToFigure(docSnap));
+      });
+    }
+    console.log(`Successfully mapped ${figures.length} figures.`);
     return figures;
-  } catch (error) {
-    console.error("Error fetching all figures from Firestore: ", error);
-    return [];
+  } catch (error: any) {
+    console.error("Error fetching all figures from Firestore. Message:", error.message);
+    console.error("Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    return []; // Devuelve un array vacío en caso de error
   }
 };
 

@@ -16,34 +16,34 @@ import { Terminal } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'; // Importa onAuthStateChanged
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'; 
 import type { Figure } from '@/lib/types';
-import slugify from 'slugify'; // Import slugify
+import slugify from 'slugify'; 
 
 interface FigureFormProps {
-  initialFigure?: Figure;
+  initialData?: Figure; // Changed from initialFigure to initialData
 }
 
-const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
+// Changed from initialFigure to initialData in destructuring
+const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
-  const [name, setName] = useState(initialFigure?.name || '');
-  const [description, setDescription] = useState(initialFigure?.description || '');
-  const [photoUrl, setPhotoUrl] = useState(initialFigure?.photoUrl || '');
+  const [name, setName] = useState(initialData?.name || '');
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl || '');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
 
-  const [country, setCountry] = useState(initialFigure?.country || '');
-  const [occupation, setOccupation] = useState(initialFigure?.occupation || '');
-  const [gender, setGender] = useState(initialFigure?.gender || '');
-  const [nationality, setNationality] = useState(initialFigure?.nationality || '');
+  // Removed country state
+  const [occupation, setOccupation] = useState(initialData?.occupation || '');
+  const [gender, setGender] = useState(initialData?.gender || '');
+  const [nationality, setNationality] = useState(initialData?.nationality || '');
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [isAuthReady, setIsAuthReady] = useState(false); // Estado para saber si la autenticación está lista
+  const [isAuthReady, setIsAuthReady] = useState(false); 
 
-  // Efecto para asegurar la autenticación al cargar el componente
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -59,26 +59,25 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
       } else {
         console.log("Usuario autenticado:", user.uid);
       }
-      setIsAuthReady(true); // La autenticación ha sido chequeada/establecida
+      setIsAuthReady(true); 
     });
 
-    return () => unsubscribe(); // Limpiar el listener al desmontar el componente
-  }, []); // Se ejecuta solo una vez al montar
+    return () => unsubscribe(); 
+  }, []); 
 
-  // Efecto para sincronizar el estado del formulario con initialFigure al cargar o cambiar.
   useEffect(() => {
-    console.log("FigureForm useEffect [initialFigure] - Ejecutado.");
-    console.log("FigureForm useEffect [initialFigure] - initialFigure al inicio:", initialFigure);
-    console.log("FigureForm useEffect [initialFigure] - initialFigure.photoUrl al inicio:", initialFigure?.photoUrl);
+    console.log("FigureForm useEffect [initialData] - Ejecutado.");
+    console.log("FigureForm useEffect [initialData] - initialData al inicio:", initialData);
+    console.log("FigureForm useEffect [initialData] - initialData.photoUrl al inicio:", initialData?.photoUrl);
 
-    if (initialFigure) {
-      setName(initialFigure.name);
-      setDescription(initialFigure.description);
-      setPhotoUrl(initialFigure.photoUrl || ''); 
-      setCountry(initialFigure.country || '');
-      setOccupation(initialFigure.occupation || '');
-      setGender(initialFigure.gender || '');
-      setNationality(initialFigure.nationality || '');
+    if (initialData) {
+      setName(initialData.name);
+      setDescription(initialData.description || ''); // Ensure description is not undefined
+      setPhotoUrl(initialData.photoUrl || ''); 
+      // Removed country update
+      setOccupation(initialData.occupation || '');
+      setGender(initialData.gender || '');
+      setNationality(initialData.nationality || '');
 
       setSelectedFile(null);
       setPreviewFileUrl(null);
@@ -86,7 +85,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
       setName('');
       setDescription('');
       setPhotoUrl('');
-      setCountry('');
+      // Removed country reset
       setOccupation('');
       setGender('');
       setNationality('');
@@ -94,35 +93,26 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
       setSelectedFile(null);
       setPreviewFileUrl(null);
     }
-    // console.log("FigureForm useEffect [initialFigure] - Estado photoUrl final:", photoUrl); // This log was here
-  }, [initialFigure]);
+  }, [initialData]);
 
 
   useEffect(() => {
-    // This log was added in a previous step to debug photoUrl state.
     // console.log("FigureForm useEffect [photoUrl] - Estado photoUrl actual:", photoUrl);
   }, [photoUrl]);
 
 
-  // Manejador para la selección de archivo local
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
       setSelectedFile(file);
       setPreviewFileUrl(URL.createObjectURL(file));
-      setPhotoUrl(''); // Borra la URL del campo de texto si se selecciona un archivo local
+      setPhotoUrl(''); 
     } else {
       setSelectedFile(null);
       setPreviewFileUrl(null);
     }
   };
 
-  /**
-   * Función para subir un archivo a Firebase Storage.
-   * @param {File} file - El archivo a subir.
-   * @param {string} figureDocId - El ID del documento de la figura (para la ruta en Storage).
-   * @returns {Promise<string>} La URL de descarga del archivo.
-   */
   const uploadFileToFirebaseStorage = async (file: File, figureDocId: string): Promise<string> => {
     console.log("Iniciando subida de archivo a Storage...");
     const storageRef = ref(storage, `figures/${figureDocId}/${file.name}`);
@@ -135,7 +125,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
       return downloadURL;
     } catch (uploadError: any) {
       console.error("ERROR CRÍTICO en uploadFileToFirebaseStorage:", uploadError);
-      throw uploadError; // Re-lanza el error para que sea capturado en handleSubmit
+      throw uploadError; 
     }
   };
 
@@ -145,7 +135,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
     setError(null);
     setSuccess(null);
 
-    // Asegurarse de que la autenticación está lista antes de proceder
     if (!isAuthReady) {
       setError("La autenticación no está lista. Por favor, espera un momento o recarga la página.");
       setIsLoading(false);
@@ -157,44 +146,39 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
         throw new Error('El nombre de la figura es obligatorio.');
       }
 
-      const figureDocId = initialFigure?.id || slugify(name.trim(), { lower: true, strict: true });
+      const figureDocId = initialData?.id || slugify(name.trim(), { lower: true, strict: true });
       let finalPhotoUrlToSave = photoUrl.trim();
       
 
-      // Lógica de subida de archivo a Firebase Storage
       if (selectedFile) {
         console.log("Archivo local seleccionado. Intentando subir a Storage...");
         try {
           finalPhotoUrlToSave = await uploadFileToFirebaseStorage(selectedFile, figureDocId);
           console.log("URL final del archivo subido:", finalPhotoUrlToSave);
         } catch (uploadError: any) {
-          // El error ya se logueó en uploadFileToFirebaseStorage
           setError(`Error al subir la imagen: ${uploadError.message}.`);
           setIsLoading(false);
           return;
         }
-      } else if (!finalPhotoUrlToSave && initialFigure?.photoUrl) {
-        finalPhotoUrlToSave = initialFigure.photoUrl;
-      } else if (!finalPhotoUrlToSave && !initialFigure?.photoUrl && !selectedFile) {
-        // Only set default placeholder if it's a new figure and no image provided
+      } else if (!finalPhotoUrlToSave && initialData?.photoUrl) {
+        finalPhotoUrlToSave = initialData.photoUrl;
+      } else if (!finalPhotoUrlToSave && !initialData?.photoUrl && !selectedFile) {
         finalPhotoUrlToSave = 'https://placehold.co/400x600.png';
       }
 
 
-      const figureData: Omit<Figure, 'id'> & { createdAt?: any } = { // Ensure Figure type matches what's expected by Firestore
+      const figureData: Omit<Figure, 'id'> & { createdAt?: any } = { 
         name: name.trim(),
         nameLower: name.trim().toLowerCase(),
-        description: description.trim() || initialFigure?.description || "", // Preserve existing description
+        description: description.trim() || initialData?.description || "", 
         photoUrl: finalPhotoUrlToSave,
-        // country: country.trim(), // 'country' field was removed in favor of 'nationality'
         occupation: occupation.trim(),
         gender: gender.trim(),
         nationality: nationality.trim(),
-        // averageRating: initialFigure?.averageRating || 0, // These fields were removed from Figure type
-        // totalRatings: initialFigure?.totalRatings || 0,
+        // country: '', // Removed country
       };
 
-      if (!initialFigure?.id) { // Only add createdAt for new figures
+      if (!initialData?.id) { 
         figureData.createdAt = serverTimestamp();
       }
 
@@ -207,6 +191,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
       
       setTimeout(() => {
         router.push('/admin/figures');
+        router.refresh(); // Added to refresh data on redirect
       }, 1500);
 
     } catch (err: any) {
@@ -217,11 +202,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
     }
   };
 
-  const currentPreviewUrl = previewFileUrl || (photoUrl.trim() ? photoUrl.trim() : initialFigure?.photoUrl || null);
+  const currentPreviewUrl = previewFileUrl || (photoUrl.trim() ? photoUrl.trim() : initialData?.photoUrl || null);
   const isWikimediaUrl = currentPreviewUrl && currentPreviewUrl.includes('wikimedia.org');
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+    <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-card rounded-lg shadow-md"> {/* Changed from bg-white dark:bg-gray-800 */}
       {error && (
         <Alert variant="destructive">
           <Terminal className="h-4 w-4" />
@@ -230,14 +215,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
         </Alert>
       )}
       {success && (
-        <Alert>
-          <Terminal className="h-4 w-4" />
+        <Alert> {/* variant="success" is not a default shadcn variant, using default */}
+          <Terminal className="h-4 w-4" /> {/* Consider CheckCircle icon for success */}
           <AlertTitle>Éxito</AlertTitle>
           <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
 
-      {/* Campo Nombre de la Figura */}
       <div>
         <Label htmlFor="name">Nombre de la Figura</Label>
         <Input
@@ -250,7 +234,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
         />
       </div>
 
-      {/* Campo Descripción */}
       <div>
         <Label htmlFor="description">Descripción</Label>
         <Textarea
@@ -262,13 +245,12 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
         />
       </div>
 
-      {/* Campo de URL de Imagen */}
       <div>
         <Label htmlFor="photoUrl">URL de la Imagen (Opcional)</Label>
         <Input
           id="photoUrl"
           type="url"
-          value={photoUrl} // Enlazado al estado photoUrl
+          value={photoUrl} 
           onChange={(e) => {
             setPhotoUrl(e.target.value);
             setSelectedFile(null);
@@ -277,7 +259,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
           placeholder="Ej: https://upload.wikimedia.org/wikipedia/commons/..."
           className="mb-2"
         />
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-sm text-muted-foreground"> {/* Changed from text-gray-500 dark:text-gray-400 */}
           Pega la URL de una imagen externa. Si también seleccionas un archivo, se priorizará el archivo subido.
         </p>
         
@@ -299,8 +281,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
         )}
       </div>
 
-      {/* Campo de Subida de Archivo */}
-      <div className="mt-4 border-t pt-4 border-gray-200 dark:border-gray-700">
+      <div className="mt-4 border-t pt-4 border-border"> {/* Changed from border-gray-200 dark:border-gray-700 */}
         <Label htmlFor="fileInput">Subir Nueva Foto (Opcional)</Label>
         <Input
           id="fileInput"
@@ -309,13 +290,12 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
           onChange={handleFileChange}
           className="mt-1"
         />
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm text-muted-foreground mt-1"> {/* Changed from text-gray-500 dark:text-gray-400 */}
           Sube una imagen para la figura. Esto tendrá prioridad sobre la URL de la imagen.
         </p>
       </div>
 
-      {/* Nuevos Campos de Filtro */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 border-t pt-4 border-gray-200 dark:border-gray-700">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 border-t pt-4 border-border"> {/* Changed from border-gray-200 dark:border-gray-700 */}
         <div>
           <Label htmlFor="nationality">Nacionalidad</Label>
           <Input
@@ -346,22 +326,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
             placeholder="Ej: Masculino, Femenino"
           />
         </div>
-        {/* 'country' field was removed. If needed, uncomment and ensure it's in Figure type and Firestore logic.
-        <div>
-          <Label htmlFor="country">País</Label>
-          <Input
-            id="country"
-            type="text"
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            placeholder="Ej: Alemania, Estados Unidos"
-          />
-        </div>
-        */}
+        {/* 'country' field was removed. */}
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading || !isAuthReady}>
-        {isLoading ? 'Guardando...' : (initialFigure?.id ? 'Actualizar Figura' : 'Crear Figura')}
+        {isLoading ? 'Guardando...' : (initialData?.id ? 'Actualizar Figura' : 'Crear Figura')}
       </Button>
     </form>
   );

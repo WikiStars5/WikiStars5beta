@@ -35,20 +35,23 @@ export async function enrichAndSaveFigureData(
     // Merge enriched data with existing data, prioritizing enriched data if present
     const figureToUpdate: Figure = {
       ...existingFigure,
+      name: existingFigure.name, // Preserve original name unless AI is designed to change it
       description: enrichedData.description?.trim() || existingFigure.description,
       nationality: enrichedData.nationality?.trim() || existingFigure.nationality,
       occupation: enrichedData.occupation?.trim() || existingFigure.occupation,
       gender: enrichedData.gender?.trim() || existingFigure.gender,
+      nameLower: existingFigure.name.toLowerCase(), // Ensure nameLower is correctly set
     };
     
-    // Ensure nameLower is preserved/updated
-    figureToUpdate.nameLower = figureToUpdate.name.toLowerCase();
-
-
     await updateFigureInFirestore(figureToUpdate);
     
     revalidatePath(`/figures/${figureId}`);
-    revalidatePath(`/admin/figures/${figureId}/edit`);
+    // Also revalidate the admin edit page if it exists
+    revalidatePath(`/admin/figures/${figureId}/edit`); 
+    // It might be beneficial to revalidate the main figures listing as well
+    revalidatePath(`/figures`);
+    revalidatePath(`/admin/figures`);
+
 
     return { success: true, message: 'Figure information enriched and saved successfully.', updatedFigure: figureToUpdate };
   } catch (error: any) {
