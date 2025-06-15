@@ -12,8 +12,8 @@ import { useState } from "react";
 import { UserPlus, Loader2 } from "lucide-react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { auth } from '@/lib/firebase'; 
-import { ensureUserProfileExists } from "@/lib/userData"; // Import the function
+import { auth } from '@/lib/firebase';
+import { ensureUserProfileExists } from "@/lib/userData";
 
 const signupSchema = z.object({
   displayName: z.string().min(2, { message: "El nombre de usuario debe tener al menos 2 caracteres." }).max(50, {message: "El nombre de usuario no debe exceder los 50 caracteres."}),
@@ -41,22 +41,24 @@ export function SignupForm() {
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      
-      if (userCredential.user) {
+      const user = userCredential.user;
+
+      if (user) {
         // Update Firebase Auth user profile with displayName
-        await updateProfile(userCredential.user, {
+        await updateProfile(user, {
           displayName: values.displayName,
         });
 
-        // Ensure Firestore user profile document is created
-        await ensureUserProfileExists(userCredential.user);
+        // Ensure Firestore user profile document is created/updated
+        // Pass the user object which now includes the displayName
+        await ensureUserProfileExists(user);
       }
 
       toast({
         title: "¡Cuenta Creada!",
-        description: "¡Bienvenido a WikiStars5! Ahora puedes iniciar sesión y personalizar tu perfil.",
+        description: "¡Bienvenido a StarSage! Ahora puedes iniciar sesión.",
       });
-      router.push('/login'); 
+      router.push('/login');
     } catch (error: any) {
       console.error("Signup error:", error);
       let errorMessage = "No se pudo crear la cuenta. Por favor, inténtalo de nuevo.";

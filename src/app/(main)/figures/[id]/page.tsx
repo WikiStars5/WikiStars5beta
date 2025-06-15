@@ -23,32 +23,32 @@ import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
 
 /*
-REGLAS DE FIRESTORE RECOMENDADAS (Aplicar en Firebase Console -> Firestore Database -> Rules):
+RECOMMENDED FIRESTORE RULES:
+(Apply these in your Firebase Console -> Firestore Database -> Rules)
 
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Reglas para la colección 'figures'
+    // --- Rules for 'figures' collection ---
     match /figures/{figureId} {
-      allow get: if true; // Lectura pública
+      allow get: if true; // PUBLIC ACCESS: Allow anyone to read (get) individual figure documents.
 
-      // Solo el admin NO ANÓNIMO puede crear o eliminar figuras
+      // ADMIN-ONLY ACCESS: Allow ONLY the admin (UID: JZP4A5GvZUbWuT0Y1DIiawWcSUp2)
+      // to create and delete figure documents if they are NOT anonymous.
       allow create, delete: if request.auth != null &&
                               !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
                               request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
 
-      // Actualizaciones
+      // AUTHENTICATED NON-ANONYMOUS USER ACCESS for updates:
       allow update: if request.auth != null &&
-                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') && // Debe ser un usuario NO ANÓNIMO
+                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
                       (
-                        // Admin NO ANÓNIMO puede actualizar cualquier campo
+                        // Admin can update any field
                         request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'
                         ||
-                        // Usuarios autenticados NO ANÓNIMOS pueden actualizar campos específicos del perfil
-                        // y perceptionCounts.
-                        // Se verifica que no intenten modificar campos no permitidos como 'name' o 'id'.
+                        // Non-admin, non-anonymous users can update specific fields
                         (
                           (
                             request.resource.data.description != resource.data.description ||
@@ -57,21 +57,21 @@ service cloud.firestore {
                             request.resource.data.gender != resource.data.gender ||
                             request.resource.data.perceptionCounts != resource.data.perceptionCounts
                           ) &&
-                          request.resource.data.name == resource.data.name && // No pueden cambiar el nombre
-                          request.resource.data.id == resource.data.id // No pueden cambiar el ID
+                          request.resource.data.name == resource.data.name &&
+                          request.resource.data.id == resource.data.id // Prevent ID change
                         )
                       );
     }
 
     match /figures {
-      allow list: if true; // Listado público
+      allow list: if true; // PUBLIC ACCESS: Allow anyone to list all documents.
     }
+    // --- End of rules for 'figures' collection ---
 
-    // Reglas para la colección 'userPerceptions' (ID del doc: ${userId}_${figureId})
+    // --- Rules for 'userPerceptions' collection ---
     match /userPerceptions/{perceptionDocId} {
       function getUserIdFromDocId() { return perceptionDocId.split('_')[0]; }
       function getFigureIdFromDocId() { return perceptionDocId.split('_')[1]; }
-
       function isOwnerNonAnonymous() {
         return request.auth != null &&
                !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
@@ -87,25 +87,49 @@ service cloud.firestore {
                request.resource.data.keys().hasAll(['userId', 'figureId', 'emotion', 'timestamp']) &&
                request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'];
       }
-
-      allow read: if isOwnerNonAnonymous();
-      allow delete: if isOwnerNonAnonymous();
+      allow read, delete: if isOwnerNonAnonymous();
       allow update: if isOwnerNonAnonymous() &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['emotion', 'timestamp']) &&
                       request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'];
       allow create: if isCreatingOwnValidDocNonAnonymous();
     }
+    // --- End of rules for 'userPerceptions' collection ---
+
+    // --- Rules for 'users' collection ---
+    match /users/{userId} {
+      allow read: if request.auth != null &&
+                     request.auth.uid == userId &&
+                     !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+      allow create: if request.auth != null &&
+                       request.auth.uid == userId &&
+                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                       request.resource.data.uid == userId &&
+                       request.resource.data.role == 'user' &&
+                       request.resource.data.keys().hasAll([
+                         'uid', 'email', 'username', 'photoURL',
+                         'country', 'countryCode', 'role',
+                         'createdAt', 'lastLoginAt'
+                       ]);
+      allow update: if request.auth != null &&
+                       request.auth.uid == userId &&
+                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                       !(request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                         'uid', 'email', 'createdAt', 'role'
+                       ])) &&
+                       (request.resource.data.photoURL == resource.data.photoURL || request.resource.data.photoURL == request.auth.token.picture);
+      allow delete: if false;
+    }
+    // --- End of rules for 'users' collection ---
   }
 }
 */
-
 
 export default function FigurePage() {
   const routeParams = useParams<{ id: string }>();
   const id = routeParams?.id;
   const router = useRouter();
 
-  const [figure, setFigure] = useState<Figure | null | undefined>(undefined); 
+  const [figure, setFigure] = useState<Figure | null | undefined>(undefined);
   const [allFigures, setAllFigures] = useState<Figure[]>([]);
   const { toast } = useToast();
 
@@ -115,27 +139,25 @@ export default function FigurePage() {
   const [editedOccupation, setEditedOccupation] = useState("");
   const [editedGender, setEditedGender] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  
+
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [canUserInteract, setCanUserInteract] = useState(false);
-
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
       setCurrentUser(user);
-      setCanUserInteract(!!user && !user.isAnonymous);
+      setCanUserInteract(!!user && !user.isAnonymous); // Only non-anonymous users can interact
     });
     return () => unsubscribe();
   }, []);
 
-
   const fetchFigureData = useCallback(async () => {
     if (!id) {
-        setFigure(undefined); 
-        return;
+      setFigure(undefined);
+      return;
     }
     const fetchedFigure = await getFigureFromFirestore(id);
-    setFigure(fetchedFigure || null); 
+    setFigure(fetchedFigure || null);
     if (fetchedFigure) {
       setEditedDescription(fetchedFigure.description || "");
       setEditedNationality(fetchedFigure.nationality || "");
@@ -151,8 +173,8 @@ export default function FigurePage() {
   }, [id]);
 
   useEffect(() => {
-    if (id) { 
-        fetchFigureData();
+    if (id) {
+      fetchFigureData();
     }
   }, [id, fetchFigureData]);
 
@@ -165,9 +187,12 @@ export default function FigurePage() {
     }
   }, [figure, isEditing]);
 
-
   const handleEditToggle = () => {
-    if (isEditing) {
+    if (!canUserInteract) {
+      toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para editar.", variant: "default" });
+      return;
+    }
+    if (isEditing) { // Reset fields if cancelling edit
       if (figure) {
         setEditedDescription(figure.description || "");
         setEditedNationality(figure.nationality || "");
@@ -179,13 +204,13 @@ export default function FigurePage() {
   };
 
   const handleSave = async () => {
-    if (!figure || !currentUser || currentUser.isAnonymous) {
+    if (!figure || !canUserInteract) { // Check canUserInteract instead of just currentUser
       toast({ title: "Error", description: "Debes iniciar sesión con una cuenta para guardar.", variant: "destructive" });
       return;
     }
     setIsSaving(true);
     try {
-      const updatedFigureData : Partial<Figure> & {id: string} = {
+      const updatedFigureData: Partial<Figure> & { id: string } = {
         id: figure.id,
         description: editedDescription,
         nationality: editedNationality,
@@ -194,15 +219,15 @@ export default function FigurePage() {
       };
 
       await updateFigureInFirestore(updatedFigureData);
-      
+
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
       setIsEditing(false);
-      await fetchFigureData(); 
+      await fetchFigureData(); // Re-fetch data to show updates
     } catch (error: any) {
       console.error("Error saving figure details:", error);
       let errorMessage = "No se pudo guardar la información.";
       if (error.message) {
-          errorMessage += ` Detalles: ${error.message}`;
+        errorMessage += ` Detalles: ${error.message}`;
       }
       toast({ title: "Error al Guardar", description: errorMessage, variant: "destructive" });
     } finally {
@@ -210,7 +235,7 @@ export default function FigurePage() {
     }
   };
 
-  if (!id && figure === undefined) { 
+  if (!id && figure === undefined) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -218,8 +243,8 @@ export default function FigurePage() {
       </div>
     );
   }
-  
-  if (figure === undefined) { 
+
+  if (figure === undefined) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -248,7 +273,7 @@ export default function FigurePage() {
   return (
     <div className="space-y-8 lg:space-y-12">
       <ProfileHeader figure={figure} />
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2">
           <Tabs defaultValue="personal-info" className="w-full">
@@ -257,7 +282,7 @@ export default function FigurePage() {
               <TabsTrigger value="comments" className="text-base py-2.5">Calificaciones y Comentarios</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-base py-2.5">Percepción Emocional</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="personal-info">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -287,7 +312,7 @@ export default function FigurePage() {
                       </AlertDescription>
                     </Alert>
                   )}
-                  {isEditing ? (
+                  {isEditing && canUserInteract ? (
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="description" className="font-semibold text-foreground/90">Descripción</Label>
@@ -352,7 +377,7 @@ export default function FigurePage() {
                       ) : (
                         <p className="text-base text-muted-foreground">No hay una descripción disponible. {canUserInteract ? "¡Anímate a añadir una!" : "Inicia sesión para añadir una."}</p>
                       )}
-                      
+
                       <div className="space-y-3 pt-4">
                         <div className="flex items-start">
                           <UserCircle className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
@@ -375,12 +400,12 @@ export default function FigurePage() {
                             <p className="text-sm text-muted-foreground">{figure.occupation || "No disponible"}</p>
                           </div>
                         </div>
-                         <div className="flex items-start">
-                            <Users2 className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                            <div>
-                                <p className="font-semibold text-foreground/90">Género</p>
-                                <p className="text-sm text-muted-foreground">{figure.gender || "No disponible"}</p>
-                            </div>
+                        <div className="flex items-start">
+                          <Users2 className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                          <div>
+                            <p className="font-semibold text-foreground/90">Género</p>
+                            <p className="text-sm text-muted-foreground">{figure.gender || "No disponible"}</p>
+                          </div>
                         </div>
                       </div>
                     </>
@@ -400,31 +425,31 @@ export default function FigurePage() {
             </TabsContent>
 
             <TabsContent value="perception-emotions">
-              {figure && ( 
-                <PerceptionEmotions 
-                  figureId={figure.id} 
+              {figure && (
+                <PerceptionEmotions
+                  figureId={figure.id}
                   figureName={figure.name}
                   initialPerceptionCounts={figure.perceptionCounts}
-                  currentUser={currentUser} // Pasar currentUser para que PerceptionEmotions decida
+                  currentUser={currentUser}
                 />
               )}
-               {(!figure) && ( // Simplificado, PerceptionEmotions maneja su propio loader si currentUser es null inicialmente
-                 <div className="flex justify-center items-center h-40">
-                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                 </div>
-               )}
+              {(!figure) && (
+                <div className="flex justify-center items-center h-40">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>
-        
+
         <aside className="lg:col-span-1 space-y-6">
           <Alert>
             <Terminal className="h-4 w-4" />
             <AlertTitle className="font-headline">Cómo Funciona</AlertTitle>
             <AlertDescription className="text-sm">
               Las discusiones y comentarios sobre {figure.name} son gestionados a través de Disqus.
-              La información personal puede ser editada por la comunidad de usuarios registrados.
-              ¡Expresa tu percepción emocional votando por una emoción si has iniciado sesión!
+              La información personal puede ser editada por usuarios con cuenta.
+              ¡Expresa tu percepción emocional votando si has iniciado sesión con una cuenta!
             </AlertDescription>
           </Alert>
 
@@ -443,6 +468,3 @@ export default function FigurePage() {
     </div>
   );
 }
-    
-
-    

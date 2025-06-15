@@ -2,7 +2,7 @@
 "use client";
 
 import { AuthFormCard } from "@/components/auth/AuthFormCard";
-import { LoginForm } from "@/components/auth/LoginForm";
+import { LoginForm } from "@/components/auth/LoginForm"; // LoginForm will also call ensureUserProfileExists
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
@@ -21,13 +21,13 @@ export default function LoginPage() {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      await ensureUserProfileExists(user);
+      await ensureUserProfileExists(user); // Create/update profile in Firestore
 
       toast({
         title: "Inicio de Sesión Exitoso",
         description: `¡Bienvenido de nuevo, ${user.displayName || user.email}!`,
       });
-      router.push('/home'); // Or a redirected path
+      router.push('/home'); // Or your desired redirect path
     } catch (error: any) {
       console.error("Google sign-in error:", error);
       let errorMessage = "No se pudo iniciar sesión con Google.";
@@ -49,7 +49,7 @@ export default function LoginPage() {
   return (
     <AuthFormCard
       title="¡Bienvenido de Nuevo!"
-      description="Inicia sesión en tu cuenta de WikiStars5 para continuar."
+      description="Inicia sesión en tu cuenta de StarSage para continuar."
       footerText="¿No tienes una cuenta?"
       footerLinkText="Regístrate"
       footerLinkHref="/signup"
