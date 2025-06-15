@@ -40,18 +40,21 @@ export function SignupForm() {
   async function onSubmit(values: SignupFormValues) {
     setIsLoading(true);
     try {
+      // Step 1: Create user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
+      console.log("SignupForm: User created in Firebase Auth:", user.uid);
 
+      // Step 2: Update Firebase Auth profile (displayName)
       if (user) {
-        // Update Firebase Auth user profile with displayName
         await updateProfile(user, {
           displayName: values.displayName,
         });
+        console.log("SignupForm: Firebase Auth profile updated with displayName:", values.displayName);
 
-        // Ensure Firestore user profile document is created/updated
-        // Pass the user object which now includes the displayName
+        // Step 3: Ensure Firestore user profile document is created/updated
         await ensureUserProfileExists(user);
+        console.log("SignupForm: ensureUserProfileExists completed for UID:", user.uid);
       }
 
       toast({
@@ -59,23 +62,26 @@ export function SignupForm() {
         description: "¡Bienvenido a WikiStars5! Ahora puedes iniciar sesión.",
       });
       router.push('/login');
-    } catch (error: any) {
-      console.error("Signup error object:", error); // Por favor, revisa esto en tu consola del navegador
-      console.error("Signup error code:", error.code); // Y esto
-      console.error("Signup error message:", error.message); // Y esto
 
-      let displayErrorMessage = "No se pudo crear la cuenta. Revisa la consola del navegador para más detalles.";
+    } catch (error: any) {
+      console.error("SignupForm onSubmit error object:", error);
+      console.error("SignupForm onSubmit error code:", error.code);
+      console.error("SignupForm onSubmit error message:", error.message);
+
+      let displayErrorMessage = "No se pudo crear la cuenta. Intenta de nuevo.";
       
-      if (typeof error.message === 'string' && error.message.toLowerCase().includes('maximum call stack size exceeded')) {
-        displayErrorMessage = "Error Interno: Se excedió el límite de llamadas. Esto es un problema serio. Por favor, revisa la consola del navegador para ver la traza completa del error y busca ayuda si es necesario.";
+      if (error.message && error.message.includes("Firestore_Profile_Error")) {
+        displayErrorMessage = `Cuenta creada, pero hubo un problema al configurar tu perfil en Firestore: ${error.message.replace("Firestore_Profile_Error:", "")}`;
       } else if (error.code === 'auth/email-already-in-use') {
         displayErrorMessage = "Esta dirección de correo electrónico ya está en uso.";
       } else if (error.code === 'auth/invalid-email') {
         displayErrorMessage = "El formato del correo electrónico es inválido.";
       } else if (error.code === 'auth/weak-password') {
         displayErrorMessage = "La contraseña es demasiado débil.";
+      } else if (error.message && error.message.toLowerCase().includes('maximum call stack size exceeded')) {
+        displayErrorMessage = "Error Interno: Se excedió el límite de llamadas (Maximum call stack size). Por favor, revisa la consola del navegador y contacta a soporte.";
       } else if (error.message) {
-        displayErrorMessage = `Error: ${error.message}${error.code ? ` (Código: ${error.code})` : ''}`;
+        displayErrorMessage = `Error de registro: ${error.message}${error.code ? ` (Código: ${error.code})` : ''}`;
       }
       
       toast({
