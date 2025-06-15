@@ -16,9 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
-import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions"; // Nueva importación
+import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, signInAnonymously, type User } from "firebase/auth";
 
@@ -93,7 +93,6 @@ export default function FigurePage() {
 
   const [figure, setFigure] = useState<Figure | null | undefined>(undefined); 
   const [allFigures, setAllFigures] = useState<Figure[]>([]);
-  // const router = useRouter(); // No se usa directamente para refresh, se usa fetchFigureData
   const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -184,7 +183,7 @@ export default function FigurePage() {
     setIsSaving(true);
     try {
       const updatedFigureData : Partial<Figure> & {id: string} = {
-        id: figure.id, // id is required for updateFigureInFirestore
+        id: figure.id,
         description: editedDescription,
         nationality: editedNationality,
         occupation: editedOccupation,
@@ -250,10 +249,10 @@ export default function FigurePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2">
           <Tabs defaultValue="personal-info" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6"> {/* Ajustado a 3 columnas */}
+            <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="personal-info" className="text-base py-2.5">Información Personal</TabsTrigger>
+              <TabsTrigger value="comments" className="text-base py-2.5">Calificaciones y Comentarios</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-base py-2.5">Percepción Emocional</TabsTrigger>
-              <TabsTrigger value="comments" className="text-base py-2.5">Comentarios</TabsTrigger>
             </TabsList>
             
             <TabsContent value="personal-info">
@@ -375,8 +374,18 @@ export default function FigurePage() {
               </Card>
             </TabsContent>
 
+            <TabsContent value="comments">
+              {figure && (
+                <DisqusComments
+                  pageUrl={pageUrl}
+                  pageIdentifier={commentsPageIdentifier}
+                  pageTitle={pageTitle}
+                />
+              )}
+            </TabsContent>
+
             <TabsContent value="perception-emotions">
-              {figure && currentUser && ( // Asegurarse que figure y currentUser estén listos
+              {figure && currentUser && ( 
                 <PerceptionEmotions 
                   figureId={figure.id} 
                   figureName={figure.name}
@@ -388,16 +397,6 @@ export default function FigurePage() {
                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                  </div>
                )}
-            </TabsContent>
-
-            <TabsContent value="comments">
-              {figure && (
-                <DisqusComments
-                  pageUrl={pageUrl}
-                  pageIdentifier={commentsPageIdentifier}
-                  pageTitle={pageTitle}
-                />
-              )}
             </TabsContent>
           </Tabs>
         </div>
@@ -428,3 +427,5 @@ export default function FigurePage() {
     </div>
   );
 }
+
+    
