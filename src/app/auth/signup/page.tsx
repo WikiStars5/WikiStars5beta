@@ -2,7 +2,7 @@
 "use client";
 
 import { AuthFormCard } from "@/components/auth/AuthFormCard";
-import { LoginForm } from "@/components/auth/LoginForm"; // LoginForm will also call ensureUserProfileExists
+import { SignupForm } from "@/components/auth/SignupForm";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
@@ -10,7 +10,7 @@ import { auth } from '@/lib/firebase';
 import { ensureUserProfileExists } from '@/lib/userData';
 import { useToast } from "@/hooks/use-toast";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -24,19 +24,19 @@ export default function LoginPage() {
       await ensureUserProfileExists(user); // Create/update profile in Firestore
 
       toast({
-        title: "Inicio de Sesión Exitoso",
-        description: `¡Bienvenido de nuevo, ${user.displayName || user.email}!`,
+        title: "¡Cuenta Creada y Sesión Iniciada!",
+        description: `¡Bienvenido a WikiStars5, ${user.displayName || user.email}!`,
       });
-      router.push('/home'); // Or your desired redirect path
+      router.push('/home'); // Redirect to home or desired page
     } catch (error: any) {
-      console.error("Google sign-in error:", error, "Code:", error.code, "Message:", error.message);
-      let errorMessage = "No se pudo iniciar sesión con Google. Intenta de nuevo más tarde.";
+      console.error("Google sign-up/sign-in error:", error, "Code:", error.code, "Message:", error.message);
+      let errorMessage = "No se pudo registrar/iniciar sesión con Google. Intenta de nuevo más tarde.";
       switch (error.code) {
         case 'auth/popup-closed-by-user':
-          errorMessage = "El inicio de sesión con Google fue cancelado por el usuario.";
+          errorMessage = "El proceso con Google fue cancelado por el usuario.";
           break;
         case 'auth/account-exists-with-different-credential':
-          errorMessage = "Ya existe una cuenta con este correo electrónico usando un método de inicio de sesión diferente.";
+          errorMessage = "Ya existe una cuenta con este correo electrónico usando un método de inicio de sesión diferente. Intenta iniciar sesión con ese método.";
           break;
         case 'auth/operation-not-allowed':
           errorMessage = "El inicio de sesión con Google no está habilitado. Por favor, verifica la configuración en Firebase Console.";
@@ -54,13 +54,14 @@ export default function LoginPage() {
             errorMessage = "Ocurrió un error interno en el servidor de autenticación. Por favor, inténtalo de nuevo más tarde.";
             break;
         default:
+          // Para otros errores no anticipados, usa el mensaje del error si está disponible.
           if (error.message) {
             errorMessage = `Error: ${error.message}`;
           }
           break;
       }
       toast({
-        title: "Error de Inicio de Sesión con Google",
+        title: "Error con Google",
         description: errorMessage,
         variant: "destructive",
       });
@@ -71,15 +72,15 @@ export default function LoginPage() {
 
   return (
     <AuthFormCard
-      title="¡Bienvenido de Nuevo!"
-      description="Inicia sesión en tu cuenta de WikiStars5 para continuar."
-      footerText="¿No tienes una cuenta?"
-      footerLinkText="Regístrate"
-      footerLinkHref="/signup"
+      title="Crear una Cuenta"
+      description="Únete a WikiStars5 para calificar, discutir y personalizar tu perfil."
+      footerText="¿Ya tienes una cuenta?"
+      footerLinkText="Iniciar Sesión"
+      footerLinkHref="/login"
       onGoogleSignIn={handleGoogleSignIn}
       isGoogleLoading={isGoogleLoading}
     >
-      <LoginForm />
+      <SignupForm />
     </AuthFormCard>
   );
 }
