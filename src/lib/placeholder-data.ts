@@ -20,6 +20,9 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     nameLower: data.nameLower || (data.name ? data.name.toLowerCase() : ""),
     photoUrl: data.photoUrl || "",
     description: data.description || "",
+    nationality: data.nationality || "",
+    occupation: data.occupation || "",
+    gender: data.gender || "",
   };
 };
 
@@ -37,7 +40,7 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 export const updateFigureInFirestore = async (figure: Figure): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    await updateDoc(figureRef, { ...figure });
+    await updateDoc(figureRef, { ...figure }); // Use spread to update all fields including new ones
     console.log("Figure updated in Firestore:", figure);
   } catch (error) {
     console.error("Error updating figure in Firestore: ", error);
@@ -98,16 +101,12 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
       figures.push(mapDocToFigure(docSnap));
     });
 
-    // If not enough figures from the initial query, try to get more.
-    // This part might be redundant if the initial query is expected to fetch enough
-    // or if the logic for "featured" is just the first 'count' by name.
-    // Kept original logic for supplementing if count is not met.
     if (figures.length < count) {
       const allFigures = await getAllFiguresFromFirestore();
       const additionalFigures = allFigures.filter(af => !figures.find(f => f.id === af.id));
       figures.push(...additionalFigures.slice(0, count - figures.length));
     }
-    // Ensure uniqueness in case the supplemental logic adds duplicates (though unlikely with current logic)
+    
     const uniqueFigureIds = new Set<string>();
     figures = figures.filter(figure => {
         if (uniqueFigureIds.has(figure.id)) {

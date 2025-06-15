@@ -13,6 +13,9 @@ export interface Figure {
   nameLower: string; // For case-insensitive search
   photoUrl: string;
   description?: string;
+  nationality?: string;
+  occupation?: string;
+  gender?: string;
   // averageRating, totalRatings, and perceptionCounts are removed
   // as the app will no longer manage these. Disqus is expected to handle them
   // or they are no longer displayed if not provided by Disqus.

@@ -2,7 +2,7 @@
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Info } from "lucide-react";
+import { Terminal, Info, UserCircle, Globe, Briefcase, Users2 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -60,13 +60,43 @@ export default async function FigurePage({ params }: FigurePageProps) {
                     Sobre {figure.name}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   {figure.description ? (
                     <p className="text-base leading-relaxed text-foreground/90">{figure.description}</p>
                   ) : (
-                    <p className="text-base text-muted-foreground">No hay información personal adicional disponible para esta figura.</p>
+                    <p className="text-base text-muted-foreground">No hay una descripción adicional disponible para esta figura.</p>
                   )}
-                  {/* You can add more details here if your Figure type expands */}
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <UserCircle className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                      <div>
+                        <p className="font-semibold text-foreground/90">Nombre Completo</p>
+                        <p className="text-sm text-muted-foreground">{figure.name || "No disponible"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <Globe className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                      <div>
+                        <p className="font-semibold text-foreground/90">Nacionalidad</p>
+                        <p className="text-sm text-muted-foreground">{figure.nationality || "No disponible"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <Briefcase className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                      <div>
+                        <p className="font-semibold text-foreground/90">Ocupación</p>
+                        <p className="text-sm text-muted-foreground">{figure.occupation || "No disponible"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <Users2 className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                      <div>
+                        <p className="font-semibold text-foreground/90">Género</p>
+                        <p className="text-sm text-muted-foreground">{figure.gender || "No disponible"}</p>
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

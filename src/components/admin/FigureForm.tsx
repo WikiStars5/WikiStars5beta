@@ -16,11 +16,15 @@ import { addFigureToFirestore, updateFigureInFirestore } from "@/lib/placeholder
 import { storage } from "@/lib/firebase"; 
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
+import { Textarea } from "@/components/ui/textarea";
 
 const figureFormSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
   photoUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
-  // Description is intentionally omitted from the form schema as per previous request
+  description: z.string().optional(),
+  nationality: z.string().optional(),
+  occupation: z.string().optional(),
+  gender: z.string().optional(),
 });
 
 type FigureFormValues = z.infer<typeof figureFormSchema>;
@@ -36,7 +40,6 @@ export function FigureForm({ initialData }: FigureFormProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrlFromFile, setPreviewUrlFromFile] = useState<string | null>(null);
 
-  // DEBUG: Log initialData as received by the component
   console.log("FigureForm Render - initialData prop:", initialData);
   console.log("FigureForm Render - initialData.photoUrl prop:", initialData?.photoUrl);
 
@@ -45,16 +48,22 @@ export function FigureForm({ initialData }: FigureFormProps) {
     defaultValues: {
       name: initialData?.name || "",
       photoUrl: initialData?.photoUrl || "",
+      description: initialData?.description || "",
+      nationality: initialData?.nationality || "",
+      occupation: initialData?.occupation || "",
+      gender: initialData?.gender || "",
     },
   });
 
-  // DEBUG: Log defaultValues used by useForm
   console.log("FigureForm Render - useForm defaultValues:", {
     name: initialData?.name || "",
     photoUrl: initialData?.photoUrl || "",
+    description: initialData?.description || "",
+    nationality: initialData?.nationality || "",
+    occupation: initialData?.occupation || "",
+    gender: initialData?.gender || "",
   });
 
-  // Effect to reset form when initialData changes or on initial mount if initialData is present
   useEffect(() => {
     console.log("FigureForm useEffect [initialData, form.reset] - Executed.");
     console.log("FigureForm useEffect - initialData at start of effect:", initialData);
@@ -64,30 +73,35 @@ export function FigureForm({ initialData }: FigureFormProps) {
       const resetValues = {
         name: initialData.name || "",
         photoUrl: initialData.photoUrl || "",
+        description: initialData.description || "",
+        nationality: initialData.nationality || "",
+        occupation: initialData.occupation || "",
+        gender: initialData.gender || "",
       };
       console.log("FigureForm useEffect - Calling form.reset with:", resetValues);
       form.reset(resetValues);
-      setSelectedFile(null); // Clear any selected file when editing existing data
-      setPreviewUrlFromFile(null); // Clear file preview
+      setSelectedFile(null); 
+      setPreviewUrlFromFile(null); 
     } else {
-      // For a new form
       const resetValues = {
         name: "",
         photoUrl: "",
+        description: "",
+        nationality: "",
+        occupation: "",
+        gender: "",
       };
       console.log("FigureForm useEffect - Calling form.reset for new form with:", resetValues);
       form.reset(resetValues);
       setSelectedFile(null);
       setPreviewUrlFromFile(null);
     }
-  }, [initialData, form.reset]); // form.reset is stable, initialData is the key dependency
+  }, [initialData, form.reset]); 
 
   const watchedPhotoUrlInput = form.watch('photoUrl');
 
-  // DEBUG: Log the watched photoUrl from react-hook-form state
   console.log("FigureForm Render - form.watch('photoUrl'):", watchedPhotoUrlInput);
 
-  // Second useEffect: For observing changes in watchedPhotoUrlInput (form state) and debugging
   useEffect(() => {
     console.log("FigureForm useEffect [watchedPhotoUrlInput] - Form state photoUrl actual:", watchedPhotoUrlInput);
   }, [watchedPhotoUrlInput]);
@@ -102,7 +116,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
         setPreviewUrlFromFile(reader.result as string);
       };
       reader.readAsDataURL(file);
-      form.setValue('photoUrl', ''); // Clear external URL if a file is chosen
+      form.setValue('photoUrl', ''); 
     } else {
       setSelectedFile(null);
       setPreviewUrlFromFile(null);
@@ -131,13 +145,10 @@ export function FigureForm({ initialData }: FigureFormProps) {
         return; 
       }
     } else if (values.photoUrl !== undefined && values.photoUrl !== (initialData?.photoUrl || "")) {
-      // Use the URL from the input if it's provided and different from the initial one, or if it's a new entry
       finalPhotoUrl = values.photoUrl;
     } else if (!values.photoUrl && !selectedFile && !initialData?.id) {
-      // If creating new and no file/URL is provided, use a placeholder
       finalPhotoUrl = `https://placehold.co/300x400.png?text=${encodeURIComponent(values.name.substring(0,2))}`;
     }
-    // If editing and no new file/URL is provided, finalPhotoUrl retains initialData.photoUrl (or "" if it was empty)
     
     const figureId = initialData?.id || `figure-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
     
@@ -146,11 +157,14 @@ export function FigureForm({ initialData }: FigureFormProps) {
       name: values.name,
       nameLower: values.name.toLowerCase(),
       photoUrl: finalPhotoUrl,
-      description: initialData?.description || "", // Preserve existing description if editing, empty if new
+      description: values.description || initialData?.description || "",
+      nationality: values.nationality || initialData?.nationality || "",
+      occupation: values.occupation || initialData?.occupation || "",
+      gender: values.gender || initialData?.gender || "",
     };
 
     try {
-      if (initialData?.id) { // Check if initialData.id exists to determine if editing
+      if (initialData?.id) { 
         await updateFigureInFirestore(figureData); 
       } else {
         await addFigureToFirestore(figureData); 
@@ -175,8 +189,6 @@ export function FigureForm({ initialData }: FigureFormProps) {
     }
   }
   
-  // Determine the source for the preview image
-  // Priority: 1. Newly selected file, 2. URL from form input, 3. Initial photo URL (if editing)
   const currentPhotoForPreview = previewUrlFromFile || watchedPhotoUrlInput || (selectedFile ? null : initialData?.photoUrl);
 
   return (
@@ -210,7 +222,7 @@ export function FigureForm({ initialData }: FigureFormProps) {
                   disabled={isLoading || !!selectedFile} 
                   onChange={(e) => {
                     field.onChange(e); 
-                    if (selectedFile) { // If user types in URL field, clear any selected file
+                    if (selectedFile) { 
                         setSelectedFile(null);
                         setPreviewUrlFromFile(null);
                     }
@@ -250,6 +262,63 @@ export function FigureForm({ initialData }: FigureFormProps) {
           )}
           <FormMessage />
         </FormItem>
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Descripción</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Breve descripción de la figura pública..." {...field} disabled={isLoading} rows={4} />
+              </FormControl>
+              <FormDescription>Proporciona un resumen o biografía corta.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="nationality"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nacionalidad (Opcional)</FormLabel>
+              <FormControl>
+                <Input placeholder="ej., Española" {...field} disabled={isLoading} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="occupation"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Ocupación (Opcional)</FormLabel>
+              <FormControl>
+                <Input placeholder="ej., Futbolista, Científica" {...field} disabled={isLoading} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="gender"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Género (Opcional)</FormLabel>
+              <FormControl>
+                <Input placeholder="ej., Masculino, Femenino, No binario" {...field} disabled={isLoading} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         
         <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
