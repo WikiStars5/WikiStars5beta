@@ -5,16 +5,19 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { Figure, UserPerception, EmotionKey } from '@/lib/types';
 import { db, auth as firebaseAuth } from '@/lib/firebase';
 import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, getDoc, serverTimestamp, type DocumentData, type Unsubscribe } from 'firebase/firestore';
-import { onAuthStateChanged, signInAnonymously, type User } from 'firebase/auth';
+import { onAuthStateChanged, type User } from 'firebase/auth'; // signInAnonymously removido
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, LogIn } from 'lucide-react';
+import Link from 'next/link';
 
 interface PerceptionEmotionsProps {
   figureId: string;
   figureName: string;
   initialPerceptionCounts?: Record<EmotionKey, number>;
+  currentUser: User | null; // Recibe currentUser desde la página padre
 }
 
 const EMOTIONS_CONFIG: { key: EmotionKey; label: string; emoji: string; colorClass: string }[] = [
@@ -30,9 +33,7 @@ const defaultPerceptionCountsData: Record<EmotionKey, number> = {
   alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
 };
 
-export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authAttempted, setAuthAttempted] = useState(false);
+export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts, currentUser }) => {
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
   const [figurePerceptionCounts, setFigurePerceptionCounts] = useState<Record<EmotionKey, number>>(initialPerceptionCounts || defaultPerceptionCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
@@ -40,27 +41,12 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
   const [isComponentLoading, setIsComponentLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(firebaseAuth, (user) => {
-      setCurrentUser(user);
-      if (!user && !authAttempted) {
-        setAuthAttempted(true);
-        signInAnonymously(firebaseAuth)
-          .then((anonUserCredential) => {
-            setCurrentUser(anonUserCredential.user);
-          })
-          .catch((error) => {
-            console.error("Anonymous sign-in error for perceptions:", error);
-            toast({ title: "Error de autenticación", description: "No se pudo iniciar sesión para votar.", variant: "destructive" });
-          });
-      }
-    });
-    return () => unsubscribeAuth();
-  }, [authAttempted, toast]);
+  const canUserVote = !!currentUser && !currentUser.isAnonymous;
 
   useEffect(() => {
     if (!figureId) return;
-    setIsComponentLoading(true);
+    setIsComponentLoading(true); // Se establece a true al inicio
+
     const figureDocRef = doc(db, "figures", figureId);
     const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -72,58 +58,46 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         setFigurePerceptionCounts(defaultPerceptionCountsData);
         setTotalVotes(0);
       }
-      // Combine loading state update after user perception is also checked
+      // No finalizar carga aquí, esperar a user perception
     }, (error) => {
       console.error("Error fetching figure perception counts:", error);
       toast({ title: "Error", description: "No se pudieron cargar los conteos de emociones.", variant: "destructive" });
+      setIsComponentLoading(false); // Finalizar carga en caso de error de figura
     });
 
-    return () => unsubscribeFigure();
-  }, [figureId, toast]);
-
-  useEffect(() => {
     let unsubscribeUserPerception: Unsubscribe | undefined;
-    if (currentUser && figureId) {
-      setIsComponentLoading(true); // Keep loading until user perception is fetched
+    if (currentUser && figureId) { // No es necesario currentUser.isAnonymous aquí, ya que el control es para votar
       const userPerceptionDocId = `${currentUser.uid}_${figureId}`;
       const userPerceptionDocRef = doc(db, "userPerceptions", userPerceptionDocId);
       
-      const fetchUserPerception = async () => {
-        try {
-          const docSnap = await getDoc(userPerceptionDocRef);
-          if (docSnap.exists()) {
-            const userPerceptionData = docSnap.data() as UserPerception;
-            setSelectedEmotion(userPerceptionData.emotion);
-          } else {
-            setSelectedEmotion(null);
-          }
-        } catch (error) {
-          console.error("Error fetching user's perception:", error);
-          setSelectedEmotion(null); // Reset on error
-        } finally {
-          setIsComponentLoading(false); // Loading finishes after both figure and user data attempt
+      unsubscribeUserPerception = onSnapshot(userPerceptionDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const userPerceptionData = docSnap.data() as UserPerception;
+          setSelectedEmotion(userPerceptionData.emotion);
+        } else {
+          setSelectedEmotion(null);
         }
-      };
-      fetchUserPerception(); // Initial fetch
-      
-      // Optional: Listen to changes if you expect this to change from elsewhere,
-      // though typically it only changes via this component's actions.
-      // unsubscribeUserPerception = onSnapshot(userPerceptionDocRef, (docSnap) => { ... });
-
-    } else if (!currentUser) {
-      setSelectedEmotion(null); // Clear selection if user logs out or is not available
-      setIsComponentLoading(false); // If no user, no user perception to load
+        setIsComponentLoading(false); // Finalizar carga después de obtener la percepción del usuario
+      }, (error) => {
+        console.error("Error fetching user's perception:", error);
+        setSelectedEmotion(null);
+        setIsComponentLoading(false); // Finalizar carga en caso de error de percepción del usuario
+      });
+    } else {
+      setSelectedEmotion(null);
+      setIsComponentLoading(false); // Finalizar carga si no hay usuario o figureId
     }
     
     return () => {
+      unsubscribeFigure();
       if (unsubscribeUserPerception) unsubscribeUserPerception();
     };
-  }, [currentUser, figureId]);
+  }, [figureId, currentUser, toast]);
 
 
   const handleEmotionClick = async (emotionKey: EmotionKey) => {
-    if (!currentUser) {
-      toast({ title: "No Autenticado", description: "Debes iniciar sesión para votar.", variant: "destructive" });
+    if (!canUserVote) {
+      toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para votar.", variant: "default" });
       return;
     }
     if (isLoadingEmotionAction) return;
@@ -131,7 +105,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     setIsLoadingEmotionAction(emotionKey);
 
     const figureDocRef = doc(db, "figures", figureId);
-    const userPerceptionDocId = `${currentUser.uid}_${figureId}`;
+    const userPerceptionDocId = `${currentUser.uid}_${figureId}`; // currentUser es no nulo y no anónimo aquí
     const userPerceptionDocRef = doc(db, "userPerceptions", userPerceptionDocId);
 
     const newEmotionToSet = selectedEmotion === emotionKey ? null : emotionKey;
@@ -146,15 +120,12 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         const currentCounts = (figureDoc.data()?.perceptionCounts || { ...defaultPerceptionCountsData }) as Record<EmotionKey, number>;
         const newCounts = { ...currentCounts };
 
-        // Decrement old emotion if exists and changing vote
         if (selectedEmotion && selectedEmotion !== emotionKey) {
           newCounts[selectedEmotion] = Math.max(0, (newCounts[selectedEmotion] || 0) - 1);
         }
-        // If deselecting current emotion
         if (selectedEmotion === emotionKey) {
             newCounts[emotionKey] = Math.max(0, (newCounts[emotionKey] || 0) - 1);
         }
-        // Increment new emotion if selecting a new one
         if (newEmotionToSet && newEmotionToSet !== selectedEmotion) {
           newCounts[newEmotionToSet] = (newCounts[newEmotionToSet] || 0) + 1;
         }
@@ -162,7 +133,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         transaction.update(figureDocRef, { perceptionCounts: newCounts });
       });
 
-      // After successful transaction, update/delete userPerception document
       if (newEmotionToSet) {
         await setDoc(userPerceptionDocRef, {
           userId: currentUser.uid,
@@ -172,7 +142,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         });
         setSelectedEmotion(newEmotionToSet);
         toast({ title: "Voto Registrado", description: `Tu percepción como "${EMOTIONS_CONFIG.find(e => e.key === newEmotionToSet)?.label}" ha sido guardada.` });
-      } else { // Deselecting
+      } else { 
         await deleteDoc(userPerceptionDocRef);
         setSelectedEmotion(null);
         toast({ title: "Voto Eliminado", description: "Tu percepción ha sido eliminada." });
@@ -186,7 +156,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     }
   };
   
-  if (isComponentLoading && !initialPerceptionCounts) { // Show loader if no initial data and still loading
+  if (isComponentLoading) { 
     return (
       <Card>
         <CardHeader>
@@ -205,9 +175,25 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     <Card>
       <CardHeader>
         <CardTitle>Percepción Emocional de {figureName}</CardTitle>
-        <CardDescription>¿Qué emoción te provoca esta figura? Haz clic en una emoción para votar.</CardDescription>
+        <CardDescription>
+          {canUserVote 
+            ? "¿Qué emoción te provoca esta figura? Haz clic en una emoción para votar."
+            : "Debes iniciar sesión con una cuenta para poder expresar tu emoción."}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {!canUserVote && (
+          <Alert variant="default" className="mb-4">
+            <LogIn className="h-4 w-4" />
+            <AlertTitle>Votación Restringida</AlertTitle>
+            <AlertDescription>
+              <Link href="/login" className="font-semibold text-primary hover:underline">
+                Inicia sesión con una cuenta
+              </Link>
+              {" "}para votar por la emoción que te provoca esta figura.
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
           {EMOTIONS_CONFIG.map(({ key, label, emoji, colorClass }) => (
             <Button
@@ -216,9 +202,10 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
               className={`flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 
                 ${selectedEmotion === key ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2' : `text-foreground ${colorClass}`}
                 ${isLoadingEmotionAction === key ? 'opacity-50 cursor-not-allowed' : ''}
+                ${!canUserVote ? 'cursor-not-allowed opacity-60' : ''}
               `}
               onClick={() => handleEmotionClick(key)}
-              disabled={!currentUser || !!isLoadingEmotionAction}
+              disabled={!canUserVote || !!isLoadingEmotionAction}
               style={{ minHeight: '100px' }}
             >
               <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
@@ -237,3 +224,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     </Card>
   );
 };
+
+
+    
