@@ -17,7 +17,8 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'; // Importa onAuthStateChanged
-import { Figure } from '@/lib/types';
+import type { Figure } from '@/lib/types';
+import slugify from 'slugify'; // Import slugify
 
 interface FigureFormProps {
   initialFigure?: Figure;
@@ -93,8 +94,15 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
       setSelectedFile(null);
       setPreviewFileUrl(null);
     }
-    console.log("FigureForm useEffect [initialFigure] - Estado photoUrl final:", photoUrl);
+    // console.log("FigureForm useEffect [initialFigure] - Estado photoUrl final:", photoUrl); // This log was here
   }, [initialFigure]);
+
+
+  useEffect(() => {
+    // This log was added in a previous step to debug photoUrl state.
+    // console.log("FigureForm useEffect [photoUrl] - Estado photoUrl actual:", photoUrl);
+  }, [photoUrl]);
+
 
   // Manejador para la selección de archivo local
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,7 +159,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
 
       const figureDocId = initialFigure?.id || slugify(name.trim(), { lower: true, strict: true });
       let finalPhotoUrlToSave = photoUrl.trim();
-
+      
 
       // Lógica de subida de archivo a Firebase Storage
       if (selectedFile) {
@@ -167,26 +175,29 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
         }
       } else if (!finalPhotoUrlToSave && initialFigure?.photoUrl) {
         finalPhotoUrlToSave = initialFigure.photoUrl;
-      } else if (!finalPhotoUrlToSave && !initialFigure?.photoUrl) {
-        // Si no hay URL final y no es edición, y no se subió un archivo, se puede poner un placeholder.
-        // O dejar vacío, dependiendo de la lógica de tu app.
-        // finalPhotoUrlToSave = 'https://placehold.co/400x400/eeeeee/cccccc?text=No+Image';
+      } else if (!finalPhotoUrlToSave && !initialFigure?.photoUrl && !selectedFile) {
+        // Only set default placeholder if it's a new figure and no image provided
+        finalPhotoUrlToSave = 'https://placehold.co/400x600.png';
       }
 
 
-      const figureData = {
+      const figureData: Omit<Figure, 'id'> & { createdAt?: any } = { // Ensure Figure type matches what's expected by Firestore
         name: name.trim(),
         nameLower: name.trim().toLowerCase(),
-        description: description.trim(),
+        description: description.trim() || initialFigure?.description || "", // Preserve existing description
         photoUrl: finalPhotoUrlToSave,
-        createdAt: initialFigure?.createdAt || serverTimestamp(),
-        country: country.trim(),
+        // country: country.trim(), // 'country' field was removed in favor of 'nationality'
         occupation: occupation.trim(),
         gender: gender.trim(),
         nationality: nationality.trim(),
-        averageRating: initialFigure?.averageRating || 0,
-        totalRatings: initialFigure?.totalRatings || 0,
+        // averageRating: initialFigure?.averageRating || 0, // These fields were removed from Figure type
+        // totalRatings: initialFigure?.totalRatings || 0,
       };
+
+      if (!initialFigure?.id) { // Only add createdAt for new figures
+        figureData.createdAt = serverTimestamp();
+      }
+
 
       const figureRef = doc(db, 'figures', figureDocId);
 
@@ -226,8 +237,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
         </Alert>
       )}
 
-      {/* ... (resto del formulario sin cambios) */}
-
       {/* Campo Nombre de la Figura */}
       <div>
         <Label htmlFor="name">Nombre de la Figura</Label>
@@ -259,7 +268,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
         <Input
           id="photoUrl"
           type="url"
-          value={photoUrl}
+          value={photoUrl} // Enlazado al estado photoUrl
           onChange={(e) => {
             setPhotoUrl(e.target.value);
             setSelectedFile(null);
@@ -268,36 +277,31 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
           placeholder="Ej: https://upload.wikimedia.org/wikipedia/commons/..."
           className="mb-2"
         />
-        <p className="text-sm text-gray-500">
-          Pega la URL de una imagen externa. Si también seleccionas un archivo, se priorizará el archivo subido. Si se deja vacío en la creación, se usará una imagen por defecto.
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Pega la URL de una imagen externa. Si también seleccionas un archivo, se priorizará el archivo subido.
         </p>
         
-        {currentPreviewUrl && (
-          <div className="relative w-48 h-48 border rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center mt-4">
+        {currentPreviewUrl ? (
+          <div className="relative w-40 h-60 border rounded-md overflow-hidden bg-muted flex items-center justify-center mt-2" data-ai-hint="image preview">
             <Image
               src={currentPreviewUrl}
               alt="Previsualización de la imagen"
               fill
-              className="object-contain"
-              sizes="200px"
-              priority
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="object-cover"
             />
-            <p className="absolute bottom-1 left-1 right-1 text-xs text-red-500 bg-white/70 p-1 rounded-sm text-center break-all">
-              URL: {currentPreviewUrl}
-              {isWikimediaUrl && <span className="block text-green-700"> (Wikimedia)</span>}
-            </p>
           </div>
-        )}
-        {!currentPreviewUrl && (
-          <div className="relative w-48 h-48 border rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center mt-4 text-gray-400 text-6xl">
-            <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-image-off"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10 4V2H6C4.9 2 4 2.9 4 4V6H2"/><path d="M14 20v2h4c1.1 0 2-0.9 2-2v-2h2"/><path d="M8 10v.01"/><path d="M16 16v.01"/><path d="M10 14L4 8"/><path d="M12.5 6.5l4 4"/><path d="M22 14v-2c0-1.1-0.9-2-2-2h-2"/><path d="M16 22H6c-1.1 0-2-0.9-2-2v-6"/></svg>
-          </div>
+        ) : (
+           <div className="relative w-40 h-60 border rounded-md overflow-hidden bg-muted flex items-center justify-center mt-2 text-muted-foreground" data-ai-hint="placeholder abstract">
+             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M21.2 15c.7-1.2 1-2.5.7-3.9-.6-2.4-3-4-5.4-4-1.2 0-2.3.5-3.2 1.2M4.8 9A5.5 5.5 0 0 0 10 14.5c0 1.2-.3 2.3-.8 3.2M14.5 19c-1.2.8-2.5 1-3.9.7-2.4-.6-4-3-4-5.4 0-1.2.5-2.3 1.2-3.2M9 4.5c.8-.7 1.9-1.2 3.2-1.2 2.4.6 4 3 4 5.4 0 1.2-.5 2.3-1.2 3.2M2 22l20-20"/></svg>
+             <span>Sin Imagen</span>
+           </div>
         )}
       </div>
 
-      {/* Campo de Subida de Archivo (AHORA FUNCIONAL) */}
+      {/* Campo de Subida de Archivo */}
       <div className="mt-4 border-t pt-4 border-gray-200 dark:border-gray-700">
-        <Label htmlFor="fileInput">Subir Foto (Opcional)</Label>
+        <Label htmlFor="fileInput">Subir Nueva Foto (Opcional)</Label>
         <Input
           id="fileInput"
           type="file"
@@ -305,7 +309,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
           onChange={handleFileChange}
           className="mt-1"
         />
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Sube una imagen para la figura. Esto tendrá prioridad sobre la URL de la imagen.
         </p>
       </div>
@@ -313,13 +317,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
       {/* Nuevos Campos de Filtro */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 border-t pt-4 border-gray-200 dark:border-gray-700">
         <div>
-          <Label htmlFor="country">País</Label>
+          <Label htmlFor="nationality">Nacionalidad</Label>
           <Input
-            id="country"
+            id="nationality"
             type="text"
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            placeholder="Ej: Alemania, Estados Unidos"
+            value={nationality}
+            onChange={(e) => setNationality(e.target.value)}
+            placeholder="Ej: Estadounidense, Peruano"
           />
         </div>
         <div>
@@ -342,20 +346,22 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialFigure }) => {
             placeholder="Ej: Masculino, Femenino"
           />
         </div>
+        {/* 'country' field was removed. If needed, uncomment and ensure it's in Figure type and Firestore logic.
         <div>
-          <Label htmlFor="nationality">Nacionalidad</Label>
+          <Label htmlFor="country">País</Label>
           <Input
-            id="nationality"
+            id="country"
             type="text"
-            value={nationality}
-            onChange={(e) => setNationality(e.target.value)}
-            placeholder="Ej: Estadounidense, Peruano"
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            placeholder="Ej: Alemania, Estados Unidos"
           />
         </div>
+        */}
       </div>
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? 'Guardando...' : 'Guardar Cambios'}
+      <Button type="submit" className="w-full" disabled={isLoading || !isAuthReady}>
+        {isLoading ? 'Guardando...' : (initialFigure?.id ? 'Actualizar Figura' : 'Crear Figura')}
       </Button>
     </form>
   );
