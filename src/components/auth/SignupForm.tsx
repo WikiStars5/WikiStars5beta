@@ -60,24 +60,27 @@ export function SignupForm() {
       });
       router.push('/login');
     } catch (error: any) {
-      console.error("Signup error object:", error);
-      console.error("Signup error code:", error.code);
-      console.error("Signup error message:", error.message);
+      console.error("Signup error object:", error); // Por favor, revisa esto en tu consola del navegador
+      console.error("Signup error code:", error.code); // Y esto
+      console.error("Signup error message:", error.message); // Y esto
 
-      let errorMessage = "No se pudo crear la cuenta. Por favor, inténtalo de nuevo.";
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = "Esta dirección de correo electrónico ya está en uso.";
+      let displayErrorMessage = "No se pudo crear la cuenta. Revisa la consola del navegador para más detalles.";
+      
+      if (typeof error.message === 'string' && error.message.toLowerCase().includes('maximum call stack size exceeded')) {
+        displayErrorMessage = "Error Interno: Se excedió el límite de llamadas. Esto es un problema serio. Por favor, revisa la consola del navegador para ver la traza completa del error y busca ayuda si es necesario.";
+      } else if (error.code === 'auth/email-already-in-use') {
+        displayErrorMessage = "Esta dirección de correo electrónico ya está en uso.";
       } else if (error.code === 'auth/invalid-email') {
-        errorMessage = "El formato del correo electrónico es inválido.";
+        displayErrorMessage = "El formato del correo electrónico es inválido.";
       } else if (error.code === 'auth/weak-password') {
-        errorMessage = "La contraseña es demasiado débil.";
-      } else if (error.message) { // More generic error message if available
-        errorMessage = `Error: ${error.message}${error.code ? ` (Código: ${error.code})` : ''}`;
+        displayErrorMessage = "La contraseña es demasiado débil.";
+      } else if (error.message) {
+        displayErrorMessage = `Error: ${error.message}${error.code ? ` (Código: ${error.code})` : ''}`;
       }
       
       toast({
         title: "Registro Fallido",
-        description: errorMessage,
+        description: displayErrorMessage,
         variant: "destructive",
       });
     } finally {
@@ -135,4 +138,3 @@ export function SignupForm() {
     </Form>
   );
 }
-
