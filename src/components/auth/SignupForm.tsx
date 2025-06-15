@@ -39,6 +39,10 @@ export function SignupForm() {
 
   async function onSubmit(values: SignupFormValues) {
     setIsLoading(true);
+    // Clear previous errors from form state if any, errors will be logged or handled by toast
+    // setError(null); // Assuming setError was a local state for form errors, which is not present here.
+                     // FormField will show validation errors from react-hook-form.
+
     try {
       // Step 1: Create user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
@@ -51,37 +55,53 @@ export function SignupForm() {
           displayName: values.displayName,
         });
         console.log("SignupForm: Firebase Auth profile updated with displayName:", values.displayName);
-
-        // Step 3: Ensure Firestore user profile document is created/updated
-        await ensureUserProfileExists(user);
-        console.log("SignupForm: ensureUserProfileExists completed for UID:", user.uid);
       }
 
+      // If Firebase Auth steps are successful, show success toast and redirect.
       toast({
         title: "¡Cuenta Creada!",
-        description: "¡Bienvenido a WikiStars5! Ahora puedes iniciar sesión.",
+        description: `¡Bienvenido a WikiStars5, ${user.displayName || user.email}!`,
       });
-      router.push('/login');
+      router.push('/home'); // Redirect to home page
 
-    } catch (error: any) {
-      console.error("SignupForm onSubmit error object:", error);
-      console.error("SignupForm onSubmit error code:", error.code);
-      console.error("SignupForm onSubmit error message:", error.message);
+      // Step 3: Attempt to ensure Firestore user profile document is created/updated silently.
+      // Errors here will be logged but will not block the user or show in signup form error UI.
+      if (user) {
+        try {
+          await ensureUserProfileExists(user);
+          console.log("SignupForm: ensureUserProfileExists completed for UID:", user.uid);
+        } catch (profileError: any) {
+          console.error(
+            "SignupForm: Error during ensureUserProfileExists after successful Firebase Auth signup:",
+            profileError.message,
+            "Código:",
+            profileError.code,
+            "Full error object:",
+            profileError
+          );
+          // Do NOT setError or toast error here as primary signup was successful.
+          // This error is about profile sync, not auth. Log it for debugging.
+        }
+      }
+
+    } catch (authError: any) {
+      // This catch block now ONLY handles errors from createUserWithEmailAndPassword or updateProfile
+      console.error("SignupForm onSubmit authError object:", authError);
+      console.error("SignupForm onSubmit authError code:", authError.code);
+      console.error("SignupForm onSubmit authError message:", authError.message);
 
       let displayErrorMessage = "No se pudo crear la cuenta. Intenta de nuevo.";
       
-      if (error.message && error.message.includes("Firestore_Profile_Error")) {
-        displayErrorMessage = `Cuenta creada, pero hubo un problema al configurar tu perfil en Firestore: ${error.message.replace("Firestore_Profile_Error:", "")}`;
-      } else if (error.code === 'auth/email-already-in-use') {
+      if (authError.code === 'auth/email-already-in-use') {
         displayErrorMessage = "Esta dirección de correo electrónico ya está en uso.";
-      } else if (error.code === 'auth/invalid-email') {
+      } else if (authError.code === 'auth/invalid-email') {
         displayErrorMessage = "El formato del correo electrónico es inválido.";
-      } else if (error.code === 'auth/weak-password') {
+      } else if (authError.code === 'auth/weak-password') {
         displayErrorMessage = "La contraseña es demasiado débil.";
-      } else if (error.message && error.message.toLowerCase().includes('maximum call stack size exceeded')) {
-        displayErrorMessage = "Error Interno: Se excedió el límite de llamadas (Maximum call stack size). Por favor, revisa la consola del navegador y contacta a soporte.";
-      } else if (error.message) {
-        displayErrorMessage = `Error de registro: ${error.message}${error.code ? ` (Código: ${error.code})` : ''}`;
+      } else if (authError.message && authError.message.toLowerCase().includes('maximum call stack size exceeded')) {
+        displayErrorMessage = "Error Interno: Se excedió el límite de llamadas. Esto es un problema serio. Por favor, revisa la consola del navegador para ver la traza completa del error y busca ayuda si es necesario.";
+      } else if (authError.message) {
+        displayErrorMessage = `Error de registro: ${authError.message}${authError.code ? ` (Código: ${authError.code})` : ''}`;
       }
       
       toast({
@@ -144,3 +164,4 @@ export function SignupForm() {
     </Form>
   );
 }
+
