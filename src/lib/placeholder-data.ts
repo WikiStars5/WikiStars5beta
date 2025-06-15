@@ -24,12 +24,28 @@ const defaultPerceptionCounts: Record<EmotionKey, number> = {
 const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data();
   let createdAtString: string | undefined = undefined;
-  if (data.createdAt && data.createdAt instanceof Timestamp) {
-    createdAtString = data.createdAt.toDate().toISOString();
-  } else if (typeof data.createdAt === 'string') { // Handle if it's already a string
-    createdAtString = data.createdAt;
-  }
 
+  if (data.createdAt) {
+    if (data.createdAt instanceof Timestamp) {
+      createdAtString = data.createdAt.toDate().toISOString();
+    } else if (typeof data.createdAt === 'string') {
+      createdAtString = data.createdAt;
+    } else if (typeof data.createdAt === 'object' && data.createdAt !== null && 
+               typeof data.createdAt.seconds === 'number' && typeof data.createdAt.nanoseconds === 'number') {
+      // It looks like a Timestamp-like object (e.g., from JSON or manual construction), try to convert it
+      try {
+        const date = new Date(data.createdAt.seconds * 1000 + data.createdAt.nanoseconds / 1000000);
+        createdAtString = date.toISOString();
+        // console.warn(`[mapDocToFigure] data.createdAt for ID ${docSnap.id} was an object but not an instanceof Timestamp. Attempted manual conversion.`);
+      } catch (e) {
+        console.error(`[mapDocToFigure] Failed to manually convert timestamp-like object for ID ${docSnap.id}:`, e);
+        createdAtString = undefined; 
+      }
+    } else {
+      // console.warn(`[mapDocToFigure] data.createdAt for ID ${docSnap.id} has an unexpected type: ${typeof data.createdAt}. Value:`, data.createdAt);
+      createdAtString = undefined; 
+    }
+  }
 
   return {
     id: docSnap.id,
@@ -48,18 +64,15 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
 export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    // When adding, createdAt will be handled by serverTimestamp() in FigureForm or here if needed
     const figureDataWithDefaults = {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
     };
-    // If figure.createdAt is a string from client, don't pass it directly if Firestore expects a Timestamp for new docs.
-    // FigureForm handles serverTimestamp() for new figures.
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
 
     await setDoc(figureRef, figureDataForFirestore);
-    console.log("Figure added to Firestore:", figureDataForFirestore);
+    // console.log("Figure added to Firestore:", figureDataForFirestore);
   } catch (error) {
     console.error("Error adding figure to Firestore: ", error);
     throw error;
@@ -69,11 +82,9 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: string }): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    // If figure.createdAt is a string, don't try to update it as a string if Firestore has it as Timestamp.
-    // Updates typically don't modify createdAt.
     const { createdAt, ...figureDataToUpdate } = figure;
     await updateDoc(figureRef, { ...figureDataToUpdate });
-    console.log("Figure updated in Firestore:", figureDataToUpdate);
+    // console.log("Figure updated in Firestore:", figureDataToUpdate);
   } catch (error) {
     console.error("Error updating figure in Firestore: ", error);
     throw error;
@@ -84,7 +95,7 @@ export const deleteFigureFromFirestore = async (figureId: string): Promise<void>
   try {
     const figureRef = doc(db, "figures", figureId);
     await deleteDoc(figureRef);
-    console.log("Figure deleted from Firestore:", figureId);
+    // console.log("Figure deleted from Firestore:", figureId);
   } catch (error) {
     console.error("Error deleting figure from Firestore: ", error);
     throw error;
@@ -98,7 +109,7 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
     if (figureSnap.exists()) {
       return mapDocToFigure(figureSnap);
     } else {
-      console.log("No such figure in Firestore with ID:", id);
+      // console.log("No such figure in Firestore with ID:", id);
       return undefined;
     }
   } catch (error) {
@@ -108,27 +119,27 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
 };
 
 export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
-  console.log("Attempting to fetch all figures from Firestore...");
+  // console.log("Attempting to fetch all figures from Firestore...");
   try {
     const figuresCollectionRef = collection(db, "figures");
     const q = query(figuresCollectionRef, orderBy("name"));
     const querySnapshot = await getDocs(q);
     
-    console.log(`Firestore query returned ${querySnapshot.size} documents.`);
+    // console.log(`Firestore query returned ${querySnapshot.size} documents.`);
 
     const figures: Figure[] = [];
     if (querySnapshot.empty) {
-      console.log("No documents found in the 'figures' collection.");
+      // console.log("No documents found in the 'figures' collection.");
     } else {
       querySnapshot.forEach((docSnap) => {
         figures.push(mapDocToFigure(docSnap));
       });
     }
-    console.log(`Successfully mapped ${figures.length} figures.`);
+    // console.log(`Successfully mapped ${figures.length} figures.`);
     return figures;
   } catch (error: any) {
     console.error("Error fetching all figures from Firestore. Message:", error.message);
-    console.error("Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    // console.error("Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
     return []; 
   }
 };
@@ -143,7 +154,7 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
       figures.push(mapDocToFigure(docSnap));
     });
 
-    if (figures.length < count && querySnapshot.size < count) { // Avoid re-fetching if limit already gave enough
+    if (figures.length < count && querySnapshot.size < count) { 
       const allFigures = await getAllFiguresFromFirestore();
       const additionalFigures = allFigures.filter(af => !figures.find(f => f.id === af.id));
       figures.push(...additionalFigures.slice(0, count - figures.length));
