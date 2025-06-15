@@ -12,8 +12,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
 
-// IMPORTANT: Replace this with your actual Admin User ID from Firebase Authentication
-const ADMIN_UID = 'fjEZpqVvG4VOzwUdGyes7ufhqYH2'; 
+// IMPORTANT: Ensure this is your actual Admin User ID from Firebase Authentication
+const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
 
 export default function AdminLayout({
   children,

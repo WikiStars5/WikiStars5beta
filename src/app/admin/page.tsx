@@ -8,6 +8,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export const revalidate = 0; // Ensure data is re-fetched
 
+const ADMIN_UID_FOR_MESSAGE = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // For display in error message
+
 export default async function AdminDashboardPage() {
   let figures = [];
   let totalFigures = 0;
@@ -19,7 +21,7 @@ export default async function AdminDashboardPage() {
   } catch (error: any) {
     console.error("Error fetching admin dashboard data:", error);
     if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
-      fetchError = "No se pudieron obtener los datos del panel debido a permisos de Firestore faltantes o insuficientes. Por favor, revisa tus Reglas de Seguridad de Firebase en la consola de Firebase. Asegúrate de que el usuario administrador (UID: fjEZpqVvG4VOzwUdGyes7ufhqYH2) tenga acceso de lectura a las colecciones 'figures' y 'comments'.";
+      fetchError = `No se pudieron obtener los datos del panel debido a permisos de Firestore faltantes o insuficientes. Por favor, revisa tus Reglas de Seguridad de Firebase en la consola de Firebase. Asegúrate de que el usuario administrador (UID: ${ADMIN_UID_FOR_MESSAGE}) tenga acceso de lectura a las colecciones 'figures' y 'comments'.`;
     } else {
       fetchError = `Ocurrió un error inesperado al obtener los datos del panel: ${error.message || 'Error desconocido'}`;
     }
