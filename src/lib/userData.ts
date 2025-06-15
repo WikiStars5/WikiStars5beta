@@ -1,0 +1,130 @@
+
+"use server";
+
+import { db } from '@/lib/firebase';
+import type { UserProfile } from '@/lib/types';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData } from 'firebase/firestore';
+import type { User as FirebaseUser } from 'firebase/auth';
+
+// Helper to map Firestore document data to UserProfile interface
+const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
+  return {
+    uid,
+    email: data.email || null,
+    username: data.username || '',
+    country: data.country || undefined,
+    countryCode: data.countryCode || undefined,
+    photoURL: data.photoURL || null,
+    role: data.role || 'user',
+    createdAt: data.createdAt, // Should be a Firestore Timestamp
+    lastLoginAt: data.lastLoginAt, // Should be a Firestore Timestamp or undefined
+  };
+};
+
+/**
+ * Fetches a user's profile from Firestore.
+ * Returns null if the profile does not exist.
+ */
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  if (!uid) {
+    console.error("getUserProfile: UID is required.");
+    return null;
+  }
+  try {
+    const userDocRef = doc(db, 'users', uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+      return mapDocToUserProfile(uid, userDocSnap.data());
+    } else {
+      console.log(`User profile not found for UID: ${uid}`);
+      return null;
+    }
+  } catch (error) {
+    console.error(`Error fetching user profile for UID ${uid}:`, error);
+    throw new Error('Failed to fetch user profile.');
+  }
+}
+
+/**
+ * Ensures a user profile document exists in Firestore.
+ * If it doesn't exist, it creates one with default values.
+ * If it exists, it returns the existing profile.
+ * This should be called after user signup or first login.
+ */
+export async function ensureUserProfileExists(user: FirebaseUser): Promise<UserProfile> {
+  if (!user || !user.uid) {
+    throw new Error("ensureUserProfileExists: Valid Firebase user object is required.");
+  }
+
+  const userDocRef = doc(db, 'users', user.uid);
+  let userProfile: UserProfile | null = null;
+
+  try {
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+      userProfile = mapDocToUserProfile(user.uid, userDocSnap.data());
+    } else {
+      // Profile doesn't exist, create it
+      const newProfileData: UserProfile = {
+        uid: user.uid,
+        email: user.email || null,
+        username: user.displayName || user.email?.split('@')[0] || `user_${user.uid.substring(0, 5)}`,
+        country: undefined,
+        countryCode: undefined,
+        photoURL: user.photoURL || null,
+        role: 'user', // Default role
+        createdAt: serverTimestamp(),
+        lastLoginAt: serverTimestamp(),
+      };
+      await setDoc(userDocRef, newProfileData);
+      console.log(`Created new user profile for UID: ${user.uid}`);
+      userProfile = newProfileData; // Use the data we just set
+    }
+    return userProfile;
+  } catch (error) {
+    console.error(`Error ensuring user profile for UID ${user.uid}:`, error);
+    throw new Error('Failed to ensure user profile exists.');
+  }
+}
+
+/**
+ * Updates an existing user's profile in Firestore.
+ * Only updates specified fields.
+ */
+export async function updateUserProfile(
+  uid: string,
+  data: Partial<Pick<UserProfile, 'username' | 'country' | 'countryCode'>>
+): Promise<void> {
+  if (!uid) {
+    console.error("updateUserProfile: UID is required.");
+    return;
+  }
+  if (!data || Object.keys(data).length === 0) {
+    console.warn("updateUserProfile: No data provided for update.");
+    return;
+  }
+
+  try {
+    const userDocRef = doc(db, 'users', uid);
+    const updateData: any = { ...data, lastLoginAt: serverTimestamp() };
+    
+    // Ensure countryCode is explicitly set to null if country is cleared, or updated
+    if (data.hasOwnProperty('country')) {
+        if (data.country === '' || data.country === undefined || data.country === null) {
+            updateData.country = ''; // Store as empty string for consistency
+            updateData.countryCode = '';
+        } else if (data.hasOwnProperty('countryCode')) {
+             updateData.countryCode = data.countryCode;
+        }
+    }
+
+
+    await updateDoc(userDocRef, updateData);
+    console.log(`User profile updated for UID: ${uid}`);
+  } catch (error) {
+    console.error(`Error updating user profile for UID ${uid}:`, error);
+    throw new Error('Failed to update user profile.');
+  }
+}

@@ -10,12 +10,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { UserPlus, Loader2 } from "lucide-react";
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { auth } from '@/lib/firebase'; // Main auth instance
+import { auth } from '@/lib/firebase'; 
+import { ensureUserProfileExists } from "@/lib/userData"; // Import the function
 
 const signupSchema = z.object({
-  displayName: z.string().min(2, { message: "El nombre de usuario debe tener al menos 2 caracteres." }),
+  displayName: z.string().min(2, { message: "El nombre de usuario debe tener al menos 2 caracteres." }).max(50, {message: "El nombre de usuario no debe exceder los 50 caracteres."}),
   email: z.string().email({ message: "Dirección de correo electrónico inválida." }),
   password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
 });
@@ -40,22 +41,31 @@ export function SignupForm() {
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      // Update Firebase user profile with displayName
+      
       if (userCredential.user) {
+        // Update Firebase Auth user profile with displayName
         await updateProfile(userCredential.user, {
           displayName: values.displayName,
         });
+
+        // Ensure Firestore user profile document is created
+        await ensureUserProfileExists(userCredential.user);
       }
+
       toast({
         title: "¡Cuenta Creada!",
-        description: "¡Bienvenido a WikiStars5! Ahora puedes iniciar sesión.",
+        description: "¡Bienvenido a WikiStars5! Ahora puedes iniciar sesión y personalizar tu perfil.",
       });
-      router.push('/login'); // Redirect to login page after successful signup
+      router.push('/login'); 
     } catch (error: any) {
       console.error("Signup error:", error);
       let errorMessage = "No se pudo crear la cuenta. Por favor, inténtalo de nuevo.";
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Esta dirección de correo electrónico ya está en uso.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "El formato del correo electrónico es inválido.";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "La contraseña es demasiado débil.";
       }
       toast({
         title: "Registro Fallido",
@@ -75,7 +85,7 @@ export function SignupForm() {
           name="displayName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nombre de Usuario</FormLabel>
+              <FormLabel>Nombre de Usuario Público</FormLabel>
               <FormControl>
                 <Input placeholder="Tu Nombre" {...field} disabled={isLoading} />
               </FormControl>
@@ -103,7 +113,7 @@ export function SignupForm() {
             <FormItem>
               <FormLabel>Contraseña</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} disabled={isLoading} />
+                <Input type="password" placeholder="•••••••• (mín. 6 caracteres)" {...field} disabled={isLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>

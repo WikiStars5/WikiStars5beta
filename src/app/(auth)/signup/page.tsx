@@ -6,7 +6,7 @@ export default function SignupPage() {
   return (
     <AuthFormCard
       title="Crear una Cuenta"
-      description="Únete a WikiStars5 para calificar y discutir sobre figuras públicas."
+      description="Únete a WikiStars5 para calificar, discutir y personalizar tu perfil."
       footerText="¿Ya tienes una cuenta?"
       footerLinkText="Iniciar Sesión"
       footerLinkHref="/login"

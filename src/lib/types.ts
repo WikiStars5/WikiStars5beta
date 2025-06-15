@@ -18,7 +18,7 @@ export interface Figure {
   nationality?: string;
   occupation?: string;
   gender?: string;
-  perceptionCounts?: Record<EmotionKey, number>; // Nuevo campo para conteo de emociones
+  perceptionCounts?: Record<EmotionKey, number>;
 }
 
 export interface UserPerception {
@@ -28,9 +28,20 @@ export interface UserPerception {
   timestamp: any; // Firestore Timestamp
 }
 
+export interface Country {
+  name: string;
+  code: string; // ISO 3166-1 alpha-2
+  emoji: string;
+}
+
 export interface UserProfile {
-  uid: string;
-  displayName?: string | null;
-  email?: string | null;
-  photoURL?: string | null;
+  uid: string; // Firebase Auth UID, primary key
+  email: string | null; // From Firebase Auth
+  username: string; // Public display name, can be different from Firebase Auth displayName
+  country?: string; // Full name of the country selected by the user
+  countryCode?: string; // ISO 3166-1 alpha-2 code of the selected country
+  photoURL?: string | null; // From Firebase Auth, can be updated if profile picture feature is added
+  role: 'user' | 'admin'; // User role
+  createdAt: any; // Firestore Timestamp for when the profile doc was created
+  lastLoginAt?: any; // Firestore Timestamp for the last login or profile update
 }
