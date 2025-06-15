@@ -2,12 +2,13 @@
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { getFigureFromFirestore, getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal } from "lucide-react";
+import { Terminal, Info } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import DisqusComments from '@/components/DisqusComments'; 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import React from 'react';
 
 interface FigurePageProps {
@@ -45,11 +46,31 @@ export default async function FigurePage({ params }: FigurePageProps) {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2">
-          <Tabs defaultValue="comments" className="w-full">
-            <TabsList className="grid w-full grid-cols-1 mb-6"> {/* Updated to grid-cols-1 */}
+          <Tabs defaultValue="personal-info" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="personal-info" className="text-base py-2.5">Información Personal</TabsTrigger>
               <TabsTrigger value="comments" className="text-base py-2.5">Calificaciones y Comentarios</TabsTrigger>
             </TabsList>
             
+            <TabsContent value="personal-info">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center text-2xl font-headline">
+                    <Info className="mr-2 h-6 w-6 text-primary" />
+                    Sobre {figure.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {figure.description ? (
+                    <p className="text-base leading-relaxed text-foreground/90">{figure.description}</p>
+                  ) : (
+                    <p className="text-base text-muted-foreground">No hay información personal adicional disponible para esta figura.</p>
+                  )}
+                  {/* You can add more details here if your Figure type expands */}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="comments">
               {figure && (
                 <DisqusComments
