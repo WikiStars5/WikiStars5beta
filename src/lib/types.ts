@@ -7,6 +7,8 @@ export interface PerceptionOption { // This might become unused.
   icon: React.ElementType;
 }
 
+export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
+
 export interface Figure {
   id: string;
   name: string;
@@ -16,15 +18,15 @@ export interface Figure {
   nationality?: string;
   occupation?: string;
   gender?: string;
-  // averageRating, totalRatings, and perceptionCounts are removed
-  // as the app will no longer manage these. Disqus is expected to handle them
-  // or they are no longer displayed if not provided by Disqus.
+  perceptionCounts?: Record<EmotionKey, number>; // Nuevo campo para conteo de emociones
 }
 
-// UserRating type is removed as the app no longer manages this in Firebase.
-
-// Comment type is removed as the app no longer manages this in Firebase for creation/display.
-// DisqusComments component handles Disqus integration.
+export interface UserPerception {
+  userId: string;
+  figureId: string;
+  emotion: EmotionKey;
+  timestamp: any; // Firestore Timestamp
+}
 
 export interface UserProfile {
   uid: string;

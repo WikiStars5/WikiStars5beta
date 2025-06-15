@@ -1,5 +1,5 @@
 
-import type { Figure, PerceptionOption } from './types';
+import type { Figure, PerceptionOption, EmotionKey } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData } from "firebase/firestore";
@@ -10,6 +10,15 @@ export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'simp', label: 'Simp', icon: Heart },
   { key: 'hater', label: 'Hater', icon: ThumbsDown },
 ];
+
+const defaultPerceptionCounts: Record<EmotionKey, number> = {
+  alegria: 0,
+  envidia: 0,
+  tristeza: 0,
+  miedo: 0,
+  desagrado: 0,
+  furia: 0,
+};
 
 // Helper to convert Firestore doc data to Figure, ensuring plain object
 const mapDocToFigure = (docSnap: DocumentData): Figure => {
@@ -23,24 +32,29 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     nationality: data.nationality || "",
     occupation: data.occupation || "",
     gender: data.gender || "",
+    perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts }, // Asegurar que perceptionCounts exista
   };
 };
 
 export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    await setDoc(figureRef, figure);
-    console.log("Figure added to Firestore:", figure);
+    const figureDataWithDefaults = {
+      ...figure,
+      perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
+    };
+    await setDoc(figureRef, figureDataWithDefaults);
+    console.log("Figure added to Firestore:", figureDataWithDefaults);
   } catch (error) {
     console.error("Error adding figure to Firestore: ", error);
     throw error;
   }
 };
 
-export const updateFigureInFirestore = async (figure: Figure): Promise<void> => {
+export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: string }): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    await updateDoc(figureRef, { ...figure }); // Use spread to update all fields including new ones
+    await updateDoc(figureRef, { ...figure }); 
     console.log("Figure updated in Firestore:", figure);
   } catch (error) {
     console.error("Error updating figure in Firestore: ", error);
@@ -89,7 +103,6 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
       console.log("No documents found in the 'figures' collection.");
     } else {
       querySnapshot.forEach((docSnap) => {
-        // console.log(`Mapping document ${docSnap.id} to Figure...`);
         figures.push(mapDocToFigure(docSnap));
       });
     }
@@ -98,7 +111,7 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
   } catch (error: any) {
     console.error("Error fetching all figures from Firestore. Message:", error.message);
     console.error("Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
-    return []; // Devuelve un array vacío en caso de error
+    return []; 
   }
 };
 
@@ -112,7 +125,7 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
       figures.push(mapDocToFigure(docSnap));
     });
 
-    if (figures.length < count) {
+    if (figures.length < count && querySnapshot.size < count) { // Avoid re-fetching if limit already gave enough
       const allFigures = await getAllFiguresFromFirestore();
       const additionalFigures = allFigures.filter(af => !figures.find(f => f.id === af.id));
       figures.push(...additionalFigures.slice(0, count - figures.length));

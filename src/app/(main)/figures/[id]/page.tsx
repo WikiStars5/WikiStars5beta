@@ -16,51 +16,72 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
+import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions"; // Nueva importación
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useParams } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, signInAnonymously, type User } from "firebase/auth";
 
 /*
-RECOMMENDED FIRESTORE RULES TO DEBUG PERMISSION ISSUES:
-(Apply these in your Firebase Console -> Firestore Database -> Rules)
+REGLAS DE FIRESTORE RECOMENDADAS (Aplicar en Firebase Console -> Firestore Database -> Rules):
 
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Rules for 'figures' collection ---
-
-    // Rule for accessing individual figure documents
+    // Reglas para la colección 'figures'
     match /figures/{figureId} {
-      // PUBLIC ACCESS: Allow anyone to read (get) individual figure documents.
-      // This is for viewing figure profiles.
-      allow get: if true;
+      allow get: if true; // Lectura pública de perfiles individuales
 
-      // AUTHENTICATED USER ACCESS: Allow any authenticated user (including anonymous) to update.
-      // This is for the "wiki-style" editing feature on this figure detail page.
-      allow update: if request.auth != null;
+      allow create, delete: if request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // Solo admin crea/borra
 
-      // ADMIN-ONLY ACCESS: Allow ONLY the admin (UID: JZP4A5GvZUbWuT0Y1DIiawWcSUp2)
-      // to create and delete figure documents.
-      allow create, delete: if request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+      allow update: if request.auth != null &&
+                      (
+                        request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' // Admin puede actualizar todo
+                        ||
+                        // Usuarios autenticados (incluidos anónimos) pueden actualizar campos específicos
+                        (
+                          (
+                            request.resource.data.description != resource.data.description ||
+                            request.resource.data.nationality != resource.data.nationality ||
+                            request.resource.data.occupation != resource.data.occupation ||
+                            request.resource.data.gender != resource.data.gender ||
+                            request.resource.data.perceptionCounts != resource.data.perceptionCounts
+                          ) &&
+                          // Asegurar que campos críticos no sean modificados por no-admins
+                          request.resource.data.name == resource.data.name &&
+                          request.resource.data.id == resource.data.id
+                        )
+                      );
     }
 
-    // Rule for the 'figures' collection itself (listing)
     match /figures {
-      // PUBLIC ACCESS: Allow anyone to list all documents in the figures collection.
-      // This is crucial for pages like "Browse All Figures".
-      allow list: if true;
+      allow list: if true; // Listado público de figuras
     }
-    // --- End of rules for 'figures' collection ---
 
-    // You can add rules for other collections here if needed.
-    // For example:
-    // match /users/{userId} {
-    //   allow read, write: if request.auth != null && request.auth.uid == userId;
-    // }
+    // Reglas para la colección 'userPerceptions' (ID del doc: ${userId}_${figureId})
+    match /userPerceptions/{perceptionDocId} {
+      function getUserIdFromDocId() { return perceptionDocId.split('_')[0]; }
+      function getFigureIdFromDocId() { return perceptionDocId.split('_')[1]; }
+      function isOwner() {
+        return request.auth != null && request.auth.uid == resource.data.userId && request.auth.uid == getUserIdFromDocId();
+      }
+      function isCreatingOwnValidDoc() {
+        return request.auth != null &&
+               request.auth.uid == request.resource.data.userId &&
+               request.auth.uid == getUserIdFromDocId() &&
+               request.resource.data.figureId == getFigureIdFromDocId() &&
+               request.resource.data.keys().hasAll(['userId', 'figureId', 'emotion', 'timestamp']) &&
+               request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'];
+      }
+
+      allow read, delete: if isOwner();
+      allow update: if isOwner() &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['emotion', 'timestamp']) &&
+                      request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'];
+      allow create: if isCreatingOwnValidDoc();
+    }
   }
 }
 */
@@ -70,9 +91,9 @@ export default function FigurePage() {
   const routeParams = useParams<{ id: string }>();
   const id = routeParams?.id;
 
-  const [figure, setFigure] = useState<Figure | null | undefined>(undefined); // undefined for loading, null for not found
+  const [figure, setFigure] = useState<Figure | null | undefined>(undefined); 
   const [allFigures, setAllFigures] = useState<Figure[]>([]);
-  const router = useRouter();
+  // const router = useRouter(); // No se usa directamente para refresh, se usa fetchFigureData
   const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -94,11 +115,11 @@ export default function FigurePage() {
         signInAnonymously(firebaseAuth)
           .then((anonUserCredential) => {
             setCurrentUser(anonUserCredential.user);
-            console.log("Signed in anonymously for editing.");
+            console.log("Signed in anonymously for editing/perceptions.");
           })
           .catch((error) => {
             console.error("Anonymous sign-in error:", error);
-            toast({ title: "Error de autenticación", description: "No se pudo iniciar sesión para habilitar la edición.", variant: "destructive" });
+            toast({ title: "Error de autenticación", description: "No se pudo iniciar sesión para habilitar la edición/votación.", variant: "destructive" });
           });
       }
     });
@@ -119,13 +140,11 @@ export default function FigurePage() {
       setEditedOccupation(fetchedFigure.occupation || "");
       setEditedGender(fetchedFigure.gender || "");
     }
-    // Fetch all figures for "related figures" section
     try {
       const fetchedAllFigures = await getAllFiguresFromFirestore();
       setAllFigures(fetchedAllFigures);
     } catch (error) {
       console.error("Error fetching all figures for related section:", error);
-      // Potentially show a toast or message if this part is critical
     }
   }, [id]);
 
@@ -164,8 +183,8 @@ export default function FigurePage() {
     }
     setIsSaving(true);
     try {
-      const updatedFigureData : Figure = {
-        ...figure,
+      const updatedFigureData : Partial<Figure> & {id: string} = {
+        id: figure.id, // id is required for updateFigureInFirestore
         description: editedDescription,
         nationality: editedNationality,
         occupation: editedOccupation,
@@ -231,9 +250,10 @@ export default function FigurePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2">
           <Tabs defaultValue="personal-info" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className="grid w-full grid-cols-3 mb-6"> {/* Ajustado a 3 columnas */}
               <TabsTrigger value="personal-info" className="text-base py-2.5">Información Personal</TabsTrigger>
-              <TabsTrigger value="comments" className="text-base py-2.5">Calificaciones y Comentarios</TabsTrigger>
+              <TabsTrigger value="perception-emotions" className="text-base py-2.5">Percepción Emocional</TabsTrigger>
+              <TabsTrigger value="comments" className="text-base py-2.5">Comentarios</TabsTrigger>
             </TabsList>
             
             <TabsContent value="personal-info">
@@ -355,6 +375,21 @@ export default function FigurePage() {
               </Card>
             </TabsContent>
 
+            <TabsContent value="perception-emotions">
+              {figure && currentUser && ( // Asegurarse que figure y currentUser estén listos
+                <PerceptionEmotions 
+                  figureId={figure.id} 
+                  figureName={figure.name}
+                  initialPerceptionCounts={figure.perceptionCounts}
+                />
+              )}
+               {(!figure || !currentUser) && (
+                 <div className="flex justify-center items-center h-40">
+                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                 </div>
+               )}
+            </TabsContent>
+
             <TabsContent value="comments">
               {figure && (
                 <DisqusComments
@@ -372,8 +407,9 @@ export default function FigurePage() {
             <Terminal className="h-4 w-4" />
             <AlertTitle className="font-headline">Cómo Funciona</AlertTitle>
             <AlertDescription className="text-sm">
-              Las discusiones y comentarios sobre {figure.name} son gestionados a través de Disqus. ¡Únete a la conversación!
+              Las discusiones y comentarios sobre {figure.name} son gestionados a través de Disqus.
               La información personal puede ser editada por la comunidad.
+              ¡Expresa tu percepción emocional votando por una emoción!
             </AlertDescription>
           </Alert>
 
