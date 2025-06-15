@@ -12,8 +12,8 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     uid,
     email: data.email || null,
     username: data.username || '',
-    country: data.country || undefined,
-    countryCode: data.countryCode || undefined,
+    country: data.country || '', // Ensure it defaults to empty string if undefined/null
+    countryCode: data.countryCode || '', // Ensure it defaults to empty string if undefined/null
     photoURL: data.photoURL || null,
     role: data.role || 'user',
     createdAt: data.createdAt, // Should be a Firestore Timestamp
@@ -71,8 +71,8 @@ export async function ensureUserProfileExists(user: FirebaseUser): Promise<UserP
         uid: user.uid,
         email: user.email || null,
         username: user.displayName || user.email?.split('@')[0] || `user_${user.uid.substring(0, 5)}`,
-        country: undefined,
-        countryCode: undefined,
+        country: '', // Initialize as empty string per request
+        countryCode: '', // Initialize as empty string per request
         photoURL: user.photoURL || null,
         role: 'user', // Default role
         createdAt: serverTimestamp(),
@@ -80,9 +80,20 @@ export async function ensureUserProfileExists(user: FirebaseUser): Promise<UserP
       };
       await setDoc(userDocRef, newProfileData);
       console.log(`Created new user profile for UID: ${user.uid}`);
-      userProfile = newProfileData; // Use the data we just set
+      // To ensure timestamps are resolved, fetch the document again or construct UserProfile from newProfileData with assumption for timestamps
+      // For simplicity, we'll construct it directly; in a real app, fetching might be better if precise serverTimestamp values are immediately needed.
+      userProfile = {
+        ...newProfileData,
+        // Assuming serverTimestamp will resolve; for client-side immediate use, these might be pending write objects
+        // or you'd use a local Date and update later if strict server time is needed before a re-fetch.
+        // For the purpose of returning a UserProfile object synchronously:
+        createdAt: new Date(), // Approximate with local time for immediate return
+        lastLoginAt: new Date(), // Approximate with local time
+      };
     }
-    return userProfile;
+    // This assertion is safe because if userDocSnap didn't exist, we created and assigned to userProfile.
+    // If it did exist, we assigned to userProfile.
+    return userProfile!;
   } catch (error) {
     console.error(`Error ensuring user profile for UID ${user.uid}:`, error);
     throw new Error('Failed to ensure user profile exists.');
@@ -128,3 +139,4 @@ export async function updateUserProfile(
     throw new Error('Failed to update user profile.');
   }
 }
+
