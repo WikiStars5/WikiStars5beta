@@ -3,48 +3,20 @@
 
 import { AuthFormCard } from "@/components/auth/AuthFormCard";
 import { SignupForm } from "@/components/auth/SignupForm";
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { ensureUserProfileExists } from '@/lib/userData';
-import { useToast } from "@/hooks/use-toast";
+// Google Sign-In related imports are removed if Google Sign-In is fully removed
+// import { useState } from 'react';
+// import { useRouter } from 'next/navigation';
+// import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+// import { auth } from '@/lib/firebase';
+// import { ensureUserProfileExists } from '@/lib/userData';
+// import { useToast } from "@/hooks/use-toast";
 
 export default function SignupPage() {
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const router = useRouter();
-  const { toast } = useToast();
+  // const [isGoogleLoading, setIsGoogleLoading] = useState(false); // Removed
+  // const router = useRouter(); // Keep if other async ops need it, otherwise remove
+  // const { toast } = useToast(); // Keep if other async ops need it, otherwise remove
 
-  const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      await ensureUserProfileExists(user); // Create/update profile in Firestore
-
-      toast({
-        title: "¡Cuenta Creada y Sesión Iniciada!",
-        description: `¡Bienvenido a WikiStars5, ${user.displayName || user.email}!`,
-      });
-      router.push('/home'); // Redirect to home or desired page
-    } catch (error: any) {
-      console.error("Google sign-up/sign-in error:", error);
-      let errorMessage = "No se pudo registrar/iniciar sesión con Google.";
-       if (error.code === 'auth/popup-closed-by-user') {
-        errorMessage = "El proceso con Google fue cancelado.";
-      } else if (error.code === 'auth/account-exists-with-different-credential') {
-        errorMessage = "Ya existe una cuenta con este correo electrónico usando un método de inicio de sesión diferente. Intenta iniciar sesión.";
-      }
-      toast({
-        title: "Error con Google",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
+  // const handleGoogleSignIn = async () => { ... }; // Removed
 
   return (
     <AuthFormCard
@@ -53,8 +25,8 @@ export default function SignupPage() {
       footerText="¿Ya tienes una cuenta?"
       footerLinkText="Iniciar Sesión"
       footerLinkHref="/login"
-      onGoogleSignIn={handleGoogleSignIn}
-      isGoogleLoading={isGoogleLoading}
+      // onGoogleSignIn={handleGoogleSignIn} // Removed
+      // isGoogleLoading={isGoogleLoading} // Removed
     >
       <SignupForm />
     </AuthFormCard>

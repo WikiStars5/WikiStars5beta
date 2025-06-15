@@ -13,8 +13,7 @@ interface AuthFormCardProps {
   footerLinkHref: string;
   footerLinkText: string;
   footerText: string;
-  showOAuth?: boolean;
-  onGoogleSignIn?: () => Promise<void>;
+  onGoogleSignIn?: () => Promise<void>; // Make onGoogleSignIn optional
   isGoogleLoading?: boolean;
 }
 
@@ -24,7 +23,7 @@ const GoogleIcon = () => (
   </svg>
 );
 
-export function AuthFormCard({ title, description, children, footerLinkHref, footerLinkText, footerText, showOAuth = true, onGoogleSignIn, isGoogleLoading }: AuthFormCardProps) {
+export function AuthFormCard({ title, description, children, footerLinkHref, footerLinkText, footerText, onGoogleSignIn, isGoogleLoading }: AuthFormCardProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] py-12">
       <Logo className="mb-8" />
@@ -35,7 +34,7 @@ export function AuthFormCard({ title, description, children, footerLinkHref, foo
         </CardHeader>
         <CardContent className="space-y-6">
           {children}
-          {showOAuth && onGoogleSignIn && (
+          {onGoogleSignIn && ( // Only show if onGoogleSignIn is provided
             <>
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">

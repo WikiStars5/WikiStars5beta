@@ -2,72 +2,21 @@
 "use client";
 
 import { AuthFormCard } from "@/components/auth/AuthFormCard";
-import { LoginForm } from "@/components/auth/LoginForm"; // LoginForm will also call ensureUserProfileExists
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { ensureUserProfileExists } from '@/lib/userData';
-import { useToast } from "@/hooks/use-toast";
+import { LoginForm } from "@/components/auth/LoginForm";
+// Google Sign-In related imports are removed if Google Sign-In is fully removed
+// import { useState } from 'react';
+// import { useRouter } from 'next/navigation';
+// import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+// import { auth } from '@/lib/firebase';
+// import { ensureUserProfileExists } from '@/lib/userData';
+// import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const router = useRouter();
-  const { toast } = useToast();
+  // const [isGoogleLoading, setIsGoogleLoading] = useState(false); // Removed
+  // const router = useRouter(); // Keep if other async ops need it
+  // const { toast } = useToast(); // Keep if other async ops need it
 
-  const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      await ensureUserProfileExists(user); // Create/update profile in Firestore
-
-      toast({
-        title: "Inicio de Sesión Exitoso",
-        description: `¡Bienvenido de nuevo, ${user.displayName || user.email}!`,
-      });
-      router.push('/home'); // Or your desired redirect path
-    } catch (error: any) {
-      console.error("Google sign-in error:", error, "Code:", error.code, "Message:", error.message);
-      let errorMessage = "No se pudo iniciar sesión con Google. Intenta de nuevo más tarde.";
-      switch (error.code) {
-        case 'auth/popup-closed-by-user':
-          errorMessage = "El inicio de sesión con Google fue cancelado por el usuario.";
-          break;
-        case 'auth/account-exists-with-different-credential':
-          errorMessage = "Ya existe una cuenta con este correo electrónico usando un método de inicio de sesión diferente.";
-          break;
-        case 'auth/operation-not-allowed':
-          errorMessage = "El inicio de sesión con Google no está habilitado. Por favor, verifica la configuración en Firebase Console.";
-          break;
-        case 'auth/popup-blocked':
-          errorMessage = "El navegador bloqueó la ventana emergente de Google. Por favor, permite las ventanas emergentes para este sitio e inténtalo de nuevo.";
-          break;
-        case 'auth/cancelled-popup-request':
-          errorMessage = "Se canceló la solicitud de ventana emergente de Google, posiblemente porque se abrieron varias.";
-          break;
-        case 'auth/unauthorized-domain':
-          errorMessage = "Este dominio no está autorizado para operaciones de OAuth. Verifica los dominios autorizados en Firebase Console.";
-          break;
-        case 'auth/internal-error':
-            errorMessage = "Ocurrió un error interno en el servidor de autenticación. Por favor, inténtalo de nuevo más tarde.";
-            break;
-        default:
-          if (error.message) {
-            errorMessage = `Error: ${error.message}`;
-          }
-          break;
-      }
-      toast({
-        title: "Error de Inicio de Sesión con Google",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
+  // const handleGoogleSignIn = async () => { ... }; // Removed
 
   return (
     <AuthFormCard
@@ -76,8 +25,8 @@ export default function LoginPage() {
       footerText="¿No tienes una cuenta?"
       footerLinkText="Regístrate"
       footerLinkHref="/signup"
-      onGoogleSignIn={handleGoogleSignIn}
-      isGoogleLoading={isGoogleLoading}
+      // onGoogleSignIn={handleGoogleSignIn} // Removed
+      // isGoogleLoading={isGoogleLoading} // Removed
     >
       <LoginForm />
     </AuthFormCard>
