@@ -56,11 +56,14 @@ export function SignupForm() {
 
       toast({
         title: "¡Cuenta Creada!",
-        description: "¡Bienvenido a StarSage! Ahora puedes iniciar sesión.",
+        description: "¡Bienvenido a WikiStars5! Ahora puedes iniciar sesión.",
       });
       router.push('/login');
     } catch (error: any) {
-      console.error("Signup error:", error);
+      console.error("Signup error object:", error);
+      console.error("Signup error code:", error.code);
+      console.error("Signup error message:", error.message);
+
       let errorMessage = "No se pudo crear la cuenta. Por favor, inténtalo de nuevo.";
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Esta dirección de correo electrónico ya está en uso.";
@@ -68,7 +71,10 @@ export function SignupForm() {
         errorMessage = "El formato del correo electrónico es inválido.";
       } else if (error.code === 'auth/weak-password') {
         errorMessage = "La contraseña es demasiado débil.";
+      } else if (error.message) { // More generic error message if available
+        errorMessage = `Error: ${error.message}${error.code ? ` (Código: ${error.code})` : ''}`;
       }
+      
       toast({
         title: "Registro Fallido",
         description: errorMessage,
@@ -129,3 +135,4 @@ export function SignupForm() {
     </Form>
   );
 }
+
