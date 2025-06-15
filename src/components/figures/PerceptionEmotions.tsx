@@ -194,7 +194,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
             </AlertDescription>
           </Alert>
         )}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 gap-4"> {/* Changed grid classes here */}
           {EMOTIONS_CONFIG.map(({ key, label, emoji, colorClass }) => (
             <Button
               key={key}
