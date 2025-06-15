@@ -1,5 +1,5 @@
 
-import { FigureForm } from "@/components/admin/FigureForm";
+import FigureForm from "@/components/admin/FigureForm"; // Changed to default import
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getFigureFromFirestore } from "@/lib/placeholder-data"; 
 import type { Figure } from "@/lib/types";

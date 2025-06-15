@@ -1,5 +1,5 @@
 
-import { FigureForm } from "@/components/admin/FigureForm";
+import FigureForm from "@/components/admin/FigureForm"; // Changed to default import
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function NewFigurePage() {
