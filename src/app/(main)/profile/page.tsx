@@ -16,11 +16,12 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast } = useToast(); // Correctly using the hook
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profileLoadAttempted, setProfileLoadAttempted] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -33,38 +34,67 @@ export default function ProfilePage() {
           });
           router.replace('/login?redirect=/profile');
           setIsLoading(false);
-          return; // Salir temprano si se redirige
+          setProfileLoadAttempted(false); // Reset flag if user becomes anonymous
+          setProfile(null);
+          setCurrentUser(null);
+          return;
         }
-        // Usuario no anónimo, proceder a cargar perfil
-        setCurrentUser(user);
-        try {
-          const userProfile = await ensureUserProfileExists(user);
-          setProfile(userProfile);
-        } catch (err: any) {
-          console.error("Error loading profile:", err);
-          setError("No se pudo cargar tu perfil. Inténtalo de nuevo más tarde.");
-          toast({
-            title: "Error de Perfil",
-            description: "No se pudo cargar tu perfil.",
-            variant: "destructive"
-          });
+
+        // User is logged in and not anonymous
+        if (!profileLoadAttempted) {
+          setProfileLoadAttempted(true);
+          setCurrentUser(user); // Set current user here
+          try {
+            const userProfile = await ensureUserProfileExists(user);
+            setProfile(userProfile);
+            setError(null); // Clear previous errors
+          } catch (err: any) {
+            console.error("Error loading profile in useEffect:", err);
+            setError("No se pudo cargar tu perfil. Inténtalo de nuevo más tarde.");
+            toast({
+              title: "Error de Perfil",
+              description: "No se pudo cargar tu perfil.",
+              variant: "destructive"
+            });
+            setProfile(null);
+            // Consider if profileLoadAttempted should be reset here for a retry mechanism
+            // For now, keep it true to prevent immediate retry loops on persistent errors
+          } finally {
+            setIsLoading(false);
+          }
+        } else if (currentUser && user.uid !== currentUser.uid) {
+            // User changed, reset and attempt load
+            setProfileLoadAttempted(false);
+            setIsLoading(true);
+            setProfile(null);
+            setCurrentUser(null); 
+            // The listener will call this block again with !profileLoadAttempted
+        } else {
+            // Profile load was already attempted for this user, and user hasn't changed
+            setIsLoading(false);
         }
+
       } else {
-        // No hay usuario logueado
+        // No user is logged in
         toast({
             title: "Acceso Requerido",
             description: "Por favor, inicia sesión para ver tu perfil.",
             variant: "default"
-          });
+        });
         router.replace('/login?redirect=/profile');
+        setProfile(null);
+        setCurrentUser(null);
         setIsLoading(false);
-        return; // Salir temprano si se redirige
+        setProfileLoadAttempted(false); // Reset flag
+        return;
       }
-      setIsLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [router, toast]);
+    return () => {
+      unsubscribe();
+      // Cleanup: Reset states if necessary, though onAuthStateChanged handles this well
+    };
+  }, [router, toast, profileLoadAttempted, currentUser]); // Added profileLoadAttempted and currentUser to dependencies
 
   if (isLoading) {
     return (
@@ -75,17 +105,17 @@ export default function ProfilePage() {
     );
   }
 
-  // Si se decidió redirigir, isLoading sería false, pero currentUser/profile podrían ser null.
-  // Esta es una salvaguarda. Los 'return;' en useEffect deberían prevenir esto.
+  // This check ensures we don't proceed if redirection should have happened
   if (!currentUser || currentUser.isAnonymous) {
+     // This state should ideally be caught by the isLoading or redirection logic
+     // If still here, means redirection is pending or failed. Show loader or generic message.
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
-        {/* Podrías mostrar un spinner aquí también, o un mensaje simple */}
-        <p className="text-muted-foreground">Redirigiendo...</p>
+        <p className="text-muted-foreground">Redirigiendo o esperando autenticación...</p>
       </div>
     );
   }
-
+  
   if (error) {
     return (
       <div className="container max-w-md mx-auto py-10 text-center">
@@ -101,15 +131,20 @@ export default function ProfilePage() {
   }
   
   if (!profile) {
-    // Esto implica que el usuario no es anónimo, pero el perfil no se pudo encontrar/crear.
+    // This implies that the user is not anonymous, but the profile could not be found/created,
+    // and no specific error was set, or still loading but isLoading became false.
+    // This could happen if ensureUserProfileExists returns null unexpectedly or an error wasn't caught.
     return (
       <div className="container max-w-md mx-auto py-10 text-center">
         <Alert variant="default">
-          <AlertTitle>Perfil No Encontrado</AlertTitle>
+          <AlertTitle>Perfil No Disponible</AlertTitle>
           <AlertDescription>
-            No pudimos encontrar o crear tu perfil. Por favor, intenta recargar la página o contacta a soporte.
+            No pudimos cargar la información de tu perfil en este momento. Intenta recargar la página.
           </AlertDescription>
-           <Button asChild className="mt-6">
+           <Button asChild className="mt-6" onClick={() => router.refresh()}>
+            Recargar
+          </Button>
+           <Button asChild className="mt-6 ml-2">
             <Link href="/">Volver al Inicio</Link>
           </Button>
         </Alert>
@@ -117,6 +152,7 @@ export default function ProfilePage() {
     );
   }
 
+  // Only render UserProfileForm if everything is fine
   return (
     <div className="container py-8">
       <UserProfileForm initialProfile={profile} />
