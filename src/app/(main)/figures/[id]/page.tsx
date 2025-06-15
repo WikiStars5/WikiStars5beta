@@ -17,9 +17,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore"; // Removed updateDoc as it's in placeholder-data
-import { db, auth as firebaseAuth } from "@/lib/firebase"; // Renamed auth to firebaseAuth to avoid conflict
+import { useRouter, useParams } from "next/navigation"; // Added useParams
+import { doc, getDoc } from "firebase/firestore";
+import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, signInAnonymously, type User } from "firebase/auth";
 
 /*
@@ -54,13 +54,17 @@ service cloud.firestore {
 }
 */
 
-interface FigurePageProps {
-  params: { id: string };
-}
+// FigurePageProps is no longer needed if params is the only prop.
+// interface FigurePageProps {
+//   params: { id: string };
+// }
 
 // export const revalidate = 0; // Commented out to allow client-side state and interactions for editing
 
-export default function FigurePage({ params }: FigurePageProps) {
+export default function FigurePage() {
+  const routeParams = useParams<{ id: string }>();
+  const id = routeParams?.id;
+
   const [figure, setFigure] = useState<Figure | null | undefined>(undefined); // undefined for loading, null for not found
   const [allFigures, setAllFigures] = useState<Figure[]>([]);
   const router = useRouter();
@@ -98,7 +102,11 @@ export default function FigurePage({ params }: FigurePageProps) {
 
 
   const fetchFigureData = useCallback(async () => {
-    const fetchedFigure = await getFigureFromFirestore(params.id);
+    if (!id) {
+        setFigure(undefined); // Reset or set to loading if id is not available
+        return;
+    }
+    const fetchedFigure = await getFigureFromFirestore(id);
     setFigure(fetchedFigure || null); // Set to null if not found
     if (fetchedFigure) {
       setEditedDescription(fetchedFigure.description || "");
@@ -108,11 +116,13 @@ export default function FigurePage({ params }: FigurePageProps) {
     }
     const fetchedAllFigures = await getAllFiguresFromFirestore();
     setAllFigures(fetchedAllFigures);
-  }, [params.id]);
+  }, [id]);
 
   useEffect(() => {
-    fetchFigureData();
-  }, [fetchFigureData]);
+    if (id) { // Only fetch if id is available
+        fetchFigureData();
+    }
+  }, [id, fetchFigureData]);
 
   useEffect(() => {
     if (figure && isEditing) {
@@ -150,8 +160,7 @@ export default function FigurePage({ params }: FigurePageProps) {
         occupation: editedOccupation,
         gender: editedGender,
       };
-      // We are updating, so we need the full figure object or pass specific fields to updateDoc.
-      // updateFigureInFirestore expects a full Figure object.
+
       const updatedFigureData : Figure = {
         ...figure,
         description: editedDescription,
@@ -164,7 +173,7 @@ export default function FigurePage({ params }: FigurePageProps) {
       
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
       setIsEditing(false);
-      router.refresh(); // Re-fetch server data and re-render
+      // router.refresh(); // Re-fetch server data and re-render - can cause issues with client state
       await fetchFigureData(); // Re-fetch client-side figure data to update local state
     } catch (error: any) {
       console.error("Error saving figure details:", error);
@@ -178,7 +187,16 @@ export default function FigurePage({ params }: FigurePageProps) {
     }
   };
 
-  if (figure === undefined) { // Loading state
+  if (!id && figure === undefined) { // If id isn't even available yet, treat as loading
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-2">Cargando ID de la figura...</p>
+      </div>
+    );
+  }
+  
+  if (figure === undefined) { // Loading state for figure data
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -190,7 +208,7 @@ export default function FigurePage({ params }: FigurePageProps) {
     return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Figura No Encontrada</h1>
-        <p className="text-muted-foreground">El perfil (ID: {params.id}) que buscas no existe en Firestore.</p>
+        <p className="text-muted-foreground">El perfil (ID: {id || "desconocido"}) que buscas no existe en Firestore.</p>
         <Button asChild className="mt-4">
           <Link href="/">Ir a la Página Principal</Link>
         </Button>
@@ -361,7 +379,7 @@ export default function FigurePage({ params }: FigurePageProps) {
             <div>
               <h3 className="text-xl font-headline mb-4">También te podría interesar</h3>
               <div className="space-y-4">
-                {relatedFigures.map(relatedFig => ( // Changed variable name to avoid conflict
+                {relatedFigures.map(relatedFig => (
                   <FigureListItem key={relatedFig.id} figure={relatedFig} />
                 ))}
               </div>
@@ -372,3 +390,5 @@ export default function FigurePage({ params }: FigurePageProps) {
     </div>
   );
 }
+
+    
