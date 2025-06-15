@@ -28,34 +28,62 @@ export function LoginForm() {
     setError(null);
 
     try {
+      // Step 1: Attempt Firebase Authentication
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       console.log("LoginForm: User signed in with Firebase Auth:", user.uid);
 
-      if (user) {
-        await ensureUserProfileExists(user); // Ensure profile exists/is updated
-        console.log("LoginForm: ensureUserProfileExists completed for UID:", user.uid);
-      }
-
+      // Step 2: If Firebase Auth is successful, show success toast and redirect immediately
       toast({
         title: "Inicio de Sesión Exitoso",
         description: `¡Bienvenido de nuevo, ${user.displayName || user.email}!`,
       });
       router.push('/home');
-    } catch (err: any) {
-      console.error("LoginForm handleSubmit error:", err.message, "Código:", err.code, "Full error:", err);
+
+      // Step 3: Attempt to ensure user profile exists in Firestore silently.
+      // Errors here will be logged but will not block the user or show in login form error UI.
+      if (user) {
+        try {
+          await ensureUserProfileExists(user);
+          console.log("LoginForm: ensureUserProfileExists completed for UID:", user.uid);
+        } catch (profileError: any) {
+          console.error(
+            "LoginForm: Error during ensureUserProfileExists after successful Firebase Auth login:",
+            profileError.message,
+            "Código:",
+            profileError.code,
+            "Full error object:",
+            profileError
+          );
+          // Do NOT setError(profileError.message) here, as login was successful.
+          // This error is about profile sync, not auth.
+        }
+      }
+    } catch (authError: any) {
+      // This catch block now ONLY handles errors from signInWithEmailAndPassword (core Firebase Auth)
+      console.error(
+        "LoginForm: Firebase Authentication error:",
+        authError.message,
+        "Código:",
+        authError.code,
+        "Full error object:",
+        authError
+      );
       let errorMessage = 'Error al iniciar sesión. Verifica tus credenciales.';
       
-      if (err.message && err.message.includes("Firestore_Profile_Error")) {
-        errorMessage = `Inicio de sesión correcto, pero hubo un problema al cargar/actualizar tu perfil en Firestore: ${err.message.replace("Firestore_Profile_Error:", "")}`;
-      } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      if (authError.message && authError.message.includes("Firestore_Profile_Error")) {
+        // This case should ideally not be reached if ensureUserProfileExists errors are handled separately
+        errorMessage = `Error de autenticación, y problema al cargar/actualizar tu perfil en Firestore: ${authError.message.replace("Firestore_Profile_Error:", "")}`;
+      } else if (authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-credential') {
         errorMessage = 'Correo electrónico o contraseña incorrectos.';
-      } else if (err.code === 'auth/invalid-email') {
+      } else if (authError.code === 'auth/invalid-email') {
         errorMessage = 'Formato de correo electrónico inválido.';
-      } else if (err.code === 'auth/too-many-requests') {
+      } else if (authError.code === 'auth/too-many-requests') {
         errorMessage = 'Demasiados intentos fallidos. Inténtalo de nuevo más tarde.';
-      } else if (err.message) {
-        errorMessage = `Error de inicio de sesión: ${err.message}${err.code ? ` (Código: ${err.code})` : ''}`;
+      } else if (authError.message && authError.message.toLowerCase().includes('maximum call stack size exceeded')) {
+        errorMessage = "Error Interno Inesperado (Maximum call stack size exceeded) durante el inicio de sesión. Por favor, revisa la consola del navegador.";
+      } else if (authError.message) {
+        errorMessage = `Error de inicio de sesión: ${authError.message}${authError.code ? ` (Código: ${authError.code})` : ''}`;
       }
       setError(errorMessage);
     } finally {
