@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { Figure, UserAttitude, AttitudeKey } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, serverTimestamp, type Unsubscribe } from 'firebase/firestore';
@@ -42,7 +42,10 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   const canUserVote = !!currentUser && !currentUser.isAnonymous;
 
   useEffect(() => {
-    if (!figureId) return;
+    if (!figureId) {
+      setIsComponentLoading(false);
+      return;
+    }
     setIsComponentLoading(true);
 
     const figureDocRef = doc(db, "figures", figureId);
@@ -55,11 +58,15 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       } else {
         setFigureAttitudeCounts(defaultAttitudeCountsData);
         setTotalVotes(0);
+        console.warn(`Figure document with ID ${figureId} does not exist.`);
       }
+      // Defer setting isComponentLoading to false until user's attitude is also checked
     }, (error) => {
       console.error("Error fetching figure attitude counts:", error);
       toast({ title: "Error", description: "No se pudieron cargar los conteos de actitudes.", variant: "destructive" });
-      setIsComponentLoading(false);
+      setFigureAttitudeCounts(defaultAttitudeCountsData); // Reset on error
+      setTotalVotes(0);
+      setIsComponentLoading(false); // Set loading to false on error
     });
 
     let unsubscribeUserAttitude: Unsubscribe | undefined;
@@ -74,15 +81,15 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         } else {
           setSelectedAttitude(null);
         }
-        setIsComponentLoading(false);
+        setIsComponentLoading(false); // Component is ready after user's perception is fetched
       }, (error) => {
         console.error("Error fetching user's attitude:", error);
-        setSelectedAttitude(null);
-        setIsComponentLoading(false);
+        setSelectedAttitude(null); // Reset on error
+        setIsComponentLoading(false); // Set loading to false on error
       });
     } else {
       setSelectedAttitude(null);
-      setIsComponentLoading(false);
+      setIsComponentLoading(false); // No user, so component is ready
     }
     
     return () => {
@@ -98,6 +105,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       return;
     }
     if (isLoadingAttitudeAction) return;
+    if (!currentUser) return; // Should be covered by canUserVote, but as a safeguard
 
     setIsLoadingAttitudeAction(attitudeKeyClicked);
 
@@ -105,7 +113,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
     const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
 
-    // Determine the new attitude: if clicking the same one, it's null (unvote), otherwise it's the new one.
     const newAttitudeToSet = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
 
     try {
@@ -124,7 +131,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           newCounts[selectedAttitude] = Math.max(0, (newCounts[selectedAttitude] || 0) - 1);
         }
         // 2. If a new vote is to be set (newAttitudeToSet is not null), increment its counter.
-        // This covers both a first vote and changing an existing vote.
         if (newAttitudeToSet) {
           newCounts[newAttitudeToSet] = (newCounts[newAttitudeToSet] || 0) + 1;
         }
@@ -140,17 +146,25 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           attitude: newAttitudeToSet,
           timestamp: serverTimestamp(),
         });
-        setSelectedAttitude(newAttitudeToSet); 
+        // setSelectedAttitude(newAttitudeToSet); // Let onSnapshot handle this to ensure consistency
         toast({ title: "Voto Registrado", description: `Tu actitud como "${ATTITUDE_OPTIONS_CONFIG.find(e => e.key === newAttitudeToSet)?.label}" ha sido guardada.` });
       } else { 
         await deleteDoc(userAttitudeDocRef);
-        setSelectedAttitude(null); 
+        // setSelectedAttitude(null); // Let onSnapshot handle this
         toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
       }
+      // Note: The local state `selectedAttitude` will be updated by the onSnapshot listener
+      // for the userAttitudeDocRef, ensuring the UI reflects the source of truth.
 
     } catch (error: any) {
       console.error("Error voting on attitude:", error);
-      toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
+      let errorMessage = "No se pudo registrar tu voto.";
+      if (error.message && error.message.includes("Missing or insufficient permissions")) {
+        errorMessage = "Error de permisos. Verifica las reglas de Firestore.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      toast({ title: "Error al Votar", description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoadingAttitudeAction(null);
     }
@@ -199,7 +213,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
               key={key}
               variant={selectedAttitude === key ? "default" : "outline"}
               className={`flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 
-                ${selectedAttitude === key ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2' : `text-foreground ${colorClass}`}
+                ${selectedAttitude === key ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 dark:ring-offset-card' : `text-foreground ${colorClass}`}
                 ${isLoadingAttitudeAction === key ? 'opacity-50 cursor-not-allowed' : ''}
                 ${!canUserVote ? 'cursor-not-allowed opacity-60' : ''}
               `}
@@ -224,3 +238,4 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   );
 };
 
+    
