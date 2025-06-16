@@ -38,19 +38,24 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
       createdAtString = data.createdAt.toDate().toISOString();
     } else if (typeof data.createdAt === 'string') {
       createdAtString = data.createdAt;
-    } else if (typeof data.createdAt === 'object' && data.createdAt !== null && 
-               typeof data.createdAt.seconds === 'number' && typeof data.createdAt.nanoseconds === 'number') {
+    } else if (
+      typeof data.createdAt === 'object' && data.createdAt !== null &&
+      typeof data.createdAt.seconds === 'number' && typeof data.createdAt.nanoseconds === 'number'
+    ) {
+      // Handle cases where createdAt might be a plain object but structurally a Timestamp
       try {
         const date = new Date(data.createdAt.seconds * 1000 + data.createdAt.nanoseconds / 1000000);
         createdAtString = date.toISOString();
       } catch (e) {
-        console.error(`[mapDocToFigure] Failed to manually convert timestamp-like object for ID ${docSnap.id}:`, e);
+        // console.warn(`[mapDocToFigure] Failed to manually convert timestamp-like object for ID ${docSnap.id}:`, e);
         createdAtString = undefined; 
       }
     } else {
+      // console.warn(`[mapDocToFigure] Unexpected createdAt format for ID ${docSnap.id}:`, data.createdAt);
       createdAtString = undefined; 
     }
   }
+
 
   return {
     id: docSnap.id,
@@ -62,7 +67,7 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     occupation: data.occupation || "",
     gender: data.gender || "",
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
-    attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts }, // Initialize attitudeCounts
+    attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
     createdAt: createdAtString,
   };
 };
@@ -73,7 +78,7 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
     const figureDataWithDefaults = {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
-      attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts }, // Add attitudeCounts
+      attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
@@ -138,6 +143,11 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
     return figures;
   } catch (error: any) {
     console.error("Error fetching all figures from Firestore. Message:", error.message);
+    if (String(error.message).toLowerCase().includes("permission")) {
+        console.error("Firestore permission error: Please check your Firestore Security Rules to ensure 'list' operations are allowed on the 'figures' collection. Also, check the browser's developer console for any messages about missing indexes, which might require a composite index for the orderBy('name') query.");
+    } else if (String(error.message).toLowerCase().includes("index")) {
+        console.error("Firestore index error: The query might require a composite index that is missing. Check the browser's developer console for a link to create it.");
+    }
     return []; 
   }
 };
@@ -153,7 +163,7 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
     });
 
     if (figures.length < count && querySnapshot.size < count) { 
-      const allFigures = await getAllFiguresFromFirestore();
+      const allFigures = await getAllFiguresFromFirestore(); // This could re-trigger the error if it's persistent
       const additionalFigures = allFigures.filter(af => !figures.find(f => f.id === af.id));
       figures.push(...additionalFigures.slice(0, count - figures.length));
     }
