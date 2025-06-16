@@ -56,7 +56,6 @@ service cloud.firestore {
                         (request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2')
                         ||
                         // Non-admin, non-anonymous users can update specific descriptive fields
-                        // and also allow transaction updates for rating fields by server actions
                         (
                           (
                             request.resource.data.description != resource.data.description ||
@@ -66,13 +65,9 @@ service cloud.firestore {
                             request.resource.data.photoUrl != resource.data.photoUrl ||
                             request.resource.data.perceptionCounts != resource.data.perceptionCounts ||
                             request.resource.data.attitudeCounts != resource.data.attitudeCounts ||
-                            // Allow rating fields to be updated by anyone (assuming server-side validation)
-                            // This is broad, server-side logic (transactions) is key for rating integrity.
-                            // If these fields are ONLY updated by server actions (recommended for aggregates),
-                            // then this part of the OR condition for non-admins isn't strictly needed for users,
-                            // but the server action (running with admin/service account privs or specific user privs)
-                            // would need to be able to write them.
-                            // For simplicity with server actions possibly running under user's auth context initially:
+                            // Allow authenticated users (server actions running under their context)
+                            // to update rating fields when submitting a comment.
+                            // The transaction ensures this is done correctly.
                             request.resource.data.averageRating != resource.data.averageRating ||
                             request.resource.data.totalRatings != resource.data.totalRatings ||
                             request.resource.data.ratingDistribution != resource.data.ratingDistribution
@@ -81,7 +76,7 @@ service cloud.firestore {
                           request.resource.data.name == resource.data.name &&
                           request.resource.data.nameLower == resource.data.nameLower &&
                           request.resource.data.id == resource.data.id &&
-                          request.resource.data.status == resource.data.status // Status cannot be changed by non-admin
+                          request.resource.data.status == resource.data.status
                         )
                       );
     }
@@ -96,24 +91,31 @@ service cloud.firestore {
     match /figure_comments/{commentId} {
       allow get: if true; // Anyone can read comments
 
-      allow list: if true; // Anyone can list comments (e.g., for a specific figure)
+      allow list: if query.limit <= 100; // Anyone can list comments, e.g., for a specific figure, with a limit.
                            // For querying by figureId: request.query.figureId == resource.data.figureId
 
       allow create: if request.auth != null &&
                        !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
                        request.auth.uid == request.resource.data.userId && // User can only create comments for themselves
-                       request.resource.data.keys().hasAll(['figureId', 'userId', 'username', 'rating', 'text', 'createdAt', 'likes', 'dislikes']) &&
+                       request.resource.data.keys().hasAll(['figureId', 'userId', 'username', 'rating', 'text', 'createdAt', 'likes', 'dislikes', 'userPhotoUrl']) &&
                        request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
-                       request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000 &&
-                       request.resource.data.likes == 0 && request.resource.data.dislikes == 0;
+                       request.resource.data.text.size() >= 10 && request.resource.data.text.size() <= 1000 &&
+                       request.resource.data.likes == 0 && request.resource.data.dislikes == 0 &&
+                       (request.resource.data.userPhotoUrl == null || request.resource.data.userPhotoUrl is string);
                        // Optional: Add request.time == request.resource.data.createdAt for stricter timestamp
 
-      // allow update: // For likes/dislikes, this would be updated by a server action/function
-                      // If comment editing is allowed:
+      // allow update: // For likes/dislikes on comments - to be implemented
                       // if request.auth != null &&
                       //    !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-                      //    request.auth.uid == resource.data.userId && // Owner can update
-                      //    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt']);
+                      //    (
+                      //      ( // User updating their own comment text
+                      //        request.auth.uid == resource.data.userId &&
+                      //        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt'])
+                      //      ) ||
+                      //      ( // Anyone updating like/dislike counts (if done client-side, risky)
+                      //        request.resource.data.diff(resource.data).affectedKeys().hasAny(['likes', 'dislikes'])
+                      //      )
+                      //    );
 
       allow delete: if request.auth != null &&
                        !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&

@@ -55,6 +55,7 @@ export async function submitCommentAndRatingAction(input: SubmitCommentInput): P
       const figureData = figureDoc.data() as Figure;
 
       // Calculate new rating aggregates
+      // Ensure ratingDistribution exists and is properly structured
       const currentTotalRatings = figureData.totalRatings || 0;
       const currentRatingDistribution = figureData.ratingDistribution || { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
       
@@ -100,6 +101,10 @@ export async function submitCommentAndRatingAction(input: SubmitCommentInput): P
 
   } catch (error: any) {
     console.error("Error submitting comment and rating:", error);
+    // Log more details for permission errors
+    if (error.code === 'permission-denied' || (error.message && error.message.toLowerCase().includes('permission'))) {
+        console.error("Detailed Firestore Permission Error:", error.toString());
+    }
     return { success: false, message: error.message || "No se pudo guardar el comentario." };
   }
 }

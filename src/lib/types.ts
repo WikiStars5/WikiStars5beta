@@ -27,9 +27,9 @@ export interface Figure {
   createdAt?: string; // ISO string
   status?: 'approved' | 'pending_verification' | 'rejected';
   // Campos para el sistema de calificación estilo Play Store
-  averageRating?: number;
-  totalRatings?: number;
-  ratingDistribution?: {
+  averageRating: number; // Aseguramos que siempre exista, default 0
+  totalRatings: number;  // Aseguramos que siempre exista, default 0
+  ratingDistribution: { // Aseguramos que siempre exista
     '1': number; // count for 1 star
     '2': number; // count for 2 stars
     '3': number; // count for 3 stars
