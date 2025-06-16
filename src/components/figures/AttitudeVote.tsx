@@ -119,15 +119,17 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         const currentCounts = (currentFigureData?.attitudeCounts || { ...defaultAttitudeCountsData }) as Record<AttitudeKey, number>;
         const newCounts = { ...currentCounts };
 
-        // If the user had a previous vote (selectedAttitude is the state *before* this click), decrement its count.
-        if (selectedAttitude) {
+        // Logic adapted from PerceptionEmotions.tsx
+        // If the user had a previous, DIFFERENT attitude selected, decrement its count.
+        if (selectedAttitude && selectedAttitude !== attitudeKeyClicked) {
           newCounts[selectedAttitude] = Math.max(0, (newCounts[selectedAttitude] || 0) - 1);
         }
-
-        // If the user is setting a new vote (newAttitudeToSet is not null), increment its count.
-        // This handles both voting for the first time and changing a vote.
-        // If newAttitudeToSet is null (unvoting), this step is skipped.
-        if (newAttitudeToSet) {
+        // If the user is clicking the SAME attitude they already selected (to unvote), decrement its count.
+        if (selectedAttitude === attitudeKeyClicked) {
+            newCounts[attitudeKeyClicked] = Math.max(0, (newCounts[attitudeKeyClicked] || 0) - 1);
+        }
+        // If the user is selecting a NEW attitude (or changing from a different one), increment its count.
+        if (newAttitudeToSet && newAttitudeToSet !== selectedAttitude) {
           newCounts[newAttitudeToSet] = (newCounts[newAttitudeToSet] || 0) + 1;
         }
         
@@ -142,11 +144,11 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           attitude: newAttitudeToSet,
           timestamp: serverTimestamp(),
         });
-        // setSelectedAttitude(newAttitudeToSet); // Handled by onSnapshot
+        setSelectedAttitude(newAttitudeToSet); // Direct state update
         toast({ title: "Voto Registrado", description: `Tu actitud como "${ATTITUDE_OPTIONS_CONFIG.find(e => e.key === newAttitudeToSet)?.label}" ha sido guardada.` });
       } else { 
         await deleteDoc(userAttitudeDocRef);
-        // setSelectedAttitude(null); // Handled by onSnapshot
+        setSelectedAttitude(null); // Direct state update
         toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
       }
 
@@ -225,4 +227,3 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     </Card>
   );
 };
-
