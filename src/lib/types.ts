@@ -1,5 +1,6 @@
 
 import type { ReactNode } from 'react';
+import type { Timestamp } from 'firebase/firestore';
 
 export type PerceptionKeys = "neutral" | "fan" | "simp" | "hater";
 
@@ -23,7 +24,7 @@ export interface Figure {
   gender?: string;
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
-  createdAt?: string;
+  createdAt?: string; // ISO string
   status?: 'approved' | 'pending_verification' | 'rejected';
   // Campos para el sistema de calificación estilo Play Store
   averageRating?: number;
@@ -41,15 +42,30 @@ export interface UserPerception {
   userId: string;
   figureId: string;
   emotion: EmotionKey;
-  timestamp: any;
+  timestamp: Timestamp; // Firestore Timestamp
 }
 
 export interface UserAttitude {
   userId: string;
   figureId: string;
   attitude: AttitudeKey;
-  timestamp:any;
+  timestamp: Timestamp; // Firestore Timestamp
 }
+
+export interface CommentData {
+  id: string;
+  figureId: string;
+  userId: string;
+  username: string;
+  userPhotoUrl?: string | null;
+  rating: number; // 1-5
+  text: string;
+  createdAt: Timestamp; // Firestore Timestamp
+  likes: number;
+  dislikes: number;
+  // Potentially add 'updatedAt' if comments can be edited
+}
+
 
 export interface Country {
   name: string;
@@ -65,7 +81,7 @@ export interface UserProfile {
   countryCode?: string;
   photoURL?: string | null;
   role: 'user' | 'admin';
-  createdAt: string;
-  lastLoginAt?: string;
+  createdAt: string; // ISO string
+  lastLoginAt?: string; // ISO string
 }
 

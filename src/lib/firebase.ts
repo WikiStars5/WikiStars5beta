@@ -39,25 +39,25 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Rules for 'figures' collection ---
     match /figures/{figureId} {
-      allow get: if true;
+      allow get: if true; // PUBLIC ACCESS: Allow anyone to read (get) individual figure documents.
 
-      // Admin can create directly (can set any status or no status, which implies approved)
-      allow create: if
-        request.auth != null &&
-        !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-        request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' && // ADMIN UID
-        (request.resource.data.status == 'approved' || request.resource.data.status == null || request.resource.data.status == 'pending_verification') &&
-        request.resource.data.keys().hasAll(['id', 'name', 'nameLower', 'photoUrl', 'description', 'nationality', 'occupation', 'gender', 'perceptionCounts', 'attitudeCounts', 'createdAt']);
+      // ADMIN-ONLY ACCESS for create and delete
+      allow create, delete: if request.auth != null &&
+                              !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                              request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // ADMIN UID
 
+      // AUTHENTICATED USER ACCESS for updates
       allow update: if request.auth != null &&
                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
                       (
-                        // Admin can update any field, including status
+                        // Admin can update any field
                         (request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2')
                         ||
-                        // Non-admin can update specific fields if figure is approved
-                        (resource.data.status == 'approved' &&
+                        // Non-admin, non-anonymous users can update specific descriptive fields
+                        // and also allow transaction updates for rating fields by server actions
+                        (
                           (
                             request.resource.data.description != resource.data.description ||
                             request.resource.data.nationality != resource.data.nationality ||
@@ -65,7 +65,17 @@ service cloud.firestore {
                             request.resource.data.gender != resource.data.gender ||
                             request.resource.data.photoUrl != resource.data.photoUrl ||
                             request.resource.data.perceptionCounts != resource.data.perceptionCounts ||
-                            request.resource.data.attitudeCounts != resource.data.attitudeCounts
+                            request.resource.data.attitudeCounts != resource.data.attitudeCounts ||
+                            // Allow rating fields to be updated by anyone (assuming server-side validation)
+                            // This is broad, server-side logic (transactions) is key for rating integrity.
+                            // If these fields are ONLY updated by server actions (recommended for aggregates),
+                            // then this part of the OR condition for non-admins isn't strictly needed for users,
+                            // but the server action (running with admin/service account privs or specific user privs)
+                            // would need to be able to write them.
+                            // For simplicity with server actions possibly running under user's auth context initially:
+                            request.resource.data.averageRating != resource.data.averageRating ||
+                            request.resource.data.totalRatings != resource.data.totalRatings ||
+                            request.resource.data.ratingDistribution != resource.data.ratingDistribution
                           ) &&
                           // Critical fields must not be changed by non-admins
                           request.resource.data.name == resource.data.name &&
@@ -74,16 +84,44 @@ service cloud.firestore {
                           request.resource.data.status == resource.data.status // Status cannot be changed by non-admin
                         )
                       );
-      
-      allow delete: if request.auth != null &&
-                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-                      request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // Only admin can delete
     }
 
     match /figures {
-      allow list: if true;
+      allow list: if true; // PUBLIC ACCESS: Allow anyone to list all documents.
     }
+    // --- End of rules for 'figures' collection ---
 
+
+    // --- Rules for 'figure_comments' collection ---
+    match /figure_comments/{commentId} {
+      allow get: if true; // Anyone can read comments
+
+      allow list: if true; // Anyone can list comments (e.g., for a specific figure)
+                           // For querying by figureId: request.query.figureId == resource.data.figureId
+
+      allow create: if request.auth != null &&
+                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                       request.auth.uid == request.resource.data.userId && // User can only create comments for themselves
+                       request.resource.data.keys().hasAll(['figureId', 'userId', 'username', 'rating', 'text', 'createdAt', 'likes', 'dislikes']) &&
+                       request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
+                       request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000 &&
+                       request.resource.data.likes == 0 && request.resource.data.dislikes == 0;
+                       // Optional: Add request.time == request.resource.data.createdAt for stricter timestamp
+
+      // allow update: // For likes/dislikes, this would be updated by a server action/function
+                      // If comment editing is allowed:
+                      // if request.auth != null &&
+                      //    !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                      //    request.auth.uid == resource.data.userId && // Owner can update
+                      //    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt']);
+
+      allow delete: if request.auth != null &&
+                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                       (request.auth.uid == resource.data.userId || request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'); // Owner or Admin
+    }
+    // --- End of rules for 'figure_comments' collection ---
+
+    // --- Rules for 'userPerceptions' collection ---
     match /userPerceptions/{perceptionDocId} {
       function getUserIdFromDocIdPerc() { return perceptionDocId.split('_')[0]; }
       function isOwnerNonAnonymousPerc() {
@@ -107,7 +145,9 @@ service cloud.firestore {
                       request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'];
       allow create: if isCreatingOwnValidDocNonAnonymousPerc();
     }
+    // --- End of rules for 'userPerceptions' collection ---
 
+    // --- Rules for 'userAttitudes' collection ---
     match /userAttitudes/{attitudeDocId} {
       function getUserIdFromDocIdAtt() { return attitudeDocId.split('_')[0]; }
       function isOwnerNonAnonymousAtt() {
@@ -131,7 +171,9 @@ service cloud.firestore {
                       request.resource.data.attitude in ['neutral', 'fan', 'simp', 'hater'];
       allow create: if isCreatingOwnValidDocNonAnonymousAtt();
     }
+    // --- End of rules for 'userAttitudes' collection ---
 
+    // --- Rules for 'users' collection ---
     match /users/{userId} {
       allow read: if request.auth != null &&
                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
@@ -153,8 +195,16 @@ service cloud.firestore {
                          'uid', 'email', 'createdAt', 'role'
                        ])) &&
                        (request.resource.data.photoURL == resource.data.photoURL || request.resource.data.photoURL == request.auth.token.picture);
-      allow delete: if false;
+      allow delete: if false; // Users generally shouldn't delete their own user docs directly
     }
+    // --- End of rules for 'users' collection ---
+
+    // Potentially, a collection for user reactions to comments (likes/dislikes)
+    // match /user_comment_reactions/{reactionId} { // reactionId might be userId_commentId
+    //   allow read, write: if request.auth != null &&
+    //                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+    //                      request.auth.uid == reactionId.split('_')[0];
+    // }
   }
 }
 */
@@ -166,7 +216,11 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     // Allow public read access to files in the 'figures' folder (where admin uploads images)
+    // and 'emociones' for emotion images
     match /figures/{allPaths=**} {
+      allow read: if true;
+    }
+    match /emociones/{allPaths=**} { // For emotion images
       allow read: if true;
     }
 
@@ -176,7 +230,13 @@ service firebase.storage {
                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
                       request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // Admin UID
     }
-    // Add other storage rules as needed.
+    
+    // Potentially allow users to upload their own profile pictures to a specific path
+    // match /user_avatars/{userId}/{fileName} {
+    //  allow read: if true;
+    //  allow write: if request.auth != null && request.auth.uid == userId;
+    // }
   }
 }
 */
+

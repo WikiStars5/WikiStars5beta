@@ -18,7 +18,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
-import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay"; // Importado
+import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
+import { CommentSection } from "@/components/comments/CommentSection"; // Importado
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
@@ -380,7 +381,6 @@ export default function FigurePage() {
             </TabsContent>
           </Tabs>
 
-          {/* Nueva Sección de Resumen de Calificaciones */}
           {figure && (
             <RatingSummaryDisplay
               figureName={figure.name}
@@ -389,7 +389,10 @@ export default function FigurePage() {
               ratingDistribution={figure.ratingDistribution}
             />
           )}
-          {/* Aquí irían los componentes para escribir y listar reseñas en el futuro */}
+          
+          {figure && (
+            <CommentSection figureId={figure.id} figureName={figure.name} />
+          )}
 
         </div>
 
@@ -400,7 +403,7 @@ export default function FigurePage() {
             <AlertDescription className="text-sm">
               La información personal y la imagen de perfil pueden ser editadas por usuarios con cuenta.
               ¡Expresa tu actitud y percepción emocional votando si has iniciado sesión con una cuenta!
-              Las calificaciones y reseñas (próximamente) te permitirán compartir tu opinión detallada.
+              Las calificaciones y reseñas te permitirán compartir tu opinión detallada.
             </AlertDescription>
           </Alert>
 
