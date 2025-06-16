@@ -197,10 +197,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setSuccess(`Figura "${name}" guardada exitosamente.`);
       
       setTimeout(() => {
-        if (initialData?.id) { // If updating, go to admin figures list
-          router.push('/admin/figures');
-        } else { // If creating new, go to the public figure page
+        if (!initialData?.id) { // If creating new, go to the public figure page
           router.push(`/figures/${figureDocId}`);
+        } else { // If updating, go to admin figures list
+          router.push('/admin/figures');
         }
         router.refresh(); 
       }, 1500);
@@ -266,11 +266,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
             setSelectedFile(null);
             setPreviewFileUrl(null);
           }}
-          placeholder="Ej: https://upload.wikimedia.org/wikipedia/commons/..."
+          placeholder="Ej: https://dominio-permitido.com/imagen.jpg"
           className="mb-2"
         />
         <p className="text-sm text-muted-foreground">
-          Pega la URL de una imagen externa. Si también seleccionas un archivo, se priorizará el archivo subido.
+          Pega la URL de una imagen externa de un dominio permitido (ver configuración de Next.js). Dominios comunes permitidos son Wikimedia, Placehold.co o tu Firebase Storage. Si también seleccionas un archivo, se priorizará el archivo subido.
         </p>
         
         {currentPreviewUrl ? (
