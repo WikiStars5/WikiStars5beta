@@ -1,3 +1,4 @@
+
 // === src/components/admin/FigureForm.tsx ===
 // Este componente ha sido modificado para incluir la lógica de subida de archivos a Firebase Storage
 // y con depuración adicional para el proceso de subida.
@@ -150,7 +151,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       if (!name.trim()) {
         throw new Error('El nombre de la figura es obligatorio.');
       }
-      if (!figureDocId) { // Ensure figureDocId is generated if it was an empty name initially
+      if (!figureDocId) { 
          figureDocId = slugify(name.trim(), { lower: true, strict: true });
          if(!figureDocId) throw new Error('No se pudo generar un ID para la figura.');
       }
@@ -197,9 +198,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setSuccess(`Figura "${name}" guardada exitosamente.`);
       
       setTimeout(() => {
-        if (!initialData?.id) { // If creating new, go to the public figure page
+        if (!initialData?.id) { 
           router.push(`/figures/${figureDocId}`);
-        } else { // If updating, go to admin figures list
+        } else { 
           router.push('/admin/figures');
         }
         router.refresh(); 
@@ -266,11 +267,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
             setSelectedFile(null);
             setPreviewFileUrl(null);
           }}
-          placeholder="Ej: https://dominio-permitido.com/imagen.jpg"
+          placeholder="Ej: https://upload.wikimedia.org/..."
           className="mb-2"
         />
         <p className="text-sm text-muted-foreground">
-          Pega la URL de una imagen externa de un dominio permitido (ver configuración de Next.js). Dominios comunes permitidos son Wikimedia, Placehold.co o tu Firebase Storage. Si también seleccionas un archivo, se priorizará el archivo subido.
+          Pega la URL de una imagen externa. Dominios permitidos: Wikimedia, Wikia (static.wikia.nocookie.net), Placehold.co o tu Firebase Storage. Si también seleccionas un archivo, se priorizará el archivo subido. No se recomienda usar URLs de Instagram/Facebook.
         </p>
         
         {currentPreviewUrl ? (
@@ -346,3 +347,4 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 };
 
 export default FigureForm;
+

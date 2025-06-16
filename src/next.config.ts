@@ -29,6 +29,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/wikipedia/commons/**', // Updated to be more specific
       },
+      {
+        protocol: 'https',
+        hostname: 'static.wikia.nocookie.net',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   devIndicators: {
@@ -40,3 +46,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
