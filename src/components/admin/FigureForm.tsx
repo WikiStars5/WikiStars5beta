@@ -144,12 +144,17 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       return;
     }
 
+    let figureDocId = initialData?.id || slugify(name.trim(), { lower: true, strict: true });
+
     try {
       if (!name.trim()) {
         throw new Error('El nombre de la figura es obligatorio.');
       }
-
-      const figureDocId = initialData?.id || slugify(name.trim(), { lower: true, strict: true });
+      if (!figureDocId) { // Ensure figureDocId is generated if it was an empty name initially
+         figureDocId = slugify(name.trim(), { lower: true, strict: true });
+         if(!figureDocId) throw new Error('No se pudo generar un ID para la figura.');
+      }
+      
       let finalPhotoUrlToSave = photoUrl.trim();
       
 
@@ -177,7 +182,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         gender: gender.trim(),
         nationality: nationality.trim(),
         perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
-        attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts }, // Ensure attitudeCounts is saved
+        attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
       };
 
       if (!initialData?.id) { 
@@ -192,7 +197,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setSuccess(`Figura "${name}" guardada exitosamente.`);
       
       setTimeout(() => {
-        router.push('/admin/figures');
+        if (initialData?.id) { // If updating, go to admin figures list
+          router.push('/admin/figures');
+        } else { // If creating new, go to the public figure page
+          router.push(`/figures/${figureDocId}`);
+        }
         router.refresh(); 
       }, 1500);
 
@@ -337,4 +346,3 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 };
 
 export default FigureForm;
-
