@@ -64,9 +64,9 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     }, (error) => {
       console.error("Error fetching figure attitude counts:", error);
       toast({ title: "Error", description: "No se pudieron cargar los conteos de actitudes.", variant: "destructive" });
-      setFigureAttitudeCounts(defaultAttitudeCountsData); // Reset on error
+      setFigureAttitudeCounts(defaultAttitudeCountsData); 
       setTotalVotes(0);
-      setIsComponentLoading(false); // Set loading to false on error
+      setIsComponentLoading(false); 
     });
 
     let unsubscribeUserAttitude: Unsubscribe | undefined;
@@ -81,15 +81,15 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         } else {
           setSelectedAttitude(null);
         }
-        setIsComponentLoading(false); // Component is ready after user's perception is fetched
+        setIsComponentLoading(false); 
       }, (error) => {
         console.error("Error fetching user's attitude:", error);
-        setSelectedAttitude(null); // Reset on error
-        setIsComponentLoading(false); // Set loading to false on error
+        setSelectedAttitude(null); 
+        setIsComponentLoading(false); 
       });
     } else {
       setSelectedAttitude(null);
-      setIsComponentLoading(false); // No user, so component is ready
+      setIsComponentLoading(false); 
     }
     
     return () => {
@@ -105,7 +105,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       return;
     }
     if (isLoadingAttitudeAction) return;
-    if (!currentUser) return; // Should be covered by canUserVote, but as a safeguard
+    if (!currentUser) return; 
 
     setIsLoadingAttitudeAction(attitudeKeyClicked);
 
@@ -113,7 +113,8 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
     const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
 
-    const newAttitudeToSet = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
+    const previousSelectedAttitude = selectedAttitude; 
+    const newAttitudeToSet = previousSelectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -126,11 +127,9 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         const currentCounts = (currentFigureData?.attitudeCounts || { ...defaultAttitudeCountsData }) as Record<AttitudeKey, number>;
         const newCounts = { ...currentCounts };
 
-        // 1. If there was a previous vote (selectedAttitude), decrement its counter.
-        if (selectedAttitude) {
-          newCounts[selectedAttitude] = Math.max(0, (newCounts[selectedAttitude] || 0) - 1);
+        if (previousSelectedAttitude) {
+          newCounts[previousSelectedAttitude] = Math.max(0, (newCounts[previousSelectedAttitude] || 0) - 1);
         }
-        // 2. If a new vote is to be set (newAttitudeToSet is not null), increment its counter.
         if (newAttitudeToSet) {
           newCounts[newAttitudeToSet] = (newCounts[newAttitudeToSet] || 0) + 1;
         }
@@ -138,7 +137,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         transaction.update(figureDocRef, { attitudeCounts: newCounts });
       });
 
-      // After the transaction, update the user's specific attitude document and local state
       if (newAttitudeToSet) {
         await setDoc(userAttitudeDocRef, {
           userId: currentUser.uid,
@@ -146,15 +144,13 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           attitude: newAttitudeToSet,
           timestamp: serverTimestamp(),
         });
-        // setSelectedAttitude(newAttitudeToSet); // Let onSnapshot handle this to ensure consistency
+        setSelectedAttitude(newAttitudeToSet); // Reinstated direct state update
         toast({ title: "Voto Registrado", description: `Tu actitud como "${ATTITUDE_OPTIONS_CONFIG.find(e => e.key === newAttitudeToSet)?.label}" ha sido guardada.` });
       } else { 
         await deleteDoc(userAttitudeDocRef);
-        // setSelectedAttitude(null); // Let onSnapshot handle this
+        setSelectedAttitude(null); // Reinstated direct state update
         toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
       }
-      // Note: The local state `selectedAttitude` will be updated by the onSnapshot listener
-      // for the userAttitudeDocRef, ensuring the UI reflects the source of truth.
 
     } catch (error: any) {
       console.error("Error voting on attitude:", error);
@@ -237,5 +233,3 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     </Card>
   );
 };
-
-    
