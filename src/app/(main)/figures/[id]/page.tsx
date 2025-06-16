@@ -4,7 +4,7 @@
 import type { Figure } from "@/lib/types";
 import { getFigureFromFirestore, getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, Image as ImageIcon, ImageOff } from "lucide-react";
+import { Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, Image as ImageIcon, ImageOff, BarChartHorizontal } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import Image from "next/image"; // For preview
@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
+import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay"; // Importado
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
@@ -378,6 +379,18 @@ export default function FigurePage() {
               )}
             </TabsContent>
           </Tabs>
+
+          {/* Nueva Sección de Resumen de Calificaciones */}
+          {figure && (
+            <RatingSummaryDisplay
+              figureName={figure.name}
+              averageRating={figure.averageRating}
+              totalRatings={figure.totalRatings}
+              ratingDistribution={figure.ratingDistribution}
+            />
+          )}
+          {/* Aquí irían los componentes para escribir y listar reseñas en el futuro */}
+
         </div>
 
         <aside className="lg:col-span-1 space-y-6">
@@ -387,6 +400,7 @@ export default function FigurePage() {
             <AlertDescription className="text-sm">
               La información personal y la imagen de perfil pueden ser editadas por usuarios con cuenta.
               ¡Expresa tu actitud y percepción emocional votando si has iniciado sesión con una cuenta!
+              Las calificaciones y reseñas (próximamente) te permitirán compartir tu opinión detallada.
             </AlertDescription>
           </Alert>
 

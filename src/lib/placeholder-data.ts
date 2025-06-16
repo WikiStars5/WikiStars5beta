@@ -27,7 +27,13 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   hater: 0,
 };
 
-// defaultFigureRating removed
+const defaultRatingDistribution = {
+  '1': 0,
+  '2': 0,
+  '3': 0,
+  '4': 0,
+  '5': 0,
+};
 
 const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data();
@@ -69,8 +75,11 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     gender: data.gender || "",
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
-    // averageRating and totalRatings removed
+    averageRating: data.averageRating || 0,
+    totalRatings: data.totalRatings || 0,
+    ratingDistribution: data.ratingDistribution || { ...defaultRatingDistribution },
     createdAt: createdAtString,
+    status: data.status || 'approved',
   };
 };
 
@@ -81,7 +90,9 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
       attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
-      // averageRating and totalRatings removed
+      averageRating: figure.averageRating || 0,
+      totalRatings: figure.totalRatings || 0,
+      ratingDistribution: figure.ratingDistribution || { ...defaultRatingDistribution },
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
@@ -96,11 +107,13 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: string }): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    // Ensure averageRating and totalRatings are not part of the update if they exist in the partial
-    const { createdAt, nameLower, perceptionCounts, attitudeCounts, ...figureDataToUpdateRest } = figure;
+    const { createdAt, nameLower, perceptionCounts, attitudeCounts, averageRating, totalRatings, ratingDistribution, ...figureDataToUpdateRest } = figure;
     const updatePayload: Partial<Figure> = {...figureDataToUpdateRest};
     if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
     if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
+    if (averageRating !== undefined) updatePayload.averageRating = averageRating;
+    if (totalRatings !== undefined) updatePayload.totalRatings = totalRatings;
+    if (ratingDistribution) updatePayload.ratingDistribution = ratingDistribution;
     if (nameLower) updatePayload.nameLower = nameLower;
 
 
@@ -139,19 +152,18 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
 export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef /* Removed orderBy for diagnosis */); // Keep orderBy removed
+    const q = query(figuresCollectionRef ); 
     const querySnapshot = await getDocs(q);
 
 
     const figures: Figure[] = [];
     if (querySnapshot.empty) {
-        // console.log("No figures found in Firestore.");
     } else {
       querySnapshot.forEach((docSnap) => {
         figures.push(mapDocToFigure(docSnap));
       });
     }
-    return figures.sort((a, b) => a.name.localeCompare(b.name)); // Manual sort if orderBy is removed
+    return figures.sort((a, b) => a.name.localeCompare(b.name)); 
   } catch (error: any) {
     console.error("Error fetching all figures from Firestore. Message:", error.message);
     if (String(error.message).toLowerCase().includes("permission")) {
@@ -169,7 +181,7 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
 export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef, limit(count) /* Removed orderBy for diagnosis */); // Keep orderBy removed
+    const q = query(figuresCollectionRef, limit(count) ); 
     const querySnapshot = await getDocs(q);
     let figures: Figure[] = [];
     querySnapshot.forEach((docSnap) => {
@@ -190,7 +202,6 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
         uniqueFigureIds.add(figure.id);
         return true;
     });
-    // Manually sort by name if orderBy was removed from query
     figures.sort((a,b) => a.name.localeCompare(b.name));
     return figures.slice(0, count);
   } catch (error) {
@@ -202,5 +213,3 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
   }
 }
 
-// getCommentsForFigure removed
-// getUserRatingForFigure removed

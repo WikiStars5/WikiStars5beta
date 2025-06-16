@@ -16,7 +16,7 @@ export interface Figure {
   id: string;
   name: string;
   nameLower: string;
-  photoUrl: string; // Admin will set this, or it can be edited by users.
+  photoUrl: string;
   description?: string;
   nationality?: string;
   occupation?: string;
@@ -24,8 +24,17 @@ export interface Figure {
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
   createdAt?: string;
-  status?: 'approved' | 'pending_verification' | 'rejected'; // Status can still be used by admin workflow
-  // proposedWikiLink and proposedBy removed as user proposal feature is deleted
+  status?: 'approved' | 'pending_verification' | 'rejected';
+  // Campos para el sistema de calificación estilo Play Store
+  averageRating?: number;
+  totalRatings?: number;
+  ratingDistribution?: {
+    '1': number; // count for 1 star
+    '2': number; // count for 2 stars
+    '3': number; // count for 3 stars
+    '4': number; // count for 4 stars
+    '5': number; // count for 5 stars
+  };
 }
 
 export interface UserPerception {
@@ -59,3 +68,4 @@ export interface UserProfile {
   createdAt: string;
   lastLoginAt?: string;
 }
+
