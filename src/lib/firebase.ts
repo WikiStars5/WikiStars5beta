@@ -3,59 +3,196 @@
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
 
-// Importa las funciones básicas para inicializar la aplicación de Firebase
-import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-
-// Importa los SDK específicos para los servicios que vas a usar:
-// getStorage para Firebase Storage (almacenamiento de archivos como imágenes)
+import { initializeApp, getApp, type FirebaseApp } from "firebase/app";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
-// getFirestore para Cloud Firestore (tu base de datos para perfiles de famosos, valoraciones, etc.)
 import { getFirestore, type Firestore } from "firebase/firestore";
-// getAuth para Firebase Authentication (gestión de usuarios y sus sesiones)
 import { getAuth, type Auth } from "firebase/auth";
 
-// Tu configuración de Firebase para la aplicación web.
-// ¡MUY IMPORTANTE! Asegúrate de que estos valores coincidan EXACTAMENTE
-// con los que obtuviste de la Consola de Firebase para tu proyecto ACTIVO: wikistars5-2yctr
 const firebaseConfig = {
-  apiKey: "AIzaSyCwH29ruiIl_pohEoUHh7d26m5qCLCmYm0", // Tu clave API única
-  authDomain: "wikistars5-2yctr.firebaseapp.com",    // Tu dominio de autenticación
-  projectId: "wikistars5-2yctr",                     // Tu ID de proyecto (¡ESTE ES EL CORRECTO!)
-
-  // ¡ATENCIÓN ESPECIAL A ESTA LÍNEA (storageBucket)!
-  // Ahora apunta a tu bucket de Storage del proyecto activo: wikistars5-2yctr.firebasestorage.app
-  storageBucket: "wikistars5-2yctr.firebasestorage.app", // Asegúrate de que este es el valor CORRECTO de tu bucket
-  
+  apiKey: "AIzaSyCwH29ruiIl_pohEoUHh7d26m5qCLCmYm0", 
+  authDomain: "wikistars5-2yctr.firebaseapp.com",    
+  projectId: "wikistars5-2yctr",                     
+  storageBucket: "wikistars5-2yctr.appspot.com", // Corrected this line as per previous discussions
   messagingSenderId: "939359993461",
   appId: "1:939359993461:web:c8aab67046db949495823c",
-  measurementId: "G-XCFCPXNP56" // Asegúrate de que este ID sea correcto para tu proyecto si usas Analytics
+  measurementId: "G-XCFCPXNP56" 
 };
 
-// Inicializa Firebase. Este bloque maneja la inicialización para evitar el error "app/duplicate-app".
 let app: FirebaseApp;
 try {
-  // Intenta obtener una instancia de la aplicación Firebase si ya fue inicializada.
-  app = getApp(); // Por defecto, busca la app llamada '[DEFAULT]'
+  app = getApp(); 
 } catch (e) {
-  // Si no se encuentra ninguna instancia existente, inicializa una nueva.
   app = initializeApp(firebaseConfig);
 }
 
-// Exporta las instancias de los servicios de Firebase para que puedas utilizarlas
-// en cualquier parte de tu aplicación (ej. para guardar datos, subir imágenes, gestionar usuarios).
-export const storage: FirebaseStorage = getStorage(app); // Instancia del servicio de Storage
-export const db: Firestore = getFirestore(app);           // Instancia del servicio de Firestore Database
-export const auth: Auth = getAuth(app);                 // Instancia del servicio de Authentication
-
-// También puedes exportar la instancia de la app en sí si la necesitas en otros lugares.
+export const storage: FirebaseStorage = getStorage(app); 
+export const db: Firestore = getFirestore(app);           
+export const auth: Auth = getAuth(app);                 
 export { app };
 
-// === REGLAS DE SEGURIDAD DE FIRESTORE (RECOMENDADAS - APLICAR EN CONSOLA FIREBASE) ===
-// Las reglas de Firestore deben aplicarse directamente en la consola de Firebase.
-// No deben estar en este archivo de código.
+// === REGLAS DE SEGURIDAD DE FIRESTORE (APLICAR EN CONSOLA FIREBASE) ===
 // Ve a Firebase Console -> Firestore Database -> Rules.
+// REEMPLAZA TUS REGLAS EXISTENTES CON ESTAS:
+/*
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /figures/{figureId} {
+      allow get: if true;
+
+      allow create: if
+        // Admin can create directly (can set any status or no status, which implies approved)
+        (request.auth != null &&
+         !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+         request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' &&
+         (request.resource.data.status == 'approved' || request.resource.data.status == null || request.resource.data.status == 'pending_verification') &&
+         // Admin should provide all necessary fields when creating approved
+         (request.resource.data.status == 'approved' || request.resource.data.status == null ? 
+            request.resource.data.keys().hasAll(['id', 'name', 'nameLower', 'photoUrl', 'description', 'nationality', 'occupation', 'gender', 'perceptionCounts', 'attitudeCounts', 'createdAt']) :
+            true // For pending, less strict on admin
+         )
+        )
+        ||
+        // Non-admin authenticated users can propose a figure
+        (request.auth != null &&
+         !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+         request.resource.data.status == 'pending_verification' && // Must be pending
+         request.resource.data.proposedBy == request.auth.uid && // Must be proposed by the authenticated user
+         request.resource.data.keys().hasAll(['id', 'name', 'nameLower', 'proposedWikiLink', 'status', 'proposedBy', 'createdAt', 'photoUrl', 'perceptionCounts', 'attitudeCounts']) &&
+         request.resource.data.photoUrl == 'https://placehold.co/400x600.png' // Must use placeholder
+        );
+
+      allow update: if request.auth != null &&
+                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                      (
+                        // Admin can update any field
+                        request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'
+                        ||
+                        // Non-admin can update specific fields if figure is approved
+                        (resource.data.status == 'approved' &&
+                          (
+                            request.resource.data.description != resource.data.description ||
+                            request.resource.data.nationality != resource.data.nationality ||
+                            request.resource.data.occupation != resource.data.occupation ||
+                            request.resource.data.gender != resource.data.gender ||
+                            request.resource.data.photoUrl != resource.data.photoUrl ||
+                            request.resource.data.perceptionCounts != resource.data.perceptionCounts ||
+                            request.resource.data.attitudeCounts != resource.data.attitudeCounts
+                          ) &&
+                          // Critical fields must not be changed by non-admins
+                          request.resource.data.name == resource.data.name &&
+                          request.resource.data.nameLower == resource.data.nameLower &&
+                          request.resource.data.id == resource.data.id &&
+                          request.resource.data.status == resource.data.status && // Status cannot be changed by non-admin
+                          request.resource.data.proposedWikiLink == resource.data.proposedWikiLink && // Cannot change proposed link
+                          request.resource.data.proposedBy == resource.data.proposedBy // Cannot change proposer
+                        )
+                      );
+      
+      allow delete: if request.auth != null &&
+                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                      request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // Only admin can delete
+    }
+
+    match /figures {
+      allow list: if true;
+    }
+
+    match /userPerceptions/{perceptionDocId} {
+      function getUserIdFromDocIdPerc() { return perceptionDocId.split('_')[0]; }
+      function isOwnerNonAnonymousPerc() {
+        return request.auth != null &&
+               !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+               request.auth.uid == resource.data.userId &&
+               request.auth.uid == getUserIdFromDocIdPerc();
+      }
+      function isCreatingOwnValidDocNonAnonymousPerc() {
+        return request.auth != null &&
+               !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+               request.auth.uid == request.resource.data.userId &&
+               request.auth.uid == getUserIdFromDocIdPerc() &&
+               request.resource.data.figureId == perceptionDocId.split('_')[1] &&
+               request.resource.data.keys().hasAll(['userId', 'figureId', 'emotion', 'timestamp']) &&
+               request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'];
+      }
+      allow read, delete: if isOwnerNonAnonymousPerc();
+      allow update: if isOwnerNonAnonymousPerc() &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['emotion', 'timestamp']) &&
+                      request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'];
+      allow create: if isCreatingOwnValidDocNonAnonymousPerc();
+    }
+
+    match /userAttitudes/{attitudeDocId} {
+      function getUserIdFromDocIdAtt() { return attitudeDocId.split('_')[0]; }
+      function isOwnerNonAnonymousAtt() {
+        return request.auth != null &&
+               !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+               request.auth.uid == resource.data.userId &&
+               request.auth.uid == getUserIdFromDocIdAtt();
+      }
+      function isCreatingOwnValidDocNonAnonymousAtt() {
+        return request.auth != null &&
+               !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+               request.auth.uid == request.resource.data.userId &&
+               request.auth.uid == getUserIdFromDocIdAtt() &&
+               request.resource.data.figureId == attitudeDocId.split('_')[1] &&
+               request.resource.data.keys().hasAll(['userId', 'figureId', 'attitude', 'timestamp']) &&
+               request.resource.data.attitude in ['neutral', 'fan', 'simp', 'hater'];
+      }
+      allow read, delete: if isOwnerNonAnonymousAtt();
+      allow update: if isOwnerNonAnonymousAtt() &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attitude', 'timestamp']) &&
+                      request.resource.data.attitude in ['neutral', 'fan', 'simp', 'hater'];
+      allow create: if isCreatingOwnValidDocNonAnonymousAtt();
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth != null &&
+                     !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                     request.auth.uid == userId;
+      allow create: if request.auth != null &&
+                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                       request.auth.uid == userId &&
+                       request.resource.data.uid == userId &&
+                       request.resource.data.role == 'user' &&
+                       request.resource.data.keys().hasAll([
+                         'uid', 'email', 'username', 'photoURL',
+                         'country', 'countryCode', 'role',
+                         'createdAt', 'lastLoginAt'
+                       ]);
+      allow update: if request.auth != null &&
+                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                       request.auth.uid == userId &&
+                       !(request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                         'uid', 'email', 'createdAt', 'role'
+                       ])) &&
+                       (request.resource.data.photoURL == resource.data.photoURL || request.resource.data.photoURL == request.auth.token.picture);
+      allow delete: if false;
+    }
+  }
+}
+*/
 
 // === REGLAS DE SEGURIDAD DE FIREBASE STORAGE (APLICAR EN CONSOLA FIREBASE STORAGE > REGLAS) ===
-// Las reglas de Storage deben aplicarse directamente en la consola de Firebase.
-// No deben estar en este archivo de código.
 // Ve a Firebase Console -> Storage -> Rules.
+/*
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow public read access to files in the 'figures' folder (where admin uploads images)
+    match /figures/{allPaths=**} {
+      allow read: if true;
+    }
+
+    // Allow authenticated admin to write to the 'figures' folder
+    match /figures/{figureId}/{fileName} {
+      allow write: if request.auth != null &&
+                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                      request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // Admin UID
+    }
+    // Add other storage rules as needed.
+  }
+}
+*/

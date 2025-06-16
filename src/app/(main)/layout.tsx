@@ -14,13 +14,19 @@ export default function MainLayout({
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
+    // This effect should only run on the client
     const storedTheme = localStorage.getItem('theme');
     if (storedTheme === 'dark' || storedTheme === 'light') {
       setTheme(storedTheme);
+    } else {
+      // If no theme is stored, or if it's invalid, check system preference
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme(prefersDark ? 'dark' : 'light');
     }
   }, []);
 
   useEffect(() => {
+    // This effect should also only run on the client
     localStorage.setItem('theme', theme);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');

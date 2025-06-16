@@ -16,7 +16,7 @@ export interface Figure {
   id: string;
   name: string;
   nameLower: string;
-  photoUrl: string;
+  photoUrl: string; // Initially a placeholder for user proposals
   description?: string;
   nationality?: string;
   occupation?: string;
@@ -24,7 +24,9 @@ export interface Figure {
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
   createdAt?: string;
-  // averageRating and totalRatings removed
+  status?: 'approved' | 'pending_verification' | 'rejected'; // For proposal workflow
+  proposedWikiLink?: string; // Link provided by user for verification
+  proposedBy?: string; // UID of user who proposed
 }
 
 export interface UserPerception {
@@ -58,6 +60,3 @@ export interface UserProfile {
   createdAt: string;
   lastLoginAt?: string;
 }
-
-// FigureUserRating type removed
-// FigureComment type removed
