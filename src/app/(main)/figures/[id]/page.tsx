@@ -4,15 +4,15 @@
 import type { Figure } from "@/lib/types";
 import { getFigureFromFirestore, getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus } from "lucide-react";
+import { Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, Image as ImageIcon, ImageOff } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
+import Image from "next/image"; // For preview
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AttitudeVote } from '@/components/figures/AttitudeVote';
-// CommentSection import removed
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import React, { useState, useEffect, useCallback } from 'react';
@@ -38,6 +38,7 @@ export default function FigurePage() {
   const [editedNationality, setEditedNationality] = useState("");
   const [editedOccupation, setEditedOccupation] = useState("");
   const [editedGender, setEditedGender] = useState("");
+  const [editedPhotoUrl, setEditedPhotoUrl] = useState(""); // New state for photo URL
   const [isSaving, setIsSaving] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -51,6 +52,16 @@ export default function FigurePage() {
     return () => unsubscribe();
   }, []);
 
+  const resetEditFields = useCallback((currentFigure: Figure | null) => {
+    if (currentFigure) {
+      setEditedDescription(currentFigure.description || "");
+      setEditedNationality(currentFigure.nationality || "");
+      setEditedOccupation(currentFigure.occupation || "");
+      setEditedGender(currentFigure.gender || "");
+      setEditedPhotoUrl(currentFigure.photoUrl || ""); // Reset photo URL
+    }
+  }, []);
+
   const fetchFigureData = useCallback(async () => {
     if (!id) {
       setFigure(undefined);
@@ -59,10 +70,7 @@ export default function FigurePage() {
     const fetchedFigure = await getFigureFromFirestore(id);
     setFigure(fetchedFigure || null);
     if (fetchedFigure) {
-      setEditedDescription(fetchedFigure.description || "");
-      setEditedNationality(fetchedFigure.nationality || "");
-      setEditedOccupation(fetchedFigure.occupation || "");
-      setEditedGender(fetchedFigure.gender || "");
+      resetEditFields(fetchedFigure);
     }
     try {
       const fetchedAllFigures = await getAllFiguresFromFirestore();
@@ -70,7 +78,7 @@ export default function FigurePage() {
     } catch (error) {
       console.error("Error fetching all figures for related section:", error);
     }
-  }, [id]);
+  }, [id, resetEditFields]);
 
   useEffect(() => {
     if (id) {
@@ -80,12 +88,9 @@ export default function FigurePage() {
 
   useEffect(() => {
     if (figure && isEditing) {
-      setEditedDescription(figure.description || "");
-      setEditedNationality(figure.nationality || "");
-      setEditedOccupation(figure.occupation || "");
-      setEditedGender(figure.gender || "");
+      resetEditFields(figure);
     }
-  }, [figure, isEditing]);
+  }, [figure, isEditing, resetEditFields]);
 
   const handleEditToggle = () => {
     if (!canUserInteract) {
@@ -93,12 +98,7 @@ export default function FigurePage() {
       return;
     }
     if (isEditing) {
-      if (figure) {
-        setEditedDescription(figure.description || "");
-        setEditedNationality(figure.nationality || "");
-        setEditedOccupation(figure.occupation || "");
-        setEditedGender(figure.gender || "");
-      }
+      resetEditFields(figure); // Reset fields if cancelling edit
     }
     setIsEditing(!isEditing);
   };
@@ -116,13 +116,14 @@ export default function FigurePage() {
         nationality: editedNationality,
         occupation: editedOccupation,
         gender: editedGender,
+        photoUrl: editedPhotoUrl.trim() || 'https://placehold.co/400x600.png', // Save new photo URL, default if empty
       };
 
       await updateFigureInFirestore(updatedFigureData);
 
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
       setIsEditing(false);
-      await fetchFigureData();
+      await fetchFigureData(); // Re-fetch to update figure state and UI
     } catch (error: any) {
       console.error("Error saving figure details:", error);
       let errorMessage = "No se pudo guardar la información.";
@@ -165,6 +166,8 @@ export default function FigurePage() {
   }
 
   const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 3);
+  const isValidEditedPhotoUrl = editedPhotoUrl && (editedPhotoUrl.startsWith('https://upload.wikimedia.org') || editedPhotoUrl.startsWith('https://static.wikia.nocookie.net') || editedPhotoUrl.startsWith('https://firebasestorage.googleapis.com') || editedPhotoUrl.startsWith('https://placehold.co'));
+
 
   return (
     <div className="space-y-8 lg:space-y-12">
@@ -210,6 +213,39 @@ export default function FigurePage() {
                   )}
                   {isEditing && canUserInteract ? (
                     <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="photoUrl" className="font-semibold text-foreground/90">URL de la Imagen del Perfil</Label>
+                        <Input
+                          id="photoUrl"
+                          type="url"
+                          value={editedPhotoUrl}
+                          onChange={(e) => setEditedPhotoUrl(e.target.value)}
+                          placeholder="Ej: https://upload.wikimedia.org/... o https://static.wikia.nocookie.net/..."
+                          className="mt-1"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Pega una URL de Wikimedia Commons, Wikia (static.wikia.nocookie.net), Firebase Storage o Placehold.co.
+                        </p>
+                        {editedPhotoUrl ? (
+                          isValidEditedPhotoUrl ? (
+                            <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center data-ai-hint='image preview'">
+                              <Image
+                                src={editedPhotoUrl}
+                                alt="Previsualización de imagen"
+                                layout="fill"
+                                objectFit="contain"
+                              />
+                            </div>
+                          ) : (
+                            <p className="mt-1 text-xs text-destructive">URL no válida o de un dominio no permitido para previsualización.</p>
+                          )
+                        ) : (
+                          <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground data-ai-hint='placeholder abstract'">
+                            <ImageOff className="h-10 w-10" />
+                          </div>
+                        )}
+                      </div>
+
                       <div>
                         <Label htmlFor="description" className="font-semibold text-foreground/90">Descripción</Label>
                         <Textarea
@@ -342,9 +378,6 @@ export default function FigurePage() {
               )}
             </TabsContent>
           </Tabs>
-
-          {/* Comment Section and its loading state removed */}
-
         </div>
 
         <aside className="lg:col-span-1 space-y-6">
@@ -352,9 +385,8 @@ export default function FigurePage() {
             <Terminal className="h-4 w-4" />
             <AlertTitle className="font-headline">Cómo Funciona</AlertTitle>
             <AlertDescription className="text-sm">
-              La información personal puede ser editada por usuarios con cuenta.
+              La información personal y la imagen de perfil pueden ser editadas por usuarios con cuenta.
               ¡Expresa tu actitud y percepción emocional votando si has iniciado sesión con una cuenta!
-              {/* Reference to comments and ratings removed */}
             </AlertDescription>
           </Alert>
 
