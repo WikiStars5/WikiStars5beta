@@ -92,20 +92,21 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   }, [figureId, currentUser, toast]);
 
 
-  const handleAttitudeClick = async (attitudeKey: AttitudeKey) => {
+  const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
     if (!canUserVote) {
       toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para votar.", variant: "default" });
       return;
     }
     if (isLoadingAttitudeAction) return;
 
-    setIsLoadingAttitudeAction(attitudeKey);
+    setIsLoadingAttitudeAction(attitudeKeyClicked);
 
     const figureDocRef = doc(db, "figures", figureId);
     const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
     const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
 
-    const newAttitudeToSet = selectedAttitude === attitudeKey ? null : attitudeKey;
+    // Determine the new attitude: if clicking the same one, it's null (unvote), otherwise it's the new one.
+    const newAttitudeToSet = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -114,22 +115,26 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           throw new Error("Documento de figura no existe!");
         }
 
-        const currentCounts = (figureDoc.data()?.attitudeCounts || { ...defaultAttitudeCountsData }) as Record<AttitudeKey, number>;
+        const currentFigureData = figureDoc.data();
+        const currentCounts = (currentFigureData?.attitudeCounts || { ...defaultAttitudeCountsData }) as Record<AttitudeKey, number>;
         const newCounts = { ...currentCounts };
 
-        if (selectedAttitude && selectedAttitude !== attitudeKey) { // User is changing vote
+        // If the user had a previous vote (selectedAttitude is the state *before* this click), decrement its count.
+        if (selectedAttitude) {
           newCounts[selectedAttitude] = Math.max(0, (newCounts[selectedAttitude] || 0) - 1);
         }
-        if (selectedAttitude === attitudeKey) { // User is unvoting
-            newCounts[attitudeKey] = Math.max(0, (newCounts[attitudeKey] || 0) - 1);
-        }
-        if (newAttitudeToSet && newAttitudeToSet !== selectedAttitude) { // User is voting or changing vote
+
+        // If the user is setting a new vote (newAttitudeToSet is not null), increment its count.
+        // This handles both voting for the first time and changing a vote.
+        // If newAttitudeToSet is null (unvoting), this step is skipped.
+        if (newAttitudeToSet) {
           newCounts[newAttitudeToSet] = (newCounts[newAttitudeToSet] || 0) + 1;
         }
         
         transaction.update(figureDocRef, { attitudeCounts: newCounts });
       });
 
+      // After the transaction, update the user's specific attitude document and local state
       if (newAttitudeToSet) {
         await setDoc(userAttitudeDocRef, {
           userId: currentUser.uid,
@@ -137,11 +142,11 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           attitude: newAttitudeToSet,
           timestamp: serverTimestamp(),
         });
-        setSelectedAttitude(newAttitudeToSet);
+        // setSelectedAttitude(newAttitudeToSet); // Handled by onSnapshot
         toast({ title: "Voto Registrado", description: `Tu actitud como "${ATTITUDE_OPTIONS_CONFIG.find(e => e.key === newAttitudeToSet)?.label}" ha sido guardada.` });
       } else { 
         await deleteDoc(userAttitudeDocRef);
-        setSelectedAttitude(null);
+        // setSelectedAttitude(null); // Handled by onSnapshot
         toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
       }
 
@@ -220,3 +225,4 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     </Card>
   );
 };
+
