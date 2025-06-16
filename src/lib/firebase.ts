@@ -12,7 +12,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyCwH29ruiIl_pohEoUHh7d26m5qCLCmYm0", 
   authDomain: "wikistars5-2yctr.firebaseapp.com",    
   projectId: "wikistars5-2yctr",                     
-  storageBucket: "wikistars5-2yctr.appspot.com", // Corrected this line as per previous discussions
+  storageBucket: "wikistars5-2yctr.appspot.com",
   messagingSenderId: "939359993461",
   appId: "1:939359993461:web:c8aab67046db949495823c",
   measurementId: "G-XCFCPXNP56" 
@@ -46,7 +46,7 @@ service cloud.firestore {
         // Admin can create directly (can set any status or no status, which implies approved)
         (request.auth != null &&
          !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-         request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' &&
+         request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' && // ADMIN UID
          (request.resource.data.status == 'approved' || request.resource.data.status == null || request.resource.data.status == 'pending_verification') &&
          // Admin should provide all necessary fields when creating approved
          (request.resource.data.status == 'approved' || request.resource.data.status == null ? 
@@ -67,8 +67,8 @@ service cloud.firestore {
       allow update: if request.auth != null &&
                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
                       (
-                        // Admin can update any field
-                        request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'
+                        // Admin can update any field, including status
+                        (request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2')
                         ||
                         // Non-admin can update specific fields if figure is approved
                         (resource.data.status == 'approved' &&
