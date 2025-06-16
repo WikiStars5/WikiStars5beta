@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'upload.wikimedia.org',
         port: '',
-        pathname: '/wikipedia/commons/**', // Updated to be more specific
+        pathname: '/wikipedia/commons/**',
       },
       {
         protocol: 'https',
@@ -46,4 +46,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
