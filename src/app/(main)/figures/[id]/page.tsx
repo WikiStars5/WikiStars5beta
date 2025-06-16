@@ -38,7 +38,7 @@ export default function FigurePage() {
   const [editedNationality, setEditedNationality] = useState("");
   const [editedOccupation, setEditedOccupation] = useState("");
   const [editedGender, setEditedGender] = useState("");
-  const [editedPhotoUrl, setEditedPhotoUrl] = useState(""); // New state for photo URL
+  const [editedPhotoUrl, setEditedPhotoUrl] = useState(""); 
   const [isSaving, setIsSaving] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -58,7 +58,7 @@ export default function FigurePage() {
       setEditedNationality(currentFigure.nationality || "");
       setEditedOccupation(currentFigure.occupation || "");
       setEditedGender(currentFigure.gender || "");
-      setEditedPhotoUrl(currentFigure.photoUrl || ""); // Reset photo URL
+      setEditedPhotoUrl(currentFigure.photoUrl || ""); 
     }
   }, []);
 
@@ -98,7 +98,7 @@ export default function FigurePage() {
       return;
     }
     if (isEditing) {
-      resetEditFields(figure); // Reset fields if cancelling edit
+      resetEditFields(figure); 
     }
     setIsEditing(!isEditing);
   };
@@ -116,14 +116,14 @@ export default function FigurePage() {
         nationality: editedNationality,
         occupation: editedOccupation,
         gender: editedGender,
-        photoUrl: editedPhotoUrl.trim() || 'https://placehold.co/400x600.png', // Save new photo URL, default if empty
+        photoUrl: editedPhotoUrl.trim() || 'https://placehold.co/400x600.png', 
       };
 
       await updateFigureInFirestore(updatedFigureData);
 
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
       setIsEditing(false);
-      await fetchFigureData(); // Re-fetch to update figure state and UI
+      await fetchFigureData(); 
     } catch (error: any) {
       console.error("Error saving figure details:", error);
       let errorMessage = "No se pudo guardar la información.";
@@ -405,3 +405,4 @@ export default function FigurePage() {
     </div>
   );
 }
+
