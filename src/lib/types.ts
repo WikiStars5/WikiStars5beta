@@ -24,9 +24,7 @@ export interface Figure {
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
   createdAt?: string;
-  // New fields for average rating
-  averageRating?: number;
-  totalRatings?: number;
+  // averageRating and totalRatings removed
 }
 
 export interface UserPerception {
@@ -61,23 +59,5 @@ export interface UserProfile {
   lastLoginAt?: string;
 }
 
-// New type for individual user ratings on a figure
-export interface FigureUserRating {
-  userId: string;
-  figureId: string;
-  rating: number; // 1-5
-  timestamp: any; // Firestore ServerTimestamp
-}
-
-// New type for comments on a figure
-export interface FigureComment {
-  id: string; // Auto-generated Firestore ID
-  figureId: string;
-  userId: string;
-  username: string; // Denormalized for display
-  userPhotoURL?: string | null; // Denormalized for display
-  commentText: string;
-  ratingGiven: number; // Rating given at the time of comment (1-5)
-  timestamp: any; // Firestore ServerTimestamp, will be string after fetch
-  createdAt?: string; // Serialized timestamp
-}
+// FigureUserRating type removed
+// FigureComment type removed

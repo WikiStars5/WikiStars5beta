@@ -1,5 +1,5 @@
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, FigureComment, FigureUserRating } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where } from "firebase/firestore";
@@ -27,10 +27,7 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   hater: 0,
 };
 
-const defaultFigureRating = {
-  averageRating: 0,
-  totalRatings: 0,
-};
+// defaultFigureRating removed
 
 const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data();
@@ -50,14 +47,12 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
         if (!isNaN(date.getTime())) {
             createdAtString = date.toISOString();
         } else {
-            createdAtString = undefined; // Invalid date from object
+            createdAtString = undefined; 
         }
       } catch (e) {
-        // console.warn("Could not parse date from object:", data.createdAt, e);
         createdAtString = undefined;
       }
     } else {
-    //   console.warn("Unparseable createdAt field type:", typeof data.createdAt, data.createdAt);
       createdAtString = undefined;
     }
   }
@@ -74,8 +69,7 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     gender: data.gender || "",
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
-    averageRating: data.averageRating || defaultFigureRating.averageRating,
-    totalRatings: data.totalRatings || defaultFigureRating.totalRatings,
+    // averageRating and totalRatings removed
     createdAt: createdAtString,
   };
 };
@@ -87,8 +81,7 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
       attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
-      averageRating: figure.averageRating || defaultFigureRating.averageRating,
-      totalRatings: figure.totalRatings || defaultFigureRating.totalRatings,
+      // averageRating and totalRatings removed
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
@@ -103,8 +96,15 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: string }): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    const { createdAt, ...figureDataToUpdate } = figure;
-    await updateDoc(figureRef, { ...figureDataToUpdate });
+    // Ensure averageRating and totalRatings are not part of the update if they exist in the partial
+    const { createdAt, nameLower, perceptionCounts, attitudeCounts, ...figureDataToUpdateRest } = figure;
+    const updatePayload: Partial<Figure> = {...figureDataToUpdateRest};
+    if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
+    if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
+    if (nameLower) updatePayload.nameLower = nameLower;
+
+
+    await updateDoc(figureRef, { ...updatePayload });
   } catch (error) {
     console.error("Error updating figure in Firestore: ", error);
     throw error;
@@ -139,8 +139,7 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
 export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    // DIAGNOSTIC: Temporarily remove orderBy("name") to check for index issues.
-    const q = query(figuresCollectionRef);
+    const q = query(figuresCollectionRef /* Removed orderBy for diagnosis */); // Keep orderBy removed
     const querySnapshot = await getDocs(q);
 
 
@@ -152,9 +151,7 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
         figures.push(mapDocToFigure(docSnap));
       });
     }
-    // If we removed orderBy, figures will not be sorted by name here.
-    // This is for diagnosis. If it works, an index for orderBy("name") is needed.
-    return figures;
+    return figures.sort((a, b) => a.name.localeCompare(b.name)); // Manual sort if orderBy is removed
   } catch (error: any) {
     console.error("Error fetching all figures from Firestore. Message:", error.message);
     if (String(error.message).toLowerCase().includes("permission")) {
@@ -165,15 +162,14 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
         console.error("Firestore index error: The query (likely involving orderBy or where clauses) requires a composite index that is missing.");
         console.error("ACTION: Check the BROWSER'S DEVELOPER CONSOLE (F12) for a more detailed error message from Firestore. It usually provides a DIRECT LINK to create the necessary index. Click that link.");
     }
-    return []; // Return empty array on error to prevent app crash
+    return []; 
   }
 };
 
 export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    // DIAGNOSTIC: Temporarily remove orderBy("name")
-    const q = query(figuresCollectionRef, limit(count));
+    const q = query(figuresCollectionRef, limit(count) /* Removed orderBy for diagnosis */); // Keep orderBy removed
     const querySnapshot = await getDocs(q);
     let figures: Figure[] = [];
     querySnapshot.forEach((docSnap) => {
@@ -194,7 +190,8 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
         uniqueFigureIds.add(figure.id);
         return true;
     });
-    // If orderBy was removed, figures will not be sorted here either.
+    // Manually sort by name if orderBy was removed from query
+    figures.sort((a,b) => a.name.localeCompare(b.name));
     return figures.slice(0, count);
   } catch (error) {
     console.error("Error fetching featured figures from Firestore: ", error);
@@ -205,63 +202,5 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
   }
 }
 
-// New function to fetch comments for a figure
-export const getCommentsForFigure = async (figureId: string): Promise<FigureComment[]> => {
-  try {
-    const commentsCollectionRef = collection(db, 'figureComments');
-    const q = query(commentsCollectionRef, where('figureId', '==', figureId), orderBy('timestamp', 'desc'));
-    const querySnapshot = await getDocs(q);
-    const comments: FigureComment[] = [];
-    querySnapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      let createdAtString: string | undefined = undefined;
-      let timestampValue: any = data.timestamp; 
-
-      if (data.timestamp instanceof Timestamp) {
-         createdAtString = data.timestamp.toDate().toISOString();
-      } else if (typeof data.timestamp === 'string') { 
-         createdAtString = data.timestamp;
-      } else if (data.timestamp && typeof data.timestamp.seconds === 'number') { 
-         createdAtString = new Date(data.timestamp.seconds * 1000 + (data.timestamp.nanoseconds || 0) / 1000000).toISOString();
-      }
-
-      comments.push({
-        id: docSnap.id,
-        figureId: data.figureId,
-        userId: data.userId,
-        username: data.username,
-        userPhotoURL: data.userPhotoURL || null,
-        commentText: data.commentText,
-        ratingGiven: data.ratingGiven,
-        timestamp: timestampValue,
-        createdAt: createdAtString,
-      } as FigureComment);
-    });
-    return comments;
-  } catch (error) {
-    console.error(`Error fetching comments for figure ${figureId}:`, error);
-    return [];
-  }
-};
-
-// New function to get a user's specific rating for a figure
-export const getUserRatingForFigure = async (figureId: string, userId: string): Promise<FigureUserRating | null> => {
-  try {
-    const ratingDocRef = doc(db, 'figureUserRatings', `${userId}_${figureId}`);
-    const docSnap = await getDoc(ratingDocRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      return {
-        userId: data.userId,
-        figureId: data.figureId,
-        rating: data.rating,
-        timestamp: data.timestamp, 
-      } as FigureUserRating;
-    }
-    return null;
-  } catch (error) {
-    console.error(`Error fetching user rating for figure ${figureId} by user ${userId}:`, error);
-    return null;
-  }
-};
-
+// getCommentsForFigure removed
+// getUserRatingForFigure removed

@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AttitudeVote } from '@/components/figures/AttitudeVote';
-import { CommentSection } from '@/components/comments/CommentSection'; // New Comment Section
+// CommentSection import removed
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import React, { useState, useEffect, useCallback } from 'react';
@@ -343,27 +343,7 @@ export default function FigurePage() {
             </TabsContent>
           </Tabs>
 
-          {/* New Comment Section */}
-          {figure && currentUser !== undefined && (
-            <CommentSection
-              figureId={figure.id}
-              figureName={figure.name}
-              currentUser={currentUser}
-              initialAverageRating={figure.averageRating}
-              initialTotalRatings={figure.totalRatings}
-            />
-          )}
-           {(!figure || currentUser === undefined) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Comentarios y Calificaciones</CardTitle>
-              </CardHeader>
-              <CardContent className="flex justify-center items-center h-40">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-2">Cargando comentarios...</p>
-              </CardContent>
-            </Card>
-           )}
+          {/* Comment Section and its loading state removed */}
 
         </div>
 
@@ -374,7 +354,7 @@ export default function FigurePage() {
             <AlertDescription className="text-sm">
               La información personal puede ser editada por usuarios con cuenta.
               ¡Expresa tu actitud y percepción emocional votando si has iniciado sesión con una cuenta!
-              Deja comentarios y califica a la figura.
+              {/* Reference to comments and ratings removed */}
             </AlertDescription>
           </Alert>
 
