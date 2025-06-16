@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase';
 import type { Figure } from '@/lib/types';
 import { collection, doc, serverTimestamp, setDoc, getDoc } from 'firebase/firestore';
 import slugify from 'slugify';
+import { verifyFigureProposal, type VerifyFigureProposalInput } from '@/ai/flows/verify-figure-proposal-flow';
 
 interface ProposeFigureFormData {
   name: string;
@@ -25,24 +26,33 @@ export async function proposeNewFigure(
     return { success: false, message: "Usuario no autenticado." };
   }
 
-  // Validate required fields
-  if (!formData.name || !formData.name.trim()) {
-    return { success: false, message: "El nombre de la figura es obligatorio." };
+  // Basic form data validation (schema validation happens client-side, but good to double-check)
+  if (!formData.name || formData.name.trim().length < 3) { // Consistent with form validation
+    return { success: false, message: "El nombre de la figura debe tener al menos 3 caracteres." };
   }
   if (!formData.proposedWikiLink || !formData.proposedWikiLink.trim()) {
     return { success: false, message: "El enlace a Wikipedia/Fandom es obligatorio." };
   }
 
-  // Validate link format and domain (basic client-side validation is good, but server re-validates)
+  // Step 1: Call Genkit flow for initial link verification
+  const verificationInput: VerifyFigureProposalInput = {
+    figureName: formData.name.trim(),
+    proposedWikiLink: formData.proposedWikiLink.trim(),
+  };
+
   try {
-    const url = new URL(formData.proposedWikiLink);
-    if (!url.hostname.endsWith('wikipedia.org') && !url.hostname.endsWith('fandom.com')) {
-      return { success: false, message: "El enlace debe ser de wikipedia.org o fandom.com." };
+    const verificationResult = await verifyFigureProposal(verificationInput);
+    if (!verificationResult.isValidProposal) {
+      return { success: false, message: verificationResult.message };
     }
-  } catch (e) {
-    return { success: false, message: "El enlace proporcionado no es una URL válida." };
+    // If basic verification passes, continue. Message from verificationResult can be logged or ignored if positive.
+    console.log("Initial proposal verification passed:", verificationResult.message);
+  } catch (flowError: any) {
+    console.error("Error calling verification flow:", flowError);
+    return { success: false, message: `Error durante la verificación de la propuesta: ${flowError.message}` };
   }
 
+  // Step 2: Proceed with Firestore document creation if basic verification passed
   const figureId = slugify(formData.name.trim(), { lower: true, strict: true });
   if (!figureId) {
     return { success: false, message: "No se pudo generar un ID para la figura a partir del nombre." };
@@ -51,7 +61,6 @@ export async function proposeNewFigure(
   const figureRef = doc(db, 'figures', figureId);
 
   try {
-    // Check if figure already exists (by ID)
     const existingFigureSnap = await getDoc(figureRef);
     if (existingFigureSnap.exists()) {
       const existingData = existingFigureSnap.data() as Figure;
@@ -60,9 +69,6 @@ export async function proposeNewFigure(
       } else if (existingData.status === 'pending_verification') {
         return { success: false, message: `La figura "${formData.name}" ya ha sido propuesta y está pendiente de revisión.` };
       }
-      // If rejected, allow reproposal? For now, let's treat it as already processed.
-      // Or simply overwrite if rejected? For now, prevent re-proposal if any entry exists with this ID.
-      // return { success: false, message: `Una propuesta para "${formData.name}" ya fue procesada.` };
     }
 
     const newFigureData: Figure = {
@@ -70,24 +76,28 @@ export async function proposeNewFigure(
       name: formData.name.trim(),
       nameLower: formData.name.trim().toLowerCase(),
       description: formData.description?.trim() || "",
-      photoUrl: PLACEHOLDER_IMAGE_URL, // Placeholder image for user proposals
+      photoUrl: PLACEHOLDER_IMAGE_URL,
       nationality: formData.nationality?.trim() || "",
       occupation: formData.occupation?.trim() || "",
       gender: formData.gender?.trim() || "",
       proposedWikiLink: formData.proposedWikiLink.trim(),
       status: 'pending_verification',
       proposedBy: userId,
-      createdAt: serverTimestamp() as unknown as string, // Firestore will convert this
+      createdAt: serverTimestamp() as unknown as string,
       perceptionCounts: { alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0 },
       attitudeCounts: { neutral: 0, fan: 0, simp: 0, hater: 0 },
     };
 
     await setDoc(figureRef, newFigureData);
 
-    return { success: true, message: "Propuesta enviada exitosamente.", figureId: figureId };
+    return { success: true, message: "Propuesta enviada exitosamente para revisión.", figureId: figureId };
 
   } catch (error: any) {
-    console.error("Error proposing new figure:", error);
+    console.error("Error proposing new figure to Firestore:", error);
+    // Check for Firestore specific permission error
+    if (error.code === 'permission-denied') {
+        return { success: false, message: "Error de Permiso: No tienes permiso para crear esta figura. Por favor, verifica las reglas de seguridad de Firestore en la consola de Firebase."};
+    }
     return { success: false, message: error.message || "Ocurrió un error en el servidor al procesar la propuesta." };
   }
 }

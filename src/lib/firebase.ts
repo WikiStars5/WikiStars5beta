@@ -60,7 +60,20 @@ service cloud.firestore {
          !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
          request.resource.data.status == 'pending_verification' && // Must be pending
          request.resource.data.proposedBy == request.auth.uid && // Must be proposed by the authenticated user
-         request.resource.data.keys().hasAll(['id', 'name', 'nameLower', 'proposedWikiLink', 'status', 'proposedBy', 'createdAt', 'photoUrl', 'perceptionCounts', 'attitudeCounts']) &&
+         request.resource.data.keys().hasAll([
+            'id', 'name', 'nameLower', 
+            'description', // Can be empty string
+            'photoUrl', // Must be placeholder
+            'nationality', // Can be empty string
+            'occupation', // Can be empty string
+            'gender', // Can be empty string
+            'proposedWikiLink', // Must be present
+            'status', // Must be 'pending_verification'
+            'proposedBy', // Must be current user's UID
+            'createdAt', // Server timestamp
+            'perceptionCounts', // Default object
+            'attitudeCounts' // Default object
+            ]) &&
          request.resource.data.photoUrl == 'https://placehold.co/400x600.png' // Must use placeholder
         );
 
@@ -196,3 +209,4 @@ service firebase.storage {
   }
 }
 */
+
