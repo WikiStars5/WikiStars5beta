@@ -27,13 +27,13 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'upload.wikimedia.org',
         port: '',
-        pathname: '/wikipedia/commons/**',
+        pathname: '/wikipedia/commons/**', // Path específico para Wikimedia Commons
       },
       {
         protocol: 'https',
-        hostname: 'static.wikia.nocookie.net',
+        hostname: 'static.wikia.nocookie.net', // Dominio para Wikia/Fandom
         port: '',
-        pathname: '/**',
+        pathname: '/**', // Permitir cualquier ruta de imagen bajo este hostname
       },
     ],
   },
