@@ -23,7 +23,7 @@ export function ProfileHeader({ figure }: ProfileHeaderProps) {
               alt={figure.name}
               fill
               sizes="(max-width: 480px) 100vw, (max-width: 768px) 80vw, 33vw"
-              className="object-cover"
+              className="object-contain" // Changed from object-cover
               data-ai-hint="portrait person"
               priority={true}
             />
