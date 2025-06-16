@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { StarRating } from '@/components/shared/StarRating';
 import { useToast } from '@/hooks/use-toast';
 import { submitCommentAndRating } from '@/app/actions/commentRatingActions';
-import { Loader2, MessageSquarePlus, Send } from 'lucide-react';
+import { Loader2, Send } from 'lucide-react'; // Removed MessageSquarePlus as it's not used
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface CommentFormProps {
@@ -53,6 +53,18 @@ export function CommentForm({ figureId, currentUser, onCommentSubmitted }: Comme
 
       if (result.success) {
         toast({ title: "Comentario Enviado", description: "Tu comentario y calificación han sido publicados." });
+        
+        // --- Play sound on success ---
+        // REPLACE 'URL_DEL_SONIDO_DE_EXITO.mp3' con la URL real de tu archivo de sonido.
+        // Puedes poner el archivo de sonido en tu carpeta /public y enlazarlo como /sonido.mp3
+        const audio = new Audio('/sounds/success-short.mp3'); // Ejemplo: /public/sounds/success-short.mp3
+        audio.play().catch(error => {
+          // El navegador puede bloquear la reproducción automática si no hay interacción previa del usuario.
+          // O si el usuario no ha interactuado con la página recientemente.
+          console.warn("No se pudo reproducir el sonido automáticamente:", error);
+        });
+        // --- End play sound ---
+
         setCommentText('');
         setRating(0);
         onCommentSubmitted(); // Trigger refresh
