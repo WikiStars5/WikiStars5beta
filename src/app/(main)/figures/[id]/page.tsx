@@ -1,19 +1,18 @@
 
-
 "use client";
 
 import type { Figure } from "@/lib/types";
 import { getFigureFromFirestore, getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus } from "lucide-react"; // Added MessageSquare, SmilePlus
+import { Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-// import DisqusComments from '@/components/DisqusComments'; // Removed Disqus
-import { AttitudeVote } from '@/components/figures/AttitudeVote'; // Added AttitudeVote
+import { AttitudeVote } from '@/components/figures/AttitudeVote';
+import { CommentSection } from '@/components/comments/CommentSection'; // New Comment Section
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import React, { useState, useEffect, useCallback } from 'react';
@@ -47,7 +46,7 @@ export default function FigurePage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
       setCurrentUser(user);
-      setCanUserInteract(!!user && !user.isAnonymous); 
+      setCanUserInteract(!!user && !user.isAnonymous);
     });
     return () => unsubscribe();
   }, []);
@@ -93,7 +92,7 @@ export default function FigurePage() {
       toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para editar.", variant: "default" });
       return;
     }
-    if (isEditing) { 
+    if (isEditing) {
       if (figure) {
         setEditedDescription(figure.description || "");
         setEditedNationality(figure.nationality || "");
@@ -105,7 +104,7 @@ export default function FigurePage() {
   };
 
   const handleSave = async () => {
-    if (!figure || !canUserInteract) { 
+    if (!figure || !canUserInteract) {
       toast({ title: "Error", description: "Debes iniciar sesión con una cuenta para guardar.", variant: "destructive" });
       return;
     }
@@ -123,7 +122,7 @@ export default function FigurePage() {
 
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
       setIsEditing(false);
-      await fetchFigureData(); 
+      await fetchFigureData();
     } catch (error: any) {
       console.error("Error saving figure details:", error);
       let errorMessage = "No se pudo guardar la información.";
@@ -172,7 +171,7 @@ export default function FigurePage() {
       <ProfileHeader figure={figure} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-8">
           <Tabs defaultValue="personal-info" className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="personal-info" className="text-base py-2.5 flex items-center gap-2"><Info className="h-5 w-5" />Información Personal</TabsTrigger>
@@ -312,7 +311,7 @@ export default function FigurePage() {
             </TabsContent>
 
             <TabsContent value="attitude-poll">
-              {figure && currentUser !== undefined && ( // Ensure currentUser is resolved before rendering
+              {figure && currentUser !== undefined && (
                 <AttitudeVote
                   figureId={figure.id}
                   figureName={figure.name}
@@ -328,7 +327,7 @@ export default function FigurePage() {
             </TabsContent>
 
             <TabsContent value="perception-emotions">
-              {figure && currentUser !== undefined && ( // Ensure currentUser is resolved
+              {figure && currentUser !== undefined && (
                 <PerceptionEmotions
                   figureId={figure.id}
                   figureName={figure.name}
@@ -343,6 +342,29 @@ export default function FigurePage() {
               )}
             </TabsContent>
           </Tabs>
+
+          {/* New Comment Section */}
+          {figure && currentUser !== undefined && (
+            <CommentSection
+              figureId={figure.id}
+              figureName={figure.name}
+              currentUser={currentUser}
+              initialAverageRating={figure.averageRating}
+              initialTotalRatings={figure.totalRatings}
+            />
+          )}
+           {(!figure || currentUser === undefined) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Comentarios y Calificaciones</CardTitle>
+              </CardHeader>
+              <CardContent className="flex justify-center items-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-2">Cargando comentarios...</p>
+              </CardContent>
+            </Card>
+           )}
+
         </div>
 
         <aside className="lg:col-span-1 space-y-6">
@@ -352,6 +374,7 @@ export default function FigurePage() {
             <AlertDescription className="text-sm">
               La información personal puede ser editada por usuarios con cuenta.
               ¡Expresa tu actitud y percepción emocional votando si has iniciado sesión con una cuenta!
+              Deja comentarios y califica a la figura.
             </AlertDescription>
           </Alert>
 
@@ -370,4 +393,3 @@ export default function FigurePage() {
     </div>
   );
 }
-

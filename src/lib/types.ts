@@ -1,8 +1,9 @@
 
+import type { ReactNode } from 'react';
 
-export type PerceptionKeys = "neutral" | "fan" | "simp" | "hater"; // This might become unused if Disqus handles perception entirely.
+export type PerceptionKeys = "neutral" | "fan" | "simp" | "hater";
 
-export interface PerceptionOption { // This might become unused.
+export interface PerceptionOption {
   key: PerceptionKeys;
   label: string;
   icon: React.ElementType;
@@ -14,47 +15,69 @@ export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 export interface Figure {
   id: string;
   name: string;
-  nameLower: string; // For case-insensitive search
+  nameLower: string;
   photoUrl: string;
   description?: string;
   nationality?: string;
   occupation?: string;
   gender?: string;
   perceptionCounts?: Record<EmotionKey, number>;
-  attitudeCounts?: Record<AttitudeKey, number>; // New field for attitude counts
-  createdAt?: string; 
+  attitudeCounts?: Record<AttitudeKey, number>;
+  createdAt?: string;
+  // New fields for average rating
+  averageRating?: number;
+  totalRatings?: number;
 }
 
 export interface UserPerception {
   userId: string;
   figureId: string;
   emotion: EmotionKey;
-  timestamp: any; 
+  timestamp: any;
 }
 
-export interface UserAttitude { // New type for user attitude votes
+export interface UserAttitude {
   userId: string;
   figureId: string;
   attitude: AttitudeKey;
-  timestamp: any; 
+  timestamp: any;
 }
 
 export interface Country {
   name: string;
-  code: string; // ISO 3166-1 alpha-2
+  code: string;
   emoji: string;
 }
 
 export interface UserProfile {
-  uid: string; // Firebase Auth UID, primary key
-  email: string | null; // From Firebase Auth
-  username: string; // Public display name, can be different from Firebase Auth displayName
-  country?: string; // Full name of the country selected by the user
-  countryCode?: string; // ISO 3166-1 alpha-2 code of the selected country
-  photoURL?: string | null; // From Firebase Auth, can be updated if profile picture feature is added
-  role: 'user' | 'admin'; // User role
-  createdAt: string; 
-  lastLoginAt?: string; 
+  uid: string;
+  email: string | null;
+  username: string;
+  country?: string;
+  countryCode?: string;
+  photoURL?: string | null;
+  role: 'user' | 'admin';
+  createdAt: string;
+  lastLoginAt?: string;
 }
 
+// New type for individual user ratings on a figure
+export interface FigureUserRating {
+  userId: string;
+  figureId: string;
+  rating: number; // 1-5
+  timestamp: any; // Firestore ServerTimestamp
+}
 
+// New type for comments on a figure
+export interface FigureComment {
+  id: string; // Auto-generated Firestore ID
+  figureId: string;
+  userId: string;
+  username: string; // Denormalized for display
+  userPhotoURL?: string | null; // Denormalized for display
+  commentText: string;
+  ratingGiven: number; // Rating given at the time of comment (1-5)
+  timestamp: any; // Firestore ServerTimestamp, will be string after fetch
+  createdAt?: string; // Serialized timestamp
+}

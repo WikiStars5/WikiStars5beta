@@ -1,9 +1,8 @@
 
-
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, FigureComment, FigureUserRating } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where } from "firebase/firestore";
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -28,7 +27,11 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   hater: 0,
 };
 
-// Helper to convert Firestore doc data to Figure, ensuring plain object
+const defaultFigureRating = {
+  averageRating: 0,
+  totalRatings: 0,
+};
+
 const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data();
   let createdAtString: string | undefined = undefined;
@@ -42,17 +45,14 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
       typeof data.createdAt === 'object' && data.createdAt !== null &&
       typeof data.createdAt.seconds === 'number' && typeof data.createdAt.nanoseconds === 'number'
     ) {
-      // Handle cases where createdAt might be a plain object but structurally a Timestamp
       try {
         const date = new Date(data.createdAt.seconds * 1000 + data.createdAt.nanoseconds / 1000000);
         createdAtString = date.toISOString();
       } catch (e) {
-        // console.warn(`[mapDocToFigure] Failed to manually convert timestamp-like object for ID ${docSnap.id}:`, e);
-        createdAtString = undefined; 
+        createdAtString = undefined;
       }
     } else {
-      // console.warn(`[mapDocToFigure] Unexpected createdAt format for ID ${docSnap.id}:`, data.createdAt);
-      createdAtString = undefined; 
+      createdAtString = undefined;
     }
   }
 
@@ -68,6 +68,8 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     gender: data.gender || "",
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
+    averageRating: data.averageRating || defaultFigureRating.averageRating,
+    totalRatings: data.totalRatings || defaultFigureRating.totalRatings,
     createdAt: createdAtString,
   };
 };
@@ -79,6 +81,8 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
       attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
+      averageRating: figure.averageRating || defaultFigureRating.averageRating,
+      totalRatings: figure.totalRatings || defaultFigureRating.totalRatings,
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
@@ -131,7 +135,7 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
     const figuresCollectionRef = collection(db, "figures");
     const q = query(figuresCollectionRef, orderBy("name"));
     const querySnapshot = await getDocs(q);
-    
+
 
     const figures: Figure[] = [];
     if (querySnapshot.empty) {
@@ -148,7 +152,7 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
     } else if (String(error.message).toLowerCase().includes("index")) {
         console.error("Firestore index error: The query might require a composite index that is missing. Check the browser's developer console for a link to create it.");
     }
-    return []; 
+    return [];
   }
 };
 
@@ -162,12 +166,12 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
       figures.push(mapDocToFigure(docSnap));
     });
 
-    if (figures.length < count && querySnapshot.size < count) { 
-      const allFigures = await getAllFiguresFromFirestore(); // This could re-trigger the error if it's persistent
+    if (figures.length < count && querySnapshot.size < count) {
+      const allFigures = await getAllFiguresFromFirestore();
       const additionalFigures = allFigures.filter(af => !figures.find(f => f.id === af.id));
       figures.push(...additionalFigures.slice(0, count - figures.length));
     }
-    
+
     const uniqueFigureIds = new Set<string>();
     figures = figures.filter(figure => {
         if (uniqueFigureIds.has(figure.id)) {
@@ -184,3 +188,60 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
   }
 }
 
+// New function to fetch comments for a figure
+export const getCommentsForFigure = async (figureId: string): Promise<FigureComment[]> => {
+  try {
+    const commentsCollectionRef = collection(db, 'figureComments');
+    const q = query(commentsCollectionRef, where('figureId', '==', figureId), orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocs(q);
+    const comments: FigureComment[] = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      let createdAtString: string | undefined = undefined;
+      if (data.timestamp instanceof Timestamp) {
+         createdAtString = data.timestamp.toDate().toISOString();
+      } else if (typeof data.timestamp === 'string') {
+         createdAtString = data.timestamp;
+      } else if (data.timestamp && typeof data.timestamp.seconds === 'number') {
+         createdAtString = new Date(data.timestamp.seconds * 1000).toISOString();
+      }
+
+      comments.push({
+        id: docSnap.id,
+        figureId: data.figureId,
+        userId: data.userId,
+        username: data.username,
+        userPhotoURL: data.userPhotoURL,
+        commentText: data.commentText,
+        ratingGiven: data.ratingGiven,
+        timestamp: data.timestamp, // Keep original for sorting if needed, or serialize fully
+        createdAt: createdAtString,
+      } as FigureComment);
+    });
+    return comments;
+  } catch (error) {
+    console.error(`Error fetching comments for figure ${figureId}:`, error);
+    return [];
+  }
+};
+
+// New function to get a user's specific rating for a figure
+export const getUserRatingForFigure = async (figureId: string, userId: string): Promise<FigureUserRating | null> => {
+  try {
+    const ratingDocRef = doc(db, 'figureUserRatings', `${userId}_${figureId}`);
+    const docSnap = await getDoc(ratingDocRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+        userId: data.userId,
+        figureId: data.figureId,
+        rating: data.rating,
+        timestamp: data.timestamp, // Keep original or serialize
+      } as FigureUserRating;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching user rating for figure ${figureId} by user ${userId}:`, error);
+    return null;
+  }
+};
