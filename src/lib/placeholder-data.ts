@@ -139,8 +139,8 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
 export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    // This query orders by name, which often requires a Firestore index.
-    const q = query(figuresCollectionRef, orderBy("name"));
+    // DIAGNOSTIC: Temporarily remove orderBy("name") to check for index issues.
+    const q = query(figuresCollectionRef);
     const querySnapshot = await getDocs(q);
 
 
@@ -152,6 +152,8 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
         figures.push(mapDocToFigure(docSnap));
       });
     }
+    // If we removed orderBy, figures will not be sorted by name here.
+    // This is for diagnosis. If it works, an index for orderBy("name") is needed.
     return figures;
   } catch (error: any) {
     console.error("Error fetching all figures from Firestore. Message:", error.message);
@@ -170,22 +172,20 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
 export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef, orderBy("name"), limit(count));
+    // DIAGNOSTIC: Temporarily remove orderBy("name")
+    const q = query(figuresCollectionRef, limit(count));
     const querySnapshot = await getDocs(q);
     let figures: Figure[] = [];
     querySnapshot.forEach((docSnap) => {
       figures.push(mapDocToFigure(docSnap));
     });
 
-    // Fallback if not enough figures are returned by the initial query (e.g., less than `count` figures exist)
     if (figures.length < count && querySnapshot.size < count) {
-      // console.log(`Featured figures: Initial query returned ${figures.length}, attempting to fetch more to reach ${count}.`);
-      const allFigures = await getAllFiguresFromFirestore(); // This might be problematic if getAllFigures also fails
+      const allFigures = await getAllFiguresFromFirestore();
       const additionalFigures = allFigures.filter(af => !figures.find(f => f.id === af.id));
       figures.push(...additionalFigures.slice(0, count - figures.length));
     }
 
-    // Ensure uniqueness, though orderBy and limit should generally handle this
     const uniqueFigureIds = new Set<string>();
     figures = figures.filter(figure => {
         if (uniqueFigureIds.has(figure.id)) {
@@ -194,13 +194,12 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
         uniqueFigureIds.add(figure.id);
         return true;
     });
-
+    // If orderBy was removed, figures will not be sorted here either.
     return figures.slice(0, count);
   } catch (error) {
     console.error("Error fetching featured figures from Firestore: ", error);
-    // Similar advice for checking indexes if orderBy causes issues here too.
     if (String(error).toLowerCase().includes("index") || String(error).toLowerCase().includes("permission")) {
-        console.error("ACTION: Check BROWSER'S DEVELOPER CONSOLE (F12) for Firestore index creation links related to ordering by 'name'.");
+        console.error("ACTION: Check BROWSER'S DEVELOPER CONSOLE (F12) for Firestore index creation links related to ordering by 'name' or listing permissions.");
     }
     return [];
   }
@@ -216,13 +215,13 @@ export const getCommentsForFigure = async (figureId: string): Promise<FigureComm
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
       let createdAtString: string | undefined = undefined;
-      let timestampValue: any = data.timestamp; // Keep original for sorting if needed
+      let timestampValue: any = data.timestamp; 
 
       if (data.timestamp instanceof Timestamp) {
          createdAtString = data.timestamp.toDate().toISOString();
-      } else if (typeof data.timestamp === 'string') { // If it's already a string
+      } else if (typeof data.timestamp === 'string') { 
          createdAtString = data.timestamp;
-      } else if (data.timestamp && typeof data.timestamp.seconds === 'number') { // If it's a Firestore-like object
+      } else if (data.timestamp && typeof data.timestamp.seconds === 'number') { 
          createdAtString = new Date(data.timestamp.seconds * 1000 + (data.timestamp.nanoseconds || 0) / 1000000).toISOString();
       }
 
@@ -256,7 +255,7 @@ export const getUserRatingForFigure = async (figureId: string, userId: string): 
         userId: data.userId,
         figureId: data.figureId,
         rating: data.rating,
-        timestamp: data.timestamp, // Keep original or serialize
+        timestamp: data.timestamp, 
       } as FigureUserRating;
     }
     return null;
@@ -265,3 +264,4 @@ export const getUserRatingForFigure = async (figureId: string, userId: string): 
     return null;
   }
 };
+
