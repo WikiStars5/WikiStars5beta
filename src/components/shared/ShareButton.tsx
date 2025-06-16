@@ -11,8 +11,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Share2, Link as LinkIcon, Facebook, Twitter, Linkedin, MessageCircle, Mail, Reddit as RedditIcon } from "lucide-react";
+import { Share2, Link as LinkIcon, Facebook, Twitter, Linkedin, MessageCircle, Mail } from "lucide-react"; // Removed Reddit as RedditIcon
 import { useToast } from "@/hooks/use-toast";
+
+// Simple inline SVG component for Reddit Icon
+const RedditIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props} // Allows passing className, size, etc.
+  >
+    <title>Reddit</title>
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-.5-5.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5zm-3 0c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5zm-1.79-4.71L10.5 6h3l3.79 3.79c.2.2.2.51 0 .71l-1.06 1.06c-.2.2-.51.2-.71 0L14.41 10H9.59l-1.12 1.56c-.2.2-.51.2-.71 0l-1.06-1.06c-.2-.2-.2-.51 0-.71z" fill="currentColor"/>
+  </svg>
+);
+
 
 interface ShareButtonProps {
   figureName: string;
@@ -47,7 +65,7 @@ export function ShareButton({ figureName, figureId }: ShareButtonProps) {
   }
 
   const encodedUrl = encodeURIComponent(currentUrl);
-  const shareTitle = `¡Mira a ${figureName} en StarSage!`; // Updated app name
+  const shareTitle = `¡Mira a ${figureName} en StarSage!`;
   const encodedTitle = encodeURIComponent(shareTitle);
   const emailSubject = encodeURIComponent(`Perfil de ${figureName} en StarSage`);
   const emailBody = encodeURIComponent(`Hola,\n\nEcha un vistazo al perfil de ${figureName} en StarSage:\n`);
@@ -81,7 +99,7 @@ export function ShareButton({ figureName, figureId }: ShareButtonProps) {
     },
     {
       name: "Reddit",
-      icon: RedditIcon,
+      icon: RedditIcon, // Using the new inline SVG component
       url: `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedTitle}`,
     },
     {
