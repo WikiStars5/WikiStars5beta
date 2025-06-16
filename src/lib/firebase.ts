@@ -42,40 +42,13 @@ service cloud.firestore {
     match /figures/{figureId} {
       allow get: if true;
 
+      // Admin can create directly (can set any status or no status, which implies approved)
       allow create: if
-        // Admin can create directly (can set any status or no status, which implies approved)
-        (request.auth != null &&
-         !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-         request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' && // ADMIN UID
-         (request.resource.data.status == 'approved' || request.resource.data.status == null || request.resource.data.status == 'pending_verification') &&
-         // Admin should provide all necessary fields when creating approved
-         (request.resource.data.status == 'approved' || request.resource.data.status == null ? 
-            request.resource.data.keys().hasAll(['id', 'name', 'nameLower', 'photoUrl', 'description', 'nationality', 'occupation', 'gender', 'perceptionCounts', 'attitudeCounts', 'createdAt']) :
-            true // For pending, less strict on admin
-         )
-        )
-        ||
-        // Non-admin authenticated users can propose a figure
-        (request.auth != null &&
-         !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-         request.resource.data.status == 'pending_verification' && // Must be pending
-         request.resource.data.proposedBy == request.auth.uid && // Must be proposed by the authenticated user
-         request.resource.data.keys().hasAll([
-            'id', 'name', 'nameLower', 
-            'description', // Can be empty string
-            'photoUrl', // Must be placeholder
-            'nationality', // Can be empty string
-            'occupation', // Can be empty string
-            'gender', // Can be empty string
-            'proposedWikiLink', // Must be present
-            'status', // Must be 'pending_verification'
-            'proposedBy', // Must be current user's UID
-            'createdAt', // Server timestamp
-            'perceptionCounts', // Default object
-            'attitudeCounts' // Default object
-            ]) &&
-         request.resource.data.photoUrl == 'https://placehold.co/400x600.png' // Must use placeholder
-        );
+        request.auth != null &&
+        !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+        request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' && // ADMIN UID
+        (request.resource.data.status == 'approved' || request.resource.data.status == null || request.resource.data.status == 'pending_verification') &&
+        request.resource.data.keys().hasAll(['id', 'name', 'nameLower', 'photoUrl', 'description', 'nationality', 'occupation', 'gender', 'perceptionCounts', 'attitudeCounts', 'createdAt']);
 
       allow update: if request.auth != null &&
                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
@@ -98,9 +71,7 @@ service cloud.firestore {
                           request.resource.data.name == resource.data.name &&
                           request.resource.data.nameLower == resource.data.nameLower &&
                           request.resource.data.id == resource.data.id &&
-                          request.resource.data.status == resource.data.status && // Status cannot be changed by non-admin
-                          request.resource.data.proposedWikiLink == resource.data.proposedWikiLink && // Cannot change proposed link
-                          request.resource.data.proposedBy == resource.data.proposedBy // Cannot change proposer
+                          request.resource.data.status == resource.data.status // Status cannot be changed by non-admin
                         )
                       );
       
@@ -209,4 +180,3 @@ service firebase.storage {
   }
 }
 */
-

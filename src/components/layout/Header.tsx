@@ -6,11 +6,14 @@ import { UserNav } from './UserNav';
 import Link from 'next/link';
 import { MobileSearchButton } from './MobileSearchButton';
 import { ThemeToggleButton } from './ThemeToggleButton';
-import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+// Button and PlusCircle removed as "Proponer Figura" is being removed
+// import { Button } from '@/components/ui/button';
+// import { PlusCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import type { User as FirebaseUser } from 'firebase/auth'; // onAuthStateChanged and auth removed as they are not used now after removing propose figure button logic
+// import { onAuthStateChanged } from 'firebase/auth';
+// import { auth } from '@/lib/firebase';
+
 
 interface HeaderProps {
   theme: 'light' | 'dark';
@@ -18,18 +21,19 @@ interface HeaderProps {
 }
 
 export function Header({ theme, toggleTheme }: HeaderProps) {
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  // currentUser and authLoading state are no longer needed here as "Proponer Figura" button is removed
+  // const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  // const [authLoading, setAuthLoading] = useState(true);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+  // useEffect(() => {
+  //   const unsubscribe = onAuthStateChanged(auth, (user) => {
+  //     setCurrentUser(user);
+  //     setAuthLoading(false);
+  //   });
+  //   return () => unsubscribe();
+  // }, []);
 
-  const canProposeFigure = currentUser && !currentUser.isAnonymous;
+  // const canProposeFigure = currentUser && !currentUser.isAnonymous;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
@@ -43,14 +47,7 @@ export function Header({ theme, toggleTheme }: HeaderProps) {
             <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">
               Explorar Figuras
             </Link>
-            {!authLoading && canProposeFigure && (
-              <Button variant="ghost" size="sm" asChild className="text-foreground/70 hover:text-foreground transition-colors">
-                <Link href="/propose-figure">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Proponer Figura
-                </Link>
-              </Button>
-            )}
+            {/* "Proponer Figura" button removed */}
           </nav>
            <MobileSearchButton />
            <ThemeToggleButton theme={theme} toggleTheme={toggleTheme} />

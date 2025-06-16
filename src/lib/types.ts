@@ -16,7 +16,7 @@ export interface Figure {
   id: string;
   name: string;
   nameLower: string;
-  photoUrl: string; // Initially a placeholder for user proposals
+  photoUrl: string; // Admin will set this, or it can be edited by users.
   description?: string;
   nationality?: string;
   occupation?: string;
@@ -24,9 +24,8 @@ export interface Figure {
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
   createdAt?: string;
-  status?: 'approved' | 'pending_verification' | 'rejected'; // For proposal workflow
-  proposedWikiLink?: string; // Link provided by user for verification
-  proposedBy?: string; // UID of user who proposed
+  status?: 'approved' | 'pending_verification' | 'rejected'; // Status can still be used by admin workflow
+  // proposedWikiLink and proposedBy removed as user proposal feature is deleted
 }
 
 export interface UserPerception {
@@ -40,7 +39,7 @@ export interface UserAttitude {
   userId: string;
   figureId: string;
   attitude: AttitudeKey;
-  timestamp: any;
+  timestamp:any;
 }
 
 export interface Country {
