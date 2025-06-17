@@ -38,34 +38,42 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // --- Admin UID ---
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // ADMIN UID
+    }
+
+    // --- Authenticated Non-Anonymous User ---
+    function isAuthenticatedNonAnonymous() {
+      return request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+    }
 
     // --- Rules for 'figures' collection ---
     match /figures/{figureId} {
       allow get: if true; // PUBLIC ACCESS: Allow anyone to read (get) individual figure documents.
 
       // ADMIN-ONLY ACCESS for create and delete
-      allow create, delete: if request.auth != null &&
-                              !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-                              request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // ADMIN UID
+      allow create, delete: if isAdmin();
 
-      // AUTHENTICATED USER ACCESS for updates
-      allow update: if request.auth != null &&
-                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+      // UPDATES to 'figures'
+      allow update: if isAuthenticatedNonAnonymous() &&
                       (
-                        // Admin can update any field
-                        (request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2')
+                        // ADMIN can update any field (except ID potentially, handled by no 'id' in resource.data)
+                        isAdmin()
                         ||
-                        // Non-admin, non-anonymous users can update specific fields
+                        // NON-ADMIN, NON-ANONYMOUS users
                         (
-                          // Ensure core fields are not being changed if they are part of the request.
-                          // If a field is not in request.resource.data, it's not being touched by this update.
+                          // Ensure core protected fields are not changed by user if they are present in the request
                           (request.resource.data.keys().has('name') ? request.resource.data.name == resource.data.name : true) &&
                           (request.resource.data.keys().has('nameLower') ? request.resource.data.nameLower == resource.data.nameLower : true) &&
                           (request.resource.data.keys().has('status') ? request.resource.data.status == resource.data.status : true) &&
-                          // createdAt should ideally not be updatable by users after creation.
                           (request.resource.data.keys().has('createdAt') ? request.resource.data.createdAt == resource.data.createdAt : true) &&
+                          (request.resource.data.keys().has('proposedWikiLink') ? request.resource.data.proposedWikiLink == resource.data.proposedWikiLink : true) &&
+                          (request.resource.data.keys().has('proposedBy') ? request.resource.data.proposedBy == resource.data.proposedBy : true) &&
 
                           // And the changes are limited to the allowed set of fields for user interaction/updates.
+                          // This means any updated field MUST be in this list.
                           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                             'description', 'nationality', 'occupation', 'gender', 'photoUrl', // User profile edits
                             'perceptionCounts', 'attitudeCounts', // Direct votes on figure page
@@ -87,32 +95,33 @@ service cloud.firestore {
 
       allow list: if query.limit <= 100; // Anyone can list comments, e.g., for a specific figure, with a limit.
 
-      allow create: if request.auth != null &&
-                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+      allow create: if isAuthenticatedNonAnonymous() &&
                        request.auth.uid == request.resource.data.userId && // User can only create comments for themselves
                        request.resource.data.keys().hasAll(['figureId', 'userId', 'username', 'rating', 'text', 'createdAt', 'likes', 'dislikes', 'userPhotoUrl']) &&
-                       request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
-                       request.resource.data.text.size() >= 10 && request.resource.data.text.size() <= 1000 &&
-                       request.resource.data.likes == 0 && request.resource.data.dislikes == 0 &&
-                       (request.resource.data.userPhotoUrl == null || request.resource.data.userPhotoUrl is string);
-                       // Optional: Add request.time == request.resource.data.createdAt for stricter timestamp
+                       request.resource.data.figureId is string && request.resource.data.figureId != '' &&
+                       request.resource.data.userId is string && request.resource.data.userId != '' &&
+                       request.resource.data.username is string && request.resource.data.username != '' &&
+                       request.resource.data.rating is number && request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
+                       request.resource.data.text is string && request.resource.data.text.size() >= 10 && request.resource.data.text.size() <= 1000 &&
+                       request.resource.data.createdAt == request.time && // Ensure server timestamp is used
+                       request.resource.data.likes == 0 &&
+                       request.resource.data.dislikes == 0 &&
+                       (request.resource.data.userPhotoUrl == null || (request.resource.data.userPhotoUrl is string && request.resource.data.userPhotoUrl.matches('https?://.+')));
 
-      // allow update: // For likes/dislikes on comments - to be implemented
-                      // if request.auth != null &&
-                      //    !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-                      //    (
-                      //      ( // User updating their own comment text
-                      //        request.auth.uid == resource.data.userId &&
-                      //        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt'])
-                      //      ) ||
-                      //      ( // Anyone updating like/dislike counts (if done client-side, risky)
-                      //        request.resource.data.diff(resource.data).affectedKeys().hasAny(['likes', 'dislikes'])
-                      //      )
-                      //    );
 
-      allow delete: if request.auth != null &&
-                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-                       (request.auth.uid == resource.data.userId || request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'); // Owner or Admin
+      allow update: if isAuthenticatedNonAnonymous() &&
+                       request.auth.uid == resource.data.userId && // Owner can update their own comment
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'rating', 'updatedAt']) && // Example: allow editing text and rating
+                       (request.resource.data.keys().has('updatedAt') ? request.resource.data.updatedAt == request.time : true) &&
+                       // Keep core fields immutable by user update
+                       request.resource.data.figureId == resource.data.figureId &&
+                       request.resource.data.userId == resource.data.userId &&
+                       request.resource.data.username == resource.data.username &&
+                       request.resource.data.createdAt == resource.data.createdAt;
+                       // Like/dislike updates would need a different logic or a separate collection/subcollection
+
+      allow delete: if isAuthenticatedNonAnonymous() &&
+                       (request.auth.uid == resource.data.userId || isAdmin()); // Owner or Admin
     }
     // --- End of rules for 'figure_comments' collection ---
 
@@ -120,24 +129,24 @@ service cloud.firestore {
     match /userPerceptions/{perceptionDocId} {
       function getUserIdFromDocIdPerc() { return perceptionDocId.split('_')[0]; }
       function isOwnerNonAnonymousPerc() {
-        return request.auth != null &&
-               !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+        return isAuthenticatedNonAnonymous() &&
                request.auth.uid == resource.data.userId &&
                request.auth.uid == getUserIdFromDocIdPerc();
       }
       function isCreatingOwnValidDocNonAnonymousPerc() {
-        return request.auth != null &&
-               !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+        return isAuthenticatedNonAnonymous() &&
                request.auth.uid == request.resource.data.userId &&
                request.auth.uid == getUserIdFromDocIdPerc() &&
                request.resource.data.figureId == perceptionDocId.split('_')[1] &&
                request.resource.data.keys().hasAll(['userId', 'figureId', 'emotion', 'timestamp']) &&
-               request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'];
+               request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'] &&
+               request.resource.data.timestamp == request.time;
       }
       allow read, delete: if isOwnerNonAnonymousPerc();
       allow update: if isOwnerNonAnonymousPerc() &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['emotion', 'timestamp']) &&
-                      request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'];
+                      request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'] &&
+                      request.resource.data.timestamp == request.time;
       allow create: if isCreatingOwnValidDocNonAnonymousPerc();
     }
     // --- End of rules for 'userPerceptions' collection ---
@@ -146,35 +155,32 @@ service cloud.firestore {
     match /userAttitudes/{attitudeDocId} {
       function getUserIdFromDocIdAtt() { return attitudeDocId.split('_')[0]; }
       function isOwnerNonAnonymousAtt() {
-        return request.auth != null &&
-               !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+        return isAuthenticatedNonAnonymous() &&
                request.auth.uid == resource.data.userId &&
                request.auth.uid == getUserIdFromDocIdAtt();
       }
       function isCreatingOwnValidDocNonAnonymousAtt() {
-        return request.auth != null &&
-               !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+        return isAuthenticatedNonAnonymous() &&
                request.auth.uid == request.resource.data.userId &&
                request.auth.uid == getUserIdFromDocIdAtt() &&
                request.resource.data.figureId == attitudeDocId.split('_')[1] &&
                request.resource.data.keys().hasAll(['userId', 'figureId', 'attitude', 'timestamp']) &&
-               request.resource.data.attitude in ['neutral', 'fan', 'simp', 'hater'];
+               request.resource.data.attitude in ['neutral', 'fan', 'simp', 'hater'] &&
+               request.resource.data.timestamp == request.time;
       }
       allow read, delete: if isOwnerNonAnonymousAtt();
       allow update: if isOwnerNonAnonymousAtt() &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attitude', 'timestamp']) &&
-                      request.resource.data.attitude in ['neutral', 'fan', 'simp', 'hater'];
+                      request.resource.data.attitude in ['neutral', 'fan', 'simp', 'hater'] &&
+                      request.resource.data.timestamp == request.time;
       allow create: if isCreatingOwnValidDocNonAnonymousAtt();
     }
     // --- End of rules for 'userAttitudes' collection ---
 
     // --- Rules for 'users' collection ---
     match /users/{userId} {
-      allow read: if request.auth != null &&
-                     !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-                     request.auth.uid == userId;
-      allow create: if request.auth != null &&
-                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+      allow read: if isAuthenticatedNonAnonymous() && request.auth.uid == userId;
+      allow create: if isAuthenticatedNonAnonymous() &&
                        request.auth.uid == userId &&
                        request.resource.data.uid == userId &&
                        request.resource.data.role == 'user' &&
@@ -182,14 +188,19 @@ service cloud.firestore {
                          'uid', 'email', 'username', 'photoURL',
                          'country', 'countryCode', 'role',
                          'createdAt', 'lastLoginAt'
-                       ]);
-      allow update: if request.auth != null &&
-                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                       ]) &&
+                       request.resource.data.createdAt == request.time &&
+                       request.resource.data.lastLoginAt == request.time;
+      allow update: if isAuthenticatedNonAnonymous() &&
                        request.auth.uid == userId &&
+                       // User cannot change their own role, uid, email, createdAt
                        !(request.resource.data.diff(resource.data).affectedKeys().hasAny([
                          'uid', 'email', 'createdAt', 'role'
                        ])) &&
-                       (request.resource.data.photoURL == resource.data.photoURL || request.resource.data.photoURL == request.auth.token.picture);
+                       // Allow photoURL to be updated if it matches auth token picture or is explicitly set by user
+                       (request.resource.data.photoURL == resource.data.photoURL || request.resource.data.photoURL == request.auth.token.picture || request.resource.data.photoURL is string || request.resource.data.photoURL == null) &&
+                       // lastLoginAt must be server timestamp
+                       request.resource.data.lastLoginAt == request.time;
       allow delete: if false; // Users generally shouldn't delete their own user docs directly
     }
     // --- End of rules for 'users' collection ---
@@ -227,4 +238,3 @@ service firebase.storage {
   }
 }
 */
-
