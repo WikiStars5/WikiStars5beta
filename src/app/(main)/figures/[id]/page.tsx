@@ -1,15 +1,15 @@
 
 "use client";
 
-import type { Figure } from "@/lib/types";
+import type { Figure, UserComment, StarValue } from "@/lib/types";
 import { getFigureFromFirestore, getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   Image as ImageIcon, ImageOff, BarChartHorizontal, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
-  MessagesSquare // Icono para la nueva pestaña de Comentarios
-  // Send Icono para el botón de enviar comentario ya no es necesario
+  MessagesSquare, // Icono para la nueva pestaña de Comentarios
+  Send // Icono para el botón de enviar comentario
 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
@@ -25,11 +25,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { StarRatingVote } from "@/components/figures/StarRatingVote";
-import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay"; // Import the new component
+import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
+import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, updateDoc as updateFirestoreDoc } from 'firebase/firestore';
 
 
 export default function FigurePage() {
@@ -65,9 +66,8 @@ export default function FigurePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [canUserInteract, setCanUserInteract] = useState(false);
 
-  // State for new comment and submission status removed
-  // const [newComment, setNewComment] = useState("");
-  // const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
@@ -186,8 +186,66 @@ export default function FigurePage() {
     }
   };
 
-  // handleSubmitComment function removed
-  // const handleSubmitComment = async (e: React.FormEvent) => { ... };
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canUserInteract || !currentUser || !figure || newComment.trim() === "") {
+      toast({ title: "Error", description: "Debes escribir un comentario e iniciar sesión.", variant: "destructive" });
+      return;
+    }
+    setIsSubmittingComment(true);
+    try {
+      let userStarRatingValue: StarValue | null = null;
+      if (currentUser && figure?.id) {
+        const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${figure.id}`);
+        const userStarRatingSnap = await getDoc(userStarRatingDocRef);
+        if (userStarRatingSnap.exists()) {
+          userStarRatingValue = userStarRatingSnap.data().starValue as StarValue;
+        }
+      }
+
+      const commentData = {
+        figureId: figure.id,
+        userId: currentUser.uid,
+        username: currentUser.displayName || "Usuario Anónimo",
+        userPhotoURL: currentUser.photoURL || null,
+        text: newComment.trim(),
+        starRatingGiven: userStarRatingValue,
+        createdAt: serverTimestamp(),
+        likes: 0,
+        dislikes: 0,
+        likedBy: [],
+        dislikedBy: [],
+      };
+
+      const commentRef = await addDoc(collection(db, 'userComments'), commentData);
+      
+      // Increment commentCount on figure document
+      const figureDocRef = doc(db, 'figures', figure.id);
+      await runTransaction(db, async (transaction) => {
+        const figureSnap = await transaction.get(figureDocRef);
+        if (!figureSnap.exists()) {
+          throw "Documento de la figura no existe!";
+        }
+        const currentCommentCount = figureSnap.data().commentCount || 0;
+        transaction.update(figureDocRef, { commentCount: currentCommentCount + 1 });
+      });
+
+
+      toast({ title: "Comentario Enviado", description: "Tu comentario ha sido guardado." });
+      setNewComment("");
+      fetchFigureData(); // Re-fetch to update comment count if displayed on page
+    } catch (error: any) {
+      console.error("Error submitting comment:", error);
+      let errorMessage = "No se pudo enviar tu comentario.";
+      if (error.message) {
+        errorMessage += ` Detalles: ${error.message}`;
+      }
+      toast({ title: "Error al Comentar", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
 
   if (!id && figure === undefined) {
     return (
@@ -432,7 +490,32 @@ export default function FigurePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {!canUserInteract && (
+                  {canUserInteract ? (
+                    <form onSubmit={handleSubmitComment} className="space-y-4">
+                      <div>
+                        <Label htmlFor="newComment" className="sr-only">Tu comentario</Label>
+                        <Textarea
+                          id="newComment"
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          placeholder="Escribe tu comentario aquí..."
+                          rows={4}
+                          className="w-full"
+                          disabled={isSubmittingComment}
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <Button type="submit" disabled={isSubmittingComment || newComment.trim() === ""}>
+                          {isSubmittingComment ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="mr-2 h-4 w-4" />
+                          )}
+                          {isSubmittingComment ? "Enviando..." : "Enviar Comentario"}
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
                      <Alert>
                       <LogIn className="h-4 w-4" />
                       <AlertTitle>Participación Restringida</AlertTitle>
@@ -440,11 +523,10 @@ export default function FigurePage() {
                         <Link href="/login" className="font-semibold text-primary hover:underline">
                           Inicia sesión
                         </Link>
-                        {" "}para ver y añadir comentarios.
+                        {" "}para añadir comentarios.
                       </AlertDescription>
                     </Alert>
                   )}
-                  {/* Comment input form removed */}
                   <div className="border-t pt-6 mt-6">
                     <h4 className="text-lg font-medium mb-4">Comentarios Recientes (Marcador de posición)</h4>
                     <p className="text-muted-foreground">

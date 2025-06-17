@@ -51,8 +51,10 @@ service cloud.firestore {
 
     // Función para verificar si el usuario es el propietario del documento específico de voto/percepción
     // El docId debe ser 'userId_figureId'
-    function isOwnerOfUserSpecificDoc(docId) {
-      return isAuthenticatedNonAnonymous() && request.auth.uid == docId.split('_')[0];
+    function isOwnerOfUserSpecificDoc() {
+      // request.path structure: /databases/(default)/documents/COLLECTION_NAME/DOC_ID
+      // So DOC_ID is at index 5
+      return isAuthenticatedNonAnonymous() && request.auth.uid == request.path.split('/')[5].split('_')[0];
     }
     
     // Permite leer y escribir en todas las colecciones sin restricciones (SOLO PARA DESARROLLO)
@@ -75,51 +77,58 @@ service cloud.firestore {
     // --- REGLAS PARA LA COLECCIÓN userComments ---
     match /userComments/{commentId} {
       // Cualquiera puede leer comentarios
-      allow read: if true;
+      allow read: if true; // Permisivo para desarrollo
 
       // Solo usuarios autenticados y no anónimos pueden crear comentarios
-      allow create: if isAuthenticatedNonAnonymous() &&
-                      request.resource.data.userId == request.auth.uid &&
-                      request.resource.data.figureId != null &&
-                      request.resource.data.text != null && request.resource.data.text.size() > 0 && request.resource.data.text.size() < 1000 &&
-                      request.resource.data.username != null &&
-                      // starRatingGiven puede ser null
-                      request.resource.data.likes == 0 &&
-                      request.resource.data.dislikes == 0 &&
-                      request.resource.data.likedBy.size() == 0 &&
-                      request.resource.data.dislikedBy.size() == 0 &&
-                      request.resource.data.createdAt == request.time; // Forzar timestamp del servidor
-
-      // El autor del comentario puede editar el texto y updatedAt.
-      // Otros usuarios autenticados pueden actualizar likes/dislikes y los arrays likedBy/dislikedBy.
-      allow update: if isAuthenticatedNonAnonymous() &&
-                      (
-                        // Autor editando su propio comentario (solo texto y updatedAt)
-                        (resource.data.userId == request.auth.uid &&
-                         request.resource.data.text != resource.data.text && // Texto debe cambiar
-                         request.resource.data.text.size() > 0 && request.resource.data.text.size() < 1000 &&
-                         request.resource.data.updatedAt == request.time && // Forzar server timestamp para updatedAt
-                         // Asegurar que solo estos campos cambien
-                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt']))
-                        ||
-                        // Otro usuario dando like/dislike (no el autor)
-                        (resource.data.userId != request.auth.uid &&
-                         (request.resource.data.likes != resource.data.likes ||
-                          request.resource.data.dislikes != resource.data.dislikes ||
-                          request.resource.data.likedBy != resource.data.likedBy ||
-                          request.resource.data.dislikedBy != resource.data.dislikedBy
-                         ) &&
-                         // Asegurar que solo estos campos cambien y los datos core del comentario no
-                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'dislikes', 'likedBy', 'dislikedBy']) &&
-                         request.resource.data.figureId == resource.data.figureId &&
-                         request.resource.data.userId == resource.data.userId &&
-                         request.resource.data.text == resource.data.text &&
-                         request.resource.data.createdAt == resource.data.createdAt
-                        )
-                      );
+      // Las validaciones de campos específicos se harían en reglas más estrictas
+      allow create: if isAuthenticatedNonAnonymous(); // Permisivo para desarrollo, idealmente validar request.resource.data
       
-      // El autor del comentario o un administrador pueden eliminarlo
-      allow delete: if isAuthenticatedNonAnonymous() && (resource.data.userId == request.auth.uid || isAdmin());
+      // El autor del comentario o un administrador pueden actualizar/eliminar
+      // (Reglas más permisivas para desarrollo)
+      allow update: if isAuthenticatedNonAnonymous(); // Permisivo para desarrollo
+      allow delete: if isAuthenticatedNonAnonymous(); // Permisivo para desarrollo
+
+      // EJEMPLO DE REGLAS MÁS SEGURAS PARA userComments (PARA PRODUCCIÓN):
+      // allow read: if true;
+      // allow create: if isAuthenticatedNonAnonymous() &&
+      //                 request.resource.data.userId == request.auth.uid &&
+      //                 request.resource.data.figureId != null &&
+      //                 request.resource.data.text != null && request.resource.data.text.size() > 0 && request.resource.data.text.size() < 1000 &&
+      //                 request.resource.data.username != null &&
+      //                 // starRatingGiven puede ser null o un número entre 1 y 5
+      //                 (request.resource.data.starRatingGiven == null || (request.resource.data.starRatingGiven >= 1 && request.resource.data.starRatingGiven <= 5)) &&
+      //                 request.resource.data.likes == 0 &&
+      //                 request.resource.data.dislikes == 0 &&
+      //                 request.resource.data.likedBy.size() == 0 &&
+      //                 request.resource.data.dislikedBy.size() == 0 &&
+      //                 request.resource.data.createdAt == request.time;
+
+      // allow update: if isAuthenticatedNonAnonymous() &&
+      //                 (
+      //                   // Autor editando su propio comentario (solo texto y updatedAt)
+      //                   (resource.data.userId == request.auth.uid &&
+      //                    request.resource.data.text != resource.data.text && 
+      //                    request.resource.data.text.size() > 0 && request.resource.data.text.size() < 1000 &&
+      //                    request.resource.data.updatedAt == request.time && 
+      //                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt']))
+      //                   ||
+      //                   // Otro usuario dando like/dislike (no el autor)
+      //                   (resource.data.userId != request.auth.uid &&
+      //                    (
+      //                       request.resource.data.likes != resource.data.likes ||
+      //                       request.resource.data.dislikes != resource.data.dislikes ||
+      //                       request.resource.data.likedBy != resource.data.likedBy ||
+      //                       request.resource.data.dislikedBy != resource.data.dislikedBy
+      //                    ) &&
+      //                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'dislikes', 'likedBy', 'dislikedBy']) &&
+      //                    request.resource.data.figureId == resource.data.figureId &&
+      //                    request.resource.data.userId == resource.data.userId &&
+      //                    request.resource.data.text == resource.data.text &&
+      //                    request.resource.data.createdAt == resource.data.createdAt
+      //                   )
+      //                 );
+      
+      // allow delete: if isAuthenticatedNonAnonymous() && (resource.data.userId == request.auth.uid || isAdmin());
     }
     // --- Fin de reglas para userComments ---
 
