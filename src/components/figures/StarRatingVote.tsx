@@ -33,6 +33,11 @@ const defaultStarRatingCountsData: Record<StarValueAsString, number> = {
   "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
 };
 
+// IMPORTANT: Replace YOUR_FIREBASE_PROJECT_ID with your actual Firebase project ID.
+const FIREBASE_PROJECT_ID = "wikistars5-2yctr"; // This was found in your firebase.ts
+const RATING_SOUND_URL = `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.appspot.com/o/audio%2Fstar5.mp3?alt=media`;
+
+
 export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figureName, initialStarRatingCounts, currentUser }) => {
   const [selectedStarRating, setSelectedStarRating] = useState<StarValue | null>(null);
   const [figureStarRatingCounts, setFigureStarRatingCounts] = useState<Record<StarValueAsString, number>>(initialStarRatingCounts || defaultStarRatingCountsData);
@@ -40,8 +45,26 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
   const [isLoadingStarAction, setIsLoadingStarAction] = useState<StarValue | null>(null);
   const [isComponentLoading, setIsComponentLoading] = useState(true);
   const { toast } = useToast();
+  const [ratingAudio, setRatingAudio] = useState<HTMLAudioElement | null>(null);
 
   const canUserVote = !!currentUser && !currentUser.isAnonymous;
+
+  useEffect(() => {
+    // Initialize Audio object
+    if (typeof window !== "undefined") {
+      const audio = new Audio(RATING_SOUND_URL);
+      audio.preload = "auto";
+      setRatingAudio(audio);
+    }
+  }, []);
+
+  const playSoundEffect = useCallback(() => {
+    if (ratingAudio) {
+      ratingAudio.currentTime = 0; // Rewind to start
+      ratingAudio.play().catch(error => console.error("Error playing sound:", error));
+    }
+  }, [ratingAudio]);
+
 
   useEffect(() => {
     if (!figureId) {
@@ -99,12 +122,14 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
   }, [figureId, currentUser, toast]);
 
   const handleStarRatingClick = async (starValueClicked: StarValue) => {
+    playSoundEffect(); // Play sound immediately on click
+
     if (!canUserVote) {
       toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para calificar.", variant: "default" });
       return;
     }
     if (isLoadingStarAction) return;
-    if (!currentUser) return; 
+    if (!currentUser) return;
 
     setIsLoadingStarAction(starValueClicked);
 
@@ -112,7 +137,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
     const userStarRatingDocId = `${currentUser.uid}_${figureId}`;
     const userStarRatingDocRef = doc(db, "userStarRatings", userStarRatingDocId);
 
-    const previousSelectedUserRating = selectedStarRating; // Capture state before any async operation
+    const previousSelectedUserRating = selectedStarRating;
     const newStarValueToSetForUser = previousSelectedUserRating === starValueClicked ? null : starValueClicked;
 
     try {
@@ -146,11 +171,11 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
           starValue: newStarValueToSetForUser,
           timestamp: serverTimestamp(),
         });
-        setSelectedStarRating(newStarValueToSetForUser); // Explicitly update local state
+        setSelectedStarRating(newStarValueToSetForUser);
         toast({ title: "Calificación Guardada", description: `Has calificado a ${figureName} con ${newStarValueToSetForUser} estrella(s).` });
       } else {
         await deleteDoc(userStarRatingDocRef);
-        setSelectedStarRating(null); // Explicitly update local state
+        setSelectedStarRating(null);
         toast({ title: "Calificación Eliminada", description: `Has eliminado tu calificación para ${figureName}.` });
       }
 
@@ -163,8 +188,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
         errorMessage = `Detalles: ${error.message}`;
       }
       toast({ title: "Error al Calificar", description: errorMessage, variant: "destructive" });
-       // Revert optimistic local state update if Firestore operation failed
-      setSelectedStarRating(previousSelectedUserRating);
+      setSelectedStarRating(previousSelectedUserRating); // Revert optimistic local state update
     } finally {
       setIsLoadingStarAction(null);
     }
@@ -244,3 +268,4 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
     </Card>
   );
 };
+

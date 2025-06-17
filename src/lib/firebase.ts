@@ -70,13 +70,21 @@ service cloud.firestore {
                             request.resource.data.name == resource.data.name && // Ensure other core fields are not changed
                             request.resource.data.perceptionCounts == resource.data.perceptionCounts &&
                             request.resource.data.attitudeCounts == resource.data.attitudeCounts &&
-                            request.resource.data.starRatingCounts == resource.data.starRatingCounts // Keep starRatingCounts if user edits profile
+                            request.resource.data.starRatingCounts == resource.data.starRatingCounts
                           )
                           ||
                           // Case 2: Update perception, attitude, or star rating counts
                           (
-                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['perceptionCounts', 'attitudeCounts', 'starRatingCounts']) &&
-                            request.resource.data.name == resource.data.name // Ensure other fields are not changed
+                            (
+                              request.resource.data.diff(resource.data).hasAny(['perceptionCounts', 'attitudeCounts', 'starRatingCounts']) &&
+                              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['perceptionCounts', 'attitudeCounts', 'starRatingCounts'])
+                            ) &&
+                            request.resource.data.name == resource.data.name && // Ensure other fields are not changed by this specific update path
+                            request.resource.data.description == resource.data.description &&
+                            request.resource.data.nationality == resource.data.nationality &&
+                            request.resource.data.occupation == resource.data.occupation &&
+                            request.resource.data.gender == resource.data.gender &&
+                            request.resource.data.photoUrl == resource.data.photoUrl
                           )
                         )
                       );
@@ -153,7 +161,7 @@ service cloud.firestore {
                request.auth.uid == getUserIdFromDocIdStar() &&
                request.resource.data.figureId == starRatingDocId.split('_')[1] &&
                request.resource.data.keys().hasAll(['userId', 'figureId', 'starValue', 'timestamp']) &&
-               request.resource.data.starValue in [1, 2, 3, 4, 5] && // Ensure starValue is 1-5
+               request.resource.data.starValue in [1, 2, 3, 4, 5] && 
                request.resource.data.timestamp == request.time;
       }
       allow read, delete: if isOwnerNonAnonymousStar();
@@ -209,6 +217,10 @@ service firebase.storage {
     match /emociones/{allPaths=**} {
       allow read: if true;
     }
+    match /audio/{soundFilename} { // Rule for allowing public read access to audio files
+      allow read: if true;
+    }
   }
 }
 */
+
