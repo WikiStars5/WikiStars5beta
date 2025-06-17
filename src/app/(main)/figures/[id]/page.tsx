@@ -8,8 +8,8 @@ import {
   Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   Image as ImageIcon, ImageOff, BarChartHorizontal, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
-  MessagesSquare, // Icono para la nueva pestaña de Comentarios
-  Send // Icono para el botón de enviar comentario
+  MessagesSquare // Icono para la nueva pestaña de Comentarios
+  // Send Icono para el botón de enviar comentario ya no es necesario
 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
@@ -65,9 +65,9 @@ export default function FigurePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [canUserInteract, setCanUserInteract] = useState(false);
 
-  // State for new comment
-  const [newComment, setNewComment] = useState("");
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  // State for new comment and submission status removed
+  // const [newComment, setNewComment] = useState("");
+  // const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
@@ -186,28 +186,8 @@ export default function FigurePage() {
     }
   };
 
-  const handleSubmitComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim()) {
-      toast({ title: "Comentario Vacío", description: "Por favor, escribe algo antes de enviar.", variant: "destructive" });
-      return;
-    }
-    if (!canUserInteract) {
-      toast({ title: "Acción Requerida", description: "Debes iniciar sesión para comentar.", variant: "default" });
-      return;
-    }
-
-    setIsSubmittingComment(true);
-    // Simulate API call
-    console.log("Nuevo Comentario:", newComment);
-    await new Promise(resolve => setTimeout(resolve, 1000)); 
-
-    toast({ title: "Comentario Enviado (Simulado)", description: "Tu comentario se ha enviado (simulación)." });
-    setNewComment("");
-    setIsSubmittingComment(false);
-    // Here you would typically call a server action to save the comment
-    // and then re-fetch comments or update the local list.
-  };
+  // handleSubmitComment function removed
+  // const handleSubmitComment = async (e: React.FormEvent) => { ... };
 
   if (!id && figure === undefined) {
     return (
@@ -452,41 +432,19 @@ export default function FigurePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {canUserInteract ? (
-                    <form onSubmit={handleSubmitComment} className="space-y-4">
-                      <div>
-                        <Label htmlFor="newCommentText" className="sr-only">Tu comentario</Label>
-                        <Textarea
-                          id="newCommentText"
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          placeholder="Escribe tu comentario aquí..."
-                          rows={4}
-                          className="w-full"
-                          disabled={isSubmittingComment}
-                        />
-                      </div>
-                      <Button type="submit" disabled={isSubmittingComment || !newComment.trim()} className="w-full sm:w-auto">
-                        {isSubmittingComment ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="mr-2 h-4 w-4" />
-                        )}
-                        {isSubmittingComment ? 'Enviando...' : 'Enviar Comentario'}
-                      </Button>
-                    </form>
-                  ) : (
-                    <Alert>
+                  {!canUserInteract && (
+                     <Alert>
                       <LogIn className="h-4 w-4" />
                       <AlertTitle>Participación Restringida</AlertTitle>
                       <AlertDescription>
                         <Link href="/login" className="font-semibold text-primary hover:underline">
                           Inicia sesión
                         </Link>
-                        {" "}para dejar un comentario.
+                        {" "}para ver y añadir comentarios.
                       </AlertDescription>
                     </Alert>
                   )}
+                  {/* Comment input form removed */}
                   <div className="border-t pt-6 mt-6">
                     <h4 className="text-lg font-medium mb-4">Comentarios Recientes (Marcador de posición)</h4>
                     <p className="text-muted-foreground">
