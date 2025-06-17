@@ -13,10 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User as FirebaseUser, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, LayoutDashboard, Loader2 } from 'lucide-react';
+import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, LayoutDashboard, Loader2, UserCircle } from 'lucide-react'; // Added UserCircle
 import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
-import type { UserProfile as AppUserProfile } from '@/lib/types'; // Renamed to avoid conflict
+// type { UserProfile as AppUserProfile } from '@/lib/types'; // Removed as not used directly
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -87,6 +87,14 @@ export function UserNav() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           {/* La opción de Editar Perfil ha sido eliminada */}
+          {/* 
+          <Link href="/profile">
+            <DropdownMenuItem>
+              <User className="mr-2 h-4 w-4" />
+              <span>Editar Perfil</span>
+            </DropdownMenuItem>
+          </Link>
+          */}
           <DropdownMenuItem disabled>
             <Settings className="mr-2 h-4 w-4" />
             <span>Configuración</span>
@@ -109,18 +117,32 @@ export function UserNav() {
     );
   }
 
+  // Logged out state: Show a single icon button triggering a dropdown for Login/Signup
   return (
-    <div className="flex items-center gap-2">
-      <Button variant="outline" asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-9 w-9">
+          <UserCircle className="h-6 w-6 text-foreground/70" />
+          <span className="sr-only">Abrir menú de usuario</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-48" align="end" forceMount>
+        <DropdownMenuLabel>Acceso</DropdownMenuLabel>
+        <DropdownMenuSeparator />
         <Link href="/login">
-          <LogIn className="mr-2 h-4 w-4" /> Iniciar Sesión
+          <DropdownMenuItem>
+            <LogIn className="mr-2 h-4 w-4" />
+            <span>Iniciar Sesión</span>
+          </DropdownMenuItem>
         </Link>
-      </Button>
-      <Button asChild>
         <Link href="/signup">
-          <UserPlus className="mr-2 h-4 w-4" /> Registrarse
+          <DropdownMenuItem>
+            <UserPlus className="mr-2 h-4 w-4" />
+            <span>Registrarse</span>
+          </DropdownMenuItem>
         </Link>
-      </Button>
-    </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
+
