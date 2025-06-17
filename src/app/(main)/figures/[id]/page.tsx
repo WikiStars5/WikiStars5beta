@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   Image as ImageIcon, ImageOff, BarChartHorizontal, Star as StarIcon,
-  BookOpen, Cake, MapPin, Pulse, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText // New Icons
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap 
 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
@@ -345,7 +345,7 @@ export default function FigurePage() {
                         {renderDetailItem(MapPin, "Lugar de Nacimiento", figure.birthPlace)}
                         {renderDetailItem(Globe, "Nacionalidad", figure.nationality)}
                         {renderDetailItem(Briefcase, "Ocupación", figure.occupation)}
-                        {renderDetailItem(Pulse, "Estado (Vivo/Muerto)", figure.statusLiveOrDead)}
+                        {renderDetailItem(Activity, "Estado (Vivo/Muerto)", figure.statusLiveOrDead)}
                         {renderDetailItem(HeartHandshake, "Estado Civil", figure.maritalStatus)}
                         {renderDetailItem(StretchVertical, "Altura", figure.height)}
                         {renderDetailItem(Scale, "Peso", figure.weight)}
