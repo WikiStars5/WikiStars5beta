@@ -33,9 +33,13 @@ const defaultStarRatingCountsData: Record<StarValueAsString, number> = {
   "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
 };
 
-// IMPORTANT: Replace YOUR_FIREBASE_PROJECT_ID with your actual Firebase project ID.
-const FIREBASE_PROJECT_ID = "wikistars5-2yctr"; // This was found in your firebase.ts
-const RATING_SOUND_URL = `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.appspot.com/o/audio%2Fstar5.mp3?alt=media`;
+const STAR_SOUND_URLS: Record<StarValue, string> = {
+  1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
+  2: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar2.mp3?alt=media&token=58cbf607-df0b-4bbd-b28e-291cf1951c18",
+  3: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar3.mp3?alt=media&token=df67dc5b-28ab-4773-8266-60b9127a325f",
+  4: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826",
+  5: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f",
+};
 
 
 export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figureName, initialStarRatingCounts, currentUser }) => {
@@ -45,25 +49,35 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
   const [isLoadingStarAction, setIsLoadingStarAction] = useState<StarValue | null>(null);
   const [isComponentLoading, setIsComponentLoading] = useState(true);
   const { toast } = useToast();
-  const [ratingAudio, setRatingAudio] = useState<HTMLAudioElement | null>(null);
+  
+  const [starAudios, setStarAudios] = useState<Partial<Record<StarValue, HTMLAudioElement>>>({});
 
   const canUserVote = !!currentUser && !currentUser.isAnonymous;
 
   useEffect(() => {
-    // Initialize Audio object
     if (typeof window !== "undefined") {
-      const audio = new Audio(RATING_SOUND_URL);
-      audio.preload = "auto";
-      setRatingAudio(audio);
+      const audios: Partial<Record<StarValue, HTMLAudioElement>> = {};
+      (Object.keys(STAR_SOUND_URLS) as unknown as StarValue[]).forEach(key => {
+        const numericKey = Number(key) as StarValue;
+        if (STAR_SOUND_URLS[numericKey]) {
+          const audio = new Audio(STAR_SOUND_URLS[numericKey]);
+          audio.preload = "auto";
+          audios[numericKey] = audio;
+        }
+      });
+      setStarAudios(audios);
     }
   }, []);
 
-  const playSoundEffect = useCallback(() => {
-    if (ratingAudio) {
-      ratingAudio.currentTime = 0; // Rewind to start
-      ratingAudio.play().catch(error => console.error("Error playing sound:", error));
+  const playSoundEffect = useCallback((starValue: StarValue) => {
+    const audio = starAudios[starValue];
+    if (audio) {
+      audio.currentTime = 0; 
+      audio.play().catch(error => console.error(`Error playing sound for star ${starValue}:`, error));
+    } else {
+      console.warn(`Audio for star ${starValue} not loaded.`);
     }
-  }, [ratingAudio]);
+  }, [starAudios]);
 
 
   useEffect(() => {
@@ -83,13 +97,10 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
       } else {
         setFigureStarRatingCounts(defaultStarRatingCountsData);
         setTotalVotes(0);
-        console.warn(`Figure document with ID ${figureId} does not exist for star ratings.`);
       }
     }, (error) => {
       console.error("Error fetching figure star rating counts:", error);
       toast({ title: "Error", description: "No se pudieron cargar los conteos de estrellas.", variant: "destructive" });
-      setFigureStarRatingCounts(defaultStarRatingCountsData);
-      setTotalVotes(0);
     });
 
     let unsubscribeUserStarRating: Unsubscribe | undefined;
@@ -122,7 +133,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
   }, [figureId, currentUser, toast]);
 
   const handleStarRatingClick = async (starValueClicked: StarValue) => {
-    playSoundEffect(); // Play sound immediately on click
+    playSoundEffect(starValueClicked);
 
     if (!canUserVote) {
       toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para calificar.", variant: "default" });
@@ -171,7 +182,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
           starValue: newStarValueToSetForUser,
           timestamp: serverTimestamp(),
         });
-        setSelectedStarRating(newStarValueToSetForUser);
+        setSelectedStarRating(newStarValueToSetForUser); 
         toast({ title: "Calificación Guardada", description: `Has calificado a ${figureName} con ${newStarValueToSetForUser} estrella(s).` });
       } else {
         await deleteDoc(userStarRatingDocRef);
@@ -188,7 +199,10 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
         errorMessage = `Detalles: ${error.message}`;
       }
       toast({ title: "Error al Calificar", description: errorMessage, variant: "destructive" });
-      setSelectedStarRating(previousSelectedUserRating); // Revert optimistic local state update
+      // Revert optimistic local state update only if it was an actual change
+      if (newStarValueToSetForUser !== previousSelectedUserRating) {
+        setSelectedStarRating(previousSelectedUserRating);
+      }
     } finally {
       setIsLoadingStarAction(null);
     }
@@ -268,4 +282,3 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
     </Card>
   );
 };
-
