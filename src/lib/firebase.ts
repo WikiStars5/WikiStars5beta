@@ -55,35 +55,27 @@ service cloud.firestore {
     match /figures/{figureId} {
       allow get: if true; // PUBLIC ACCESS: Allow anyone to read (get) individual figure documents.
 
-      // ADMIN-ONLY can create and delete figures.
       allow create: if isAdmin() &&
                        request.resource.data.nameLower == request.resource.data.name.toLowerCase();
-                       // Removed rating fields checks as they are no longer part of initial creation by admin or direct updates by users
 
       allow delete: if isAdmin();
 
-      // UPDATES to 'figures'
       allow update: if isAuthenticatedNonAnonymous() &&
                       (
-                        // ADMIN can update most fields (nameLower should be consistent with name)
-                        (isAdmin() &&
-                          (request.resource.data.nameLower == request.resource.data.name.toLowerCase())
-                        )
-                        ||
-                        // NON-ADMIN, NON-ANONYMOUS users can ONLY update their own profile edits or perception/attitude counts
-                        (
-                          // Case 1: User editing allowed profile fields (description, nationality, etc.)
+                        (isAdmin() && (request.resource.data.nameLower == request.resource.data.name.toLowerCase())) ||
+                        ( // Non-admin, non-anonymous users can:
+                          // Case 1: Edit allowed profile fields
                           (
                             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['description', 'nationality', 'occupation', 'gender', 'photoUrl']) &&
-                             // Ensure other core fields are not changed during this specific update type
-                            request.resource.data.name == resource.data.name &&
-                            request.resource.data.perceptionCounts == resource.data.perceptionCounts && // Keep these for Perception/Attitude votes
-                            request.resource.data.attitudeCounts == resource.data.attitudeCounts
+                            request.resource.data.name == resource.data.name && // Ensure other core fields are not changed
+                            request.resource.data.perceptionCounts == resource.data.perceptionCounts &&
+                            request.resource.data.attitudeCounts == resource.data.attitudeCounts &&
+                            request.resource.data.starRatingCounts == resource.data.starRatingCounts // Keep starRatingCounts if user edits profile
                           )
-                          // Case 2: Perception/Attitude updates
                           ||
+                          // Case 2: Update perception, attitude, or star rating counts
                           (
-                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['perceptionCounts', 'attitudeCounts']) &&
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['perceptionCounts', 'attitudeCounts', 'starRatingCounts']) &&
                             request.resource.data.name == resource.data.name // Ensure other fields are not changed
                           )
                         )
@@ -91,13 +83,9 @@ service cloud.firestore {
     }
 
     match /figures {
-      allow list: if true; // PUBLIC ACCESS: Allow anyone to list all documents.
+      allow list: if true;
     }
     // --- End of rules for 'figures' collection ---
-
-
-    // --- Rules for 'figure_comments' collection (REMOVED) ---
-    // match /figure_comments/{commentId} { ... }
 
     // --- Rules for 'userPerceptions' collection ---
     match /userPerceptions/{perceptionDocId} {
@@ -151,6 +139,33 @@ service cloud.firestore {
     }
     // --- End of rules for 'userAttitudes' collection ---
 
+    // --- Rules for 'userStarRatings' collection ---
+    match /userStarRatings/{starRatingDocId} {
+      function getUserIdFromDocIdStar() { return starRatingDocId.split('_')[0]; }
+      function isOwnerNonAnonymousStar() {
+        return isAuthenticatedNonAnonymous() &&
+               request.auth.uid == resource.data.userId &&
+               request.auth.uid == getUserIdFromDocIdStar();
+      }
+      function isCreatingOwnValidDocNonAnonymousStar() {
+        return isAuthenticatedNonAnonymous() &&
+               request.auth.uid == request.resource.data.userId &&
+               request.auth.uid == getUserIdFromDocIdStar() &&
+               request.resource.data.figureId == starRatingDocId.split('_')[1] &&
+               request.resource.data.keys().hasAll(['userId', 'figureId', 'starValue', 'timestamp']) &&
+               request.resource.data.starValue in [1, 2, 3, 4, 5] && // Ensure starValue is 1-5
+               request.resource.data.timestamp == request.time;
+      }
+      allow read, delete: if isOwnerNonAnonymousStar();
+      allow update: if isOwnerNonAnonymousStar() &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['starValue', 'timestamp']) &&
+                      request.resource.data.starValue in [1, 2, 3, 4, 5] &&
+                      request.resource.data.timestamp == request.time;
+      allow create: if isCreatingOwnValidDocNonAnonymousStar();
+    }
+    // --- End of rules for 'userStarRatings' collection ---
+
+
     // --- Rules for 'users' collection ---
     match /users/{userId} {
       allow read: if isAuthenticatedNonAnonymous() && request.auth.uid == userId;
@@ -171,7 +186,7 @@ service cloud.firestore {
                          'uid', 'email', 'createdAt', 'role'
                        ])) &&
                        (request.resource.data.photoURL == resource.data.photoURL || request.resource.data.photoURL == request.auth.token.picture || request.resource.data.photoURL is string || request.resource.data.photoURL == null) &&
-                       (request.resource.data.keys().has('lastLoginAt') ? request.resource.data.lastLoginAt == request.time : true); // lastLoginAt is optional on some updates from user profile form
+                       (request.resource.data.keys().has('lastLoginAt') ? request.resource.data.lastLoginAt == request.time : true);
       allow delete: if false;
     }
     // --- End of rules for 'users' collection ---
@@ -187,7 +202,6 @@ service firebase.storage {
   match /b/{bucket}/o {
     match /figures/{allPaths=**} {
       allow read: if true;
-      // Admin can write to figures folder
       allow write: if request.auth != null &&
                       !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
                       request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // ADMIN UID
@@ -195,10 +209,6 @@ service firebase.storage {
     match /emociones/{allPaths=**} {
       allow read: if true;
     }
-    // match /user_avatars/{userId}/{fileName} {
-    //  allow read: if true;
-    //  allow write: if request.auth != null && request.auth.uid == userId;
-    // }
   }
 }
 */

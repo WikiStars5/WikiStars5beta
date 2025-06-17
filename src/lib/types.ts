@@ -12,6 +12,9 @@ export interface PerceptionOption {
 
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
+export type StarValue = 1 | 2 | 3 | 4 | 5;
+export type StarValueAsString = "1" | "2" | "3" | "4" | "5";
+
 
 export interface Figure {
   id: string;
@@ -24,9 +27,9 @@ export interface Figure {
   gender?: string;
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
+  starRatingCounts?: Record<StarValueAsString, number>; // Nuevo campo para conteo de estrellas
   createdAt?: string; // ISO string
   status?: 'approved' | 'rejected';
-  // Rating fields removed
 }
 
 export interface UserPerception {
@@ -43,7 +46,13 @@ export interface UserAttitude {
   timestamp: Timestamp; // Firestore Timestamp
 }
 
-// CommentData interface removed
+export interface UserStarRating {
+  userId: string;
+  figureId: string;
+  starValue: StarValue; // 1, 2, 3, 4, or 5
+  timestamp: Timestamp; // Firestore Timestamp
+}
+
 
 export interface Country {
   name: string;

@@ -1,5 +1,5 @@
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, StarValueAsString } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where } from "firebase/firestore";
@@ -27,7 +27,10 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   hater: 0,
 };
 
-// Default rating distribution removed
+const defaultStarRatingCounts: Record<StarValueAsString, number> = {
+  "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
+};
+
 
 const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data();
@@ -69,7 +72,7 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     gender: data.gender || "",
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
-    // Rating fields removed
+    starRatingCounts: data.starRatingCounts || { ...defaultStarRatingCounts }, // Inicializar starRatingCounts
     createdAt: createdAtString,
     status: data.status || 'approved',
   };
@@ -82,7 +85,7 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
       attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
-      // Rating fields removed
+      starRatingCounts: figure.starRatingCounts || { ...defaultStarRatingCounts }, // Añadir al añadir figura
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
@@ -97,11 +100,11 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: string }): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    // Rating fields removed from destructuring and updatePayload
-    const { createdAt, nameLower, perceptionCounts, attitudeCounts, ...figureDataToUpdateRest } = figure;
+    const { createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts, ...figureDataToUpdateRest } = figure;
     const updatePayload: Partial<Figure> = {...figureDataToUpdateRest};
     if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
     if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
+    if (starRatingCounts) updatePayload.starRatingCounts = starRatingCounts; // Añadir para actualizaciones
     if (nameLower) updatePayload.nameLower = nameLower;
 
 

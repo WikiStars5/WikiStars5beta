@@ -4,7 +4,7 @@
 import type { Figure } from "@/lib/types";
 import { getFigureFromFirestore, getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, Image as ImageIcon, ImageOff, BarChartHorizontal } from "lucide-react";
+import { Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, Image as ImageIcon, ImageOff, BarChartHorizontal, Star as StarIcon } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import Image from "next/image"; // For preview
@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
-// RatingSummaryDisplay and CommentSection imports removed
+import { StarRatingVote } from "@/components/figures/StarRatingVote"; // Importar nuevo componente
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
@@ -177,10 +177,11 @@ export default function FigurePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2 space-y-8">
           <Tabs defaultValue="personal-info" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="personal-info" className="text-base py-2.5 flex items-center gap-2"><Info className="h-5 w-5" />Información Personal</TabsTrigger>
-              <TabsTrigger value="attitude-poll" className="text-base py-2.5 flex items-center gap-2"><MessageSquare className="h-5 w-5" />¿Qué te consideras?</TabsTrigger>
-              <TabsTrigger value="perception-emotions" className="text-base py-2.5 flex items-center gap-2"><SmilePlus className="h-5 w-5" />Percepción Emocional</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-4 mb-6"> {/* Actualizado a 4 columnas */}
+              <TabsTrigger value="personal-info" className="text-base py-2.5 flex items-center gap-2"><Info className="h-5 w-5" />Información</TabsTrigger>
+              <TabsTrigger value="attitude-poll" className="text-base py-2.5 flex items-center gap-2"><MessageSquare className="h-5 w-5" />Actitud</TabsTrigger>
+              <TabsTrigger value="perception-emotions" className="text-base py-2.5 flex items-center gap-2"><SmilePlus className="h-5 w-5" />Emoción</TabsTrigger>
+              <TabsTrigger value="star-rating" className="text-base py-2.5 flex items-center gap-2"><StarIcon className="h-5 w-5" />Calificar</TabsTrigger> {/* Nueva Pestaña */}
             </TabsList>
 
             <TabsContent value="personal-info">
@@ -378,10 +379,23 @@ export default function FigurePage() {
                 </div>
               )}
             </TabsContent>
+
+            <TabsContent value="star-rating"> {/* Nuevo Contenido de Pestaña */}
+              {figure && currentUser !== undefined && (
+                <StarRatingVote
+                  figureId={figure.id}
+                  figureName={figure.name}
+                  initialStarRatingCounts={figure.starRatingCounts}
+                  currentUser={currentUser}
+                />
+              )}
+              {(!figure || currentUser === undefined) && (
+                <div className="flex justify-center items-center h-40">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              )}
+            </TabsContent>
           </Tabs>
-
-          {/* RatingSummaryDisplay and CommentSection removed */}
-
         </div>
 
         <aside className="lg:col-span-1 space-y-6">
@@ -390,7 +404,7 @@ export default function FigurePage() {
             <AlertTitle className="font-headline">Cómo Funciona</AlertTitle>
             <AlertDescription className="text-sm">
               La información personal y la imagen de perfil pueden ser editadas por usuarios con cuenta.
-              ¡Expresa tu actitud y percepción emocional votando si has iniciado sesión con una cuenta!
+              ¡Expresa tu actitud, emoción y califica con estrellas si has iniciado sesión con una cuenta!
             </AlertDescription>
           </Alert>
 
