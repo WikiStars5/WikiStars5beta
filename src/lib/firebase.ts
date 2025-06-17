@@ -55,28 +55,22 @@ service cloud.firestore {
                         // Admin can update any field
                         (request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2')
                         ||
-                        // Non-admin, non-anonymous users can update specific descriptive fields
+                        // Non-admin, non-anonymous users can update specific fields
                         (
-                          (
-                            request.resource.data.description != resource.data.description ||
-                            request.resource.data.nationality != resource.data.nationality ||
-                            request.resource.data.occupation != resource.data.occupation ||
-                            request.resource.data.gender != resource.data.gender ||
-                            request.resource.data.photoUrl != resource.data.photoUrl ||
-                            request.resource.data.perceptionCounts != resource.data.perceptionCounts ||
-                            request.resource.data.attitudeCounts != resource.data.attitudeCounts ||
-                            // Allow authenticated users (server actions running under their context)
-                            // to update rating fields when submitting a comment.
-                            // The transaction ensures this is done correctly.
-                            request.resource.data.averageRating != resource.data.averageRating ||
-                            request.resource.data.totalRatings != resource.data.totalRatings ||
-                            request.resource.data.ratingDistribution != resource.data.ratingDistribution
-                          ) &&
-                          // Critical fields must not be changed by non-admins
-                          request.resource.data.name == resource.data.name &&
-                          request.resource.data.nameLower == resource.data.nameLower &&
-                          request.resource.data.id == resource.data.id &&
-                          request.resource.data.status == resource.data.status
+                          // Ensure core fields are not being changed if they are part of the request.
+                          // If a field is not in request.resource.data, it's not being touched by this update.
+                          (request.resource.data.keys().has('name') ? request.resource.data.name == resource.data.name : true) &&
+                          (request.resource.data.keys().has('nameLower') ? request.resource.data.nameLower == resource.data.nameLower : true) &&
+                          (request.resource.data.keys().has('status') ? request.resource.data.status == resource.data.status : true) &&
+                          // createdAt should ideally not be updatable by users after creation.
+                          (request.resource.data.keys().has('createdAt') ? request.resource.data.createdAt == resource.data.createdAt : true) &&
+
+                          // And the changes are limited to the allowed set of fields for user interaction/updates.
+                          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                            'description', 'nationality', 'occupation', 'gender', 'photoUrl', // User profile edits
+                            'perceptionCounts', 'attitudeCounts', // Direct votes on figure page
+                            'averageRating', 'totalRatings', 'ratingDistribution' // Aggregates updated by comment/rating submission
+                          ])
                         )
                       );
     }
@@ -92,7 +86,6 @@ service cloud.firestore {
       allow get: if true; // Anyone can read comments
 
       allow list: if query.limit <= 100; // Anyone can list comments, e.g., for a specific figure, with a limit.
-                           // For querying by figureId: request.query.figureId == resource.data.figureId
 
       allow create: if request.auth != null &&
                        !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
@@ -200,13 +193,6 @@ service cloud.firestore {
       allow delete: if false; // Users generally shouldn't delete their own user docs directly
     }
     // --- End of rules for 'users' collection ---
-
-    // Potentially, a collection for user reactions to comments (likes/dislikes)
-    // match /user_comment_reactions/{reactionId} { // reactionId might be userId_commentId
-    //   allow read, write: if request.auth != null &&
-    //                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-    //                      request.auth.uid == reactionId.split('_')[0];
-    // }
   }
 }
 */
