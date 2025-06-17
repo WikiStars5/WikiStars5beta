@@ -22,14 +22,33 @@ export interface Figure {
   nameLower: string;
   photoUrl: string;
   description?: string;
+  
+  // Basic Info previously present
   nationality?: string;
   occupation?: string;
   gender?: string;
+
+  // New detailed fields
+  alias?: string;
+  species?: string; // e.g., Human, Demon, Elf
+  firstAppearance?: string; // e.g., "High School DxD, Light Novel, 2008"
+  birthDateOrAge?: string; // e.g., "Unknown / Appears 18"
+  birthPlace?: string;
+  statusLiveOrDead?: string; // e.g., "Alive", "Deceased", "Unknown"
+  maritalStatus?: string; // e.g., "Single", "Married"
+  
+  // Physical Appearance
+  height?: string;
+  weight?: string; // Often optional for fictional
+  hairColor?: string;
+  eyeColor?: string;
+  distinctiveFeatures?: string; // e.g., "Tall ponytail", "Scar over left eye"
+
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
-  starRatingCounts?: Record<StarValueAsString, number>; // Nuevo campo para conteo de estrellas
+  starRatingCounts?: Record<StarValueAsString, number>;
   createdAt?: string; // ISO string
-  status?: 'approved' | 'rejected';
+  status?: 'approved' | 'rejected'; // For proposals, not directly used now
 }
 
 export interface UserPerception {
@@ -71,3 +90,4 @@ export interface UserProfile {
   createdAt: string; // ISO string
   lastLoginAt?: string; // ISO string
 }
+

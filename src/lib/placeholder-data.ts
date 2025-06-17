@@ -70,9 +70,24 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     nationality: data.nationality || "",
     occupation: data.occupation || "",
     gender: data.gender || "",
+    
+    // New detailed fields
+    alias: data.alias || "",
+    species: data.species || "",
+    firstAppearance: data.firstAppearance || "",
+    birthDateOrAge: data.birthDateOrAge || "",
+    birthPlace: data.birthPlace || "",
+    statusLiveOrDead: data.statusLiveOrDead || "",
+    maritalStatus: data.maritalStatus || "",
+    height: data.height || "",
+    weight: data.weight || "",
+    hairColor: data.hairColor || "",
+    eyeColor: data.eyeColor || "",
+    distinctiveFeatures: data.distinctiveFeatures || "",
+
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
-    starRatingCounts: data.starRatingCounts || { ...defaultStarRatingCounts }, // Inicializar starRatingCounts
+    starRatingCounts: data.starRatingCounts || { ...defaultStarRatingCounts },
     createdAt: createdAtString,
     status: data.status || 'approved',
   };
@@ -85,7 +100,7 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
       attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
-      starRatingCounts: figure.starRatingCounts || { ...defaultStarRatingCounts }, // Añadir al añadir figura
+      starRatingCounts: figure.starRatingCounts || { ...defaultStarRatingCounts },
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
@@ -100,15 +115,52 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: string }): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    const { createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts, ...figureDataToUpdateRest } = figure;
-    const updatePayload: Partial<Figure> = {...figureDataToUpdateRest};
+    // Destructure all known fields to ensure only defined ones are passed.
+    // This prevents accidental writes of undefined fields if they are not part of the partial update.
+    const { 
+        id, createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts,
+        // List all other Figure fields here
+        name, photoUrl, description, nationality, occupation, gender, alias, species,
+        firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
+        height, weight, hairColor, eyeColor, distinctiveFeatures, status,
+        ...rest // Should be empty if all fields are listed
+    } = figure;
+
+    const updatePayload: Partial<Figure> = {};
+
+    // Only add fields to payload if they are explicitly provided in the `figure` partial object
+    if (name !== undefined) updatePayload.name = name;
+    if (photoUrl !== undefined) updatePayload.photoUrl = photoUrl;
+    if (description !== undefined) updatePayload.description = description;
+    if (nationality !== undefined) updatePayload.nationality = nationality;
+    if (occupation !== undefined) updatePayload.occupation = occupation;
+    if (gender !== undefined) updatePayload.gender = gender;
+    if (alias !== undefined) updatePayload.alias = alias;
+    if (species !== undefined) updatePayload.species = species;
+    if (firstAppearance !== undefined) updatePayload.firstAppearance = firstAppearance;
+    if (birthDateOrAge !== undefined) updatePayload.birthDateOrAge = birthDateOrAge;
+    if (birthPlace !== undefined) updatePayload.birthPlace = birthPlace;
+    if (statusLiveOrDead !== undefined) updatePayload.statusLiveOrDead = statusLiveOrDead;
+    if (maritalStatus !== undefined) updatePayload.maritalStatus = maritalStatus;
+    if (height !== undefined) updatePayload.height = height;
+    if (weight !== undefined) updatePayload.weight = weight;
+    if (hairColor !== undefined) updatePayload.hairColor = hairColor;
+    if (eyeColor !== undefined) updatePayload.eyeColor = eyeColor;
+    if (distinctiveFeatures !== undefined) updatePayload.distinctiveFeatures = distinctiveFeatures;
+    if (status !== undefined) updatePayload.status = status;
+    if (nameLower !== undefined) updatePayload.nameLower = nameLower;
+
+    // Handle count objects carefully
     if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
     if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
-    if (starRatingCounts) updatePayload.starRatingCounts = starRatingCounts; // Añadir para actualizaciones
-    if (nameLower) updatePayload.nameLower = nameLower;
+    if (starRatingCounts) updatePayload.starRatingCounts = starRatingCounts;
+    
+    // Ensure no unknown fields are passed
+    if (Object.keys(rest).length > 0) {
+      console.warn("Unknown fields in updateFigureInFirestore:", rest);
+    }
 
-
-    await updateDoc(figureRef, { ...updatePayload });
+    await updateDoc(figureRef, updatePayload);
   } catch (error) {
     console.error("Error updating figure in Firestore: ", error);
     throw error;
@@ -203,3 +255,4 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
     return [];
   }
 }
+

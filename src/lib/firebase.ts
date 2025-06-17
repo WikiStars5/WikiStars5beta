@@ -50,6 +50,15 @@ service cloud.firestore {
       return request.auth != null &&
              request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
+    
+    function figureCoreFieldsUnchanged() {
+      return request.resource.data.name == resource.data.name &&
+             request.resource.data.nameLower == resource.data.nameLower &&
+             request.resource.data.perceptionCounts == resource.data.perceptionCounts &&
+             request.resource.data.attitudeCounts == resource.data.attitudeCounts &&
+             request.resource.data.starRatingCounts == resource.data.starRatingCounts &&
+             request.resource.data.createdAt == resource.data.createdAt; // Assuming createdAt is not changed by users
+    }
 
     // --- Rules for 'figures' collection ---
     match /figures/{figureId} {
@@ -62,15 +71,20 @@ service cloud.firestore {
 
       allow update: if isAuthenticatedNonAnonymous() &&
                       (
-                        (isAdmin() && (request.resource.data.nameLower == request.resource.data.name.toLowerCase())) ||
+                        ( // Admin can update all fields, ensuring nameLower consistency
+                          isAdmin() &&
+                          request.resource.data.nameLower == request.resource.data.name.toLowerCase()
+                        ) ||
                         ( // Non-admin, non-anonymous users can:
-                          // Case 1: Edit allowed profile fields
+                          // Case 1: Edit allowed profile text fields and photoUrl
                           (
-                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['description', 'nationality', 'occupation', 'gender', 'photoUrl']) &&
-                            request.resource.data.name == resource.data.name && // Ensure other core fields are not changed
-                            request.resource.data.perceptionCounts == resource.data.perceptionCounts &&
-                            request.resource.data.attitudeCounts == resource.data.attitudeCounts &&
-                            request.resource.data.starRatingCounts == resource.data.starRatingCounts
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                              'description', 'nationality', 'occupation', 'gender', 'photoUrl',
+                              'alias', 'species', 'firstAppearance', 'birthDateOrAge', 'birthPlace',
+                              'statusLiveOrDead', 'maritalStatus', 'height', 'weight',
+                              'hairColor', 'eyeColor', 'distinctiveFeatures'
+                            ]) &&
+                            figureCoreFieldsUnchanged() // Ensure other core fields are not changed during text edits
                           )
                           ||
                           // Case 2: Update perception, attitude, or star rating counts
@@ -79,12 +93,25 @@ service cloud.firestore {
                               request.resource.data.diff(resource.data).hasAny(['perceptionCounts', 'attitudeCounts', 'starRatingCounts']) &&
                               request.resource.data.diff(resource.data).affectedKeys().hasOnly(['perceptionCounts', 'attitudeCounts', 'starRatingCounts'])
                             ) &&
-                            request.resource.data.name == resource.data.name && // Ensure other fields are not changed by this specific update path
+                            // Ensure other fields are not changed by this specific update path for counts
+                            request.resource.data.name == resource.data.name &&
                             request.resource.data.description == resource.data.description &&
                             request.resource.data.nationality == resource.data.nationality &&
                             request.resource.data.occupation == resource.data.occupation &&
                             request.resource.data.gender == resource.data.gender &&
-                            request.resource.data.photoUrl == resource.data.photoUrl
+                            request.resource.data.photoUrl == resource.data.photoUrl &&
+                            request.resource.data.alias == resource.data.alias &&
+                            request.resource.data.species == resource.data.species &&
+                            request.resource.data.firstAppearance == resource.data.firstAppearance &&
+                            request.resource.data.birthDateOrAge == resource.data.birthDateOrAge &&
+                            request.resource.data.birthPlace == resource.data.birthPlace &&
+                            request.resource.data.statusLiveOrDead == resource.data.statusLiveOrDead &&
+                            request.resource.data.maritalStatus == resource.data.maritalStatus &&
+                            request.resource.data.height == resource.data.height &&
+                            request.resource.data.weight == resource.data.weight &&
+                            request.resource.data.hairColor == resource.data.hairColor &&
+                            request.resource.data.eyeColor == resource.data.eyeColor &&
+                            request.resource.data.distinctiveFeatures == resource.data.distinctiveFeatures
                           )
                         )
                       );

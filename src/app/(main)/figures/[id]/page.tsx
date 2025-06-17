@@ -4,7 +4,11 @@
 import type { Figure } from "@/lib/types";
 import { getFigureFromFirestore, getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, Image as ImageIcon, ImageOff, BarChartHorizontal, Star as StarIcon } from "lucide-react";
+import { 
+  Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
+  Image as ImageIcon, ImageOff, BarChartHorizontal, Star as StarIcon,
+  BookOpen, Cake, MapPin, Pulse, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText // New Icons
+} from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import Image from "next/image"; // For preview
@@ -18,7 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
-import { StarRatingVote } from "@/components/figures/StarRatingVote"; // Importar nuevo componente
+import { StarRatingVote } from "@/components/figures/StarRatingVote";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
@@ -40,8 +44,22 @@ export default function FigurePage() {
   const [editedOccupation, setEditedOccupation] = useState("");
   const [editedGender, setEditedGender] = useState("");
   const [editedPhotoUrl, setEditedPhotoUrl] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
 
+  // New edited state fields
+  const [editedAlias, setEditedAlias] = useState("");
+  const [editedSpecies, setEditedSpecies] = useState("");
+  const [editedFirstAppearance, setEditedFirstAppearance] = useState("");
+  const [editedBirthDateOrAge, setEditedBirthDateOrAge] = useState("");
+  const [editedBirthPlace, setEditedBirthPlace] = useState("");
+  const [editedStatusLiveOrDead, setEditedStatusLiveOrDead] = useState("");
+  const [editedMaritalStatus, setEditedMaritalStatus] = useState("");
+  const [editedHeight, setEditedHeight] = useState("");
+  const [editedWeight, setEditedWeight] = useState("");
+  const [editedHairColor, setEditedHairColor] = useState("");
+  const [editedEyeColor, setEditedEyeColor] = useState("");
+  const [editedDistinctiveFeatures, setEditedDistinctiveFeatures] = useState("");
+
+  const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [canUserInteract, setCanUserInteract] = useState(false);
 
@@ -60,6 +78,19 @@ export default function FigurePage() {
       setEditedOccupation(currentFigure.occupation || "");
       setEditedGender(currentFigure.gender || "");
       setEditedPhotoUrl(currentFigure.photoUrl || "");
+
+      setEditedAlias(currentFigure.alias || "");
+      setEditedSpecies(currentFigure.species || "");
+      setEditedFirstAppearance(currentFigure.firstAppearance || "");
+      setEditedBirthDateOrAge(currentFigure.birthDateOrAge || "");
+      setEditedBirthPlace(currentFigure.birthPlace || "");
+      setEditedStatusLiveOrDead(currentFigure.statusLiveOrDead || "");
+      setEditedMaritalStatus(currentFigure.maritalStatus || "");
+      setEditedHeight(currentFigure.height || "");
+      setEditedWeight(currentFigure.weight || "");
+      setEditedHairColor(currentFigure.hairColor || "");
+      setEditedEyeColor(currentFigure.eyeColor || "");
+      setEditedDistinctiveFeatures(currentFigure.distinctiveFeatures || "");
     }
   }, []);
 
@@ -118,6 +149,18 @@ export default function FigurePage() {
         occupation: editedOccupation,
         gender: editedGender,
         photoUrl: editedPhotoUrl.trim() || 'https://placehold.co/400x600.png',
+        alias: editedAlias,
+        species: editedSpecies,
+        firstAppearance: editedFirstAppearance,
+        birthDateOrAge: editedBirthDateOrAge,
+        birthPlace: editedBirthPlace,
+        statusLiveOrDead: editedStatusLiveOrDead,
+        maritalStatus: editedMaritalStatus,
+        height: editedHeight,
+        weight: editedWeight,
+        hairColor: editedHairColor,
+        eyeColor: editedEyeColor,
+        distinctiveFeatures: editedDistinctiveFeatures,
       };
 
       await updateFigureInFirestore(updatedFigureData);
@@ -169,6 +212,33 @@ export default function FigurePage() {
   const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 3);
   const isValidEditedPhotoUrl = editedPhotoUrl && (editedPhotoUrl.startsWith('https://upload.wikimedia.org') || editedPhotoUrl.startsWith('https://static.wikia.nocookie.net') || editedPhotoUrl.startsWith('https://firebasestorage.googleapis.com') || editedPhotoUrl.startsWith('https://placehold.co'));
 
+  const renderDetailItem = (icon: React.ElementType, label: string, value?: string) => {
+    const IconComponent = icon;
+    return (
+      <div className="flex items-start">
+        <IconComponent className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
+        <div>
+          <p className="font-semibold text-foreground/90">{label}</p>
+          <p className="text-sm text-muted-foreground">{value || "No disponible"}</p>
+        </div>
+      </div>
+    );
+  };
+  
+  const renderEditInput = (id: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, placeholder?: string) => (
+    <div>
+      <Label htmlFor={id} className="font-semibold text-foreground/90">{label}</Label>
+      <Input id={id} value={value} onChange={onChange} placeholder={placeholder || `Ej: ${label}`} className="mt-1" />
+    </div>
+  );
+
+  const renderEditTextarea = (id: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, placeholder?: string, rows?: number) => (
+    <div>
+      <Label htmlFor={id} className="font-semibold text-foreground/90">{label}</Label>
+      <Textarea id={id} value={value} onChange={onChange} placeholder={placeholder || `Añade ${label.toLowerCase()}...`} rows={rows || 3} className="mt-1" />
+    </div>
+  );
+
 
   return (
     <div className="space-y-8 lg:space-y-12">
@@ -177,11 +247,11 @@ export default function FigurePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2 space-y-8">
           <Tabs defaultValue="personal-info" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6"> {/* Actualizado a 4 columnas */}
+            <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="personal-info" className="text-base py-2.5 flex items-center gap-2"><Info className="h-5 w-5" />Información</TabsTrigger>
               <TabsTrigger value="attitude-poll" className="text-base py-2.5 flex items-center gap-2"><MessageSquare className="h-5 w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-base py-2.5 flex items-center gap-2"><SmilePlus className="h-5 w-5" />Emoción</TabsTrigger>
-              <TabsTrigger value="star-rating" className="text-base py-2.5 flex items-center gap-2"><StarIcon className="h-5 w-5" />Calificar</TabsTrigger> {/* Nueva Pestaña */}
+              <TabsTrigger value="star-rating" className="text-base py-2.5 flex items-center gap-2"><StarIcon className="h-5 w-5" />Calificar</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal-info">
@@ -215,91 +285,44 @@ export default function FigurePage() {
                   )}
                   {isEditing && canUserInteract ? (
                     <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="photoUrl" className="font-semibold text-foreground/90">URL de la Imagen del Perfil</Label>
-                        <Input
-                          id="photoUrl"
-                          type="url"
-                          value={editedPhotoUrl}
-                          onChange={(e) => setEditedPhotoUrl(e.target.value)}
-                          placeholder="Ej: https://upload.wikimedia.org/... o https://static.wikia.nocookie.net/..."
-                          className="mt-1"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
+                      {renderEditInput("photoUrl", "URL de la Imagen del Perfil", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://upload.wikimedia.org/...")}
+                       <p className="text-xs text-muted-foreground mt-1">
                           Pega una URL de Wikimedia Commons, Wikia (static.wikia.nocookie.net), Firebase Storage o Placehold.co.
                         </p>
                         {editedPhotoUrl ? (
                           isValidEditedPhotoUrl ? (
                             <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center data-ai-hint='image preview'">
-                              <Image
-                                src={editedPhotoUrl}
-                                alt="Previsualización de imagen"
-                                layout="fill"
-                                objectFit="contain"
-                              />
+                              <Image src={editedPhotoUrl} alt="Previsualización de imagen" layout="fill" objectFit="contain" />
                             </div>
-                          ) : (
-                            <p className="mt-1 text-xs text-destructive">URL no válida o de un dominio no permitido para previsualización.</p>
-                          )
-                        ) : (
-                          <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground data-ai-hint='placeholder abstract'">
-                            <ImageOff className="h-10 w-10" />
-                          </div>
-                        )}
+                          ) : ( <p className="mt-1 text-xs text-destructive">URL no válida o de un dominio no permitido para previsualización.</p>)
+                        ) : ( <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground data-ai-hint='placeholder abstract'"><ImageOff className="h-10 w-10" /></div>)}
+                      
+                      {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                        {renderEditInput("alias", "Alias / Otros Nombres", editedAlias, (e) => setEditedAlias(e.target.value), "Ej: La Sacerdotisa del Trueno")}
+                        {renderEditInput("species", "Especie / Raza", editedSpecies, (e) => setEditedSpecies(e.target.value), "Ej: Demonio, Humano")}
+                        {renderEditInput("firstAppearance", "Primera Aparición", editedFirstAppearance, (e) => setEditedFirstAppearance(e.target.value), "Ej: High School DxD, Novela Ligera, 2008")}
+                        {renderEditInput("birthDateOrAge", "Fecha de Nacimiento / Edad", editedBirthDateOrAge, (e) => setEditedBirthDateOrAge(e.target.value), "Ej: Desconocida / Apariencia de 18 años")}
+                        {renderEditInput("birthPlace", "Lugar de Nacimiento", editedBirthPlace, (e) => setEditedBirthPlace(e.target.value), "Ej: Inframundo, Japón")}
+                        {renderEditInput("nationality", "Nacionalidad", editedNationality, (e) => setEditedNationality(e.target.value), "Ej: Estadounidense")}
+                        {renderEditInput("occupation", "Ocupación", editedOccupation, (e) => setEditedOccupation(e.target.value), "Ej: Científico, Artista")}
+                        {renderEditInput("gender", "Género", editedGender, (e) => setEditedGender(e.target.value), "Ej: Masculino, Femenino")}
+                        {renderEditInput("statusLiveOrDead", "Estado (Vivo/Muerto)", editedStatusLiveOrDead, (e) => setEditedStatusLiveOrDead(e.target.value), "Ej: Viva, Muerto")}
+                        {renderEditInput("maritalStatus", "Estado Civil", editedMaritalStatus, (e) => setEditedMaritalStatus(e.target.value), "Ej: Soltero/a, Casado/a")}
+                        {renderEditInput("height", "Altura", editedHeight, (e) => setEditedHeight(e.target.value), "Ej: 1.68 cm")}
+                        {renderEditInput("weight", "Peso", editedWeight, (e) => setEditedWeight(e.target.value), "Ej: 56 kg (Opcional)")}
+                        {renderEditInput("hairColor", "Color de Cabello", editedHairColor, (e) => setEditedHairColor(e.target.value), "Ej: Negro")}
+                        {renderEditInput("eyeColor", "Color de Ojos", editedEyeColor, (e) => setEditedEyeColor(e.target.value), "Ej: Violeta")}
+                        {renderEditTextarea("distinctiveFeatures", "Rasgos Distintivos", editedDistinctiveFeatures, (e) => setEditedDistinctiveFeatures(e.target.value), "Ej: Una cola de caballo alta, cicatriz...", 3)}
                       </div>
 
-                      <div>
-                        <Label htmlFor="description" className="font-semibold text-foreground/90">Descripción</Label>
-                        <Textarea
-                          id="description"
-                          value={editedDescription}
-                          onChange={(e) => setEditedDescription(e.target.value)}
-                          placeholder="Añade una descripción..."
-                          rows={5}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="nationality" className="font-semibold text-foreground/90">Nacionalidad</Label>
-                        <Input
-                          id="nationality"
-                          value={editedNationality}
-                          onChange={(e) => setEditedNationality(e.target.value)}
-                          placeholder="Ej: Estadounidense"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="occupation" className="font-semibold text-foreground/90">Ocupación</Label>
-                        <Input
-                          id="occupation"
-                          value={editedOccupation}
-                          onChange={(e) => setEditedOccupation(e.target.value)}
-                          placeholder="Ej: Científico, Artista"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="gender" className="font-semibold text-foreground/90">Género</Label>
-                        <Input
-                          id="gender"
-                          value={editedGender}
-                          onChange={(e) => setEditedGender(e.target.value)}
-                          placeholder="Ej: Masculino, Femenino"
-                          className="mt-1"
-                        />
-                      </div>
                       <div className="flex justify-end space-x-2 pt-4">
                         <Button variant="outline" onClick={handleEditToggle} disabled={isSaving}>
-                          <X className="mr-2 h-4 w-4" />
-                          Cancelar
+                          <X className="mr-2 h-4 w-4" /> Cancelar
                         </Button>
                         <Button onClick={handleSave} disabled={isSaving}>
-                          {isSaving ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Save className="mr-2 h-4 w-4" />
-                          )}
+                          {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                           {isSaving ? "Guardando..." : "Guardar Cambios"}
                         </Button>
                       </div>
@@ -312,35 +335,23 @@ export default function FigurePage() {
                         <p className="text-base text-muted-foreground">No hay una descripción disponible. {canUserInteract ? "¡Anímate a añadir una!" : "Inicia sesión para añadir una."}</p>
                       )}
 
-                      <div className="space-y-3 pt-4">
-                        <div className="flex items-start">
-                          <UserCircle className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                          <div>
-                            <p className="font-semibold text-foreground/90">Nombre Completo</p>
-                            <p className="text-sm text-muted-foreground">{figure.name || "No disponible"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start">
-                          <Globe className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                          <div>
-                            <p className="font-semibold text-foreground/90">Nacionalidad</p>
-                            <p className="text-sm text-muted-foreground">{figure.nationality || "No disponible"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start">
-                          <Briefcase className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                          <div>
-                            <p className="font-semibold text-foreground/90">Ocupación</p>
-                            <p className="text-sm text-muted-foreground">{figure.occupation || "No disponible"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start">
-                          <Users2 className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                          <div>
-                            <p className="font-semibold text-foreground/90">Género</p>
-                            <p className="text-sm text-muted-foreground">{figure.gender || "No disponible"}</p>
-                          </div>
-                        </div>
+                      <div className="space-y-3 pt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                        {renderDetailItem(UserCircle, "Nombre Completo", figure.name)}
+                        {renderDetailItem(NotepadText, "Alias / Otros Nombres", figure.alias)}
+                        {renderDetailItem(Users2, "Género", figure.gender)}
+                        {renderDetailItem(Zap, "Especie / Raza", figure.species)}
+                        {renderDetailItem(BookOpen, "Primera Aparición", figure.firstAppearance)}
+                        {renderDetailItem(Cake, "Fecha de Nacimiento / Edad", figure.birthDateOrAge)}
+                        {renderDetailItem(MapPin, "Lugar de Nacimiento", figure.birthPlace)}
+                        {renderDetailItem(Globe, "Nacionalidad", figure.nationality)}
+                        {renderDetailItem(Briefcase, "Ocupación", figure.occupation)}
+                        {renderDetailItem(Pulse, "Estado (Vivo/Muerto)", figure.statusLiveOrDead)}
+                        {renderDetailItem(HeartHandshake, "Estado Civil", figure.maritalStatus)}
+                        {renderDetailItem(StretchVertical, "Altura", figure.height)}
+                        {renderDetailItem(Scale, "Peso", figure.weight)}
+                        {renderDetailItem(Palette, "Color de Cabello", figure.hairColor)}
+                        {renderDetailItem(Eye, "Color de Ojos", figure.eyeColor)}
+                        {renderDetailItem(Scan, "Rasgos Distintivos", figure.distinctiveFeatures)}
                       </div>
                     </>
                   )}
@@ -380,7 +391,7 @@ export default function FigurePage() {
               )}
             </TabsContent>
 
-            <TabsContent value="star-rating"> {/* Nuevo Contenido de Pestaña */}
+            <TabsContent value="star-rating">
               {figure && currentUser !== undefined && (
                 <StarRatingVote
                   figureId={figure.id}
@@ -423,3 +434,4 @@ export default function FigurePage() {
     </div>
   );
 }
+
