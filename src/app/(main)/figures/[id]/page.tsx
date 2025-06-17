@@ -23,6 +23,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { StarRatingVote } from "@/components/figures/StarRatingVote";
+import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay"; // Import the new component
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
@@ -393,12 +394,18 @@ export default function FigurePage() {
 
             <TabsContent value="star-rating">
               {figure && currentUser !== undefined && (
-                <StarRatingVote
-                  figureId={figure.id}
-                  figureName={figure.name}
-                  initialStarRatingCounts={figure.starRatingCounts}
-                  currentUser={currentUser}
-                />
+                <>
+                  <RatingSummaryDisplay 
+                    figureName={figure.name} 
+                    starRatingCounts={figure.starRatingCounts} 
+                  />
+                  <StarRatingVote
+                    figureId={figure.id}
+                    figureName={figure.name}
+                    initialStarRatingCounts={figure.starRatingCounts}
+                    currentUser={currentUser}
+                  />
+                </>
               )}
               {(!figure || currentUser === undefined) && (
                 <div className="flex justify-center items-center h-40">
