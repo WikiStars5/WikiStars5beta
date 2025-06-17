@@ -7,7 +7,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   Image as ImageIcon, ImageOff, BarChartHorizontal, Star as StarIcon,
-  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap 
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
+  MessagesSquare // Icono para la nueva pestaña de Comentarios
 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
@@ -248,11 +249,12 @@ export default function FigurePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2 space-y-8">
           <Tabs defaultValue="personal-info" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsList className="grid w-full grid-cols-5 mb-6"> {/* Cambiado de grid-cols-4 a grid-cols-5 */}
               <TabsTrigger value="personal-info" className="text-base py-2.5 flex items-center gap-2"><Info className="h-5 w-5" />Información</TabsTrigger>
               <TabsTrigger value="attitude-poll" className="text-base py-2.5 flex items-center gap-2"><MessageSquare className="h-5 w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-base py-2.5 flex items-center gap-2"><SmilePlus className="h-5 w-5" />Emoción</TabsTrigger>
               <TabsTrigger value="star-rating" className="text-base py-2.5 flex items-center gap-2"><StarIcon className="h-5 w-5" />Calificar</TabsTrigger>
+              <TabsTrigger value="comments" className="text-base py-2.5 flex items-center gap-2"><MessagesSquare className="h-5 w-5" />Comentarios</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal-info">
@@ -413,6 +415,24 @@ export default function FigurePage() {
                 </div>
               )}
             </TabsContent>
+
+            <TabsContent value="comments">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <MessagesSquare className="mr-2 h-6 w-6 text-primary" />
+                    Comentarios sobre {figure.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    La sección de comentarios estará disponible próximamente. ¡Vuelve pronto para compartir tu opinión!
+                  </p>
+                  {/* Aquí es donde iría un sistema de comentarios como Disqus o uno personalizado si se implementara */}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
           </Tabs>
         </div>
 
