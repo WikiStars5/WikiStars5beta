@@ -50,9 +50,9 @@ service cloud.firestore {
              request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
 
-    // Ensures core figure data (name, id, creation, status) and all text description fields are unchanged.
-    // Used when only counts should be changing.
-    function figureProfileAndCoreDataUnchanged() {
+    // Ensures core figure data (name, id, creation, status) AND all text description fields are unchanged.
+    // Used when only counts should be changing by non-admins.
+    function figureProfileAndCoreDataUnchangedForCounts() {
       return request.resource.data.id == resource.data.id &&
              request.resource.data.name == resource.data.name &&
              request.resource.data.nameLower == resource.data.nameLower &&
@@ -73,26 +73,26 @@ service cloud.firestore {
              request.resource.data.hairColor == resource.data.hairColor &&
              request.resource.data.eyeColor == resource.data.eyeColor &&
              request.resource.data.distinctiveFeatures == resource.data.distinctiveFeatures &&
-             request.resource.data.createdAt == resource.data.createdAt &&
-             request.resource.data.status == resource.data.status;
+             request.resource.data.createdAt == resource.data.createdAt && // Assuming createdAt is set on creation and doesn't change
+             request.resource.data.status == resource.data.status; // Assuming status doesn't change by non-admin count updates
     }
 
     // Ensures counts and other core fields (name, id, creation, status) are unchanged.
-    // Used when only text description fields should be changing.
-    function figureCountsAndCoreDataUnchanged() {
+    // Used when only text description fields should be changing by non-admins.
+    function figureCountsAndCoreDataUnchangedForProfileEdit() {
       return request.resource.data.id == resource.data.id &&
              request.resource.data.name == resource.data.name &&
              request.resource.data.nameLower == resource.data.nameLower &&
              request.resource.data.perceptionCounts == resource.data.perceptionCounts &&
              request.resource.data.attitudeCounts == resource.data.attitudeCounts &&
              request.resource.data.starRatingCounts == resource.data.starRatingCounts &&
-             request.resource.data.createdAt == resource.data.createdAt &&
-             request.resource.data.status == resource.data.status;
+             request.resource.data.createdAt == resource.data.createdAt && // Assuming createdAt is set on creation and doesn't change
+             request.resource.data.status == resource.data.status; // Assuming status doesn't change by non-admin profile edits
     }
 
     // --- Rules for 'figures' collection ---
     match /figures/{figureId} {
-      allow get: if true;
+      allow get: if true; // Public read
 
       allow create: if isAdmin() &&
                        request.resource.data.nameLower == request.resource.data.name.toLowerCase();
@@ -100,8 +100,10 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       allow update: if isAuthenticatedNonAnonymous() && (
-        (isAdmin() && request.resource.data.nameLower == request.resource.data.name.toLowerCase()) || // Admin can update (almost) all fields
-        ( // Non-admin, non-anonymous users:
+        // Admin can update almost all fields (ensure nameLower is consistent)
+        (isAdmin() && request.resource.data.nameLower == request.resource.data.name.toLowerCase()) ||
+        // Non-admin, non-anonymous users:
+        (
           // Path 1: Updating specific profile text/details fields
           (
             request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -110,102 +112,107 @@ service cloud.firestore {
               'statusLiveOrDead', 'maritalStatus', 'height', 'weight',
               'hairColor', 'eyeColor', 'distinctiveFeatures'
             ]) &&
-            figureCountsAndCoreDataUnchanged() // Ensures counts, name, createdAt, status are NOT changed
+            figureCountsAndCoreDataUnchangedForProfileEdit() // Ensures counts, name, createdAt, status are NOT changed
           ) ||
           // Path 2: Updating one or more count fields (perception, attitude, stars)
           (
             request.resource.data.diff(resource.data).affectedKeys().hasOnly(
                 ['perceptionCounts', 'attitudeCounts', 'starRatingCounts']
             ) &&
-            request.resource.data.diff(resource.data).hasAny( // at least one count field must actually change
-                ['perceptionCounts', 'attitudeCounts', 'starRatingCounts']
-            ) &&
-            figureProfileAndCoreDataUnchanged() // Ensures all profile text fields, name, createdAt, status are NOT changed
+            figureProfileAndCoreDataUnchangedForCounts() // Ensures all profile text fields, name, createdAt, status are NOT changed
           )
         )
       );
     }
 
     match /figures {
-      allow list: if true;
+      allow list: if true; // Public list
     }
     // --- End of rules for 'figures' collection ---
 
+
+    // --- Generic rules for user-specific data (perceptions, attitudes, starRatings) ---
+    function isOwnerOfUserSpecificDoc(collectionName) {
+      // Example path: /databases/(default)/documents/userPerceptions/USERID_FIGUREID
+      // request.path.split('/') will give: ["", "databases", "(default)", "documents", "userPerceptions", "USERID_FIGUREID"]
+      // So, the docId is at index 5 for these collections.
+      // For /users/{userId}, it would be index 4. This function is specific to votes.
+      let docId = request.path.split('/')[5];
+      let userIdFromDocId = docId.split('_')[0];
+      return isAuthenticatedNonAnonymous() &&
+             request.auth.uid == resource.data.userId && // Check existing resource data
+             request.auth.uid == userIdFromDocId;        // Check against docId pattern
+    }
+
+    function isCreatingOwnValidUserSpecificDoc(collectionName, allowedFields, allowedValuesMap) {
+      let docId = request.path.split('/')[5];
+      let userIdFromDocId = docId.split('_')[0];
+      let figureIdFromDocId = docId.split('_')[1];
+      return isAuthenticatedNonAnonymous() &&
+             request.auth.uid == request.resource.data.userId &&
+             request.auth.uid == userIdFromDocId &&
+             request.resource.data.figureId == figureIdFromDocId &&
+             request.resource.data.keys().hasAll(allowedFields) &&
+             request.resource.data.timestamp == request.time &&
+             (collectionName == 'userPerceptions' ? request.resource.data.emotion in allowedValuesMap.emotions : true) &&
+             (collectionName == 'userAttitudes' ? request.resource.data.attitude in allowedValuesMap.attitudes : true) &&
+             (collectionName == 'userStarRatings' ? request.resource.data.starValue in allowedValuesMap.starValues : true);
+    }
+
+    function canUpdateUserSpecificDoc(collectionName, allowedUpdateFields, allowedValuesMap) {
+      return isOwnerOfUserSpecificDoc(collectionName) &&
+             request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedUpdateFields) &&
+             request.resource.data.timestamp == request.time &&
+             (collectionName == 'userPerceptions' ? request.resource.data.emotion in allowedValuesMap.emotions : true) &&
+             (collectionName == 'userAttitudes' ? request.resource.data.attitude in allowedValuesMap.attitudes : true) &&
+             (collectionName == 'userStarRatings' ? request.resource.data.starValue in allowedValuesMap.starValues : true);
+    }
+
     // --- Rules for 'userPerceptions' collection ---
     match /userPerceptions/{perceptionDocId} {
-      function getUserIdFromDocIdPerc() { return perceptionDocId.split('_')[0]; }
-      function isOwnerNonAnonymousPerc() {
-        return isAuthenticatedNonAnonymous() &&
-               request.auth.uid == resource.data.userId &&
-               request.auth.uid == getUserIdFromDocIdPerc();
-      }
-      function isCreatingOwnValidDocNonAnonymousPerc() {
-        return isAuthenticatedNonAnonymous() &&
-               request.auth.uid == request.resource.data.userId &&
-               request.auth.uid == getUserIdFromDocIdPerc() &&
-               request.resource.data.figureId == perceptionDocId.split('_')[1] &&
-               request.resource.data.keys().hasAll(['userId', 'figureId', 'emotion', 'timestamp']) &&
-               request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'] &&
-               request.resource.data.timestamp == request.time;
-      }
-      allow read, delete: if isOwnerNonAnonymousPerc();
-      allow update: if isOwnerNonAnonymousPerc() &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['emotion', 'timestamp']) &&
-                      request.resource.data.emotion in ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia'] &&
-                      request.resource.data.timestamp == request.time;
-      allow create: if isCreatingOwnValidDocNonAnonymousPerc();
+      allow read, delete: if isOwnerOfUserSpecificDoc('userPerceptions');
+      allow create: if isCreatingOwnValidUserSpecificDoc(
+        'userPerceptions',
+        ['userId', 'figureId', 'emotion', 'timestamp'],
+        {'emotions': ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia']}
+      );
+      allow update: if canUpdateUserSpecificDoc(
+        'userPerceptions',
+        ['emotion', 'timestamp'],
+        {'emotions': ['alegria', 'envidia', 'tristeza', 'miedo', 'desagrado', 'furia']}
+      );
     }
     // --- End of rules for 'userPerceptions' collection ---
 
     // --- Rules for 'userAttitudes' collection ---
     match /userAttitudes/{attitudeDocId} {
-      function getUserIdFromDocIdAtt() { return attitudeDocId.split('_')[0]; }
-      function isOwnerNonAnonymousAtt() {
-        return isAuthenticatedNonAnonymous() &&
-               request.auth.uid == resource.data.userId &&
-               request.auth.uid == getUserIdFromDocIdAtt();
-      }
-      function isCreatingOwnValidDocNonAnonymousAtt() {
-        return isAuthenticatedNonAnonymous() &&
-               request.auth.uid == request.resource.data.userId &&
-               request.auth.uid == getUserIdFromDocIdAtt() &&
-               request.resource.data.figureId == attitudeDocId.split('_')[1] &&
-               request.resource.data.keys().hasAll(['userId', 'figureId', 'attitude', 'timestamp']) &&
-               request.resource.data.attitude in ['neutral', 'fan', 'simp', 'hater'] &&
-               request.resource.data.timestamp == request.time;
-      }
-      allow read, delete: if isOwnerNonAnonymousAtt();
-      allow update: if isOwnerNonAnonymousAtt() &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attitude', 'timestamp']) &&
-                      request.resource.data.attitude in ['neutral', 'fan', 'simp', 'hater'] &&
-                      request.resource.data.timestamp == request.time;
-      allow create: if isCreatingOwnValidDocNonAnonymousAtt();
+      allow read, delete: if isOwnerOfUserSpecificDoc('userAttitudes');
+      allow create: if isCreatingOwnValidUserSpecificDoc(
+        'userAttitudes',
+        ['userId', 'figureId', 'attitude', 'timestamp'],
+        {'attitudes': ['neutral', 'fan', 'simp', 'hater']}
+      );
+      allow update: if canUpdateUserSpecificDoc(
+        'userAttitudes',
+        ['attitude', 'timestamp'],
+        {'attitudes': ['neutral', 'fan', 'simp', 'hater']}
+      );
     }
     // --- End of rules for 'userAttitudes' collection ---
 
     // --- Rules for 'userStarRatings' collection ---
     match /userStarRatings/{starRatingDocId} {
-      function getUserIdFromDocIdStar() { return starRatingDocId.split('_')[0]; }
-      function isOwnerNonAnonymousStar() {
-        return isAuthenticatedNonAnonymous() &&
-               request.auth.uid == resource.data.userId &&
-               request.auth.uid == getUserIdFromDocIdStar();
-      }
-      function isCreatingOwnValidDocNonAnonymousStar() {
-        return isAuthenticatedNonAnonymous() &&
-               request.auth.uid == request.resource.data.userId &&
-               request.auth.uid == getUserIdFromDocIdStar() &&
-               request.resource.data.figureId == starRatingDocId.split('_')[1] &&
-               request.resource.data.keys().hasAll(['userId', 'figureId', 'starValue', 'timestamp']) &&
-               request.resource.data.starValue in [1, 2, 3, 4, 5] && 
-               request.resource.data.timestamp == request.time;
-      }
-      allow read, delete: if isOwnerNonAnonymousStar();
-      allow update: if isOwnerNonAnonymousStar() &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['starValue', 'timestamp']) &&
-                      request.resource.data.starValue in [1, 2, 3, 4, 5] &&
-                      request.resource.data.timestamp == request.time;
-      allow create: if isCreatingOwnValidDocNonAnonymousStar();
+      allow read, delete: if isOwnerOfUserSpecificDoc('userStarRatings');
+      allow create: if isCreatingOwnValidUserSpecificDoc(
+        'userStarRatings',
+        ['userId', 'figureId', 'starValue', 'timestamp'],
+        {'starValues': [1, 2, 3, 4, 5]}
+      );
+      allow update: if canUpdateUserSpecificDoc(
+        'userStarRatings',
+        ['starValue', 'timestamp'],
+        {'starValues': [1, 2, 3, 4, 5]}
+      );
     }
     // --- End of rules for 'userStarRatings' collection ---
 
