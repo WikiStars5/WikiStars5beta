@@ -67,7 +67,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
       toast({ title: "Error", description: "No se pudieron cargar los conteos de estrellas.", variant: "destructive" });
       setFigureStarRatingCounts(defaultStarRatingCountsData);
       setTotalVotes(0);
-      setIsComponentLoading(false);
+      //setIsComponentLoading(false); // Defer until user's rating is also checked
     });
 
     let unsubscribeUserStarRating: Unsubscribe | undefined;
@@ -105,7 +105,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
       return;
     }
     if (isLoadingStarAction) return;
-    if (!currentUser) return;
+    if (!currentUser) return; // Should be covered by canUserVote, but good for type safety
 
     setIsLoadingStarAction(starValueClicked);
 
@@ -113,8 +113,10 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
     const userStarRatingDocId = `${currentUser.uid}_${figureId}`;
     const userStarRatingDocRef = doc(db, "userStarRatings", userStarRatingDocId);
 
-    const previousSelectedStarValue = selectedStarRating;
-    const newStarValueToSet = previousSelectedStarValue === starValueClicked ? null : starValueClicked;
+    const previousSelectedUserRating = selectedStarRating;
+    // If user clicks the same star rating they already selected, they are deselecting it.
+    // Otherwise, they are selecting the new one (or the first one).
+    const newStarValueToSetForUser = previousSelectedUserRating === starValueClicked ? null : starValueClicked;
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -127,37 +129,45 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
         const currentCounts = (currentFigureData?.starRatingCounts || { ...defaultStarRatingCountsData }) as Record<StarValueAsString, number>;
         const newCounts = { ...currentCounts };
 
-        if (previousSelectedStarValue) {
-          newCounts[previousSelectedStarValue.toString() as StarValueAsString] = Math.max(0, (newCounts[previousSelectedStarValue.toString() as StarValueAsString] || 0) - 1);
-        }
-        if (newStarValueToSet) {
-          newCounts[newStarValueToSet.toString() as StarValueAsString] = (newCounts[newStarValueToSet.toString() as StarValueAsString] || 0) + 1;
+        // Decrement count for the previously selected star rating, if any
+        if (previousSelectedUserRating) {
+          const prevKey = previousSelectedUserRating.toString() as StarValueAsString;
+          newCounts[prevKey] = Math.max(0, (newCounts[prevKey] || 0) - 1);
         }
 
+        // Increment count for the new star rating, if one is being set (not deselected)
+        if (newStarValueToSetForUser) {
+          const newKey = newStarValueToSetForUser.toString() as StarValueAsString;
+          newCounts[newKey] = (newCounts[newKey] || 0) + 1;
+        }
+        
         transaction.update(figureDocRef, { starRatingCounts: newCounts });
       });
 
-      if (newStarValueToSet) {
+      // After the transaction, update or delete the user's individual rating document
+      if (newStarValueToSetForUser) {
         await setDoc(userStarRatingDocRef, {
           userId: currentUser.uid,
           figureId: figureId,
-          starValue: newStarValueToSet,
+          starValue: newStarValueToSetForUser,
           timestamp: serverTimestamp(),
         });
-        toast({ title: "Calificación Guardada", description: `Has calificado a ${figureName} con ${newStarValueToSet} estrella(s).` });
+        toast({ title: "Calificación Guardada", description: `Has calificado a ${figureName} con ${newStarValueToSetForUser} estrella(s).` });
       } else {
+        // If newStarValueToSetForUser is null, it means the user deselected their rating
         await deleteDoc(userStarRatingDocRef);
         toast({ title: "Calificación Eliminada", description: `Has eliminado tu calificación para ${figureName}.` });
       }
-      //setSelectedStarRating(newStarValueToSet); // Handled by onSnapshot
+      // UI state for selectedStarRating will be updated by the onSnapshot listener
+      // setSelectedStarRating(newStarValueToSetForUser); // Not strictly needed due to onSnapshot, but can make UI feel faster
 
     } catch (error: any) {
       console.error("Error rating figure:", error);
       let errorMessage = "No se pudo registrar tu calificación.";
-      if (error.message && error.message.includes("Missing or insufficient permissions")) {
+      if (error.message && (error.message.includes("PERMISSION_DENIED") || error.message.includes("Missing or insufficient permissions"))) {
         errorMessage = "Error de permisos. Verifica las reglas de Firestore.";
       } else if (error.message) {
-        errorMessage = error.message;
+        errorMessage = `Detalles: ${error.message}`;
       }
       toast({ title: "Error al Calificar", description: errorMessage, variant: "destructive" });
     } finally {
@@ -239,4 +249,3 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
     </Card>
   );
 };
-
