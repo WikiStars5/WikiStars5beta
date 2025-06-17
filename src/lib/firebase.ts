@@ -55,8 +55,20 @@ service cloud.firestore {
     match /figures/{figureId} {
       allow get: if true; // PUBLIC ACCESS: Allow anyone to read (get) individual figure documents.
 
-      allow create: if isAdmin(); // ADMIN-ONLY can create figures directly.
-      allow delete: if isAdmin(); // ADMIN-ONLY can delete.
+      // ADMIN-ONLY can create and delete figures.
+      allow create: if isAdmin() &&
+                       request.resource.data.nameLower == request.resource.data.name.toLowerCase() &&
+                       (!request.resource.data.keys().hasAny(['averageRating', 'totalRatings', 'ratingDistribution']) || // Allow creation without these
+                        (request.resource.data.averageRating == 0 &&
+                         request.resource.data.totalRatings == 0 &&
+                         request.resource.data.ratingDistribution['1'] == 0 &&
+                         request.resource.data.ratingDistribution['2'] == 0 &&
+                         request.resource.data.ratingDistribution['3'] == 0 &&
+                         request.resource.data.ratingDistribution['4'] == 0 &&
+                         request.resource.data.ratingDistribution['5'] == 0
+                        )
+                       );
+      allow delete: if isAdmin();
 
       // UPDATES to 'figures'
       allow update: if isAuthenticatedNonAnonymous() &&
@@ -71,7 +83,6 @@ service cloud.firestore {
                           // Case 1: Updating rating aggregates (via submitCommentAndRatingAction)
                           (
                             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalRatings', 'averageRating', 'ratingDistribution']) &&
-                            request.resource.data.totalRatings == resource.data.totalRatings + 1 && // Verify integrity of count
                             // Ensure other core fields are not changed during this specific update type
                             request.resource.data.name == resource.data.name &&
                             request.resource.data.description == resource.data.description &&
@@ -121,17 +132,10 @@ service cloud.firestore {
                        request.resource.data.likes == 0 &&
                        request.resource.data.dislikes == 0 &&
                        (request.resource.data.userPhotoUrl == null || (request.resource.data.userPhotoUrl is string && request.resource.data.userPhotoUrl.matches('https?://.+')));
-
-      // For LIKES/DISLIKES on comments (implement later)
+      
+      // Update rule for likes/dislikes (to be implemented)
       // allow update: if isAuthenticatedNonAnonymous() &&
-      //                  (
-      //                    ( // Owner can edit text/rating
-      //                      request.auth.uid == resource.data.userId &&
-      //                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'rating', 'updatedAt']) &&
-      //                      (request.resource.data.keys().has('updatedAt') ? request.resource.data.updatedAt == request.time : true)
-      //                    ) 
-      //                    // Add rules for updating likes/dislikes by any authenticated user later
-      //                  );
+      //                  request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'dislikes']);
 
       allow delete: if isAuthenticatedNonAnonymous() && (request.auth.uid == resource.data.userId || isAdmin());
     }
@@ -240,4 +244,3 @@ service firebase.storage {
   }
 }
 */
-

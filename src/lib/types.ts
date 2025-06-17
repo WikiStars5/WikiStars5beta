@@ -25,7 +25,7 @@ export interface Figure {
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
   createdAt?: string; // ISO string
-  status?: 'approved' | 'pending_verification' | 'rejected';
+  status?: 'approved' | 'rejected'; // 'pending_verification' might be removed if only admins create
   // Campos para el sistema de calificación estilo Play Store
   averageRating: number; // Aseguramos que siempre exista, default 0
   totalRatings: number;  // Aseguramos que siempre exista, default 0
@@ -84,4 +84,3 @@ export interface UserProfile {
   createdAt: string; // ISO string
   lastLoginAt?: string; // ISO string
 }
-

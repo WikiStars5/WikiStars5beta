@@ -9,8 +9,7 @@ import { ThemeToggleButton } from './ThemeToggleButton';
 // Button and PlusCircle removed as "Proponer Figura" is being removed
 // import { Button } from '@/components/ui/button';
 // import { PlusCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import type { User as FirebaseUser } from 'firebase/auth'; // onAuthStateChanged and auth removed as they are not used now after removing propose figure button logic
+// onAuthStateChanged and auth removed as they are not used now after removing propose figure button logic
 // import { onAuthStateChanged } from 'firebase/auth';
 // import { auth } from '@/lib/firebase';
 
