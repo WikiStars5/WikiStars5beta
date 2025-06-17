@@ -88,6 +88,7 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
     starRatingCounts: data.starRatingCounts || { ...defaultStarRatingCounts },
+    commentCount: data.commentCount || 0, // Añadido el contador de comentarios
     createdAt: createdAtString,
     status: data.status || 'approved',
   };
@@ -101,6 +102,7 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
       attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
       starRatingCounts: figure.starRatingCounts || { ...defaultStarRatingCounts },
+      commentCount: figure.commentCount || 0, // Inicializar contador de comentarios
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
@@ -118,7 +120,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
     // Destructure all known fields to ensure only defined ones are passed.
     // This prevents accidental writes of undefined fields if they are not part of the partial update.
     const { 
-        id, createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts,
+        id, createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts, commentCount,
         // List all other Figure fields here
         name, photoUrl, description, nationality, occupation, gender, alias, species,
         firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
@@ -149,6 +151,8 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
     if (distinctiveFeatures !== undefined) updatePayload.distinctiveFeatures = distinctiveFeatures;
     if (status !== undefined) updatePayload.status = status;
     if (nameLower !== undefined) updatePayload.nameLower = nameLower;
+    // commentCount is typically updated by backend logic/Cloud Functions, not directly in this generic update
+    if (commentCount !== undefined) updatePayload.commentCount = commentCount; 
 
     // Handle count objects carefully
     if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;

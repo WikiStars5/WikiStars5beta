@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data"; 
 import type { Figure } from "@/lib/types";
-import { PlusCircle, Edit3 } from "lucide-react";
+import { PlusCircle, Edit3, MessageSquare } from "lucide-react"; // Added MessageSquare
 import Link from "next/link";
 import { AdminFigureImage } from "@/components/admin/AdminFigureImage";
 import { AdminDeleteFigureButton } from "@/components/admin/AdminDeleteFigureButton";
@@ -36,7 +36,7 @@ export default async function AdminFiguresPage() {
                   <TableHead className="w-[80px]">Imagen</TableHead>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Descripción</TableHead>
-                  {/* Removed Average Rating column as it's no longer part of Figure data */}
+                  <TableHead className="w-[100px] text-center">Comentarios</TableHead> 
                   <TableHead className="text-right w-[100px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -53,7 +53,12 @@ export default async function AdminFiguresPage() {
                     </TableCell>
                     <TableCell className="font-medium">{figure.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground truncate max-w-xs">{figure.description}</TableCell>
-                    {/* Removed TableCell for Average Rating */}
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center">
+                        <MessageSquare className="h-4 w-4 mr-1 text-muted-foreground" />
+                        {figure.commentCount || 0}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" asChild className="mr-1">
                         <Link href={`/admin/figures/${figure.id}/edit`}>

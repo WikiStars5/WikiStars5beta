@@ -32,19 +32,32 @@ export { app };
 
 // === REGLAS DE SEGURIDAD DE FIRESTORE (APLICAR EN CONSOLA FIREBASE) ===
 // Ve a Firebase Console -> Firestore Database -> Rules.
-// REEMPLAZA TUS REGLAS EXISTENTES CON ESTAS:
+// REEMPLAZA TUS REGLAS EXISTENTES CON ESTAS (SON MUY PERMISIVAS, SOLO PARA DESARROLLO):
 /*
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Función para verificar si el usuario es el administrador
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // REEMPLAZA CON TU ADMIN UID REAL
+    }
 
-    // ADVERTENCIA: ESTAS REGLAS SON ALTAMENTE PERMISIVAS Y SOLO PARA DESARROLLO.
-    // NO USAR EN PRODUCCIÓN.
+    // Función para verificar si el usuario está autenticado y no es anónimo
+    function isAuthenticatedNonAnonymous() {
+      return request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+    }
 
-    // Permite leer y escribir en todas las colecciones sin restricciones.
+    // Función para verificar si el usuario es el propietario del documento específico de voto/percepción
+    // El docId debe ser 'userId_figureId'
+    function isOwnerOfUserSpecificDoc(docId) {
+      return isAuthenticatedNonAnonymous() && request.auth.uid == docId.split('_')[0];
+    }
+    
+    // Permite leer y escribir en todas las colecciones sin restricciones (SOLO PARA DESARROLLO)
     match /figures/{figureId} {
-      allow read, write: if true;
+      allow read, write: if true; 
     }
 
     match /userPerceptions/{perceptionDocId} {
@@ -58,6 +71,57 @@ service cloud.firestore {
     match /userStarRatings/{starRatingDocId} {
       allow read, write: if true;
     }
+
+    // --- REGLAS PARA LA COLECCIÓN userComments ---
+    match /userComments/{commentId} {
+      // Cualquiera puede leer comentarios
+      allow read: if true;
+
+      // Solo usuarios autenticados y no anónimos pueden crear comentarios
+      allow create: if isAuthenticatedNonAnonymous() &&
+                      request.resource.data.userId == request.auth.uid &&
+                      request.resource.data.figureId != null &&
+                      request.resource.data.text != null && request.resource.data.text.size() > 0 && request.resource.data.text.size() < 1000 &&
+                      request.resource.data.username != null &&
+                      // starRatingGiven puede ser null
+                      request.resource.data.likes == 0 &&
+                      request.resource.data.dislikes == 0 &&
+                      request.resource.data.likedBy.size() == 0 &&
+                      request.resource.data.dislikedBy.size() == 0 &&
+                      request.resource.data.createdAt == request.time; // Forzar timestamp del servidor
+
+      // El autor del comentario puede editar el texto y updatedAt.
+      // Otros usuarios autenticados pueden actualizar likes/dislikes y los arrays likedBy/dislikedBy.
+      allow update: if isAuthenticatedNonAnonymous() &&
+                      (
+                        // Autor editando su propio comentario (solo texto y updatedAt)
+                        (resource.data.userId == request.auth.uid &&
+                         request.resource.data.text != resource.data.text && // Texto debe cambiar
+                         request.resource.data.text.size() > 0 && request.resource.data.text.size() < 1000 &&
+                         request.resource.data.updatedAt == request.time && // Forzar server timestamp para updatedAt
+                         // Asegurar que solo estos campos cambien
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt']))
+                        ||
+                        // Otro usuario dando like/dislike (no el autor)
+                        (resource.data.userId != request.auth.uid &&
+                         (request.resource.data.likes != resource.data.likes ||
+                          request.resource.data.dislikes != resource.data.dislikes ||
+                          request.resource.data.likedBy != resource.data.likedBy ||
+                          request.resource.data.dislikedBy != resource.data.dislikedBy
+                         ) &&
+                         // Asegurar que solo estos campos cambien y los datos core del comentario no
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'dislikes', 'likedBy', 'dislikedBy']) &&
+                         request.resource.data.figureId == resource.data.figureId &&
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.text == resource.data.text &&
+                         request.resource.data.createdAt == resource.data.createdAt
+                        )
+                      );
+      
+      // El autor del comentario o un administrador pueden eliminarlo
+      allow delete: if isAuthenticatedNonAnonymous() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+    // --- Fin de reglas para userComments ---
 
     match /users/{userId} {
       allow read, write: if true;
@@ -87,5 +151,4 @@ service firebase.storage {
   }
 }
 */
-
 

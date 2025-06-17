@@ -47,6 +47,7 @@ export interface Figure {
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
   starRatingCounts?: Record<StarValueAsString, number>;
+  commentCount?: number; // Contador de comentarios
   createdAt?: string; // ISO string
   status?: 'approved' | 'rejected'; // For proposals, not directly used now
 }
@@ -70,6 +71,22 @@ export interface UserStarRating {
   figureId: string;
   starValue: StarValue; // 1, 2, 3, 4, or 5
   timestamp: Timestamp; // Firestore Timestamp
+}
+
+export interface UserComment {
+  id: string; // Document ID
+  figureId: string;
+  userId: string;
+  username: string; // Denormalized for display
+  userPhotoURL: string | null; // Denormalized for display
+  text: string;
+  starRatingGiven: StarValue | null; // User's star rating for the FIGURE at the time of comment
+  createdAt: Timestamp; // Firestore Timestamp for server-side ordering
+  updatedAt?: Timestamp | null;
+  likes: number;
+  dislikes: number;
+  likedBy: string[]; // Array of user IDs
+  dislikedBy: string[]; // Array of user IDs
 }
 
 
