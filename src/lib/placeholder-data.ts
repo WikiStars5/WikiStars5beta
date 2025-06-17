@@ -27,13 +27,7 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   hater: 0,
 };
 
-const defaultRatingDistribution = {
-  '1': 0,
-  '2': 0,
-  '3': 0,
-  '4': 0,
-  '5': 0,
-};
+// Default rating distribution removed
 
 const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data();
@@ -53,7 +47,7 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
         if (!isNaN(date.getTime())) {
             createdAtString = date.toISOString();
         } else {
-            createdAtString = undefined; 
+            createdAtString = undefined;
         }
       } catch (e) {
         createdAtString = undefined;
@@ -75,9 +69,7 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     gender: data.gender || "",
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
-    averageRating: data.averageRating || 0,
-    totalRatings: data.totalRatings || 0,
-    ratingDistribution: data.ratingDistribution || { ...defaultRatingDistribution },
+    // Rating fields removed
     createdAt: createdAtString,
     status: data.status || 'approved',
   };
@@ -90,9 +82,7 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
       attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
-      averageRating: figure.averageRating || 0,
-      totalRatings: figure.totalRatings || 0,
-      ratingDistribution: figure.ratingDistribution || { ...defaultRatingDistribution },
+      // Rating fields removed
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
@@ -107,13 +97,11 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: string }): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    const { createdAt, nameLower, perceptionCounts, attitudeCounts, averageRating, totalRatings, ratingDistribution, ...figureDataToUpdateRest } = figure;
+    // Rating fields removed from destructuring and updatePayload
+    const { createdAt, nameLower, perceptionCounts, attitudeCounts, ...figureDataToUpdateRest } = figure;
     const updatePayload: Partial<Figure> = {...figureDataToUpdateRest};
     if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
     if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
-    if (averageRating !== undefined) updatePayload.averageRating = averageRating;
-    if (totalRatings !== undefined) updatePayload.totalRatings = totalRatings;
-    if (ratingDistribution) updatePayload.ratingDistribution = ratingDistribution;
     if (nameLower) updatePayload.nameLower = nameLower;
 
 
@@ -152,7 +140,7 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
 export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef ); 
+    const q = query(figuresCollectionRef );
     const querySnapshot = await getDocs(q);
 
 
@@ -163,7 +151,7 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
         figures.push(mapDocToFigure(docSnap));
       });
     }
-    return figures.sort((a, b) => a.name.localeCompare(b.name)); 
+    return figures.sort((a, b) => a.name.localeCompare(b.name));
   } catch (error: any) {
     console.error("Error fetching all figures from Firestore. Message:", error.message);
     if (String(error.message).toLowerCase().includes("permission")) {
@@ -174,14 +162,14 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
         console.error("Firestore index error: The query (likely involving orderBy or where clauses) requires a composite index that is missing.");
         console.error("ACTION: Check the BROWSER'S DEVELOPER CONSOLE (F12) for a more detailed error message from Firestore. It usually provides a DIRECT LINK to create the necessary index. Click that link.");
     }
-    return []; 
+    return [];
   }
 };
 
 export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef, limit(count) ); 
+    const q = query(figuresCollectionRef, limit(count) );
     const querySnapshot = await getDocs(q);
     let figures: Figure[] = [];
     querySnapshot.forEach((docSnap) => {
@@ -212,4 +200,3 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
     return [];
   }
 }
-

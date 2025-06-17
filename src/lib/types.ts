@@ -25,17 +25,8 @@ export interface Figure {
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
   createdAt?: string; // ISO string
-  status?: 'approved' | 'rejected'; // 'pending_verification' might be removed if only admins create
-  // Campos para el sistema de calificación estilo Play Store
-  averageRating: number; // Aseguramos que siempre exista, default 0
-  totalRatings: number;  // Aseguramos que siempre exista, default 0
-  ratingDistribution: { // Aseguramos que siempre exista
-    '1': number; // count for 1 star
-    '2': number; // count for 2 stars
-    '3': number; // count for 3 stars
-    '4': number; // count for 4 stars
-    '5': number; // count for 5 stars
-  };
+  status?: 'approved' | 'rejected';
+  // Rating fields removed
 }
 
 export interface UserPerception {
@@ -52,20 +43,7 @@ export interface UserAttitude {
   timestamp: Timestamp; // Firestore Timestamp
 }
 
-export interface CommentData {
-  id: string;
-  figureId: string;
-  userId: string;
-  username: string;
-  userPhotoUrl?: string | null;
-  rating: number; // 1-5
-  text: string;
-  createdAt: Timestamp; // Firestore Timestamp
-  likes: number;
-  dislikes: number;
-  // Potentially add 'updatedAt' if comments can be edited
-}
-
+// CommentData interface removed
 
 export interface Country {
   name: string;

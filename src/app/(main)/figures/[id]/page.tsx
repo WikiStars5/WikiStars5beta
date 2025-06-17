@@ -18,8 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
-import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
-import { CommentSection } from "@/components/comments/CommentSection"; // Importado
+// RatingSummaryDisplay and CommentSection imports removed
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
@@ -40,7 +39,7 @@ export default function FigurePage() {
   const [editedNationality, setEditedNationality] = useState("");
   const [editedOccupation, setEditedOccupation] = useState("");
   const [editedGender, setEditedGender] = useState("");
-  const [editedPhotoUrl, setEditedPhotoUrl] = useState(""); 
+  const [editedPhotoUrl, setEditedPhotoUrl] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -60,7 +59,7 @@ export default function FigurePage() {
       setEditedNationality(currentFigure.nationality || "");
       setEditedOccupation(currentFigure.occupation || "");
       setEditedGender(currentFigure.gender || "");
-      setEditedPhotoUrl(currentFigure.photoUrl || ""); 
+      setEditedPhotoUrl(currentFigure.photoUrl || "");
     }
   }, []);
 
@@ -100,7 +99,7 @@ export default function FigurePage() {
       return;
     }
     if (isEditing) {
-      resetEditFields(figure); 
+      resetEditFields(figure);
     }
     setIsEditing(!isEditing);
   };
@@ -118,14 +117,14 @@ export default function FigurePage() {
         nationality: editedNationality,
         occupation: editedOccupation,
         gender: editedGender,
-        photoUrl: editedPhotoUrl.trim() || 'https://placehold.co/400x600.png', 
+        photoUrl: editedPhotoUrl.trim() || 'https://placehold.co/400x600.png',
       };
 
       await updateFigureInFirestore(updatedFigureData);
 
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
       setIsEditing(false);
-      await fetchFigureData(); 
+      await fetchFigureData();
     } catch (error: any) {
       console.error("Error saving figure details:", error);
       let errorMessage = "No se pudo guardar la información.";
@@ -381,18 +380,7 @@ export default function FigurePage() {
             </TabsContent>
           </Tabs>
 
-          {figure && (
-            <RatingSummaryDisplay
-              figureName={figure.name}
-              averageRating={figure.averageRating}
-              totalRatings={figure.totalRatings}
-              ratingDistribution={figure.ratingDistribution}
-            />
-          )}
-          
-          {figure && (
-            <CommentSection figureId={figure.id} figureName={figure.name} />
-          )}
+          {/* RatingSummaryDisplay and CommentSection removed */}
 
         </div>
 
@@ -403,7 +391,6 @@ export default function FigurePage() {
             <AlertDescription className="text-sm">
               La información personal y la imagen de perfil pueden ser editadas por usuarios con cuenta.
               ¡Expresa tu actitud y percepción emocional votando si has iniciado sesión con una cuenta!
-              Las calificaciones y reseñas te permitirán compartir tu opinión detallada.
             </AlertDescription>
           </Alert>
 
@@ -422,4 +409,3 @@ export default function FigurePage() {
     </div>
   );
 }
-
