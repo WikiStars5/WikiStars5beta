@@ -39,82 +39,91 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Admin UID ---
+    // --- Helper Functions ---
     function isAdmin() {
       // IMPORTANTE: Reemplaza 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' con TU Admin UID real.
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
 
-    // --- Authenticated Non-Anonymous User ---
     function isAuthenticatedNonAnonymous() {
       return request.auth != null &&
              request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
-    
-    function figureCoreFieldsUnchanged() {
-      return request.resource.data.name == resource.data.name &&
+
+    // Ensures core figure data (name, id, creation, status) and all text description fields are unchanged.
+    // Used when only counts should be changing.
+    function figureProfileAndCoreDataUnchanged() {
+      return request.resource.data.id == resource.data.id &&
+             request.resource.data.name == resource.data.name &&
+             request.resource.data.nameLower == resource.data.nameLower &&
+             request.resource.data.photoUrl == resource.data.photoUrl &&
+             request.resource.data.description == resource.data.description &&
+             request.resource.data.nationality == resource.data.nationality &&
+             request.resource.data.occupation == resource.data.occupation &&
+             request.resource.data.gender == resource.data.gender &&
+             request.resource.data.alias == resource.data.alias &&
+             request.resource.data.species == resource.data.species &&
+             request.resource.data.firstAppearance == resource.data.firstAppearance &&
+             request.resource.data.birthDateOrAge == resource.data.birthDateOrAge &&
+             request.resource.data.birthPlace == resource.data.birthPlace &&
+             request.resource.data.statusLiveOrDead == resource.data.statusLiveOrDead &&
+             request.resource.data.maritalStatus == resource.data.maritalStatus &&
+             request.resource.data.height == resource.data.height &&
+             request.resource.data.weight == resource.data.weight &&
+             request.resource.data.hairColor == resource.data.hairColor &&
+             request.resource.data.eyeColor == resource.data.eyeColor &&
+             request.resource.data.distinctiveFeatures == resource.data.distinctiveFeatures &&
+             request.resource.data.createdAt == resource.data.createdAt &&
+             request.resource.data.status == resource.data.status;
+    }
+
+    // Ensures counts and other core fields (name, id, creation, status) are unchanged.
+    // Used when only text description fields should be changing.
+    function figureCountsAndCoreDataUnchanged() {
+      return request.resource.data.id == resource.data.id &&
+             request.resource.data.name == resource.data.name &&
              request.resource.data.nameLower == resource.data.nameLower &&
              request.resource.data.perceptionCounts == resource.data.perceptionCounts &&
              request.resource.data.attitudeCounts == resource.data.attitudeCounts &&
              request.resource.data.starRatingCounts == resource.data.starRatingCounts &&
-             request.resource.data.createdAt == resource.data.createdAt; // Assuming createdAt is not changed by users
+             request.resource.data.createdAt == resource.data.createdAt &&
+             request.resource.data.status == resource.data.status;
     }
 
     // --- Rules for 'figures' collection ---
     match /figures/{figureId} {
-      allow get: if true; // PUBLIC ACCESS: Allow anyone to read (get) individual figure documents.
+      allow get: if true;
 
       allow create: if isAdmin() &&
                        request.resource.data.nameLower == request.resource.data.name.toLowerCase();
 
       allow delete: if isAdmin();
 
-      allow update: if isAuthenticatedNonAnonymous() &&
-                      (
-                        ( // Admin can update all fields, ensuring nameLower consistency
-                          isAdmin() &&
-                          request.resource.data.nameLower == request.resource.data.name.toLowerCase()
-                        ) ||
-                        ( // Non-admin, non-anonymous users can:
-                          // Case 1: Edit allowed profile text fields and photoUrl
-                          (
-                            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-                              'description', 'nationality', 'occupation', 'gender', 'photoUrl',
-                              'alias', 'species', 'firstAppearance', 'birthDateOrAge', 'birthPlace',
-                              'statusLiveOrDead', 'maritalStatus', 'height', 'weight',
-                              'hairColor', 'eyeColor', 'distinctiveFeatures'
-                            ]) &&
-                            figureCoreFieldsUnchanged() // Ensure other core fields are not changed during text edits
-                          )
-                          ||
-                          // Case 2: Update perception, attitude, or star rating counts
-                          (
-                            (
-                              request.resource.data.diff(resource.data).hasAny(['perceptionCounts', 'attitudeCounts', 'starRatingCounts']) &&
-                              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['perceptionCounts', 'attitudeCounts', 'starRatingCounts'])
-                            ) &&
-                            // Ensure other fields are not changed by this specific update path for counts
-                            request.resource.data.name == resource.data.name &&
-                            request.resource.data.description == resource.data.description &&
-                            request.resource.data.nationality == resource.data.nationality &&
-                            request.resource.data.occupation == resource.data.occupation &&
-                            request.resource.data.gender == resource.data.gender &&
-                            request.resource.data.photoUrl == resource.data.photoUrl &&
-                            request.resource.data.alias == resource.data.alias &&
-                            request.resource.data.species == resource.data.species &&
-                            request.resource.data.firstAppearance == resource.data.firstAppearance &&
-                            request.resource.data.birthDateOrAge == resource.data.birthDateOrAge &&
-                            request.resource.data.birthPlace == resource.data.birthPlace &&
-                            request.resource.data.statusLiveOrDead == resource.data.statusLiveOrDead &&
-                            request.resource.data.maritalStatus == resource.data.maritalStatus &&
-                            request.resource.data.height == resource.data.height &&
-                            request.resource.data.weight == resource.data.weight &&
-                            request.resource.data.hairColor == resource.data.hairColor &&
-                            request.resource.data.eyeColor == resource.data.eyeColor &&
-                            request.resource.data.distinctiveFeatures == resource.data.distinctiveFeatures
-                          )
-                        )
-                      );
+      allow update: if isAuthenticatedNonAnonymous() && (
+        (isAdmin() && request.resource.data.nameLower == request.resource.data.name.toLowerCase()) || // Admin can update (almost) all fields
+        ( // Non-admin, non-anonymous users:
+          // Path 1: Updating specific profile text/details fields
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'description', 'nationality', 'occupation', 'gender', 'photoUrl',
+              'alias', 'species', 'firstAppearance', 'birthDateOrAge', 'birthPlace',
+              'statusLiveOrDead', 'maritalStatus', 'height', 'weight',
+              'hairColor', 'eyeColor', 'distinctiveFeatures'
+            ]) &&
+            figureCountsAndCoreDataUnchanged() // Ensures counts, name, createdAt, status are NOT changed
+          ) ||
+          // Path 2: Updating one or more count fields (perception, attitude, stars)
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+                ['perceptionCounts', 'attitudeCounts', 'starRatingCounts']
+            ) &&
+            request.resource.data.diff(resource.data).hasAny( // at least one count field must actually change
+                ['perceptionCounts', 'attitudeCounts', 'starRatingCounts']
+            ) &&
+            figureProfileAndCoreDataUnchanged() // Ensures all profile text fields, name, createdAt, status are NOT changed
+          )
+        )
+      );
     }
 
     match /figures {
@@ -218,11 +227,13 @@ service cloud.firestore {
       allow update: if isAuthenticatedNonAnonymous() &&
                        request.auth.uid == userId &&
                        !(request.resource.data.diff(resource.data).affectedKeys().hasAny([
-                         'uid', 'email', 'createdAt', 'role'
+                         'uid', 'email', 'createdAt', 'role' // UID, email, createdAt, role cannot be changed by user
                        ])) &&
+                       // photoURL can be updated if it matches auth token or is a string (new upload) or null
                        (request.resource.data.photoURL == resource.data.photoURL || request.resource.data.photoURL == request.auth.token.picture || request.resource.data.photoURL is string || request.resource.data.photoURL == null) &&
+                       // lastLoginAt should only be updated to current time, if present in update
                        (request.resource.data.keys().has('lastLoginAt') ? request.resource.data.lastLoginAt == request.time : true);
-      allow delete: if false;
+      allow delete: if false; // Users cannot delete their own profiles
     }
     // --- End of rules for 'users' collection ---
   }
