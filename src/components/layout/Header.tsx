@@ -44,7 +44,7 @@ export function Header({ theme, toggleTheme }: HeaderProps) {
               Hogar
             </Link>
             <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">
-              Explorar Figuras
+              Explorar
             </Link>
             {/* "Proponer Figura" button removed */}
           </nav>
