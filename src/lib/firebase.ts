@@ -41,44 +41,59 @@ service cloud.firestore {
     
     // --- Admin UID ---
     function isAdmin() {
-      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // ADMIN UID
+      // IMPORTANTE: Reemplaza 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' con TU Admin UID real.
+      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
     }
 
     // --- Authenticated Non-Anonymous User ---
     function isAuthenticatedNonAnonymous() {
-      return request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+      return request.auth != null && 
+             request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
 
     // --- Rules for 'figures' collection ---
     match /figures/{figureId} {
       allow get: if true; // PUBLIC ACCESS: Allow anyone to read (get) individual figure documents.
 
-      // ADMIN-ONLY ACCESS for create and delete
-      allow create, delete: if isAdmin();
+      allow create: if isAdmin(); // ADMIN-ONLY can create figures directly.
+      allow delete: if isAdmin(); // ADMIN-ONLY can delete.
 
       // UPDATES to 'figures'
       allow update: if isAuthenticatedNonAnonymous() &&
                       (
-                        // ADMIN can update any field (except ID potentially, handled by no 'id' in resource.data)
-                        isAdmin()
+                        // ADMIN can update most fields (nameLower should be consistent with name)
+                        (isAdmin() && 
+                          (request.resource.data.nameLower == request.resource.data.name.toLowerCase())
+                        )
                         ||
-                        // NON-ADMIN, NON-ANONYMOUS users
+                        // NON-ADMIN, NON-ANONYMOUS users can ONLY update rating fields OR their own profile edits
                         (
-                          // Ensure core protected fields are not changed by user if they are present in the request
-                          (request.resource.data.keys().has('name') ? request.resource.data.name == resource.data.name : true) &&
-                          (request.resource.data.keys().has('nameLower') ? request.resource.data.nameLower == resource.data.nameLower : true) &&
-                          (request.resource.data.keys().has('status') ? request.resource.data.status == resource.data.status : true) &&
-                          (request.resource.data.keys().has('createdAt') ? request.resource.data.createdAt == resource.data.createdAt : true) &&
-                          (request.resource.data.keys().has('proposedWikiLink') ? request.resource.data.proposedWikiLink == resource.data.proposedWikiLink : true) &&
-                          (request.resource.data.keys().has('proposedBy') ? request.resource.data.proposedBy == resource.data.proposedBy : true) &&
-
-                          // And the changes are limited to the allowed set of fields for user interaction/updates.
-                          // This means any updated field MUST be in this list.
-                          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-                            'description', 'nationality', 'occupation', 'gender', 'photoUrl', // User profile edits
-                            'perceptionCounts', 'attitudeCounts', // Direct votes on figure page
-                            'averageRating', 'totalRatings', 'ratingDistribution' // Aggregates updated by comment/rating submission
-                          ])
+                          // Case 1: Updating rating aggregates (via submitCommentAndRatingAction)
+                          (
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalRatings', 'averageRating', 'ratingDistribution']) &&
+                            request.resource.data.totalRatings == resource.data.totalRatings + 1 && // Verify integrity of count
+                            // Ensure other core fields are not changed during this specific update type
+                            request.resource.data.name == resource.data.name &&
+                            request.resource.data.description == resource.data.description &&
+                            request.resource.data.photoUrl == resource.data.photoUrl &&
+                            request.resource.data.nationality == resource.data.nationality &&
+                            request.resource.data.occupation == resource.data.occupation &&
+                            request.resource.data.gender == resource.data.gender &&
+                            request.resource.data.perceptionCounts == resource.data.perceptionCounts &&
+                            request.resource.data.attitudeCounts == resource.data.attitudeCounts
+                          )
+                          ||
+                          // Case 2: User editing allowed profile fields (description, nationality, etc.)
+                          (
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['description', 'nationality', 'occupation', 'gender', 'photoUrl']) &&
+                             // Ensure other core fields are not changed during this specific update type
+                            request.resource.data.name == resource.data.name &&
+                            request.resource.data.totalRatings == resource.data.totalRatings &&
+                            request.resource.data.averageRating == resource.data.averageRating &&
+                            request.resource.data.ratingDistribution == resource.data.ratingDistribution &&
+                            request.resource.data.perceptionCounts == resource.data.perceptionCounts &&
+                            request.resource.data.attitudeCounts == resource.data.attitudeCounts
+                          )
                         )
                       );
     }
@@ -91,37 +106,34 @@ service cloud.firestore {
 
     // --- Rules for 'figure_comments' collection ---
     match /figure_comments/{commentId} {
-      allow get: if true; // Anyone can read comments
-
-      allow list: if query.limit <= 100; // Anyone can list comments, e.g., for a specific figure, with a limit.
+      allow get: if true; 
+      allow list: if query.limit <= 100;
 
       allow create: if isAuthenticatedNonAnonymous() &&
-                       request.auth.uid == request.resource.data.userId && // User can only create comments for themselves
+                       request.auth.uid == request.resource.data.userId && 
                        request.resource.data.keys().hasAll(['figureId', 'userId', 'username', 'rating', 'text', 'createdAt', 'likes', 'dislikes', 'userPhotoUrl']) &&
                        request.resource.data.figureId is string && request.resource.data.figureId != '' &&
-                       request.resource.data.userId is string && request.resource.data.userId != '' &&
-                       request.resource.data.username is string && request.resource.data.username != '' &&
+                       request.resource.data.userId is string && request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.username is string && request.resource.data.username.size() > 0 &&
                        request.resource.data.rating is number && request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
                        request.resource.data.text is string && request.resource.data.text.size() >= 10 && request.resource.data.text.size() <= 1000 &&
-                       request.resource.data.createdAt == request.time && // Ensure server timestamp is used
+                       request.resource.data.createdAt == request.time && 
                        request.resource.data.likes == 0 &&
                        request.resource.data.dislikes == 0 &&
                        (request.resource.data.userPhotoUrl == null || (request.resource.data.userPhotoUrl is string && request.resource.data.userPhotoUrl.matches('https?://.+')));
 
+      // For LIKES/DISLIKES on comments (implement later)
+      // allow update: if isAuthenticatedNonAnonymous() &&
+      //                  (
+      //                    ( // Owner can edit text/rating
+      //                      request.auth.uid == resource.data.userId &&
+      //                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'rating', 'updatedAt']) &&
+      //                      (request.resource.data.keys().has('updatedAt') ? request.resource.data.updatedAt == request.time : true)
+      //                    ) 
+      //                    // Add rules for updating likes/dislikes by any authenticated user later
+      //                  );
 
-      allow update: if isAuthenticatedNonAnonymous() &&
-                       request.auth.uid == resource.data.userId && // Owner can update their own comment
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'rating', 'updatedAt']) && // Example: allow editing text and rating
-                       (request.resource.data.keys().has('updatedAt') ? request.resource.data.updatedAt == request.time : true) &&
-                       // Keep core fields immutable by user update
-                       request.resource.data.figureId == resource.data.figureId &&
-                       request.resource.data.userId == resource.data.userId &&
-                       request.resource.data.username == resource.data.username &&
-                       request.resource.data.createdAt == resource.data.createdAt;
-                       // Like/dislike updates would need a different logic or a separate collection/subcollection
-
-      allow delete: if isAuthenticatedNonAnonymous() &&
-                       (request.auth.uid == resource.data.userId || isAdmin()); // Owner or Admin
+      allow delete: if isAuthenticatedNonAnonymous() && (request.auth.uid == resource.data.userId || isAdmin());
     }
     // --- End of rules for 'figure_comments' collection ---
 
@@ -193,15 +205,12 @@ service cloud.firestore {
                        request.resource.data.lastLoginAt == request.time;
       allow update: if isAuthenticatedNonAnonymous() &&
                        request.auth.uid == userId &&
-                       // User cannot change their own role, uid, email, createdAt
                        !(request.resource.data.diff(resource.data).affectedKeys().hasAny([
                          'uid', 'email', 'createdAt', 'role'
                        ])) &&
-                       // Allow photoURL to be updated if it matches auth token picture or is explicitly set by user
                        (request.resource.data.photoURL == resource.data.photoURL || request.resource.data.photoURL == request.auth.token.picture || request.resource.data.photoURL is string || request.resource.data.photoURL == null) &&
-                       // lastLoginAt must be server timestamp
-                       request.resource.data.lastLoginAt == request.time;
-      allow delete: if false; // Users generally shouldn't delete their own user docs directly
+                       (request.resource.data.keys().has('lastLoginAt') ? request.resource.data.lastLoginAt == request.time : true); // lastLoginAt is optional on some updates from user profile form
+      allow delete: if false; 
     }
     // --- End of rules for 'users' collection ---
   }
@@ -214,23 +223,16 @@ service cloud.firestore {
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access to files in the 'figures' folder (where admin uploads images)
-    // and 'emociones' for emotion images
     match /figures/{allPaths=**} {
       allow read: if true;
+      // Admin can write to figures folder
+      allow write: if request.auth != null && 
+                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+                      request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // ADMIN UID
     }
-    match /emociones/{allPaths=**} { // For emotion images
+    match /emociones/{allPaths=**} { 
       allow read: if true;
     }
-
-    // Allow authenticated admin to write to the 'figures' folder
-    match /figures/{figureId}/{fileName} {
-      allow write: if request.auth != null &&
-                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-                      request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // Admin UID
-    }
-    
-    // Potentially allow users to upload their own profile pictures to a specific path
     // match /user_avatars/{userId}/{fileName} {
     //  allow read: if true;
     //  allow write: if request.auth != null && request.auth.uid == userId;
@@ -238,3 +240,4 @@ service firebase.storage {
   }
 }
 */
+
