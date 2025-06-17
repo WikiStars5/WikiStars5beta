@@ -67,7 +67,6 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
       toast({ title: "Error", description: "No se pudieron cargar los conteos de estrellas.", variant: "destructive" });
       setFigureStarRatingCounts(defaultStarRatingCountsData);
       setTotalVotes(0);
-      //setIsComponentLoading(false); // Defer until user's rating is also checked
     });
 
     let unsubscribeUserStarRating: Unsubscribe | undefined;
@@ -105,7 +104,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
       return;
     }
     if (isLoadingStarAction) return;
-    if (!currentUser) return; // Should be covered by canUserVote, but good for type safety
+    if (!currentUser) return; 
 
     setIsLoadingStarAction(starValueClicked);
 
@@ -113,9 +112,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
     const userStarRatingDocId = `${currentUser.uid}_${figureId}`;
     const userStarRatingDocRef = doc(db, "userStarRatings", userStarRatingDocId);
 
-    const previousSelectedUserRating = selectedStarRating;
-    // If user clicks the same star rating they already selected, they are deselecting it.
-    // Otherwise, they are selecting the new one (or the first one).
+    const previousSelectedUserRating = selectedStarRating; // Capture state before any async operation
     const newStarValueToSetForUser = previousSelectedUserRating === starValueClicked ? null : starValueClicked;
 
     try {
@@ -129,13 +126,11 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
         const currentCounts = (currentFigureData?.starRatingCounts || { ...defaultStarRatingCountsData }) as Record<StarValueAsString, number>;
         const newCounts = { ...currentCounts };
 
-        // Decrement count for the previously selected star rating, if any
         if (previousSelectedUserRating) {
           const prevKey = previousSelectedUserRating.toString() as StarValueAsString;
           newCounts[prevKey] = Math.max(0, (newCounts[prevKey] || 0) - 1);
         }
 
-        // Increment count for the new star rating, if one is being set (not deselected)
         if (newStarValueToSetForUser) {
           const newKey = newStarValueToSetForUser.toString() as StarValueAsString;
           newCounts[newKey] = (newCounts[newKey] || 0) + 1;
@@ -144,7 +139,6 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
         transaction.update(figureDocRef, { starRatingCounts: newCounts });
       });
 
-      // After the transaction, update or delete the user's individual rating document
       if (newStarValueToSetForUser) {
         await setDoc(userStarRatingDocRef, {
           userId: currentUser.uid,
@@ -152,14 +146,13 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
           starValue: newStarValueToSetForUser,
           timestamp: serverTimestamp(),
         });
+        setSelectedStarRating(newStarValueToSetForUser); // Explicitly update local state
         toast({ title: "Calificación Guardada", description: `Has calificado a ${figureName} con ${newStarValueToSetForUser} estrella(s).` });
       } else {
-        // If newStarValueToSetForUser is null, it means the user deselected their rating
         await deleteDoc(userStarRatingDocRef);
+        setSelectedStarRating(null); // Explicitly update local state
         toast({ title: "Calificación Eliminada", description: `Has eliminado tu calificación para ${figureName}.` });
       }
-      // UI state for selectedStarRating will be updated by the onSnapshot listener
-      // setSelectedStarRating(newStarValueToSetForUser); // Not strictly needed due to onSnapshot, but can make UI feel faster
 
     } catch (error: any) {
       console.error("Error rating figure:", error);
@@ -170,6 +163,8 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
         errorMessage = `Detalles: ${error.message}`;
       }
       toast({ title: "Error al Calificar", description: errorMessage, variant: "destructive" });
+       // Revert optimistic local state update if Firestore operation failed
+      setSelectedStarRating(previousSelectedUserRating);
     } finally {
       setIsLoadingStarAction(null);
     }
