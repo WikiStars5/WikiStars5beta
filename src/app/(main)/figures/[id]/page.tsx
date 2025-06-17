@@ -8,7 +8,8 @@ import {
   Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   Image as ImageIcon, ImageOff, BarChartHorizontal, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
-  MessagesSquare // Icono para la nueva pestaña de Comentarios
+  MessagesSquare, // Icono para la nueva pestaña de Comentarios
+  Send // Icono para el botón de enviar comentario
 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
@@ -47,7 +48,6 @@ export default function FigurePage() {
   const [editedGender, setEditedGender] = useState("");
   const [editedPhotoUrl, setEditedPhotoUrl] = useState("");
 
-  // New edited state fields
   const [editedAlias, setEditedAlias] = useState("");
   const [editedSpecies, setEditedSpecies] = useState("");
   const [editedFirstAppearance, setEditedFirstAppearance] = useState("");
@@ -64,6 +64,10 @@ export default function FigurePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [canUserInteract, setCanUserInteract] = useState(false);
+
+  // State for new comment
+  const [newComment, setNewComment] = useState("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
@@ -182,6 +186,29 @@ export default function FigurePage() {
     }
   };
 
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim()) {
+      toast({ title: "Comentario Vacío", description: "Por favor, escribe algo antes de enviar.", variant: "destructive" });
+      return;
+    }
+    if (!canUserInteract) {
+      toast({ title: "Acción Requerida", description: "Debes iniciar sesión para comentar.", variant: "default" });
+      return;
+    }
+
+    setIsSubmittingComment(true);
+    // Simulate API call
+    console.log("Nuevo Comentario:", newComment);
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
+
+    toast({ title: "Comentario Enviado (Simulado)", description: "Tu comentario se ha enviado (simulación)." });
+    setNewComment("");
+    setIsSubmittingComment(false);
+    // Here you would typically call a server action to save the comment
+    // and then re-fetch comments or update the local list.
+  };
+
   if (!id && figure === undefined) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
@@ -249,7 +276,7 @@ export default function FigurePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2 space-y-8">
           <Tabs defaultValue="personal-info" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-6"> {/* Cambiado de grid-cols-4 a grid-cols-5 */}
+            <TabsList className="grid w-full grid-cols-5 mb-6">
               <TabsTrigger value="personal-info" className="text-base py-2.5 flex items-center gap-2"><Info className="h-5 w-5" />Información</TabsTrigger>
               <TabsTrigger value="attitude-poll" className="text-base py-2.5 flex items-center gap-2"><MessageSquare className="h-5 w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-base py-2.5 flex items-center gap-2"><SmilePlus className="h-5 w-5" />Emoción</TabsTrigger>
@@ -424,11 +451,49 @@ export default function FigurePage() {
                     Comentarios sobre {figure.name}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    La sección de comentarios estará disponible próximamente. ¡Vuelve pronto para compartir tu opinión!
-                  </p>
-                  {/* Aquí es donde iría un sistema de comentarios como Disqus o uno personalizado si se implementara */}
+                <CardContent className="space-y-6">
+                  {canUserInteract ? (
+                    <form onSubmit={handleSubmitComment} className="space-y-4">
+                      <div>
+                        <Label htmlFor="newCommentText" className="sr-only">Tu comentario</Label>
+                        <Textarea
+                          id="newCommentText"
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          placeholder="Escribe tu comentario aquí..."
+                          rows={4}
+                          className="w-full"
+                          disabled={isSubmittingComment}
+                        />
+                      </div>
+                      <Button type="submit" disabled={isSubmittingComment || !newComment.trim()} className="w-full sm:w-auto">
+                        {isSubmittingComment ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="mr-2 h-4 w-4" />
+                        )}
+                        {isSubmittingComment ? 'Enviando...' : 'Enviar Comentario'}
+                      </Button>
+                    </form>
+                  ) : (
+                    <Alert>
+                      <LogIn className="h-4 w-4" />
+                      <AlertTitle>Participación Restringida</AlertTitle>
+                      <AlertDescription>
+                        <Link href="/login" className="font-semibold text-primary hover:underline">
+                          Inicia sesión
+                        </Link>
+                        {" "}para dejar un comentario.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <div className="border-t pt-6 mt-6">
+                    <h4 className="text-lg font-medium mb-4">Comentarios Recientes (Marcador de posición)</h4>
+                    <p className="text-muted-foreground">
+                      Los comentarios anteriores aparecerán aquí una vez que la funcionalidad esté completamente implementada.
+                    </p>
+                    {/* Aquí iría el listado de comentarios */}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
