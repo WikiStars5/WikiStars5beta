@@ -33,6 +33,13 @@ import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, updat
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/shared/StarRating";
 
+const STAR_SOUND_URLS: Record<StarValue, string> = {
+  1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
+  2: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar2.mp3?alt=media&token=58cbf607-df0b-4bbd-b28e-291cf1951c18",
+  3: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar3.mp3?alt=media&token=df67dc5b-28ab-4773-8266-60b9127a325f",
+  4: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826",
+  5: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f",
+};
 
 export default function FigurePage() {
   const routeParams = useParams<{ id: string }>();
@@ -73,12 +80,39 @@ export default function FigurePage() {
   const [commentsList, setCommentsList] = useState<UserComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(true);
 
+  const [starAudios, setStarAudios] = useState<Partial<Record<StarValue, HTMLAudioElement>>>({});
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const audios: Partial<Record<StarValue, HTMLAudioElement>> = {};
+      (Object.keys(STAR_SOUND_URLS) as unknown as StarValue[]).forEach(key => {
+        const numericKey = Number(key) as StarValue; // Ensure key is treated as StarValue for lookup
+        if (STAR_SOUND_URLS[numericKey]) { // Check with numericKey
+          const audio = new Audio(STAR_SOUND_URLS[numericKey]);
+          audio.preload = "auto";
+          audios[numericKey] = audio; // Store with numericKey
+        }
+      });
+      setStarAudios(audios);
+    }
+  }, []);
+
+  const playSoundEffect = useCallback((starValue: StarValue) => {
+    const audio = starAudios[starValue];
+    if (audio) {
+      audio.currentTime = 0; 
+      audio.play().catch(error => console.error(`Error playing sound for star ${starValue}:`, error));
+    } else {
+      console.warn(`Audio for star ${starValue} not loaded.`);
+    }
+  }, [starAudios]);
+
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
       setCurrentUser(user);
       setCanUserInteract(!!user && !user.isAnonymous);
       if (user && !user.isAnonymous && figure?.id) {
-        // Fetch user's current star rating for this figure to pre-fill the stars
         const userStarRatingDocRef = doc(db, 'userStarRatings', `${user.uid}_${figure.id}`);
         getDoc(userStarRatingDocRef).then(docSnap => {
           if (docSnap.exists()) {
@@ -86,11 +120,11 @@ export default function FigurePage() {
           }
         });
       } else if (!user || user.isAnonymous) {
-        setNewCommentStars(null); // Clear stars if user logs out or is anonymous
+        setNewCommentStars(null);
       }
     });
     return () => unsubscribe();
-  }, [figure?.id]); // Re-run if figure.id changes or currentUser changes
+  }, [figure?.id]); 
 
   const resetEditFields = useCallback((currentFigure: Figure | null) => {
     if (currentFigure) {
@@ -130,7 +164,6 @@ export default function FigurePage() {
       setFigure(fetchedFigure || null); 
       if (fetchedFigure) {
         resetEditFields(fetchedFigure);
-        // If user is logged in, fetch their current rating for this figure
         if (currentUser && !currentUser.isAnonymous) {
           const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${id}`);
           const docSnap = await getDoc(userStarRatingDocRef);
@@ -174,9 +207,15 @@ export default function FigurePage() {
         });
       });
       setCommentsList(fetchedComments);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching comments:", error); 
-      toast({ title: "Error al Cargar Comentarios", description: "No se pudieron cargar los comentarios. Revisa la consola del navegador para más detalles.", variant: "destructive"});
+      let errorMessage = "No se pudieron cargar los comentarios.";
+      if (error.message && error.message.includes("firestore/failed-precondition")) {
+          errorMessage = "Error al cargar comentarios: Es posible que falte un índice en Firestore. Revisa la consola del navegador (F12) para un enlace de creación de índice.";
+      } else if (error.message) {
+          errorMessage = `No se pudieron cargar los comentarios. Detalles: ${error.message}`;
+      }
+      toast({ title: "Error al Cargar Comentarios", description: errorMessage, variant: "destructive", duration: 7000 });
       setCommentsList([]); 
     } finally {
       setIsLoadingComments(false);
@@ -214,7 +253,6 @@ export default function FigurePage() {
   };
 
   const handleSave = async () => {
-    // ... (save logic remains the same)
     if (!figure || !canUserInteract) {
       toast({ title: "Error", description: "Debes iniciar sesión con una cuenta para guardar.", variant: "destructive" });
       return;
@@ -275,7 +313,6 @@ export default function FigurePage() {
     const userStarRatingDocRef = doc(db, "userStarRatings", userStarRatingDocId);
 
     try {
-      // Logic to update star ratings (moved from StarRatingVote)
       if (newCommentStars !== null) {
         const previousSelectedUserRatingDoc = await getDoc(userStarRatingDocRef);
         const previousSelectedUserStarValue: StarValue | null = previousSelectedUserRatingDoc.exists()
@@ -294,7 +331,7 @@ export default function FigurePage() {
             const prevKey = previousSelectedUserStarValue.toString() as StarValueAsString;
             newStarCounts[prevKey] = Math.max(0, (newStarCounts[prevKey] || 0) - 1);
           }
-          if (previousSelectedUserStarValue !== newCommentStars) { // only update if rating changed or is new
+          if (previousSelectedUserStarValue !== newCommentStars) { 
             const newKey = newCommentStars.toString() as StarValueAsString;
             newStarCounts[newKey] = (newStarCounts[newKey] || 0) + 1;
             transaction.update(figureDocRef, { starRatingCounts: newStarCounts });
@@ -307,18 +344,14 @@ export default function FigurePage() {
           timestamp: serverTimestamp(),
         });
       }
-      // If newCommentStars is null, but user had a previous rating, it means they are removing their rating by submitting comment only
-      // This case is implicitly handled as we don't update userStarRatings if newCommentStars is null.
-      // If they had a rating and submit only text, their previous star rating remains.
-
-      // Add the comment
+      
       const commentData = {
         figureId: figure.id,
         userId: currentUser.uid,
         username: currentUser.displayName || "Usuario Anónimo",
         userPhotoURL: currentUser.photoURL || null,
         text: newComment.trim(),
-        starRatingGiven: newCommentStars, // Save the stars given with this comment
+        starRatingGiven: newCommentStars, 
         createdAt: serverTimestamp(),
         likes: 0,
         dislikes: 0,
@@ -327,7 +360,6 @@ export default function FigurePage() {
       };
       await addDoc(collection(db, 'userComments'), commentData);
       
-      // Update comment count
       await runTransaction(db, async (transaction) => {
         const figureSnap = await transaction.get(figureDocRef);
         if (!figureSnap.exists()) throw "Documento de la figura no existe!";
@@ -337,7 +369,6 @@ export default function FigurePage() {
 
       toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
       setNewComment("");
-      // setNewCommentStars(null); // Keep stars selected for next potential comment, or clear if desired. Let's keep for now.
       fetchFigureAndComments(); 
     } catch (error: any) {
       console.error("Error submitting opinion:", error);
@@ -476,8 +507,14 @@ export default function FigurePage() {
                     <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">Tu calificación:</Label>
                     <StarRating
                         rating={newCommentStars || 0}
-                        onRatingChange={(rating) => setNewCommentStars(rating as StarValue)}
-                        size={32} // Estrellas más grandes para facilitar el clic
+                        onRatingChange={(rating) => {
+                          const starVal = rating as StarValue;
+                          setNewCommentStars(starVal);
+                          if (starVal > 0 && starVal <=5) {
+                            playSoundEffect(starVal);
+                          }
+                        }}
+                        size={32}
                     />
                   </div>
                   <div>
@@ -518,3 +555,4 @@ export default function FigurePage() {
     </div>
   );
 }
+
