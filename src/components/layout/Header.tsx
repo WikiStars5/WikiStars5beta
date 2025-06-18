@@ -20,7 +20,7 @@ export function Header({ theme, toggleTheme }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
-      <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
+      <div className="container flex h-18 max-w-screen-2xl items-center justify-between"> {/* Header height h-18 (72px) */}
         <div className="flex items-center gap-2 md:gap-4">
           <Logo theme={theme} />
            {/* SearchBar para escritorio, visible en md y superior */}

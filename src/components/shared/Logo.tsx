@@ -17,21 +17,20 @@ export function Logo({ className, theme }: LogoProps) {
 
   return (
     <Link href="/" className={`inline-flex items-center gap-2 ${className}`}>
-      <div className="relative h-6 w-auto" style={{ minWidth: '24px' }}> {/* Reduced height to h-6 (24px) */}
+      <div className="relative h-7 w-auto" style={{ minWidth: '28px' }}> {/* Container height h-7 (28px) */}
         <Image
           src={currentLogoUrl}
           alt="WikiStars5 Logo"
-          height={24} // Reduced height
-          width={96}  // Adjusted width proportionally (assuming 4:1 aspect ratio)
+          height={20} // Image height 20px
+          width={80}  // Adjusted width proportionally (4:1 aspect ratio)
           className="object-contain" // Ensures the image scales within the bounds
           priority // Logo is important, consider priority loading
           data-ai-hint="logo brand"
         />
       </div>
-      <span className="text-xl font-bold font-headline text-primary"> {/* Reduced text size to text-xl */}
+      <span className="text-xl font-bold font-headline text-primary"> {/* Text size text-xl */}
         WikiStars5
       </span>
     </Link>
   );
 }
-
