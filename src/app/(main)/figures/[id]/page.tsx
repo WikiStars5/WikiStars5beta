@@ -106,30 +106,28 @@ export default function FigurePage() {
 
   const fetchFigureAndComments = useCallback(async () => {
     if (!id) {
-      setFigure(undefined); // Still loading ID or invalid route
+      setFigure(undefined); 
       setCommentsList([]);
       setIsLoadingComments(false);
       return;
     }
 
-    setFigure(undefined); // Indicate loading state for the figure itself
-    setCommentsList([]); // Reset comments list for the new figure
+    setFigure(undefined); 
+    setCommentsList([]); 
     setIsLoadingComments(true);
 
-    // Fetch Figure Details
     try {
       const fetchedFigure = await getFigureFromFirestore(id);
-      setFigure(fetchedFigure || null); // null if not found
+      setFigure(fetchedFigure || null); 
       if (fetchedFigure) {
         resetEditFields(fetchedFigure);
       }
     } catch (error) {
       console.error("Error fetching figure details:", error);
       toast({ title: "Error al Cargar Figura", description: "No se pudo cargar la información de la figura.", variant: "destructive"});
-      setFigure(null); // Set to null on error to show "Not Found" or error state
+      setFigure(null); 
     }
 
-    // Fetch Comments - only if figureId is valid (even if figure itself wasn't found, comments might exist if ID was once valid)
     try {
       const commentsQuery = query(
         collection(db, 'userComments'),
@@ -159,14 +157,13 @@ export default function FigurePage() {
       });
       setCommentsList(fetchedComments);
     } catch (error) {
-      console.error("Error fetching comments:", error); // This log is CRITICAL for diagnosing
+      console.error("Error fetching comments:", error); 
       toast({ title: "Error al Cargar Comentarios", description: "No se pudieron cargar los comentarios. Revisa la consola del navegador para más detalles.", variant: "destructive"});
-      setCommentsList([]); // Ensure list is empty on error
+      setCommentsList([]); 
     } finally {
       setIsLoadingComments(false);
     }
 
-    // Fetch all figures for related section (can be done in parallel or after main figure)
     try {
       const fetchedAllFigures = await getAllFiguresFromFirestore();
       setAllFigures(fetchedAllFigures);
@@ -185,7 +182,6 @@ export default function FigurePage() {
 
 
   useEffect(() => {
-    // This effect is fine, resets edit fields if figure changes or edit mode is entered
     if (figure && isEditing) {
       resetEditFields(figure);
     }
@@ -235,7 +231,7 @@ export default function FigurePage() {
 
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
       setIsEditing(false);
-      fetchFigureAndComments(); // Re-fetch all data
+      fetchFigureAndComments(); 
     } catch (error: any) {
       console.error("Error saving figure details:", error);
       let errorMessage = "No se pudo guardar la información.";
@@ -293,7 +289,7 @@ export default function FigurePage() {
 
       toast({ title: "Comentario Enviado", description: "Tu comentario ha sido guardado." });
       setNewComment("");
-      fetchFigureAndComments(); // Re-fetch comments and figure data
+      fetchFigureAndComments(); 
     } catch (error: any) {
       console.error("Error submitting comment:", error);
       let errorMessage = "No se pudo enviar tu comentario.";
@@ -308,13 +304,11 @@ export default function FigurePage() {
 
   const formatDate = (timestamp: any): string => {
     if (!timestamp || typeof timestamp.toDate !== 'function') {
-      // console.warn("formatDate received invalid timestamp:", timestamp);
       return 'Fecha desconocida';
     }
     try {
       const date = timestamp.toDate();
       if (isNaN(date.getTime())) {
-        // console.warn("formatDate: Converted date is NaN for timestamp:", timestamp);
         return 'Fecha inválida';
       }
       return `${date.toLocaleDateString()} a las ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
@@ -325,7 +319,7 @@ export default function FigurePage() {
   };
 
 
-  if (!id && figure === undefined) { // Case: Route param 'id' not yet available
+  if (!id && figure === undefined) { 
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -334,7 +328,7 @@ export default function FigurePage() {
     );
   }
   
-  if (figure === undefined) { // Case: 'id' is available, figure data is being fetched
+  if (figure === undefined) { 
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -342,7 +336,7 @@ export default function FigurePage() {
     );
   }
 
-  if (figure === null) { // Case: Fetch attempted, figure not found or error occurred
+  if (figure === null) { 
     return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Figura No Encontrada</h1>
@@ -392,12 +386,12 @@ export default function FigurePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2 space-y-8">
           <Tabs defaultValue="personal-info" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsList className="grid w-full grid-cols-4 mb-6"> {/* Cambiado a grid-cols-4 */}
               <TabsTrigger value="personal-info" className="text-base py-2.5 flex items-center gap-2"><Info className="h-5 w-5" />Información</TabsTrigger>
               <TabsTrigger value="attitude-poll" className="text-base py-2.5 flex items-center gap-2"><MessageSquare className="h-5 w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-base py-2.5 flex items-center gap-2"><SmilePlus className="h-5 w-5" />Emoción</TabsTrigger>
               <TabsTrigger value="star-rating" className="text-base py-2.5 flex items-center gap-2"><StarIcon className="h-5 w-5" />Calificar</TabsTrigger>
-              <TabsTrigger value="comments" className="text-base py-2.5 flex items-center gap-2"><MessagesSquare className="h-5 w-5" />Comentarios</TabsTrigger>
+              {/* TabsTrigger para Comentarios eliminado */}
             </TabsList>
 
             <TabsContent value="personal-info">
@@ -506,7 +500,7 @@ export default function FigurePage() {
             </TabsContent>
 
             <TabsContent value="attitude-poll">
-              {figure && currentUser !== undefined && ( // Check currentUser is not undefined (initial auth state)
+              {figure && currentUser !== undefined && ( 
                 <AttitudeVote
                   figureId={figure.id}
                   figureName={figure.name}
@@ -558,107 +552,98 @@ export default function FigurePage() {
                 </div>
               )}
             </TabsContent>
-
-            <TabsContent value="comments">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <MessagesSquare className="mr-2 h-6 w-6 text-primary" />
-                    Comentarios sobre {figure.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {canUserInteract ? (
-                    <form onSubmit={handleSubmitComment} className="space-y-4">
-                      <div>
-                        <Label htmlFor="newComment" className="sr-only">Tu comentario</Label>
-                        <Textarea
-                          id="newComment"
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          placeholder="Escribe tu comentario aquí..."
-                          rows={4}
-                          className="w-full"
-                          disabled={isSubmittingComment}
-                        />
-                      </div>
-                      <div className="flex justify-end">
-                        <Button type="submit" disabled={isSubmittingComment || newComment.trim() === ""}>
-                          {isSubmittingComment ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Send className="mr-2 h-4 w-4" />
-                          )}
-                          {isSubmittingComment ? "Enviando..." : "Enviar Comentario"}
-                        </Button>
-                      </div>
-                    </form>
-                  ) : (
-                     <Alert>
-                      <LogIn className="h-4 w-4" />
-                      <AlertTitle>Participación Restringida</AlertTitle>
-                      <AlertDescription>
-                        <Link href="/login" className="font-semibold text-primary hover:underline">
-                          Inicia sesión
-                        </Link>
-                        {" "}para añadir comentarios.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  <div className="border-t pt-6 mt-6 space-y-6">
-                    <h4 className="text-lg font-medium">
-                      Comentarios Recientes ({commentsList.length})
-                    </h4>
-                    {isLoadingComments ? (
-                      <div className="flex justify-center items-center py-6">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="ml-2">Cargando comentarios...</p>
-                      </div>
-                    ) : commentsList.length > 0 ? (
-                      commentsList.map((comment) => (
-                        <div key={comment.id} className="flex space-x-3 border-b pb-4 last:border-b-0 last:pb-0">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" />
-                            <AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-semibold text-foreground">{comment.username}</p>
-                              <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
-                            </div>
-                            {comment.starRatingGiven && (
-                              <div className="mt-1">
-                                <StarRating rating={comment.starRatingGiven} size={14} readOnly />
-                              </div>
-                            )}
-                            <p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>
-                            {/* Placeholder for like/dislike buttons */}
-                            {/*
-                            <div className="mt-2 flex items-center space-x-4">
-                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
-                                <ThumbsUp className="mr-1.5 h-4 w-4" /> ({comment.likes})
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
-                                <ThumbsDown className="mr-1.5 h-4 w-4" /> ({comment.dislikes})
-                              </Button>
-                            </div>
-                            */}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground text-center py-4">
-                        No hay comentarios aún. ¡Sé el primero en comentar!
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+            
+            {/* TabsContent para Comentarios eliminado de aquí */}
 
           </Tabs>
-        </div>
+
+          {/* Sección de Comentarios movida aquí, fuera y debajo de Tabs */}
+          <Card className="mt-8 w-full"> {/* Añadido mt-8 para espaciado y w-full */}
+            <CardHeader>
+              <CardTitle className="flex items-center text-2xl font-headline">
+                <MessagesSquare className="mr-3 h-7 w-7 text-primary" />
+                Comentarios sobre {figure.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {canUserInteract ? (
+                <form onSubmit={handleSubmitComment} className="space-y-4">
+                  <div>
+                    <Label htmlFor="newComment" className="sr-only">Tu comentario</Label>
+                    <Textarea
+                      id="newComment"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Escribe tu comentario aquí..."
+                      rows={4}
+                      className="w-full"
+                      disabled={isSubmittingComment}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={isSubmittingComment || newComment.trim() === ""}>
+                      {isSubmittingComment ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="mr-2 h-4 w-4" />
+                      )}
+                      {isSubmittingComment ? "Enviando..." : "Enviar Comentario"}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                  <Alert>
+                  <LogIn className="h-4 w-4" />
+                  <AlertTitle>Participación Restringida</AlertTitle>
+                  <AlertDescription>
+                    <Link href="/login" className="font-semibold text-primary hover:underline">
+                      Inicia sesión
+                    </Link>
+                    {" "}para añadir comentarios.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="border-t pt-6 mt-6 space-y-6">
+                <h4 className="text-lg font-medium">
+                  Comentarios Recientes ({commentsList.length})
+                </h4>
+                {isLoadingComments ? (
+                  <div className="flex justify-center items-center py-6">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="ml-2">Cargando comentarios...</p>
+                  </div>
+                ) : commentsList.length > 0 ? (
+                  commentsList.map((comment) => (
+                    <div key={comment.id} className="flex space-x-3 border-b pb-4 last:border-b-0 last:pb-0">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" />
+                        <AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-foreground">{comment.username}</p>
+                          <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
+                        </div>
+                        {comment.starRatingGiven && (
+                          <div className="mt-1">
+                            <StarRating rating={comment.starRatingGiven} size={14} readOnly />
+                          </div>
+                        )}
+                        <p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">
+                    No hay comentarios aún. ¡Sé el primero en comentar!
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+        </div> {/* Cierre de lg:col-span-2 space-y-8 */}
 
         <aside className="lg:col-span-1 space-y-6">
           <Alert>
