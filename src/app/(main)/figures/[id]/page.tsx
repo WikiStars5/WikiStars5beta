@@ -247,9 +247,24 @@ export default function FigurePage() {
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canUserInteract || !currentUser || !figure || newComment.trim() === "") {
-      toast({ title: "Error", description: "Debes escribir un comentario e iniciar sesión.", variant: "destructive" });
-      return;
+      // Allow submitting comment even if only stars are selected (text can be empty)
+      // but if stars are not selected either, then it's an error.
+      // The StarRatingVote component handles its own interaction restrictions.
+      // This function focuses on the comment text.
+      if (newComment.trim() === "") {
+           const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${figure.id}`);
+           const userStarRatingSnap = await getDoc(userStarRatingDocRef);
+           if (!userStarRatingSnap.exists()) {
+              toast({ title: "Error", description: "Debes calificar o escribir un comentario.", variant: "destructive" });
+              return;
+           }
+      }
     }
+    if (!canUserInteract || !currentUser || !figure) {
+        toast({ title: "Error", description: "Debes iniciar sesión para comentar.", variant: "destructive" });
+        return;
+    }
+
     setIsSubmittingComment(true);
     try {
       let userStarRatingValue: StarValue | null = null;
@@ -260,6 +275,14 @@ export default function FigurePage() {
           userStarRatingValue = userStarRatingSnap.data().starValue as StarValue;
         }
       }
+      
+      // If no star rating was given via the StarRatingVote component AND no comment text, don't submit.
+      if (userStarRatingValue === null && newComment.trim() === "") {
+        toast({ title: "Opinión Vacía", description: "Por favor, selecciona una calificación o escribe un comentario.", variant: "default" });
+        setIsSubmittingComment(false);
+        return;
+      }
+
 
       const commentData = {
         figureId: figure.id,
@@ -287,16 +310,17 @@ export default function FigurePage() {
         transaction.update(figureDocRef, { commentCount: currentCommentCount + 1 });
       });
 
-      toast({ title: "Comentario Enviado", description: "Tu comentario ha sido guardado." });
+      toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
       setNewComment("");
+      // No need to manually reset selected stars here as StarRatingVote handles its state
       fetchFigureAndComments(); 
     } catch (error: any) {
       console.error("Error submitting comment:", error);
-      let errorMessage = "No se pudo enviar tu comentario.";
+      let errorMessage = "No se pudo enviar tu opinión.";
       if (error.message) {
         errorMessage += ` Detalles: ${error.message}`;
       }
-      toast({ title: "Error al Comentar", description: errorMessage, variant: "destructive" });
+      toast({ title: "Error al Enviar", description: errorMessage, variant: "destructive" });
     } finally {
       setIsSubmittingComment(false);
     }
@@ -386,12 +410,10 @@ export default function FigurePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2 space-y-8">
           <Tabs defaultValue="personal-info" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6"> {/* Cambiado a grid-cols-4 */}
+            <TabsList className="grid w-full grid-cols-3 mb-6"> 
               <TabsTrigger value="personal-info" className="text-base py-2.5 flex items-center gap-2"><Info className="h-5 w-5" />Información</TabsTrigger>
               <TabsTrigger value="attitude-poll" className="text-base py-2.5 flex items-center gap-2"><MessageSquare className="h-5 w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-base py-2.5 flex items-center gap-2"><SmilePlus className="h-5 w-5" />Emoción</TabsTrigger>
-              <TabsTrigger value="star-rating" className="text-base py-2.5 flex items-center gap-2"><StarIcon className="h-5 w-5" />Calificar</TabsTrigger>
-              {/* TabsTrigger para Comentarios eliminado */}
             </TabsList>
 
             <TabsContent value="personal-info">
@@ -530,64 +552,56 @@ export default function FigurePage() {
                 </div>
               )}
             </TabsContent>
-
-            <TabsContent value="star-rating">
-              {figure && currentUser !== undefined && (
-                <>
-                  <RatingSummaryDisplay 
-                    figureName={figure.name} 
-                    starRatingCounts={figure.starRatingCounts} 
-                  />
-                  <StarRatingVote
-                    figureId={figure.id}
-                    figureName={figure.name}
-                    initialStarRatingCounts={figure.starRatingCounts}
-                    currentUser={currentUser}
-                  />
-                </>
-              )}
-              {(!figure || currentUser === undefined) && (
-                <div className="flex justify-center items-center h-40">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              )}
-            </TabsContent>
-            
-            {/* TabsContent para Comentarios eliminado de aquí */}
-
           </Tabs>
 
-          {/* Sección de Comentarios movida aquí, fuera y debajo de Tabs */}
-          <Card className="mt-8 w-full"> {/* Añadido mt-8 para espaciado y w-full */}
+          {/* Sección de Calificación y Comentarios movida aquí, fuera y debajo de Tabs */}
+          {figure && (
+            <RatingSummaryDisplay 
+              figureName={figure.name} 
+              starRatingCounts={figure.starRatingCounts} 
+            />
+          )}
+
+          <Card className="mt-8 w-full">
             <CardHeader>
               <CardTitle className="flex items-center text-2xl font-headline">
                 <MessagesSquare className="mr-3 h-7 w-7 text-primary" />
-                Comentarios sobre {figure.name}
+                Califica y Comenta sobre {figure.name}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {canUserInteract ? (
-                <form onSubmit={handleSubmitComment} className="space-y-4">
+              {canUserInteract && figure && currentUser !== undefined ? (
+                <form onSubmit={handleSubmitComment} className="space-y-6">
+                  {/* StarRatingVote component para que el usuario seleccione estrellas */}
+                  <div className="mb-6">
+                    <StarRatingVote
+                        figureId={figure.id}
+                        figureName={figure.name}
+                        initialStarRatingCounts={figure.starRatingCounts}
+                        currentUser={currentUser}
+                    />
+                  </div>
+                  
                   <div>
-                    <Label htmlFor="newComment" className="sr-only">Tu comentario</Label>
+                    <Label htmlFor="newComment" className="sr-only">Tu comentario (opcional si ya calificaste)</Label>
                     <Textarea
                       id="newComment"
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Escribe tu comentario aquí..."
+                      placeholder="Escribe tu comentario aquí (opcional si ya calificaste)..."
                       rows={4}
                       className="w-full"
                       disabled={isSubmittingComment}
                     />
                   </div>
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmittingComment || newComment.trim() === ""}>
+                    <Button type="submit" disabled={isSubmittingComment}>
                       {isSubmittingComment ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
                         <Send className="mr-2 h-4 w-4" />
                       )}
-                      {isSubmittingComment ? "Enviando..." : "Enviar Comentario"}
+                      {isSubmittingComment ? "Enviando..." : "Enviar Opinión"}
                     </Button>
                   </div>
                 </form>
@@ -599,7 +613,7 @@ export default function FigurePage() {
                     <Link href="/login" className="font-semibold text-primary hover:underline">
                       Inicia sesión
                     </Link>
-                    {" "}para añadir comentarios.
+                    {" "}para calificar y añadir comentarios.
                   </AlertDescription>
                 </Alert>
               )}
@@ -630,13 +644,15 @@ export default function FigurePage() {
                             <StarRating rating={comment.starRatingGiven} size={14} readOnly />
                           </div>
                         )}
-                        <p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>
+                        {comment.text && comment.text.trim() !== "" && (
+                           <p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>
+                        )}
                       </div>
                     </div>
                   ))
                 ) : (
                   <p className="text-muted-foreground text-center py-4">
-                    No hay comentarios aún. ¡Sé el primero en comentar!
+                    No hay comentarios aún. ¡Sé el primero en calificar o comentar!
                   </p>
                 )}
               </div>
@@ -670,3 +686,4 @@ export default function FigurePage() {
     </div>
   );
 }
+
