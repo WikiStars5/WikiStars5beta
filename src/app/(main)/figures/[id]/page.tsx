@@ -327,51 +327,65 @@ export default function FigurePage() {
     setIsSubmittingComment(true);
     
     const figureDocRef = doc(db, "figures", figure.id);
-    const userStarRatingDocId = `${currentUser.uid}_${figure.id}`;
-    const userStarRatingDocRef = doc(db, "userStarRatings", userStarRatingDocId);
+    const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
+    const currentStarsForComment = newCommentStars; // Stars selected for THIS submission
 
     try {
-      if (newCommentStars !== null) {
-        await runTransaction(db, async (transaction) => {
-          const figureSnap = await transaction.get(figureDocRef);
-          const userPrevRatingSnap = await transaction.get(userStarRatingDocRef);
+      await runTransaction(db, async (transaction) => {
+        const figureSnap = await transaction.get(figureDocRef);
+        const userPrevRatingSnap = await transaction.get(userStarRatingDocRef);
 
-          if (!figureSnap.exists()) throw new Error("Documento de figura no existe!");
-          
-          const prevStarValue: StarValue | null = userPrevRatingSnap.exists() ? userPrevRatingSnap.data()!.starValue as StarValue : null;
-          
-          const currentFigureData = figureSnap.data()!;
-          const currentStarCounts = (currentFigureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
-          const newStarCounts = { ...currentStarCounts };
+        if (!figureSnap.exists()) throw new Error("Figure document does not exist!");
+        
+        const figureData = figureSnap.data()!;
+        const currentStarCounts = (figureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
+        const newStarCounts = { ...currentStarCounts };
+        
+        const prevStarValue: StarValue | null = userPrevRatingSnap.exists() ? userPrevRatingSnap.data()!.starValue as StarValue : null;
 
-          if (prevStarValue !== null && prevStarValue !== newCommentStars) {
-            const prevKey = prevStarValue.toString() as StarValueAsString;
-            newStarCounts[prevKey] = Math.max(0, (newStarCounts[prevKey] || 0) - 1);
-          }
+        // Step 1: If user had a previous rating, decrement its count from global counts
+        if (prevStarValue !== null) {
+          const prevKey = prevStarValue.toString() as StarValueAsString;
+          newStarCounts[prevKey] = Math.max(0, (newStarCounts[prevKey] || 0) - 1);
+        }
+        
+        // Step 2: If user is submitting a new rating with this comment, increment its count in global counts
+        if (currentStarsForComment !== null) {
+          const newKey = currentStarsForComment.toString() as StarValueAsString;
+          newStarCounts[newKey] = (newStarCounts[newKey] || 0) + 1;
           
-          if (prevStarValue !== newCommentStars) { 
-            const newKey = newCommentStars.toString() as StarValueAsString; // newCommentStars is guaranteed non-null here
-            newStarCounts[newKey] = (newStarCounts[newKey] || 0) + 1;
-          }
-          
-          transaction.update(figureDocRef, { starRatingCounts: newStarCounts });
-          
+          // Also, update/set the user's individual overall star rating for this figure
           transaction.set(userStarRatingDocRef, {
             userId: currentUser.uid,
             figureId: figure.id,
-            starValue: newCommentStars,
+            starValue: currentStarsForComment,
             timestamp: serverTimestamp(),
           });
-        });
-      }
-      
+        } else {
+          // If user is NOT submitting stars with THIS comment,
+          // AND they had a previous rating, delete their individual overall star rating.
+          // The decrement in Step 1 already removed their old vote from global counts.
+          if (userPrevRatingSnap.exists()) {
+            transaction.delete(userStarRatingDocRef);
+          }
+        }
+        
+        // Step 3: Update figure's starRatingCounts
+        transaction.update(figureDocRef, { starRatingCounts: newStarCounts });
+
+        // Step 4: Add the comment (if text exists or stars were given)
+        // and update commentCount on figure. This happens outside this specific star logic but within the same overall submit action.
+        // The comment adding logic will be below this transaction for star ratings.
+      }); // End of transaction for star ratings
+
+      // Add the comment document
       const commentData = {
         figureId: figure.id,
         userId: currentUser.uid,
         username: currentUser.displayName || "Usuario Anónimo",
         userPhotoURL: currentUser.photoURL || null,
         text: newComment.trim(),
-        starRatingGiven: newCommentStars, 
+        starRatingGiven: currentStarsForComment, 
         createdAt: serverTimestamp(),
         likes: 0,
         dislikes: 0,
@@ -380,6 +394,7 @@ export default function FigurePage() {
       };
       await addDoc(collection(db, 'userComments'), commentData);
       
+      // Update comment count on figure (can be a separate transaction or batched if preferred)
       await runTransaction(db, async (transaction) => {
         const figureSnap = await transaction.get(figureDocRef);
         if (!figureSnap.exists()) throw new Error("Documento de la figura no existe!");
@@ -387,12 +402,12 @@ export default function FigurePage() {
         transaction.update(figureDocRef, { commentCount: currentCommentCount + 1 });
       });
 
-      if (newCommentStars) {
-        playSoundEffect(newCommentStars);
+      if (currentStarsForComment) {
+        playSoundEffect(currentStarsForComment);
       }
       toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
       setNewComment("");
-      // setNewCommentStars(null); // Explicitly reset stars for next comment form by this user
+      // setNewCommentStars(null); // Keep the selected stars for now, or reset if preferred
       fetchFigureAndComments(); 
     } catch (error: any) {
       console.error("Error submitting opinion:", error);
@@ -430,6 +445,11 @@ export default function FigurePage() {
         
         const updates: any = { commentCount: newCommentCount };
 
+        // If the deleted comment had a star rating, adjust the figure's starRatingCounts
+        // This part needs careful consideration: if a comment with 3 stars is deleted,
+        // it means one less 3-star vote overall.
+        // We are NOT touching userStarRatings here, as deleting a comment shouldn't necessarily
+        // delete the user's overall rating for the figure, only the rating associated with THAT comment.
         if (starRatingOfCommentToDelete) {
           const starKey = starRatingOfCommentToDelete.toString() as StarValueAsString;
           const currentStarCounts = (figureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
@@ -565,71 +585,6 @@ export default function FigurePage() {
             <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
             <TabsContent value="perception-emotions">{figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
           </Tabs>
-
-          {figure && (<RatingSummaryDisplay figureName={figure.name} starRatingCounts={figure.starRatingCounts} />)}
-
-          <Card className="mt-8 w-full">
-            <CardHeader>
-              <CardTitle className="flex items-center text-2xl font-headline"><MessagesSquare className="mr-3 h-7 w-7 text-primary" />Califica y Comenta sobre {figure.name}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {canUserInteract && figure && currentUser !== undefined ? (
-                <form onSubmit={handleSubmitComment} className="space-y-6">
-                  <div className="mb-4">
-                    <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">Tu calificación:</Label>
-                    <StarRating
-                        rating={newCommentStars || 0}
-                        onRatingChange={(rating) => {
-                          const starVal = rating as StarValue;
-                          setNewCommentStars(starVal);
-                        }}
-                        size={32}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="newComment" className="sr-only">Tu comentario (opcional)</Label>
-                    <Textarea id="newComment" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Escribe tu comentario aquí (opcional)..." rows={4} className="w-full" disabled={isSubmittingComment} />
-                  </div>
-                  <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmittingComment}>{isSubmittingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{isSubmittingComment ? "Enviando..." : "Enviar Opinión"}</Button>
-                  </div>
-                </form>
-              ) : ( <Alert><LogIn className="h-4 w-4" /><AlertTitle>Participación Restringida</AlertTitle><AlertDescription><Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión</Link> para calificar y comentar.</AlertDescription></Alert>)}
-              
-              <div className="border-t pt-6 mt-6 space-y-6">
-                <h4 className="text-lg font-medium">Comentarios Recientes ({commentsList.length})</h4>
-                {isLoadingComments ? (<div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando...</p></div>
-                ) : commentsList.length > 0 ? (
-                  commentsList.map((comment) => (
-                    <div key={comment.id} className="flex space-x-3 border-b pb-4 last:border-b-0 last:pb-0 relative group">
-                      <Avatar className="h-10 w-10"><AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" /><AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm font-semibold text-foreground">{comment.username}</p>
-                            <div className="flex items-center space-x-2">
-                                <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
-                                {currentUser && (currentUser.uid === comment.userId || currentUser.uid === ADMIN_UID) && (
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                    onClick={() => openDeleteDialog(comment.id, comment.starRatingGiven)}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Eliminar comentario</span>
-                                </Button>
-                                )}
-                            </div>
-                        </div>
-                        {comment.starRatingGiven && (<div className="mt-1"><StarRating rating={comment.starRatingGiven} size={14} readOnly /></div>)}
-                        {comment.text && comment.text.trim() !== "" && (<p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>)}
-                      </div>
-                    </div>
-                  ))
-                ) : (<p className="text-muted-foreground text-center py-4">No hay comentarios. ¡Sé el primero!</p>)}
-              </div>
-            </CardContent>
-          </Card>
         </div> 
 
         <aside className="lg:col-span-1 space-y-6">
@@ -637,6 +592,72 @@ export default function FigurePage() {
           {relatedFigures.length > 0 && (<div><h3 className="text-xl font-headline mb-4">También te podría interesar</h3><div className="space-y-4">{relatedFigures.map(relatedFig => (<FigureListItem key={relatedFig.id} figure={relatedFig} />))}</div></div>)}
         </aside>
       </div>
+
+      {figure && (<RatingSummaryDisplay figureName={figure.name} starRatingCounts={figure.starRatingCounts} />)}
+
+      <Card className="mt-8 w-full lg:col-span-2 lg:col-start-1">
+        <CardHeader>
+          <CardTitle className="flex items-center text-2xl font-headline"><MessagesSquare className="mr-3 h-7 w-7 text-primary" />Califica y Comenta sobre {figure.name}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {canUserInteract && figure && currentUser !== undefined ? (
+            <form onSubmit={handleSubmitComment} className="space-y-6">
+              <div className="mb-4">
+                <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">Tu calificación (haz clic para seleccionar):</Label>
+                <StarRating
+                    rating={newCommentStars || 0}
+                    onRatingChange={(rating) => {
+                      const starVal = rating as StarValue;
+                      setNewCommentStars(starVal);
+                    }}
+                    size={32}
+                />
+              </div>
+              <div>
+                <Label htmlFor="newComment" className="sr-only">Tu comentario (opcional)</Label>
+                <Textarea id="newComment" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder={newCommentStars ? "Añade un comentario (opcional)..." : "Escribe tu comentario aquí (opcional)..."} rows={4} className="w-full" disabled={isSubmittingComment} />
+              </div>
+              <div className="flex justify-end">
+                <Button type="submit" disabled={isSubmittingComment || (!newComment.trim() && !newCommentStars)}>{isSubmittingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{isSubmittingComment ? "Enviando..." : "Enviar Opinión"}</Button>
+              </div>
+            </form>
+          ) : ( <Alert><LogIn className="h-4 w-4" /><AlertTitle>Participación Restringida</AlertTitle><AlertDescription><Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión</Link> para calificar y comentar.</AlertDescription></Alert>)}
+          
+          <div className="border-t pt-6 mt-6 space-y-6">
+            <h4 className="text-lg font-medium">Comentarios Recientes ({commentsList.length})</h4>
+            {isLoadingComments ? (<div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando...</p></div>
+            ) : commentsList.length > 0 ? (
+              commentsList.map((comment) => (
+                <div key={comment.id} className="flex space-x-3 border-b pb-4 last:border-b-0 last:pb-0 relative group">
+                  <Avatar className="h-10 w-10"><AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" /><AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-foreground">{comment.username}</p>
+                        <div className="flex items-center space-x-2">
+                            <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
+                            {currentUser && (currentUser.uid === comment.userId || currentUser.uid === ADMIN_UID) && (
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                onClick={() => openDeleteDialog(comment.id, comment.starRatingGiven)}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Eliminar comentario</span>
+                            </Button>
+                            )}
+                        </div>
+                    </div>
+                    {comment.starRatingGiven && (<div className="mt-1"><StarRating rating={comment.starRatingGiven} size={14} readOnly /></div>)}
+                    {comment.text && comment.text.trim() !== "" && (<p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>)}
+                  </div>
+                </div>
+              ))
+            ) : (<p className="text-muted-foreground text-center py-4">No hay comentarios. ¡Sé el primero!</p>)}
+          </div>
+        </CardContent>
+      </Card>
+
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
