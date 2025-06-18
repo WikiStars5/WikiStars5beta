@@ -42,18 +42,6 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'encrypted-tbn0.gstatic.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'm.media-amazon.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
         hostname: 'i.pinimg.com',
         port: '',
         pathname: '/**',
@@ -70,3 +58,4 @@ const nextConfig: NextConfig = {
 }; 
 
 export default nextConfig;
+

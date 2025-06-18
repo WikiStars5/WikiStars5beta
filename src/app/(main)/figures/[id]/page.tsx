@@ -479,9 +479,7 @@ export default function FigurePage() {
     editedPhotoUrl.startsWith('https://static.wikia.nocookie.net') || 
     editedPhotoUrl.startsWith('https://firebasestorage.googleapis.com') || 
     editedPhotoUrl.startsWith('https://placehold.co') ||
-    editedPhotoUrl.startsWith('https://i.pinimg.com') ||
-    editedPhotoUrl.startsWith('https://encrypted-tbn0.gstatic.com') ||
-    editedPhotoUrl.startsWith('https://m.media-amazon.com')
+    editedPhotoUrl.startsWith('https://i.pinimg.com')
   );
 
   const renderDetailItem = (icon: React.ElementType, label: string, value?: string) => {
@@ -526,7 +524,7 @@ export default function FigurePage() {
                   {isEditing && canUserInteract ? (
                     <div className="space-y-4">
                       {renderEditInput("photoUrl", "URL de Imagen", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://...")}
-                      <p className="text-xs text-muted-foreground mt-1">Dominios permitidos: Wikimedia, Wikia, Firebase Storage, Placehold.co, Pinterest, Google Images, Amazon.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Dominios permitidos: Wikimedia, Wikia, Firebase Storage, Placehold.co, Pinterest.</p>
                       {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center" data-ai-hint="image preview"><Image src={editedPhotoUrl} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground" data-ai-hint="placeholder abstract"><ImageOff className="h-10 w-10" /></div>}
                       {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
@@ -676,3 +674,4 @@ export default function FigurePage() {
     </div>
   );
 }
+
