@@ -40,7 +40,7 @@ export default function FigurePage() {
   const id = routeParams?.id;
   const router = useRouter();
 
-  const [figure, setFigure] = useState<Figure | null | undefined>(undefined);
+  const [figure, setFigure] = useState<Figure | null | undefined>(undefined); // undefined: loading, null: not found
   const [allFigures, setAllFigures] = useState<Figure[]>([]);
   const { toast } = useToast();
 
@@ -104,28 +104,32 @@ export default function FigurePage() {
     }
   }, []);
 
-  const fetchFigureData = useCallback(async () => {
+  const fetchFigureAndComments = useCallback(async () => {
     if (!id) {
-      setFigure(undefined);
+      setFigure(undefined); // Still loading ID or invalid route
+      setCommentsList([]);
       setIsLoadingComments(false);
       return;
     }
-    setFigure(undefined); // Reset figure while loading new one
-    setIsLoadingComments(true); // Set loading comments to true
 
-    const fetchedFigure = await getFigureFromFirestore(id);
-    setFigure(fetchedFigure || null);
-    if (fetchedFigure) {
-      resetEditFields(fetchedFigure);
-    }
+    setFigure(undefined); // Indicate loading state for the figure itself
+    setCommentsList([]); // Reset comments list for the new figure
+    setIsLoadingComments(true);
+
+    // Fetch Figure Details
     try {
-      const fetchedAllFigures = await getAllFiguresFromFirestore();
-      setAllFigures(fetchedAllFigures);
+      const fetchedFigure = await getFigureFromFirestore(id);
+      setFigure(fetchedFigure || null); // null if not found
+      if (fetchedFigure) {
+        resetEditFields(fetchedFigure);
+      }
     } catch (error) {
-      console.error("Error fetching all figures for related section:", error);
+      console.error("Error fetching figure details:", error);
+      toast({ title: "Error al Cargar Figura", description: "No se pudo cargar la información de la figura.", variant: "destructive"});
+      setFigure(null); // Set to null on error to show "Not Found" or error state
     }
 
-    // Fetch comments
+    // Fetch Comments - only if figureId is valid (even if figure itself wasn't found, comments might exist if ID was once valid)
     try {
       const commentsQuery = query(
         collection(db, 'userComments'),
@@ -135,10 +139,10 @@ export default function FigurePage() {
       );
       const querySnapshot = await getDocs(commentsQuery);
       const fetchedComments: UserComment[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
         const comment: UserComment = {
-          id: doc.id,
+          id: docSnap.id,
           figureId: data.figureId,
           userId: data.userId,
           username: data.username,
@@ -155,26 +159,38 @@ export default function FigurePage() {
       });
       setCommentsList(fetchedComments);
     } catch (error) {
-      console.error("Error fetching comments:", error);
-      toast({ title: "Error al Cargar Comentarios", description: "No se pudieron cargar los comentarios.", variant: "destructive"});
-      setCommentsList([]);
+      console.error("Error fetching comments:", error); // This log is CRITICAL for diagnosing
+      toast({ title: "Error al Cargar Comentarios", description: "No se pudieron cargar los comentarios. Revisa la consola del navegador para más detalles.", variant: "destructive"});
+      setCommentsList([]); // Ensure list is empty on error
     } finally {
       setIsLoadingComments(false);
     }
 
+    // Fetch all figures for related section (can be done in parallel or after main figure)
+    try {
+      const fetchedAllFigures = await getAllFiguresFromFirestore();
+      setAllFigures(fetchedAllFigures);
+    } catch (error) {
+      console.error("Error fetching all figures for related section:", error);
+    }
+
   }, [id, resetEditFields, toast]);
+
 
   useEffect(() => {
     if (id) {
-      fetchFigureData();
+      fetchFigureAndComments();
     }
-  }, [id, fetchFigureData]);
+  }, [id, fetchFigureAndComments]);
+
 
   useEffect(() => {
+    // This effect is fine, resets edit fields if figure changes or edit mode is entered
     if (figure && isEditing) {
       resetEditFields(figure);
     }
   }, [figure, isEditing, resetEditFields]);
+
 
   const handleEditToggle = () => {
     if (!canUserInteract) {
@@ -219,7 +235,7 @@ export default function FigurePage() {
 
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
       setIsEditing(false);
-      await fetchFigureData();
+      fetchFigureAndComments(); // Re-fetch all data
     } catch (error: any) {
       console.error("Error saving figure details:", error);
       let errorMessage = "No se pudo guardar la información.";
@@ -277,7 +293,7 @@ export default function FigurePage() {
 
       toast({ title: "Comentario Enviado", description: "Tu comentario ha sido guardado." });
       setNewComment("");
-      fetchFigureData(); 
+      fetchFigureAndComments(); // Re-fetch comments and figure data
     } catch (error: any) {
       console.error("Error submitting comment:", error);
       let errorMessage = "No se pudo enviar tu comentario.";
@@ -292,11 +308,13 @@ export default function FigurePage() {
 
   const formatDate = (timestamp: any): string => {
     if (!timestamp || typeof timestamp.toDate !== 'function') {
+      // console.warn("formatDate received invalid timestamp:", timestamp);
       return 'Fecha desconocida';
     }
     try {
       const date = timestamp.toDate();
       if (isNaN(date.getTime())) {
+        // console.warn("formatDate: Converted date is NaN for timestamp:", timestamp);
         return 'Fecha inválida';
       }
       return `${date.toLocaleDateString()} a las ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
@@ -307,7 +325,7 @@ export default function FigurePage() {
   };
 
 
-  if (!id && figure === undefined) {
+  if (!id && figure === undefined) { // Case: Route param 'id' not yet available
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -315,8 +333,8 @@ export default function FigurePage() {
       </div>
     );
   }
-
-  if (figure === undefined) {
+  
+  if (figure === undefined) { // Case: 'id' is available, figure data is being fetched
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -324,11 +342,11 @@ export default function FigurePage() {
     );
   }
 
-  if (!figure) {
+  if (figure === null) { // Case: Fetch attempted, figure not found or error occurred
     return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Figura No Encontrada</h1>
-        <p className="text-muted-foreground">El perfil (ID: {id || "desconocido"}) que buscas no existe en Firestore.</p>
+        <p className="text-muted-foreground">El perfil (ID: {id || "desconocido"}) que buscas no existe o no se pudo cargar.</p>
         <Button asChild className="mt-4">
           <Link href="/">Ir a la Página Principal</Link>
         </Button>
@@ -488,7 +506,7 @@ export default function FigurePage() {
             </TabsContent>
 
             <TabsContent value="attitude-poll">
-              {figure && currentUser !== undefined && (
+              {figure && currentUser !== undefined && ( // Check currentUser is not undefined (initial auth state)
                 <AttitudeVote
                   figureId={figure.id}
                   figureName={figure.name}
@@ -667,4 +685,3 @@ export default function FigurePage() {
     </div>
   );
 }
-
