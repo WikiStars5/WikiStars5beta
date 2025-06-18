@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next'; 
 
 const nextConfig: NextConfig = { 
@@ -38,7 +39,25 @@ const nextConfig: NextConfig = {
         port: '', 
         // Permite cualquier ruta de imagen bajo este hostname.
         pathname: '/**', 
-      }, 
+      },
+      {
+        protocol: 'https',
+        hostname: 'encrypted-tbn0.gstatic.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'm.media-amazon.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.pinimg.com',
+        port: '',
+        pathname: '/**',
+      },
     ], 
   }, 
   devIndicators: { 
