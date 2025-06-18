@@ -40,7 +40,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
@@ -134,6 +133,8 @@ export default function FigurePage() {
         getDoc(userStarRatingDocRef).then(docSnap => {
           if (docSnap.exists()) {
             setNewCommentStars(docSnap.data().starValue as StarValue);
+          } else {
+            setNewCommentStars(null);
           }
         });
       } else if (!user || user.isAnonymous) {
@@ -331,34 +332,36 @@ export default function FigurePage() {
 
     try {
       if (newCommentStars !== null) {
-        const previousSelectedUserRatingDoc = await getDoc(userStarRatingDocRef);
-        const previousSelectedUserStarValue: StarValue | null = previousSelectedUserRatingDoc.exists()
-          ? previousSelectedUserRatingDoc.data().starValue as StarValue
-          : null;
-
         await runTransaction(db, async (transaction) => {
           const figureSnap = await transaction.get(figureDocRef);
-          if (!figureSnap.exists()) throw "Documento de figura no existe!";
+          const userPrevRatingSnap = await transaction.get(userStarRatingDocRef);
+
+          if (!figureSnap.exists()) throw new Error("Documento de figura no existe!");
           
-          const currentFigureData = figureSnap.data();
-          const currentStarCounts = (currentFigureData?.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
+          const prevStarValue: StarValue | null = userPrevRatingSnap.exists() ? userPrevRatingSnap.data()!.starValue as StarValue : null;
+          
+          const currentFigureData = figureSnap.data()!;
+          const currentStarCounts = (currentFigureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
           const newStarCounts = { ...currentStarCounts };
 
-          if (previousSelectedUserStarValue && previousSelectedUserStarValue !== newCommentStars) {
-            const prevKey = previousSelectedUserStarValue.toString() as StarValueAsString;
+          if (prevStarValue !== null && prevStarValue !== newCommentStars) {
+            const prevKey = prevStarValue.toString() as StarValueAsString;
             newStarCounts[prevKey] = Math.max(0, (newStarCounts[prevKey] || 0) - 1);
           }
-          if (previousSelectedUserStarValue !== newCommentStars) { 
-            const newKey = newCommentStars.toString() as StarValueAsString;
+          
+          if (prevStarValue !== newCommentStars) { 
+            const newKey = newCommentStars.toString() as StarValueAsString; // newCommentStars is guaranteed non-null here
             newStarCounts[newKey] = (newStarCounts[newKey] || 0) + 1;
-            transaction.update(figureDocRef, { starRatingCounts: newStarCounts });
           }
-        });
-        await setDoc(userStarRatingDocRef, {
-          userId: currentUser.uid,
-          figureId: figure.id,
-          starValue: newCommentStars,
-          timestamp: serverTimestamp(),
+          
+          transaction.update(figureDocRef, { starRatingCounts: newStarCounts });
+          
+          transaction.set(userStarRatingDocRef, {
+            userId: currentUser.uid,
+            figureId: figure.id,
+            starValue: newCommentStars,
+            timestamp: serverTimestamp(),
+          });
         });
       }
       
@@ -379,7 +382,7 @@ export default function FigurePage() {
       
       await runTransaction(db, async (transaction) => {
         const figureSnap = await transaction.get(figureDocRef);
-        if (!figureSnap.exists()) throw "Documento de la figura no existe!";
+        if (!figureSnap.exists()) throw new Error("Documento de la figura no existe!");
         const currentCommentCount = figureSnap.data().commentCount || 0;
         transaction.update(figureDocRef, { commentCount: currentCommentCount + 1 });
       });
@@ -389,6 +392,7 @@ export default function FigurePage() {
       }
       toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
       setNewComment("");
+      // setNewCommentStars(null); // Explicitly reset stars for next comment form by this user
       fetchFigureAndComments(); 
     } catch (error: any) {
       console.error("Error submitting opinion:", error);
@@ -439,7 +443,7 @@ export default function FigurePage() {
       });
 
       toast({ title: "Comentario Eliminado", description: "El comentario ha sido eliminado." });
-      fetchFigureAndComments(); // Refresh comments and figure data
+      fetchFigureAndComments(); 
     } catch (error: any) {
       console.error("Error deleting comment:", error);
       toast({ title: "Error al Eliminar", description: `No se pudo eliminar el comentario. ${error.message}`, variant: "destructive" });
