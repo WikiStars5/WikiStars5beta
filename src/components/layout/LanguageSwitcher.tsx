@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Languages } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, usePathname } from "next-intl/client";
-import { type Locale } from "next-intl"; // Assuming you might have a type for Locale
+import type { LocaleString as Locale } from "next-intl";
 
 export function LanguageSwitcher() {
   const t = useTranslations("LanguageSwitcher");
@@ -20,9 +20,9 @@ export function LanguageSwitcher() {
   const pathname = usePathname();
 
   const locales: { code: Locale; name: string }[] = [
-    { code: "es", name: t("spanish") },
-    { code: "en", name: t("english") },
-    { code: "pt", name: t("portuguese") },
+    { code: "es" as Locale, name: t("spanish") },
+    { code: "en" as Locale, name: t("english") },
+    { code: "pt" as Locale, name: t("portuguese") },
   ];
 
   const changeLocale = (newLocale: Locale) => {
