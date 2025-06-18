@@ -394,7 +394,6 @@ export default function FigurePage() {
       }
       toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
       setNewComment("");
-      // setNewCommentStars(null); // Keep or reset based on desired UX
       fetchFigureAndComments(); 
     } catch (error: any) {
       console.error("Error submitting opinion:", error);
@@ -438,6 +437,14 @@ export default function FigurePage() {
           const newStarCounts = { ...currentStarCounts };
           newStarCounts[starKey] = Math.max(0, (newStarCounts[starKey] || 0) - 1);
           updates.starRatingCounts = newStarCounts;
+
+          // If the comment being deleted was the user's current star rating for the figure, remove it
+          const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${figure.id}`);
+          const userStarRatingSnap = await transaction.get(userStarRatingDocRef);
+          if (userStarRatingSnap.exists() && userStarRatingSnap.data().starValue === starRatingOfCommentToDelete) {
+             transaction.delete(userStarRatingDocRef);
+             setNewCommentStars(null); // Clear local state as well
+          }
         }
         
         transaction.update(figureRef, updates);
@@ -567,6 +574,72 @@ export default function FigurePage() {
             <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
             <TabsContent value="perception-emotions">{figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
           </Tabs>
+          
+          {/* RatingSummaryDisplay and Comments Card moved here */}
+          {figure && (<RatingSummaryDisplay figureName={figure.name} starRatingCounts={figure.starRatingCounts} />)}
+
+          <Card className="mt-8 w-full">
+            <CardHeader>
+              <CardTitle className="flex items-center text-2xl font-headline"><MessagesSquare className="mr-3 h-7 w-7 text-primary" />Califica y Comenta sobre {figure.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {canUserInteract && figure && currentUser !== undefined ? (
+                <form onSubmit={handleSubmitComment} className="space-y-6">
+                  <div className="mb-4">
+                    <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">Tu calificación (haz clic para seleccionar):</Label>
+                    <StarRating
+                        rating={newCommentStars || 0}
+                        onRatingChange={(rating) => {
+                          const starVal = rating as StarValue;
+                          setNewCommentStars(starVal);
+                        }}
+                        size={32}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="newComment" className="sr-only">Tu comentario (opcional)</Label>
+                    <Textarea id="newComment" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder={newCommentStars ? "Añade un comentario (opcional)..." : "Escribe tu comentario aquí (opcional)..."} rows={4} className="w-full" disabled={isSubmittingComment} />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={isSubmittingComment || (!newComment.trim() && !newCommentStars)}>{isSubmittingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{isSubmittingComment ? "Enviando..." : "Enviar Opinión"}</Button>
+                  </div>
+                </form>
+              ) : ( <Alert><LogIn className="h-4 w-4" /><AlertTitle>Participación Restringida</AlertTitle><AlertDescription><Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión</Link> para calificar y comentar.</AlertDescription></Alert>)}
+              
+              <div className="border-t pt-6 mt-6 space-y-6">
+                <h4 className="text-lg font-medium">Comentarios Recientes ({commentsList.length})</h4>
+                {isLoadingComments ? (<div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando...</p></div>
+                ) : commentsList.length > 0 ? (
+                  commentsList.map((comment) => (
+                    <div key={comment.id} className="flex space-x-3 border-b pb-4 last:border-b-0 last:pb-0 relative group">
+                      <Avatar className="h-10 w-10"><AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" /><AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                            <p className="text-sm font-semibold text-foreground">{comment.username}</p>
+                            <div className="flex items-center space-x-2">
+                                <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
+                                {currentUser && (currentUser.uid === comment.userId || currentUser.uid === ADMIN_UID) && (
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                    onClick={() => openDeleteDialog(comment.id, comment.starRatingGiven)}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Eliminar comentario</span>
+                                </Button>
+                                )}
+                            </div>
+                        </div>
+                        {comment.starRatingGiven && (<div className="mt-1"><StarRating rating={comment.starRatingGiven} size={14} readOnly /></div>)}
+                        {comment.text && comment.text.trim() !== "" && (<p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>)}
+                      </div>
+                    </div>
+                  ))
+                ) : (<p className="text-muted-foreground text-center py-4">No hay comentarios. ¡Sé el primero!</p>)}
+              </div>
+            </CardContent>
+          </Card>
         </div> 
 
         <aside className="lg:col-span-1 space-y-6">
@@ -574,72 +647,6 @@ export default function FigurePage() {
           {relatedFigures.length > 0 && (<div><h3 className="text-xl font-headline mb-4">También te podría interesar</h3><div className="space-y-4">{relatedFigures.map(relatedFig => (<FigureListItem key={relatedFig.id} figure={relatedFig} />))}</div></div>)}
         </aside>
       </div>
-
-      {figure && (<RatingSummaryDisplay figureName={figure.name} starRatingCounts={figure.starRatingCounts} />)}
-
-      <Card className="mt-8 w-full lg:col-span-3"> {/* Ajustado para ocupar todo el ancho si es necesario */}
-        <CardHeader>
-          <CardTitle className="flex items-center text-2xl font-headline"><MessagesSquare className="mr-3 h-7 w-7 text-primary" />Califica y Comenta sobre {figure.name}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {canUserInteract && figure && currentUser !== undefined ? (
-            <form onSubmit={handleSubmitComment} className="space-y-6">
-              <div className="mb-4">
-                <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">Tu calificación (haz clic para seleccionar):</Label>
-                <StarRating
-                    rating={newCommentStars || 0}
-                    onRatingChange={(rating) => {
-                      const starVal = rating as StarValue;
-                      setNewCommentStars(starVal);
-                      // El sonido se reproduce al enviar el comentario
-                    }}
-                    size={32}
-                />
-              </div>
-              <div>
-                <Label htmlFor="newComment" className="sr-only">Tu comentario (opcional)</Label>
-                <Textarea id="newComment" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder={newCommentStars ? "Añade un comentario (opcional)..." : "Escribe tu comentario aquí (opcional)..."} rows={4} className="w-full" disabled={isSubmittingComment} />
-              </div>
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isSubmittingComment || (!newComment.trim() && !newCommentStars)}>{isSubmittingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{isSubmittingComment ? "Enviando..." : "Enviar Opinión"}</Button>
-              </div>
-            </form>
-          ) : ( <Alert><LogIn className="h-4 w-4" /><AlertTitle>Participación Restringida</AlertTitle><AlertDescription><Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión</Link> para calificar y comentar.</AlertDescription></Alert>)}
-          
-          <div className="border-t pt-6 mt-6 space-y-6">
-            <h4 className="text-lg font-medium">Comentarios Recientes ({commentsList.length})</h4>
-            {isLoadingComments ? (<div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando...</p></div>
-            ) : commentsList.length > 0 ? (
-              commentsList.map((comment) => (
-                <div key={comment.id} className="flex space-x-3 border-b pb-4 last:border-b-0 last:pb-0 relative group">
-                  <Avatar className="h-10 w-10"><AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" /><AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-foreground">{comment.username}</p>
-                        <div className="flex items-center space-x-2">
-                            <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
-                            {currentUser && (currentUser.uid === comment.userId || currentUser.uid === ADMIN_UID) && (
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                onClick={() => openDeleteDialog(comment.id, comment.starRatingGiven)}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">Eliminar comentario</span>
-                            </Button>
-                            )}
-                        </div>
-                    </div>
-                    {comment.starRatingGiven && (<div className="mt-1"><StarRating rating={comment.starRatingGiven} size={14} readOnly /></div>)}
-                    {comment.text && comment.text.trim() !== "" && (<p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>)}
-                  </div>
-                </div>
-              ))
-            ) : (<p className="text-muted-foreground text-center py-4">No hay comentarios. ¡Sé el primero!</p>)}
-          </div>
-        </CardContent>
-      </Card>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
