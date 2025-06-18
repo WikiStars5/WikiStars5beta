@@ -8,12 +8,12 @@ import {
   Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   Image as ImageIcon, ImageOff, BarChartHorizontal, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
-  MessagesSquare, // Icono para la nueva pestaña de Comentarios
-  Send // Icono para el botón de enviar comentario
+  MessagesSquare, 
+  Send 
 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
-import Image from "next/image"; // For preview
+import Image from "next/image"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,7 +30,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, updateDoc as updateFirestoreDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, updateDoc as updateFirestoreDoc, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { StarRating } from "@/components/shared/StarRating";
 
 
 export default function FigurePage() {
@@ -68,6 +70,8 @@ export default function FigurePage() {
 
   const [newComment, setNewComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [commentsList, setCommentsList] = useState<UserComment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
@@ -103,8 +107,12 @@ export default function FigurePage() {
   const fetchFigureData = useCallback(async () => {
     if (!id) {
       setFigure(undefined);
+      setIsLoadingComments(false);
       return;
     }
+    setFigure(undefined); // Reset figure while loading new one
+    setIsLoadingComments(true); // Set loading comments to true
+
     const fetchedFigure = await getFigureFromFirestore(id);
     setFigure(fetchedFigure || null);
     if (fetchedFigure) {
@@ -116,7 +124,45 @@ export default function FigurePage() {
     } catch (error) {
       console.error("Error fetching all figures for related section:", error);
     }
-  }, [id, resetEditFields]);
+
+    // Fetch comments
+    try {
+      const commentsQuery = query(
+        collection(db, 'userComments'),
+        where('figureId', '==', id),
+        orderBy('createdAt', 'desc'),
+        limit(20)
+      );
+      const querySnapshot = await getDocs(commentsQuery);
+      const fetchedComments: UserComment[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const comment: UserComment = {
+          id: doc.id,
+          figureId: data.figureId,
+          userId: data.userId,
+          username: data.username,
+          userPhotoURL: data.userPhotoURL || null,
+          text: data.text,
+          starRatingGiven: data.starRatingGiven || null,
+          createdAt: data.createdAt, 
+          likes: data.likes || 0,
+          dislikes: data.dislikes || 0,
+          likedBy: data.likedBy || [],
+          dislikedBy: data.dislikedBy || [],
+        };
+        fetchedComments.push(comment);
+      });
+      setCommentsList(fetchedComments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      toast({ title: "Error al Cargar Comentarios", description: "No se pudieron cargar los comentarios.", variant: "destructive"});
+      setCommentsList([]);
+    } finally {
+      setIsLoadingComments(false);
+    }
+
+  }, [id, resetEditFields, toast]);
 
   useEffect(() => {
     if (id) {
@@ -217,9 +263,8 @@ export default function FigurePage() {
         dislikedBy: [],
       };
 
-      const commentRef = await addDoc(collection(db, 'userComments'), commentData);
+      await addDoc(collection(db, 'userComments'), commentData);
       
-      // Increment commentCount on figure document
       const figureDocRef = doc(db, 'figures', figure.id);
       await runTransaction(db, async (transaction) => {
         const figureSnap = await transaction.get(figureDocRef);
@@ -230,10 +275,9 @@ export default function FigurePage() {
         transaction.update(figureDocRef, { commentCount: currentCommentCount + 1 });
       });
 
-
       toast({ title: "Comentario Enviado", description: "Tu comentario ha sido guardado." });
       setNewComment("");
-      fetchFigureData(); // Re-fetch to update comment count if displayed on page
+      fetchFigureData(); 
     } catch (error: any) {
       console.error("Error submitting comment:", error);
       let errorMessage = "No se pudo enviar tu comentario.";
@@ -243,6 +287,22 @@ export default function FigurePage() {
       toast({ title: "Error al Comentar", description: errorMessage, variant: "destructive" });
     } finally {
       setIsSubmittingComment(false);
+    }
+  };
+
+  const formatDate = (timestamp: any): string => {
+    if (!timestamp || typeof timestamp.toDate !== 'function') {
+      return 'Fecha desconocida';
+    }
+    try {
+      const date = timestamp.toDate();
+      if (isNaN(date.getTime())) {
+        return 'Fecha inválida';
+      }
+      return `${date.toLocaleDateString()} a las ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } catch (error) {
+      console.error("Error formatting date from timestamp:", timestamp, error);
+      return "Error al formatear fecha";
     }
   };
 
@@ -527,12 +587,53 @@ export default function FigurePage() {
                       </AlertDescription>
                     </Alert>
                   )}
-                  <div className="border-t pt-6 mt-6">
-                    <h4 className="text-lg font-medium mb-4">Comentarios Recientes (Marcador de posición)</h4>
-                    <p className="text-muted-foreground">
-                      Los comentarios anteriores aparecerán aquí una vez que la funcionalidad esté completamente implementada.
-                    </p>
-                    {/* Aquí iría el listado de comentarios */}
+                  
+                  <div className="border-t pt-6 mt-6 space-y-6">
+                    <h4 className="text-lg font-medium">
+                      Comentarios Recientes ({commentsList.length})
+                    </h4>
+                    {isLoadingComments ? (
+                      <div className="flex justify-center items-center py-6">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="ml-2">Cargando comentarios...</p>
+                      </div>
+                    ) : commentsList.length > 0 ? (
+                      commentsList.map((comment) => (
+                        <div key={comment.id} className="flex space-x-3 border-b pb-4 last:border-b-0 last:pb-0">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" />
+                            <AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-semibold text-foreground">{comment.username}</p>
+                              <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
+                            </div>
+                            {comment.starRatingGiven && (
+                              <div className="mt-1">
+                                <StarRating rating={comment.starRatingGiven} size={14} readOnly />
+                              </div>
+                            )}
+                            <p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>
+                            {/* Placeholder for like/dislike buttons */}
+                            {/*
+                            <div className="mt-2 flex items-center space-x-4">
+                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+                                <ThumbsUp className="mr-1.5 h-4 w-4" /> ({comment.likes})
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
+                                <ThumbsDown className="mr-1.5 h-4 w-4" /> ({comment.dislikes})
+                              </Button>
+                            </div>
+                            */}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-center py-4">
+                        No hay comentarios aún. ¡Sé el primero en comentar!
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
