@@ -16,7 +16,7 @@ export function Logo({ className, theme }: LogoProps) {
   const currentLogoUrl = theme === 'light' ? logoLightUrl : logoDarkUrl;
 
   return (
-    <Link href="/" className={`inline-flex items-center gap-2 ${className}`}>
+    <Link href="/" className={`inline-flex items-end gap-2 ${className}`}> {/* Changed items-center to items-end */}
       <div className="relative h-7 w-auto" style={{ minWidth: '28px' }}> {/* Container height h-7 (28px) */}
         <Image
           src={currentLogoUrl}
