@@ -1,11 +1,15 @@
 
 import { Logo } from '@/components/shared/Logo';
 
-export function Footer() {
+interface FooterProps {
+  theme: 'light' | 'dark';
+}
+
+export function Footer({ theme }: FooterProps) {
   return (
     <footer className="border-t border-border/40 py-8 mt-auto">
       <div className="container max-w-screen-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-        <Logo className="text-sm" />
+        <Logo className="text-sm" theme={theme} />
         <p className="text-sm text-muted-foreground">
           &copy; {new Date().getFullYear()} WikiStars5. Todos los derechos reservados.
         </p>

@@ -45,7 +45,7 @@ export default function MainLayout({
       <main className="flex-grow container max-w-screen-2xl py-8">
         {children}
       </main>
-      <Footer />
+      <Footer theme={theme} />
     </div>
   );
 }

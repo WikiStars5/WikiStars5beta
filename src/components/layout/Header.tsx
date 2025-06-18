@@ -22,7 +22,7 @@ export function Header({ theme, toggleTheme }: HeaderProps) {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
         <div className="flex items-center gap-2 md:gap-4">
-          <Logo />
+          <Logo theme={theme} />
            {/* SearchBar para escritorio, visible en md y superior */}
            {/* Oculta otros elementos si la búsqueda está enfocada para dar más espacio */}
           <div className={`hidden md:block transition-all duration-300 ease-in-out ${isHeaderSearchFocused ? 'w-72' : 'w-auto'}`}>
