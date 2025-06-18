@@ -8,8 +8,7 @@ import {
   Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   Image as ImageIcon, ImageOff, BarChartHorizontal, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
-  MessagesSquare, 
-  Send 
+  MessagesSquare, Send, Trash2
 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
@@ -32,6 +31,17 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, updateDoc as updateFirestoreDoc, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/shared/StarRating";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
   1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
@@ -40,6 +50,8 @@ const STAR_SOUND_URLS: Record<StarValue, string> = {
   4: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826",
   5: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f",
 };
+
+const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
 
 export default function FigurePage() {
   const routeParams = useParams<{ id: string }>();
@@ -81,6 +93,11 @@ export default function FigurePage() {
   const [isLoadingComments, setIsLoadingComments] = useState(true);
 
   const [starAudios, setStarAudios] = useState<Partial<Record<StarValue, HTMLAudioElement>>>({});
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [commentToDeleteId, setCommentToDeleteId] = useState<string | null>(null);
+  const [starRatingOfCommentToDelete, setStarRatingOfCommentToDelete] = useState<StarValue | null>(null);
+
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -392,6 +409,54 @@ export default function FigurePage() {
     }
   };
 
+  const handleDeleteCommentConfirmation = async () => {
+    if (!commentToDeleteId || !figure || !currentUser) return;
+
+    const commentRef = doc(db, "userComments", commentToDeleteId);
+    const figureRef = doc(db, "figures", figure.id);
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const figureDoc = await transaction.get(figureRef);
+        if (!figureDoc.exists()) throw "Figure document does not exist!";
+        
+        const figureData = figureDoc.data();
+        let newCommentCount = (figureData.commentCount || 0) - 1;
+        newCommentCount = Math.max(0, newCommentCount); 
+        
+        const updates: any = { commentCount: newCommentCount };
+
+        if (starRatingOfCommentToDelete) {
+          const starKey = starRatingOfCommentToDelete.toString() as StarValueAsString;
+          const currentStarCounts = (figureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
+          const newStarCounts = { ...currentStarCounts };
+          newStarCounts[starKey] = Math.max(0, (newStarCounts[starKey] || 0) - 1);
+          updates.starRatingCounts = newStarCounts;
+        }
+        
+        transaction.update(figureRef, updates);
+        transaction.delete(commentRef);
+      });
+
+      toast({ title: "Comentario Eliminado", description: "El comentario ha sido eliminado." });
+      fetchFigureAndComments(); // Refresh comments and figure data
+    } catch (error: any) {
+      console.error("Error deleting comment:", error);
+      toast({ title: "Error al Eliminar", description: `No se pudo eliminar el comentario. ${error.message}`, variant: "destructive" });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setCommentToDeleteId(null);
+      setStarRatingOfCommentToDelete(null);
+    }
+  };
+
+  const openDeleteDialog = (commentId: string, starRating: StarValue | null) => {
+    setCommentToDeleteId(commentId);
+    setStarRatingOfCommentToDelete(starRating);
+    setIsDeleteDialogOpen(true);
+  };
+
+
   if (!id && figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="ml-2">Cargando ID...</p></div>;
   if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
   if (figure === null) return <div className="text-center py-10"><h1 className="text-2xl font-bold">Figura No Encontrada</h1><p className="text-muted-foreground">ID: {id || "desconocido"}</p><Button asChild className="mt-4"><Link href="/">Ir al Inicio</Link></Button></div>;
@@ -532,10 +597,26 @@ export default function FigurePage() {
                 {isLoadingComments ? (<div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando...</p></div>
                 ) : commentsList.length > 0 ? (
                   commentsList.map((comment) => (
-                    <div key={comment.id} className="flex space-x-3 border-b pb-4 last:border-b-0 last:pb-0">
+                    <div key={comment.id} className="flex space-x-3 border-b pb-4 last:border-b-0 last:pb-0 relative group">
                       <Avatar className="h-10 w-10"><AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" /><AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                       <div className="flex-1">
-                        <div className="flex items-center justify-between"><p className="text-sm font-semibold text-foreground">{comment.username}</p><p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p></div>
+                        <div className="flex items-center justify-between">
+                            <p className="text-sm font-semibold text-foreground">{comment.username}</p>
+                            <div className="flex items-center space-x-2">
+                                <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
+                                {currentUser && (currentUser.uid === comment.userId || currentUser.uid === ADMIN_UID) && (
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                    onClick={() => openDeleteDialog(comment.id, comment.starRatingGiven)}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Eliminar comentario</span>
+                                </Button>
+                                )}
+                            </div>
+                        </div>
                         {comment.starRatingGiven && (<div className="mt-1"><StarRating rating={comment.starRatingGiven} size={14} readOnly /></div>)}
                         {comment.text && comment.text.trim() !== "" && (<p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>)}
                       </div>
@@ -552,6 +633,25 @@ export default function FigurePage() {
           {relatedFigures.length > 0 && (<div><h3 className="text-xl font-headline mb-4">También te podría interesar</h3><div className="space-y-4">{relatedFigures.map(relatedFig => (<FigureListItem key={relatedFig.id} figure={relatedFig} />))}</div></div>)}
         </aside>
       </div>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Esto eliminará permanentemente el comentario.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setCommentToDeleteId(null);
+              setStarRatingOfCommentToDelete(null);
+            }}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCommentConfirmation} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
