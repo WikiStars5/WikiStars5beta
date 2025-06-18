@@ -1,7 +1,2 @@
-import { redirect } from 'next/navigation';
-
-export default function RootPage() {
-  redirect('/home');
-  // This component will likely not render anything as redirect happens server-side.
-  return null;
-}
+// This file is obsolete. Its content has been moved to /src/app/[locale]/page.tsx
+// It can be deleted.

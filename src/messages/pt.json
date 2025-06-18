@@ -1,0 +1,80 @@
+{
+  "HomePage": {
+    "welcome": "Bem-vindo ao WikiStars5",
+    "description": "Descubra, avalie e discuta a percepção pública de suas figuras famosas favoritas (e não tão favoritas). Compartilhe sua opinião e veja o que o mundo pensa!",
+    "searchPlaceholder": "Digite um nome e pressione enter ou clique em pesquisar.",
+    "howItWorksTitle": "Como Funciona o WikiStars5",
+    "discoverFigures": "Descubra Figuras",
+    "discoverFiguresDesc": "Pesquise ou navegue por perfis de figuras públicas de diversos campos.",
+    "expressPerception": "Expresse sua Percepção",
+    "expressPerceptionDesc": "Vote na emoção que uma figura desperta em você e veja os resultados globais.",
+    "joinDiscussions": "Participe das Discussões",
+    "joinDiscussionsDesc": "Compartilhe suas opiniões nas seções de comentários e reaja aos outros.",
+    "shareProfiles": "Compartilhe Perfis",
+    "shareProfilesDesc": "Compartilhe facilmente perfis com seus amigos nas redes sociais.",
+    "featuredFigures": "Figuras em Destaque",
+    "exploreAllFigures": "Explorar Todas as Figuras"
+  },
+  "Header": {
+    "home": "Início",
+    "explore": "Explorar",
+    "search": "Buscar",
+    "toggleTheme": "Alternar tema"
+  },
+  "LanguageSwitcher": {
+    "changeLanguage": "Mudar Idioma",
+    "spanish": "Espanhol",
+    "english": "Inglês",
+    "portuguese": "Português"
+  },
+  "AuthFormCard": {
+    "orContinueWith": "Ou continue com",
+    "continueWithGoogle": "Continuar com o Google"
+  },
+  "LoginForm": {
+    "title": "Bem-vindo de Volta!",
+    "description": "Faça login na sua conta WikiStars5 para continuar.",
+    "emailLabel": "Endereço de e-mail",
+    "emailPlaceholder": "voce@exemplo.com",
+    "passwordLabel": "Senha",
+    "passwordPlaceholder": "••••••••",
+    "loginButton": "Entrar",
+    "loggingInButton": "Entrando...",
+    "errorTitle": "Erro de Login",
+    "noAccount": "Não tem uma conta?",
+    "signupLink": "Cadastre-se",
+    "successTitle": "Login Bem-sucedido",
+    "successDescription": "Bem-vindo de volta, {username}!"
+  },
+  "SignupForm": {
+    "title": "Criar uma Conta",
+    "description": "Junte-se ao WikiStars5 para avaliar, discutir e personalizar seu perfil.",
+    "usernameLabel": "Nome de Usuário Público",
+    "usernamePlaceholder": "Seu Nome",
+    "emailLabel": "Endereço de E-mail",
+    "emailPlaceholder": "voce@exemplo.com",
+    "passwordLabel": "Senha",
+    "passwordPlaceholder": "•••••••• (mín. 6 caracteres)",
+    "signupButton": "Cadastrar",
+    "signingUpButton": "Criando conta...",
+    "errorTitle": "Falha no Cadastro",
+    "alreadyHaveAccount": "Já tem uma conta?",
+    "loginLink": "Entrar",
+    "successTitle": "Conta Criada!",
+    "successDescription": "Bem-vindo ao WikiStars5, {username}!"
+  },
+  "UserNav": {
+    "openMenu": "Abrir menu do usuário",
+    "profile": "Editar Perfil",
+    "settings": "Configurações",
+    "adminPanel": "Painel de Admin",
+    "logout": "Sair",
+    "access": "Acesso",
+    "login": "Entrar",
+    "signup": "Cadastrar",
+    "logoutSuccessTitle": "Sessão Encerrada",
+    "logoutSuccessDescription": "Você encerrou a sessão com sucesso.",
+    "logoutErrorTitle": "Falha ao Sair",
+    "logoutErrorDescription": "Não foi possível encerrar sua sessão."
+  }
+}

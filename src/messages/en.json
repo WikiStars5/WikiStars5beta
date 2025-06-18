@@ -1,0 +1,80 @@
+{
+  "HomePage": {
+    "welcome": "Welcome to WikiStars5",
+    "description": "Discover, rate, and discuss the public perception of your favorite (and not-so-favorite) famous figures. Share your opinion and see what the world thinks!",
+    "searchPlaceholder": "Type a name and press enter or click search.",
+    "howItWorksTitle": "How WikiStars5 Works",
+    "discoverFigures": "Discover Figures",
+    "discoverFiguresDesc": "Search or browse through profiles of public figures from various fields.",
+    "expressPerception": "Express Your Perception",
+    "expressPerceptionDesc": "Vote for the emotion a figure evokes in you and see global results.",
+    "joinDiscussions": "Join Discussions",
+    "joinDiscussionsDesc": "Share your opinions in the comment sections and react to others.",
+    "shareProfiles": "Share Profiles",
+    "shareProfilesDesc": "Easily share profiles with your friends on social media.",
+    "featuredFigures": "Featured Figures",
+    "exploreAllFigures": "Explore All Figures"
+  },
+  "Header": {
+    "home": "Home",
+    "explore": "Explore",
+    "search": "Search",
+    "toggleTheme": "Toggle theme"
+  },
+  "LanguageSwitcher": {
+    "changeLanguage": "Change Language",
+    "spanish": "Spanish",
+    "english": "English",
+    "portuguese": "Portuguese"
+  },
+  "AuthFormCard": {
+    "orContinueWith": "Or continue with",
+    "continueWithGoogle": "Continue with Google"
+  },
+  "LoginForm": {
+    "title": "Welcome Back!",
+    "description": "Sign in to your WikiStars5 account to continue.",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "••••••••",
+    "loginButton": "Sign In",
+    "loggingInButton": "Signing in...",
+    "errorTitle": "Login Error",
+    "noAccount": "Don't have an account?",
+    "signupLink": "Sign Up",
+    "successTitle": "Login Successful",
+    "successDescription": "Welcome back, {username}!"
+  },
+  "SignupForm": {
+    "title": "Create an Account",
+    "description": "Join WikiStars5 to rate, discuss, and customize your profile.",
+    "usernameLabel": "Public Username",
+    "usernamePlaceholder": "Your Name",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "you@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "•••••••• (min. 6 characters)",
+    "signupButton": "Sign Up",
+    "signingUpButton": "Creating account...",
+    "errorTitle": "Signup Failed",
+    "alreadyHaveAccount": "Already have an account?",
+    "loginLink": "Sign In",
+    "successTitle": "Account Created!",
+    "successDescription": "Welcome to WikiStars5, {username}!"
+  },
+  "UserNav": {
+    "openMenu": "Open user menu",
+    "profile": "Edit Profile",
+    "settings": "Settings",
+    "adminPanel": "Admin Panel",
+    "logout": "Log Out",
+    "access": "Access",
+    "login": "Sign In",
+    "signup": "Sign Up",
+    "logoutSuccessTitle": "Logged Out",
+    "logoutSuccessDescription": "You have successfully logged out.",
+    "logoutErrorTitle": "Logout Failed",
+    "logoutErrorDescription": "Could not log you out."
+  }
+}

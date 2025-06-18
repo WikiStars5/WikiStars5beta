@@ -11,9 +11,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { UserPlus, Loader2 } from "lucide-react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next-intl/client"; // Changed to next-intl's useRouter
 import { auth } from '@/lib/firebase';
 import { ensureUserProfileExists } from "@/lib/userData";
+import { useTranslations } from "next-intl";
 
 const signupSchema = z.object({
   displayName: z.string().min(2, { message: "El nombre de usuario debe tener al menos 2 caracteres." }).max(50, {message: "El nombre de usuario no debe exceder los 50 caracteres."}),
@@ -24,6 +25,7 @@ const signupSchema = z.object({
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 export function SignupForm() {
+  const t = useTranslations('SignupForm');
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -39,57 +41,36 @@ export function SignupForm() {
 
   async function onSubmit(values: SignupFormValues) {
     setIsLoading(true);
-    // Clear previous errors from form state if any, errors will be logged or handled by toast
-    // setError(null); // Assuming setError was a local state for form errors, which is not present here.
-                     // FormField will show validation errors from react-hook-form.
-
+    
     try {
-      // Step 1: Create user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
-      console.log("SignupForm: User created in Firebase Auth:", user.uid);
 
-      // Step 2: Update Firebase Auth profile (displayName)
       if (user) {
         await updateProfile(user, {
           displayName: values.displayName,
         });
-        console.log("SignupForm: Firebase Auth profile updated with displayName:", values.displayName);
       }
 
-      // If Firebase Auth steps are successful, show success toast and redirect.
       toast({
-        title: "¡Cuenta Creada!",
-        description: `¡Bienvenido a WikiStars5, ${user.displayName || user.email}!`,
+        title: t('successTitle'),
+        description: t('successDescription', {username: user.displayName || user.email}),
       });
-      router.push('/home'); // Redirect to home page
+      router.push('/home'); // next-intl router handles locale automatically
 
-      // Step 3: Attempt to ensure Firestore user profile document is created/updated silently.
-      // Errors here will be logged but will not block the user or show in signup form error UI.
       if (user) {
         try {
           await ensureUserProfileExists(user);
-          console.log("SignupForm: ensureUserProfileExists completed for UID:", user.uid);
         } catch (profileError: any) {
           console.error(
             "SignupForm: Error during ensureUserProfileExists after successful Firebase Auth signup:",
-            profileError.message,
-            "Código:",
-            profileError.code,
-            "Full error object:",
-            profileError
+            profileError.message
           );
-          // Do NOT setError or toast error here as primary signup was successful.
-          // This error is about profile sync, not auth. Log it for debugging.
         }
       }
 
     } catch (authError: any) {
-      // This catch block now ONLY handles errors from createUserWithEmailAndPassword or updateProfile
       console.error("SignupForm onSubmit authError object:", authError);
-      console.error("SignupForm onSubmit authError code:", authError.code);
-      console.error("SignupForm onSubmit authError message:", authError.message);
-
       let displayErrorMessage = "No se pudo crear la cuenta. Intenta de nuevo.";
       
       if (authError.code === 'auth/email-already-in-use') {
@@ -98,14 +79,12 @@ export function SignupForm() {
         displayErrorMessage = "El formato del correo electrónico es inválido.";
       } else if (authError.code === 'auth/weak-password') {
         displayErrorMessage = "La contraseña es demasiado débil.";
-      } else if (authError.message && authError.message.toLowerCase().includes('maximum call stack size exceeded')) {
-        displayErrorMessage = "Error Interno: Se excedió el límite de llamadas. Esto es un problema serio. Por favor, revisa la consola del navegador para ver la traza completa del error y busca ayuda si es necesario.";
       } else if (authError.message) {
-        displayErrorMessage = `Error de registro: ${authError.message}${authError.code ? ` (Código: ${authError.code})` : ''}`;
+        displayErrorMessage = `Error de registro: ${authError.message}`;
       }
       
       toast({
-        title: "Registro Fallido",
+        title: t('errorTitle'),
         description: displayErrorMessage,
         variant: "destructive",
       });
@@ -122,9 +101,9 @@ export function SignupForm() {
           name="displayName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nombre de Usuario Público</FormLabel>
+              <FormLabel>{t('usernameLabel')}</FormLabel>
               <FormControl>
-                <Input placeholder="Tu Nombre" {...field} disabled={isLoading} />
+                <Input placeholder={t('usernamePlaceholder')} {...field} disabled={isLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -135,9 +114,9 @@ export function SignupForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Correo Electrónico</FormLabel>
+              <FormLabel>{t('emailLabel')}</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="tu@ejemplo.com" {...field} disabled={isLoading} />
+                <Input type="email" placeholder={t('emailPlaceholder')} {...field} disabled={isLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -148,9 +127,9 @@ export function SignupForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Contraseña</FormLabel>
+              <FormLabel>{t('passwordLabel')}</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="•••••••• (mín. 6 caracteres)" {...field} disabled={isLoading} />
+                <Input type="password" placeholder={t('passwordPlaceholder')} {...field} disabled={isLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -158,10 +137,9 @@ export function SignupForm() {
         />
         <Button type="submit" className="w-full text-lg py-3" disabled={isLoading}>
           {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
-          {isLoading ? "Creando cuenta..." : "Registrarse"}
+          {isLoading ? t('signingUpButton') : t('signupButton')}
         </Button>
       </form>
     </Form>
   );
 }
-

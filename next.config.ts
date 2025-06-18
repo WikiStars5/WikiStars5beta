@@ -1,18 +1,18 @@
 
 import type {NextConfig} from 'next'; 
+import nextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = nextIntlPlugin();
 
 const nextConfig: NextConfig = { 
   /* config options here */ 
   typescript: { 
-    // Ignora los errores de construcción de TypeScript. Útil para entornos de desarrollo.
     ignoreBuildErrors: true, 
   }, 
   eslint: { 
-    // Ignora los errores de ESLint durante el proceso de construcción.
     ignoreDuringBuilds: true, 
   }, 
   images: { 
-    // Configuración para permitir la carga de imágenes desde dominios remotos específicos.
     remotePatterns: [ 
       { 
         protocol: 'https', 
@@ -30,14 +30,12 @@ const nextConfig: NextConfig = {
         protocol: 'https', 
         hostname: 'upload.wikimedia.org', 
         port: '', 
-        // Ruta específica para Wikimedia Commons para mayor seguridad.
         pathname: '/wikipedia/commons/**', 
       }, 
       { 
         protocol: 'https', 
-        hostname: 'static.wikia.nocookie.net', // Dominio para Wikia/Fandom 
+        hostname: 'static.wikia.nocookie.net', 
         port: '', 
-        // Permite cualquier ruta de imagen bajo este hostname.
         pathname: '/**', 
       },
       {
@@ -49,7 +47,6 @@ const nextConfig: NextConfig = {
     ], 
   }, 
   devIndicators: { 
-    // Orígenes permitidos para los indicadores de desarrollo de Next.js.
     allowedDevOrigins: [ 
       'https://9000-firebase-studio-1749775328349.cluster-vpxjqdstfzgs6qeiaf7rdlsqrc.cloudworkstations.dev', 
       'https://6000-firebase-studio-1749775328349.cluster-vpxjqdstfzgs6qeiaf7rdlsqrc.cloudworkstations.dev', 
@@ -57,5 +54,4 @@ const nextConfig: NextConfig = {
   }, 
 }; 
 
-export default nextConfig;
-
+export default withNextIntl(nextConfig);

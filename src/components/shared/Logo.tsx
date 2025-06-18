@@ -21,8 +21,8 @@ export function Logo({ className, theme }: LogoProps) {
         <Image
           src={currentLogoUrl}
           alt="WikiStars5 Logo"
-          height={20} // Image height 20px
-          width={80}  // Adjusted width proportionally (4:1 aspect ratio)
+          height={16} // Image height 20px
+          width={64}  // Adjusted width proportionally (4:1 aspect ratio)
           className="object-contain" // Ensures the image scales within the bounds
           priority // Logo is important, consider priority loading
           data-ai-hint="logo brand"

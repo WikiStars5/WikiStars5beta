@@ -1,7 +1,7 @@
 
 "use client";
 
-import Link from 'next/link';
+import Link from 'next-intl/link'; // Changed to next-intl's Link
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,16 +13,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User as FirebaseUser, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, LayoutDashboard, Loader2, UserCircle } from 'lucide-react'; // Added UserCircle
+import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, Loader2, UserCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
-// type { UserProfile as AppUserProfile } from '@/lib/types'; // Removed as not used directly
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next-intl/client'; // Changed to next-intl's useRouter
+import { useTranslations } from 'next-intl';
 
 const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
 
 export function UserNav() {
+  const t = useTranslations('UserNav');
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -39,12 +40,12 @@ export function UserNav() {
   const handleLogout = async () => {
     try {
       await firebaseSignOut(auth);
-      toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
+      toast({ title: t('logoutSuccessTitle'), description: t('logoutSuccessDescription') });
       router.push('/login');
       router.refresh(); 
     } catch (error) {
       console.error("Error logging out: ", error);
-      toast({ title: "Cierre de Sesión Fallido", description: "No se pudo cerrar tu sesión.", variant: "destructive" });
+      toast({ title: t('logoutErrorTitle'), description: t('logoutErrorDescription'), variant: "destructive" });
     }
   };
 
@@ -86,63 +87,58 @@ export function UserNav() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {/* La opción de Editar Perfil ha sido eliminada */}
-          {/* 
           <Link href="/profile">
             <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
-              <span>Editar Perfil</span>
+              <span>{t('profile')}</span>
             </DropdownMenuItem>
           </Link>
-          */}
           <DropdownMenuItem disabled>
             <Settings className="mr-2 h-4 w-4" />
-            <span>Configuración</span>
+            <span>{t('settings')}</span>
           </DropdownMenuItem>
           {isAdmin && !currentUser.isAnonymous && (
             <Link href="/admin">
               <DropdownMenuItem>
                 <ShieldCheck className="mr-2 h-4 w-4" />
-                <span>Panel de Administración</span>
+                <span>{t('adminPanel')}</span>
               </DropdownMenuItem>
             </Link>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
-            <span>Cerrar Sesión</span>
+            <span>{t('logout')}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     );
   }
 
-  // Logged out state: Show a single icon button triggering a dropdown for Login/Signup
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="h-9 w-9">
           <UserCircle className="h-6 w-6 text-foreground/70" />
-          <span className="sr-only">Abrir menú de usuario</span>
+          <span className="sr-only">{t('openMenu')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-48" align="end" forceMount>
-        <DropdownMenuLabel>Acceso</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('access')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <Link href="/login">
           <DropdownMenuItem>
             <LogIn className="mr-2 h-4 w-4" />
-            <span>Iniciar Sesión</span>
+            <span>{t('login')}</span>
           </DropdownMenuItem>
         </Link>
         <Link href="/signup">
           <DropdownMenuItem>
             <UserPlus className="mr-2 h-4 w-4" />
-            <span>Registrarse</span>
+            <span>{t('signup')}</span>
           </DropdownMenuItem>
         </Link>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
-

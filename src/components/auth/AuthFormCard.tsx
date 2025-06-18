@@ -1,10 +1,11 @@
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link";
+import Link from "next-intl/link"; // Changed to next-intl's Link
 import type { ReactNode } from "react";
 import { Logo } from "@/components/shared/Logo";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface AuthFormCardProps {
   title: string;
@@ -13,7 +14,7 @@ interface AuthFormCardProps {
   footerLinkHref: string;
   footerLinkText: string;
   footerText: string;
-  onGoogleSignIn?: () => Promise<void>; // Make onGoogleSignIn optional
+  onGoogleSignIn?: () => Promise<void>; 
   isGoogleLoading?: boolean;
 }
 
@@ -24,9 +25,15 @@ const GoogleIcon = () => (
 );
 
 export function AuthFormCard({ title, description, children, footerLinkHref, footerLinkText, footerText, onGoogleSignIn, isGoogleLoading }: AuthFormCardProps) {
+  const t = useTranslations('AuthFormCard');
+  // Determine current theme for Logo - assuming a way to get it, or default
+  // For simplicity, let's assume 'light' or pass it if available contextually
+  const currentTheme = (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) ? 'dark' : 'light';
+
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] py-12">
-      <Logo className="mb-8" />
+      <Logo className="mb-8" theme={currentTheme} />
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-headline">{title}</CardTitle>
@@ -34,7 +41,7 @@ export function AuthFormCard({ title, description, children, footerLinkHref, foo
         </CardHeader>
         <CardContent className="space-y-6">
           {children}
-          {onGoogleSignIn && ( // Only show if onGoogleSignIn is provided
+          {onGoogleSignIn && ( 
             <>
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
@@ -42,7 +49,7 @@ export function AuthFormCard({ title, description, children, footerLinkHref, foo
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-card px-2 text-muted-foreground">
-                    O continuar con
+                    {t('orContinueWith')}
                   </span>
                 </div>
               </div>
@@ -58,7 +65,7 @@ export function AuthFormCard({ title, description, children, footerLinkHref, foo
                   ) : (
                     <GoogleIcon />
                   )}
-                  Continuar con Google
+                  {t('continueWithGoogle')}
                 </Button>
               </div>
             </>
