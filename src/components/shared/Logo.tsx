@@ -9,28 +9,29 @@ interface LogoProps {
   theme: 'light' | 'dark'; // Add theme prop
 }
 
-const logoLightUrl = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.appspot.com/o/logo%2Flogodia.png?alt=media";
-const logoDarkUrl = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.appspot.com/o/logo%2Flogonoche.png?alt=media";
+const logoLightUrl = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194";
+const logoDarkUrl = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogonoche.png?alt=media&token=0ab973fd-2ec0-44a3-aef0-82850db98096";
 
 export function Logo({ className, theme }: LogoProps) {
   const currentLogoUrl = theme === 'light' ? logoLightUrl : logoDarkUrl;
 
   return (
     <Link href="/" className={`inline-flex items-center gap-2 ${className}`}>
-      <div className="relative h-7 w-auto" style={{ minWidth: '28px' }}> {/* Adjust width as needed, ensure minWidth for small logos */}
+      <div className="relative h-6 w-auto" style={{ minWidth: '24px' }}> {/* Reduced height to h-6 (24px) */}
         <Image
           src={currentLogoUrl}
           alt="WikiStars5 Logo"
-          height={28} // Corresponds to h-7 tailwind class (1.75rem = 28px)
-          width={112} // Assuming a 4:1 aspect ratio, adjust if different. e.g. 28*4 = 112
+          height={24} // Reduced height
+          width={96}  // Adjusted width proportionally (assuming 4:1 aspect ratio)
           className="object-contain" // Ensures the image scales within the bounds
           priority // Logo is important, consider priority loading
           data-ai-hint="logo brand"
         />
       </div>
-      <span className="text-2xl font-bold font-headline text-primary">
+      <span className="text-xl font-bold font-headline text-primary"> {/* Reduced text size to text-xl */}
         WikiStars5
       </span>
     </Link>
   );
 }
+
