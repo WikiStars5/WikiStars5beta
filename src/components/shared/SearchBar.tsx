@@ -3,11 +3,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Search, Loader2, ImageOff, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Figure } from '@/lib/types';
 import { searchFiguresByName } from '@/app/actions/searchFiguresAction';
+import { cn } from '@/lib/utils';
 
 // Debounce function
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
@@ -19,12 +21,21 @@ function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
     });
 }
 
-export function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
+interface SearchBarProps {
+  initialQuery?: string;
+  startAsIcon?: boolean;
+  onFocusChange?: (isFocused: boolean) => void;
+  className?: string;
+}
+
+export function SearchBar({ initialQuery = '', startAsIcon = false, onFocusChange, className }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<Figure[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isInputActive, setIsInputActive] = useState(!startAsIcon);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const debouncedSearch = useCallback(
     debounce(async (searchTerm: string) => {
@@ -54,52 +65,103 @@ export function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
   );
 
   useEffect(() => {
-    if (query.trim() === '') {
+    if (isInputActive && query.trim() === '') {
       setResults([]);
       setIsLoading(false);
       setIsDropdownOpen(false);
       return;
     }
-    debouncedSearch(query);
-  }, [query, debouncedSearch]);
+    if (isInputActive) {
+      debouncedSearch(query);
+    }
+  }, [query, debouncedSearch, isInputActive]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
+        if (startAsIcon && query.trim() === '' && isInputActive) {
+          setIsInputActive(false);
+          onFocusChange?.(false);
+        }
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [searchContainerRef]);
+  }, [searchContainerRef, startAsIcon, query, isInputActive, onFocusChange]);
 
   const handleResultClick = () => {
     setQuery('');
     setResults([]);
     setIsDropdownOpen(false);
+    if (startAsIcon) {
+      setIsInputActive(false);
+      onFocusChange?.(false);
+    }
   };
 
   const clearSearch = () => {
     setQuery('');
     setResults([]);
     setIsDropdownOpen(false);
+    if (startAsIcon) {
+      setIsInputActive(false);
+      onFocusChange?.(false);
+    }
+    inputRef.current?.focus(); // Keep focus or allow it to be refocused
   };
 
+  const handleIconClick = () => {
+    setIsInputActive(true);
+    onFocusChange?.(true);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+  };
+
+  if (startAsIcon && !isInputActive) {
+    return (
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        onClick={handleIconClick} 
+        className={cn("h-9 w-9 text-foreground/70 hover:text-foreground", className)}
+        aria-label="Abrir búsqueda"
+      >
+        <Search className="h-5 w-5" />
+      </Button>
+    );
+  }
+
   return (
-    <div className="relative w-full" ref={searchContainerRef}>
+    <div className={cn("relative w-full", className)} ref={searchContainerRef}>
       <div className="relative flex items-center">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
         <Input
+          ref={inputRef}
           type="text"
-          placeholder="Buscar una figura pública..."
+          placeholder="Buscar una figura..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => { 
             if (query.trim().length > 0) setIsDropdownOpen(true);
+            onFocusChange?.(true);
           }}
-          className="text-base h-12 flex-grow pl-10 pr-10 rounded-md shadow-sm border-primary focus:ring-2 focus:ring-primary/50"
+          onBlur={() => {
+            // Delay blur handling to allow click on dropdown/clear button
+            setTimeout(() => {
+              if (!searchContainerRef.current?.contains(document.activeElement)) {
+                setIsDropdownOpen(false);
+                if (startAsIcon && query.trim() === '') {
+                  setIsInputActive(false);
+                  onFocusChange?.(false);
+                }
+              }
+            }, 100);
+          }}
+          className="text-sm h-9 flex-grow pl-10 pr-10 rounded-md shadow-sm border-input focus:ring-1 focus:ring-primary/50 bg-background"
         />
         {isLoading && query.length >= 2 && (
            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
@@ -111,21 +173,21 @@ export function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
             aria-label="Limpiar búsqueda"
           >
-            <XCircle className="h-5 w-5" />
+            <XCircle className="h-4 w-4" />
           </button>
         )}
       </div>
 
       {isDropdownOpen && query.trim().length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-card border border-border rounded-lg shadow-xl max-h-96 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-xl max-h-80 overflow-y-auto">
           {isLoading && query.trim().length >=2 && (
-            <div className="p-4 text-sm text-center text-muted-foreground">Buscando...</div>
+            <div className="p-3 text-xs text-center text-muted-foreground">Buscando...</div>
           )}
           {!isLoading && query.trim().length >= 2 && results.length === 0 && (
-            <div className="p-4 text-sm text-center text-muted-foreground">No se encontraron figuras para "{query}".</div>
+            <div className="p-3 text-xs text-center text-muted-foreground">No se encontraron figuras para "{query}".</div>
           )}
           {!isLoading && query.trim().length < 2 && (
-             <div className="p-4 text-sm text-center text-muted-foreground">Por favor, escribe al menos 2 caracteres.</div>
+             <div className="p-3 text-xs text-center text-muted-foreground">Escribe al menos 2 caracteres.</div>
           )}
           {!isLoading && results.length > 0 && (
             <ul className="divide-y divide-border">
@@ -134,25 +196,25 @@ export function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
                   <Link
                     href={`/figures/${figure.id}`}
                     onClick={handleResultClick}
-                    className="flex items-center p-3 hover:bg-muted transition-colors duration-150 ease-in-out"
+                    className="flex items-center p-2 hover:bg-muted transition-colors duration-150 ease-in-out"
                   >
-                    <div className="flex-shrink-0 mr-3">
+                    <div className="flex-shrink-0 mr-2">
                       {figure.photoUrl ? (
                         <Image
                           src={figure.photoUrl}
                           alt={figure.name}
-                          width={40}
-                          height={50}
-                          className="rounded-md object-cover aspect-[4/5]"
+                          width={32}
+                          height={40}
+                          className="rounded-sm object-cover aspect-[4/5]"
                         />
                       ) : (
-                        <div className="w-10 h-[50px] bg-muted rounded-md flex items-center justify-center">
-                          <ImageOff className="h-5 w-5 text-muted-foreground" />
+                        <div className="w-8 h-10 bg-muted rounded-sm flex items-center justify-center">
+                          <ImageOff className="h-4 w-4 text-muted-foreground" />
                         </div>
                       )}
                     </div>
-                    <div className="flex-grow">
-                      <p className="font-medium text-sm text-foreground">{figure.name}</p>
+                    <div className="flex-grow min-w-0">
+                      <p className="font-medium text-xs text-foreground truncate">{figure.name}</p>
                       {figure.description && (
                         <p className="text-xs text-muted-foreground truncate">{figure.description}</p>
                       )}
@@ -167,4 +229,3 @@ export function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
     </div>
   );
 }
-
