@@ -328,7 +328,7 @@ export default function FigurePage() {
     
     const figureDocRef = doc(db, "figures", figure.id);
     const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
-    const currentStarsForComment = newCommentStars; // Stars selected for THIS submission
+    const currentStarsForComment = newCommentStars;
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -343,18 +343,15 @@ export default function FigurePage() {
         
         const prevStarValue: StarValue | null = userPrevRatingSnap.exists() ? userPrevRatingSnap.data()!.starValue as StarValue : null;
 
-        // Step 1: If user had a previous rating, decrement its count from global counts
         if (prevStarValue !== null) {
           const prevKey = prevStarValue.toString() as StarValueAsString;
           newStarCounts[prevKey] = Math.max(0, (newStarCounts[prevKey] || 0) - 1);
         }
         
-        // Step 2: If user is submitting a new rating with this comment, increment its count in global counts
         if (currentStarsForComment !== null) {
           const newKey = currentStarsForComment.toString() as StarValueAsString;
           newStarCounts[newKey] = (newStarCounts[newKey] || 0) + 1;
           
-          // Also, update/set the user's individual overall star rating for this figure
           transaction.set(userStarRatingDocRef, {
             userId: currentUser.uid,
             figureId: figure.id,
@@ -362,23 +359,14 @@ export default function FigurePage() {
             timestamp: serverTimestamp(),
           });
         } else {
-          // If user is NOT submitting stars with THIS comment,
-          // AND they had a previous rating, delete their individual overall star rating.
-          // The decrement in Step 1 already removed their old vote from global counts.
           if (userPrevRatingSnap.exists()) {
             transaction.delete(userStarRatingDocRef);
           }
         }
         
-        // Step 3: Update figure's starRatingCounts
         transaction.update(figureDocRef, { starRatingCounts: newStarCounts });
+      });
 
-        // Step 4: Add the comment (if text exists or stars were given)
-        // and update commentCount on figure. This happens outside this specific star logic but within the same overall submit action.
-        // The comment adding logic will be below this transaction for star ratings.
-      }); // End of transaction for star ratings
-
-      // Add the comment document
       const commentData = {
         figureId: figure.id,
         userId: currentUser.uid,
@@ -394,7 +382,6 @@ export default function FigurePage() {
       };
       await addDoc(collection(db, 'userComments'), commentData);
       
-      // Update comment count on figure (can be a separate transaction or batched if preferred)
       await runTransaction(db, async (transaction) => {
         const figureSnap = await transaction.get(figureDocRef);
         if (!figureSnap.exists()) throw new Error("Documento de la figura no existe!");
@@ -407,7 +394,7 @@ export default function FigurePage() {
       }
       toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
       setNewComment("");
-      // setNewCommentStars(null); // Keep the selected stars for now, or reset if preferred
+      // setNewCommentStars(null); // Keep or reset based on desired UX
       fetchFigureAndComments(); 
     } catch (error: any) {
       console.error("Error submitting opinion:", error);
@@ -445,11 +432,6 @@ export default function FigurePage() {
         
         const updates: any = { commentCount: newCommentCount };
 
-        // If the deleted comment had a star rating, adjust the figure's starRatingCounts
-        // This part needs careful consideration: if a comment with 3 stars is deleted,
-        // it means one less 3-star vote overall.
-        // We are NOT touching userStarRatings here, as deleting a comment shouldn't necessarily
-        // delete the user's overall rating for the figure, only the rating associated with THAT comment.
         if (starRatingOfCommentToDelete) {
           const starKey = starRatingOfCommentToDelete.toString() as StarValueAsString;
           const currentStarCounts = (figureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
@@ -595,7 +577,7 @@ export default function FigurePage() {
 
       {figure && (<RatingSummaryDisplay figureName={figure.name} starRatingCounts={figure.starRatingCounts} />)}
 
-      <Card className="mt-8 w-full lg:col-span-2 lg:col-start-1">
+      <Card className="mt-8 w-full lg:col-span-3"> {/* Ajustado para ocupar todo el ancho si es necesario */}
         <CardHeader>
           <CardTitle className="flex items-center text-2xl font-headline"><MessagesSquare className="mr-3 h-7 w-7 text-primary" />Califica y Comenta sobre {figure.name}</CardTitle>
         </CardHeader>
@@ -609,6 +591,7 @@ export default function FigurePage() {
                     onRatingChange={(rating) => {
                       const starVal = rating as StarValue;
                       setNewCommentStars(starVal);
+                      // El sonido se reproduce al enviar el comentario
                     }}
                     size={32}
                 />
