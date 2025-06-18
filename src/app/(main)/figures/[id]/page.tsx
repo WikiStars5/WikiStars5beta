@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Figure, UserComment, StarValue } from "@/lib/types";
+import type { Figure, UserComment, StarValue, StarValueAsString } from "@/lib/types";
 import { getFigureFromFirestore, getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
@@ -24,13 +24,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
-import { StarRatingVote } from "@/components/figures/StarRatingVote";
 import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, updateDoc as updateFirestoreDoc, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, updateDoc as updateFirestoreDoc, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/shared/StarRating";
 
@@ -40,7 +39,7 @@ export default function FigurePage() {
   const id = routeParams?.id;
   const router = useRouter();
 
-  const [figure, setFigure] = useState<Figure | null | undefined>(undefined); // undefined: loading, null: not found
+  const [figure, setFigure] = useState<Figure | null | undefined>(undefined); 
   const [allFigures, setAllFigures] = useState<Figure[]>([]);
   const { toast } = useToast();
 
@@ -69,6 +68,7 @@ export default function FigurePage() {
   const [canUserInteract, setCanUserInteract] = useState(false);
 
   const [newComment, setNewComment] = useState("");
+  const [newCommentStars, setNewCommentStars] = useState<StarValue | null>(null);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [commentsList, setCommentsList] = useState<UserComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(true);
@@ -77,9 +77,20 @@ export default function FigurePage() {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
       setCurrentUser(user);
       setCanUserInteract(!!user && !user.isAnonymous);
+      if (user && !user.isAnonymous && figure?.id) {
+        // Fetch user's current star rating for this figure to pre-fill the stars
+        const userStarRatingDocRef = doc(db, 'userStarRatings', `${user.uid}_${figure.id}`);
+        getDoc(userStarRatingDocRef).then(docSnap => {
+          if (docSnap.exists()) {
+            setNewCommentStars(docSnap.data().starValue as StarValue);
+          }
+        });
+      } else if (!user || user.isAnonymous) {
+        setNewCommentStars(null); // Clear stars if user logs out or is anonymous
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [figure?.id]); // Re-run if figure.id changes or currentUser changes
 
   const resetEditFields = useCallback((currentFigure: Figure | null) => {
     if (currentFigure) {
@@ -88,7 +99,6 @@ export default function FigurePage() {
       setEditedOccupation(currentFigure.occupation || "");
       setEditedGender(currentFigure.gender || "");
       setEditedPhotoUrl(currentFigure.photoUrl || "");
-
       setEditedAlias(currentFigure.alias || "");
       setEditedSpecies(currentFigure.species || "");
       setEditedFirstAppearance(currentFigure.firstAppearance || "");
@@ -111,7 +121,6 @@ export default function FigurePage() {
       setIsLoadingComments(false);
       return;
     }
-
     setFigure(undefined); 
     setCommentsList([]); 
     setIsLoadingComments(true);
@@ -121,6 +130,16 @@ export default function FigurePage() {
       setFigure(fetchedFigure || null); 
       if (fetchedFigure) {
         resetEditFields(fetchedFigure);
+        // If user is logged in, fetch their current rating for this figure
+        if (currentUser && !currentUser.isAnonymous) {
+          const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${id}`);
+          const docSnap = await getDoc(userStarRatingDocRef);
+          if (docSnap.exists()) {
+            setNewCommentStars(docSnap.data().starValue as StarValue);
+          } else {
+            setNewCommentStars(null);
+          }
+        }
       }
     } catch (error) {
       console.error("Error fetching figure details:", error);
@@ -139,7 +158,7 @@ export default function FigurePage() {
       const fetchedComments: UserComment[] = [];
       querySnapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        const comment: UserComment = {
+        fetchedComments.push({
           id: docSnap.id,
           figureId: data.figureId,
           userId: data.userId,
@@ -152,8 +171,7 @@ export default function FigurePage() {
           dislikes: data.dislikes || 0,
           likedBy: data.likedBy || [],
           dislikedBy: data.dislikedBy || [],
-        };
-        fetchedComments.push(comment);
+        });
       });
       setCommentsList(fetchedComments);
     } catch (error) {
@@ -170,9 +188,7 @@ export default function FigurePage() {
     } catch (error) {
       console.error("Error fetching all figures for related section:", error);
     }
-
-  }, [id, resetEditFields, toast]);
-
+  }, [id, resetEditFields, toast, currentUser]);
 
   useEffect(() => {
     if (id) {
@@ -180,13 +196,11 @@ export default function FigurePage() {
     }
   }, [id, fetchFigureAndComments]);
 
-
   useEffect(() => {
     if (figure && isEditing) {
       resetEditFields(figure);
     }
   }, [figure, isEditing, resetEditFields]);
-
 
   const handleEditToggle = () => {
     if (!canUserInteract) {
@@ -200,6 +214,7 @@ export default function FigurePage() {
   };
 
   const handleSave = async () => {
+    // ... (save logic remains the same)
     if (!figure || !canUserInteract) {
       toast({ title: "Error", description: "Debes iniciar sesión con una cuenta para guardar.", variant: "destructive" });
       return;
@@ -226,9 +241,7 @@ export default function FigurePage() {
         eyeColor: editedEyeColor,
         distinctiveFeatures: editedDistinctiveFeatures,
       };
-
       await updateFigureInFirestore(updatedFigureData);
-
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
       setIsEditing(false);
       fetchFigureAndComments(); 
@@ -246,131 +259,108 @@ export default function FigurePage() {
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canUserInteract || !currentUser || !figure || newComment.trim() === "") {
-      // Allow submitting comment even if only stars are selected (text can be empty)
-      // but if stars are not selected either, then it's an error.
-      // The StarRatingVote component handles its own interaction restrictions.
-      // This function focuses on the comment text.
-      if (newComment.trim() === "") {
-           const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${figure.id}`);
-           const userStarRatingSnap = await getDoc(userStarRatingDocRef);
-           if (!userStarRatingSnap.exists()) {
-              toast({ title: "Error", description: "Debes calificar o escribir un comentario.", variant: "destructive" });
-              return;
-           }
-      }
-    }
     if (!canUserInteract || !currentUser || !figure) {
-        toast({ title: "Error", description: "Debes iniciar sesión para comentar.", variant: "destructive" });
+        toast({ title: "Error", description: "Debes iniciar sesión para opinar.", variant: "destructive" });
+        return;
+    }
+    if (newCommentStars === null && newComment.trim() === "") {
+        toast({ title: "Opinión Vacía", description: "Por favor, selecciona una calificación o escribe un comentario.", variant: "default" });
         return;
     }
 
     setIsSubmittingComment(true);
+    
+    const figureDocRef = doc(db, "figures", figure.id);
+    const userStarRatingDocId = `${currentUser.uid}_${figure.id}`;
+    const userStarRatingDocRef = doc(db, "userStarRatings", userStarRatingDocId);
+
     try {
-      let userStarRatingValue: StarValue | null = null;
-      if (currentUser && figure?.id) {
-        const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${figure.id}`);
-        const userStarRatingSnap = await getDoc(userStarRatingDocRef);
-        if (userStarRatingSnap.exists()) {
-          userStarRatingValue = userStarRatingSnap.data().starValue as StarValue;
-        }
-      }
-      
-      // If no star rating was given via the StarRatingVote component AND no comment text, don't submit.
-      if (userStarRatingValue === null && newComment.trim() === "") {
-        toast({ title: "Opinión Vacía", description: "Por favor, selecciona una calificación o escribe un comentario.", variant: "default" });
-        setIsSubmittingComment(false);
-        return;
-      }
+      // Logic to update star ratings (moved from StarRatingVote)
+      if (newCommentStars !== null) {
+        const previousSelectedUserRatingDoc = await getDoc(userStarRatingDocRef);
+        const previousSelectedUserStarValue: StarValue | null = previousSelectedUserRatingDoc.exists()
+          ? previousSelectedUserRatingDoc.data().starValue as StarValue
+          : null;
 
+        await runTransaction(db, async (transaction) => {
+          const figureSnap = await transaction.get(figureDocRef);
+          if (!figureSnap.exists()) throw "Documento de figura no existe!";
+          
+          const currentFigureData = figureSnap.data();
+          const currentStarCounts = (currentFigureData?.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
+          const newStarCounts = { ...currentStarCounts };
 
+          if (previousSelectedUserStarValue && previousSelectedUserStarValue !== newCommentStars) {
+            const prevKey = previousSelectedUserStarValue.toString() as StarValueAsString;
+            newStarCounts[prevKey] = Math.max(0, (newStarCounts[prevKey] || 0) - 1);
+          }
+          if (previousSelectedUserStarValue !== newCommentStars) { // only update if rating changed or is new
+            const newKey = newCommentStars.toString() as StarValueAsString;
+            newStarCounts[newKey] = (newStarCounts[newKey] || 0) + 1;
+            transaction.update(figureDocRef, { starRatingCounts: newStarCounts });
+          }
+        });
+        await setDoc(userStarRatingDocRef, {
+          userId: currentUser.uid,
+          figureId: figure.id,
+          starValue: newCommentStars,
+          timestamp: serverTimestamp(),
+        });
+      }
+      // If newCommentStars is null, but user had a previous rating, it means they are removing their rating by submitting comment only
+      // This case is implicitly handled as we don't update userStarRatings if newCommentStars is null.
+      // If they had a rating and submit only text, their previous star rating remains.
+
+      // Add the comment
       const commentData = {
         figureId: figure.id,
         userId: currentUser.uid,
         username: currentUser.displayName || "Usuario Anónimo",
         userPhotoURL: currentUser.photoURL || null,
         text: newComment.trim(),
-        starRatingGiven: userStarRatingValue,
+        starRatingGiven: newCommentStars, // Save the stars given with this comment
         createdAt: serverTimestamp(),
         likes: 0,
         dislikes: 0,
         likedBy: [],
         dislikedBy: [],
       };
-
       await addDoc(collection(db, 'userComments'), commentData);
       
-      const figureDocRef = doc(db, 'figures', figure.id);
+      // Update comment count
       await runTransaction(db, async (transaction) => {
         const figureSnap = await transaction.get(figureDocRef);
-        if (!figureSnap.exists()) {
-          throw "Documento de la figura no existe!";
-        }
+        if (!figureSnap.exists()) throw "Documento de la figura no existe!";
         const currentCommentCount = figureSnap.data().commentCount || 0;
         transaction.update(figureDocRef, { commentCount: currentCommentCount + 1 });
       });
 
       toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
       setNewComment("");
-      // No need to manually reset selected stars here as StarRatingVote handles its state
+      // setNewCommentStars(null); // Keep stars selected for next potential comment, or clear if desired. Let's keep for now.
       fetchFigureAndComments(); 
     } catch (error: any) {
-      console.error("Error submitting comment:", error);
-      let errorMessage = "No se pudo enviar tu opinión.";
-      if (error.message) {
-        errorMessage += ` Detalles: ${error.message}`;
-      }
-      toast({ title: "Error al Enviar", description: errorMessage, variant: "destructive" });
+      console.error("Error submitting opinion:", error);
+      toast({ title: "Error al Enviar", description: `No se pudo enviar tu opinión. ${error.message}`, variant: "destructive" });
     } finally {
       setIsSubmittingComment(false);
     }
   };
 
   const formatDate = (timestamp: any): string => {
-    if (!timestamp || typeof timestamp.toDate !== 'function') {
-      return 'Fecha desconocida';
-    }
+    if (!timestamp || typeof timestamp.toDate !== 'function') return 'Fecha desconocida';
     try {
       const date = timestamp.toDate();
-      if (isNaN(date.getTime())) {
-        return 'Fecha inválida';
-      }
+      if (isNaN(date.getTime())) return 'Fecha inválida';
       return `${date.toLocaleDateString()} a las ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     } catch (error) {
-      console.error("Error formatting date from timestamp:", timestamp, error);
       return "Error al formatear fecha";
     }
   };
 
-
-  if (!id && figure === undefined) { 
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-2">Cargando ID de la figura...</p>
-      </div>
-    );
-  }
-  
-  if (figure === undefined) { 
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (figure === null) { 
-    return (
-      <div className="text-center py-10">
-        <h1 className="text-2xl font-bold">Figura No Encontrada</h1>
-        <p className="text-muted-foreground">El perfil (ID: {id || "desconocido"}) que buscas no existe o no se pudo cargar.</p>
-        <Button asChild className="mt-4">
-          <Link href="/">Ir a la Página Principal</Link>
-        </Button>
-      </div>
-    );
-  }
+  if (!id && figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="ml-2">Cargando ID...</p></div>;
+  if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+  if (figure === null) return <div className="text-center py-10"><h1 className="text-2xl font-bold">Figura No Encontrada</h1><p className="text-muted-foreground">ID: {id || "desconocido"}</p><Button asChild className="mt-4"><Link href="/">Ir al Inicio</Link></Button></div>;
 
   const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 3);
   const isValidEditedPhotoUrl = editedPhotoUrl && (editedPhotoUrl.startsWith('https://upload.wikimedia.org') || editedPhotoUrl.startsWith('https://static.wikia.nocookie.net') || editedPhotoUrl.startsWith('https://firebasestorage.googleapis.com') || editedPhotoUrl.startsWith('https://placehold.co'));
@@ -380,28 +370,18 @@ export default function FigurePage() {
     return (
       <div className="flex items-start">
         <IconComponent className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-1" />
-        <div>
-          <p className="font-semibold text-foreground/90">{label}</p>
-          <p className="text-sm text-muted-foreground">{value || "No disponible"}</p>
-        </div>
+        <div><p className="font-semibold text-foreground/90">{label}</p><p className="text-sm text-muted-foreground">{value || "No disponible"}</p></div>
       </div>
     );
   };
   
   const renderEditInput = (id: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, placeholder?: string) => (
-    <div>
-      <Label htmlFor={id} className="font-semibold text-foreground/90">{label}</Label>
-      <Input id={id} value={value} onChange={onChange} placeholder={placeholder || `Ej: ${label}`} className="mt-1" />
-    </div>
+    <div><Label htmlFor={id} className="font-semibold text-foreground/90">{label}</Label><Input id={id} value={value} onChange={onChange} placeholder={placeholder || `Ej: ${label}`} className="mt-1" /></div>
   );
 
   const renderEditTextarea = (id: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, placeholder?: string, rows?: number) => (
-    <div>
-      <Label htmlFor={id} className="font-semibold text-foreground/90">{label}</Label>
-      <Textarea id={id} value={value} onChange={onChange} placeholder={placeholder || `Añade ${label.toLowerCase()}...`} rows={rows || 3} className="mt-1" />
-    </div>
+    <div><Label htmlFor={id} className="font-semibold text-foreground/90">{label}</Label><Textarea id={id} value={value} onChange={onChange} placeholder={placeholder || `Añade ${label.toLowerCase()}...`} rows={rows || 3} className="mt-1" /></div>
   );
-
 
   return (
     <div className="space-y-8 lg:space-y-12">
@@ -419,100 +399,58 @@ export default function FigurePage() {
             <TabsContent value="personal-info">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <div className="flex items-center">
-                    <Info className="mr-2 h-6 w-6 text-primary" />
-                    <CardTitle className="text-2xl font-headline">
-                      Sobre {figure.name}
-                    </CardTitle>
-                  </div>
-                  {canUserInteract && !isEditing && (
-                    <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Editar
-                    </Button>
-                  )}
+                  <div className="flex items-center"><Info className="mr-2 h-6 w-6 text-primary" /><CardTitle className="text-2xl font-headline">Sobre {figure.name}</CardTitle></div>
+                  {canUserInteract && !isEditing && (<Button variant="outline" size="sm" onClick={handleEditToggle}><Edit className="mr-2 h-4 w-4" />Editar</Button>)}
                 </CardHeader>
                 <CardContent className="space-y-6 pt-4">
-                  {!canUserInteract && !isEditing && (
-                    <Alert variant="default" className="mb-4">
-                      <LogIn className="h-4 w-4" />
-                      <AlertTitle>Edición Restringida</AlertTitle>
-                      <AlertDescription>
-                        <Link href="/login" className="font-semibold text-primary hover:underline">
-                          Inicia sesión con una cuenta
-                        </Link>
-                        {" "}para editar la información de esta figura.
-                      </AlertDescription>
-                    </Alert>
-                  )}
+                  {!canUserInteract && !isEditing && (<Alert variant="default" className="mb-4"><LogIn className="h-4 w-4" /><AlertTitle>Edición Restringida</AlertTitle><AlertDescription><Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión</Link> para editar.</AlertDescription></Alert>)}
                   {isEditing && canUserInteract ? (
                     <div className="space-y-4">
-                      {renderEditInput("photoUrl", "URL de la Imagen del Perfil", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://upload.wikimedia.org/...")}
-                       <p className="text-xs text-muted-foreground mt-1">
-                          Pega una URL de Wikimedia Commons, Wikia (static.wikia.nocookie.net), Firebase Storage o Placehold.co.
-                        </p>
-                        {editedPhotoUrl ? (
-                          isValidEditedPhotoUrl ? (
-                            <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center data-ai-hint='image preview'">
-                              <Image src={editedPhotoUrl} alt="Previsualización de imagen" layout="fill" objectFit="contain" />
-                            </div>
-                          ) : ( <p className="mt-1 text-xs text-destructive">URL no válida o de un dominio no permitido para previsualización.</p>)
-                        ) : ( <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground data-ai-hint='placeholder abstract'"><ImageOff className="h-10 w-10" /></div>)}
-                      
+                      {renderEditInput("photoUrl", "URL de Imagen", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://...")}
+                      <p className="text-xs text-muted-foreground mt-1">Wikimedia, Wikia, Firebase Storage o Placehold.co.</p>
+                      {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center data-ai-hint='image preview'"><Image src={editedPhotoUrl} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground data-ai-hint='placeholder abstract'"><ImageOff className="h-10 w-10" /></div>}
                       {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}
-                      
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                        {renderEditInput("alias", "Alias / Otros Nombres", editedAlias, (e) => setEditedAlias(e.target.value), "Ej: La Sacerdotisa del Trueno")}
-                        {renderEditInput("species", "Especie / Raza", editedSpecies, (e) => setEditedSpecies(e.target.value), "Ej: Demonio, Humano")}
-                        {renderEditInput("firstAppearance", "Primera Aparición", editedFirstAppearance, (e) => setEditedFirstAppearance(e.target.value), "Ej: High School DxD, Novela Ligera, 2008")}
-                        {renderEditInput("birthDateOrAge", "Fecha de Nacimiento / Edad", editedBirthDateOrAge, (e) => setEditedBirthDateOrAge(e.target.value), "Ej: Desconocida / Apariencia de 18 años")}
-                        {renderEditInput("birthPlace", "Lugar de Nacimiento", editedBirthPlace, (e) => setEditedBirthPlace(e.target.value), "Ej: Inframundo, Japón")}
-                        {renderEditInput("nationality", "Nacionalidad", editedNationality, (e) => setEditedNationality(e.target.value), "Ej: Estadounidense")}
-                        {renderEditInput("occupation", "Ocupación", editedOccupation, (e) => setEditedOccupation(e.target.value), "Ej: Científico, Artista")}
-                        {renderEditInput("gender", "Género", editedGender, (e) => setEditedGender(e.target.value), "Ej: Masculino, Femenino")}
-                        {renderEditInput("statusLiveOrDead", "Estado (Vivo/Muerto)", editedStatusLiveOrDead, (e) => setEditedStatusLiveOrDead(e.target.value), "Ej: Viva, Muerto")}
-                        {renderEditInput("maritalStatus", "Estado Civil", editedMaritalStatus, (e) => setEditedMaritalStatus(e.target.value), "Ej: Soltero/a, Casado/a")}
-                        {renderEditInput("height", "Altura", editedHeight, (e) => setEditedHeight(e.target.value), "Ej: 1.68 cm")}
-                        {renderEditInput("weight", "Peso", editedWeight, (e) => setEditedWeight(e.target.value), "Ej: 56 kg (Opcional)")}
-                        {renderEditInput("hairColor", "Color de Cabello", editedHairColor, (e) => setEditedHairColor(e.target.value), "Ej: Negro")}
-                        {renderEditInput("eyeColor", "Color de Ojos", editedEyeColor, (e) => setEditedEyeColor(e.target.value), "Ej: Violeta")}
-                        {renderEditTextarea("distinctiveFeatures", "Rasgos Distintivos", editedDistinctiveFeatures, (e) => setEditedDistinctiveFeatures(e.target.value), "Ej: Una cola de caballo alta, cicatriz...", 3)}
+                        {renderEditInput("alias", "Alias", editedAlias, (e) => setEditedAlias(e.target.value))}
+                        {renderEditInput("species", "Especie", editedSpecies, (e) => setEditedSpecies(e.target.value))}
+                        {renderEditInput("firstAppearance", "Primera Aparición", editedFirstAppearance, (e) => setEditedFirstAppearance(e.target.value))}
+                        {renderEditInput("birthDateOrAge", "Nacimiento/Edad", editedBirthDateOrAge, (e) => setEditedBirthDateOrAge(e.target.value))}
+                        {renderEditInput("birthPlace", "Lugar Nacimiento", editedBirthPlace, (e) => setEditedBirthPlace(e.target.value))}
+                        {renderEditInput("nationality", "Nacionalidad", editedNationality, (e) => setEditedNationality(e.target.value))}
+                        {renderEditInput("occupation", "Ocupación", editedOccupation, (e) => setEditedOccupation(e.target.value))}
+                        {renderEditInput("gender", "Género", editedGender, (e) => setEditedGender(e.target.value))}
+                        {renderEditInput("statusLiveOrDead", "Estado (Vivo/Muerto)", editedStatusLiveOrDead, (e) => setEditedStatusLiveOrDead(e.target.value))}
+                        {renderEditInput("maritalStatus", "Estado Civil", editedMaritalStatus, (e) => setEditedMaritalStatus(e.target.value))}
+                        {renderEditInput("height", "Altura", editedHeight, (e) => setEditedHeight(e.target.value))}
+                        {renderEditInput("weight", "Peso", editedWeight, (e) => setEditedWeight(e.target.value))}
+                        {renderEditInput("hairColor", "Color Cabello", editedHairColor, (e) => setEditedHairColor(e.target.value))}
+                        {renderEditInput("eyeColor", "Color Ojos", editedEyeColor, (e) => setEditedEyeColor(e.target.value))}
+                        {renderEditTextarea("distinctiveFeatures", "Rasgos Distintivos", editedDistinctiveFeatures, (e) => setEditedDistinctiveFeatures(e.target.value), "Ej: Cicatriz...", 3)}
                       </div>
-
                       <div className="flex justify-end space-x-2 pt-4">
-                        <Button variant="outline" onClick={handleEditToggle} disabled={isSaving}>
-                          <X className="mr-2 h-4 w-4" /> Cancelar
-                        </Button>
-                        <Button onClick={handleSave} disabled={isSaving}>
-                          {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                          {isSaving ? "Guardando..." : "Guardar Cambios"}
-                        </Button>
+                        <Button variant="outline" onClick={handleEditToggle} disabled={isSaving}><X className="mr-2 h-4 w-4" />Cancelar</Button>
+                        <Button onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{isSaving ? "Guardando..." : "Guardar"}</Button>
                       </div>
                     </div>
                   ) : (
                     <>
-                      {figure.description ? (
-                        <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{figure.description}</p>
-                      ) : (
-                        <p className="text-base text-muted-foreground">No hay una descripción disponible. {canUserInteract ? "¡Anímate a añadir una!" : "Inicia sesión para añadir una."}</p>
-                      )}
-
+                      <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{figure.description || (canUserInteract ? "No hay descripción. ¡Añade una!" : "No hay descripción. Inicia sesión para añadir una.")}</p>
                       <div className="space-y-3 pt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                         {renderDetailItem(UserCircle, "Nombre Completo", figure.name)}
-                        {renderDetailItem(NotepadText, "Alias / Otros Nombres", figure.alias)}
+                        {renderDetailItem(NotepadText, "Alias", figure.alias)}
                         {renderDetailItem(Users2, "Género", figure.gender)}
-                        {renderDetailItem(Zap, "Especie / Raza", figure.species)}
+                        {renderDetailItem(Zap, "Especie", figure.species)}
                         {renderDetailItem(BookOpen, "Primera Aparición", figure.firstAppearance)}
-                        {renderDetailItem(Cake, "Fecha de Nacimiento / Edad", figure.birthDateOrAge)}
-                        {renderDetailItem(MapPin, "Lugar de Nacimiento", figure.birthPlace)}
+                        {renderDetailItem(Cake, "Nacimiento/Edad", figure.birthDateOrAge)}
+                        {renderDetailItem(MapPin, "Lugar Nacimiento", figure.birthPlace)}
                         {renderDetailItem(Globe, "Nacionalidad", figure.nationality)}
                         {renderDetailItem(Briefcase, "Ocupación", figure.occupation)}
-                        {renderDetailItem(Activity, "Estado (Vivo/Muerto)", figure.statusLiveOrDead)}
+                        {renderDetailItem(Activity, "Estado", figure.statusLiveOrDead)}
                         {renderDetailItem(HeartHandshake, "Estado Civil", figure.maritalStatus)}
                         {renderDetailItem(StretchVertical, "Altura", figure.height)}
                         {renderDetailItem(Scale, "Peso", figure.weight)}
-                        {renderDetailItem(Palette, "Color de Cabello", figure.hairColor)}
-                        {renderDetailItem(Eye, "Color de Ojos", figure.eyeColor)}
+                        {renderDetailItem(Palette, "Color Cabello", figure.hairColor)}
+                        {renderDetailItem(Eye, "Color Ojos", figure.eyeColor)}
                         {renderDetailItem(Scan, "Rasgos Distintivos", figure.distinctiveFeatures)}
                       </div>
                     </>
@@ -521,169 +459,62 @@ export default function FigurePage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="attitude-poll">
-              {figure && currentUser !== undefined && ( 
-                <AttitudeVote
-                  figureId={figure.id}
-                  figureName={figure.name}
-                  initialAttitudeCounts={figure.attitudeCounts}
-                  currentUser={currentUser}
-                />
-              )}
-              {(!figure || currentUser === undefined) && (
-                 <div className="flex justify-center items-center h-40">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="perception-emotions">
-              {figure && currentUser !== undefined && (
-                <PerceptionEmotions
-                  figureId={figure.id}
-                  figureName={figure.name}
-                  initialPerceptionCounts={figure.perceptionCounts}
-                  currentUser={currentUser}
-                />
-              )}
-              {(!figure || currentUser === undefined) && (
-                <div className="flex justify-center items-center h-40">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              )}
-            </TabsContent>
+            <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
+            <TabsContent value="perception-emotions">{figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
           </Tabs>
 
-          {/* Sección de Calificación y Comentarios movida aquí, fuera y debajo de Tabs */}
-          {figure && (
-            <RatingSummaryDisplay 
-              figureName={figure.name} 
-              starRatingCounts={figure.starRatingCounts} 
-            />
-          )}
+          {figure && (<RatingSummaryDisplay figureName={figure.name} starRatingCounts={figure.starRatingCounts} />)}
 
           <Card className="mt-8 w-full">
             <CardHeader>
-              <CardTitle className="flex items-center text-2xl font-headline">
-                <MessagesSquare className="mr-3 h-7 w-7 text-primary" />
-                Califica y Comenta sobre {figure.name}
-              </CardTitle>
+              <CardTitle className="flex items-center text-2xl font-headline"><MessagesSquare className="mr-3 h-7 w-7 text-primary" />Califica y Comenta sobre {figure.name}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {canUserInteract && figure && currentUser !== undefined ? (
                 <form onSubmit={handleSubmitComment} className="space-y-6">
-                  {/* StarRatingVote component para que el usuario seleccione estrellas */}
-                  <div className="mb-6">
-                    <StarRatingVote
-                        figureId={figure.id}
-                        figureName={figure.name}
-                        initialStarRatingCounts={figure.starRatingCounts}
-                        currentUser={currentUser}
+                  <div className="mb-4">
+                    <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">Tu calificación:</Label>
+                    <StarRating
+                        rating={newCommentStars || 0}
+                        onRatingChange={(rating) => setNewCommentStars(rating as StarValue)}
+                        size={32} // Estrellas más grandes para facilitar el clic
                     />
                   </div>
-                  
                   <div>
-                    <Label htmlFor="newComment" className="sr-only">Tu comentario (opcional si ya calificaste)</Label>
-                    <Textarea
-                      id="newComment"
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Escribe tu comentario aquí (opcional si ya calificaste)..."
-                      rows={4}
-                      className="w-full"
-                      disabled={isSubmittingComment}
-                    />
+                    <Label htmlFor="newComment" className="sr-only">Tu comentario (opcional)</Label>
+                    <Textarea id="newComment" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Escribe tu comentario aquí (opcional)..." rows={4} className="w-full" disabled={isSubmittingComment} />
                   </div>
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmittingComment}>
-                      {isSubmittingComment ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="mr-2 h-4 w-4" />
-                      )}
-                      {isSubmittingComment ? "Enviando..." : "Enviar Opinión"}
-                    </Button>
+                    <Button type="submit" disabled={isSubmittingComment}>{isSubmittingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{isSubmittingComment ? "Enviando..." : "Enviar Opinión"}</Button>
                   </div>
                 </form>
-              ) : (
-                  <Alert>
-                  <LogIn className="h-4 w-4" />
-                  <AlertTitle>Participación Restringida</AlertTitle>
-                  <AlertDescription>
-                    <Link href="/login" className="font-semibold text-primary hover:underline">
-                      Inicia sesión
-                    </Link>
-                    {" "}para calificar y añadir comentarios.
-                  </AlertDescription>
-                </Alert>
-              )}
+              ) : ( <Alert><LogIn className="h-4 w-4" /><AlertTitle>Participación Restringida</AlertTitle><AlertDescription><Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión</Link> para calificar y comentar.</AlertDescription></Alert>)}
               
               <div className="border-t pt-6 mt-6 space-y-6">
-                <h4 className="text-lg font-medium">
-                  Comentarios Recientes ({commentsList.length})
-                </h4>
-                {isLoadingComments ? (
-                  <div className="flex justify-center items-center py-6">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="ml-2">Cargando comentarios...</p>
-                  </div>
+                <h4 className="text-lg font-medium">Comentarios Recientes ({commentsList.length})</h4>
+                {isLoadingComments ? (<div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando...</p></div>
                 ) : commentsList.length > 0 ? (
                   commentsList.map((comment) => (
                     <div key={comment.id} className="flex space-x-3 border-b pb-4 last:border-b-0 last:pb-0">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" />
-                        <AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
+                      <Avatar className="h-10 w-10"><AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" /><AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                       <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold text-foreground">{comment.username}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
-                        </div>
-                        {comment.starRatingGiven && (
-                          <div className="mt-1">
-                            <StarRating rating={comment.starRatingGiven} size={14} readOnly />
-                          </div>
-                        )}
-                        {comment.text && comment.text.trim() !== "" && (
-                           <p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>
-                        )}
+                        <div className="flex items-center justify-between"><p className="text-sm font-semibold text-foreground">{comment.username}</p><p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p></div>
+                        {comment.starRatingGiven && (<div className="mt-1"><StarRating rating={comment.starRatingGiven} size={14} readOnly /></div>)}
+                        {comment.text && comment.text.trim() !== "" && (<p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>)}
                       </div>
                     </div>
                   ))
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">
-                    No hay comentarios aún. ¡Sé el primero en calificar o comentar!
-                  </p>
-                )}
+                ) : (<p className="text-muted-foreground text-center py-4">No hay comentarios. ¡Sé el primero!</p>)}
               </div>
             </CardContent>
           </Card>
-
-        </div> {/* Cierre de lg:col-span-2 space-y-8 */}
+        </div> 
 
         <aside className="lg:col-span-1 space-y-6">
-          <Alert>
-            <Terminal className="h-4 w-4" />
-            <AlertTitle className="font-headline">Cómo Funciona</AlertTitle>
-            <AlertDescription className="text-sm">
-              La información personal y la imagen de perfil pueden ser editadas por usuarios con cuenta.
-              ¡Expresa tu actitud, emoción y califica con estrellas si has iniciado sesión con una cuenta!
-            </AlertDescription>
-          </Alert>
-
-          {relatedFigures.length > 0 && (
-            <div>
-              <h3 className="text-xl font-headline mb-4">También te podría interesar</h3>
-              <div className="space-y-4">
-                {relatedFigures.map(relatedFig => (
-                  <FigureListItem key={relatedFig.id} figure={relatedFig} />
-                ))}
-              </div>
-            </div>
-          )}
+          <Alert><Terminal className="h-4 w-4" /><AlertTitle className="font-headline">Cómo Funciona</AlertTitle><AlertDescription className="text-sm">Edita información, expresa actitud/emoción y califica si tienes cuenta.</AlertDescription></Alert>
+          {relatedFigures.length > 0 && (<div><h3 className="text-xl font-headline mb-4">También te podría interesar</h3><div className="space-y-4">{relatedFigures.map(relatedFig => (<FigureListItem key={relatedFig.id} figure={relatedFig} />))}</div></div>)}
         </aside>
       </div>
     </div>
   );
 }
-
