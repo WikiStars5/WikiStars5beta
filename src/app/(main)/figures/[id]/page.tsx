@@ -86,11 +86,11 @@ export default function FigurePage() {
     if (typeof window !== "undefined") {
       const audios: Partial<Record<StarValue, HTMLAudioElement>> = {};
       (Object.keys(STAR_SOUND_URLS) as unknown as StarValue[]).forEach(key => {
-        const numericKey = Number(key) as StarValue; // Ensure key is treated as StarValue for lookup
-        if (STAR_SOUND_URLS[numericKey]) { // Check with numericKey
+        const numericKey = Number(key) as StarValue; 
+        if (STAR_SOUND_URLS[numericKey]) { 
           const audio = new Audio(STAR_SOUND_URLS[numericKey]);
           audio.preload = "auto";
-          audios[numericKey] = audio; // Store with numericKey
+          audios[numericKey] = audio; 
         }
       });
       setStarAudios(audios);
@@ -367,6 +367,9 @@ export default function FigurePage() {
         transaction.update(figureDocRef, { commentCount: currentCommentCount + 1 });
       });
 
+      if (newCommentStars) {
+        playSoundEffect(newCommentStars);
+      }
       toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
       setNewComment("");
       fetchFigureAndComments(); 
@@ -510,9 +513,6 @@ export default function FigurePage() {
                         onRatingChange={(rating) => {
                           const starVal = rating as StarValue;
                           setNewCommentStars(starVal);
-                          if (starVal > 0 && starVal <=5) {
-                            playSoundEffect(starVal);
-                          }
                         }}
                         size={32}
                     />
