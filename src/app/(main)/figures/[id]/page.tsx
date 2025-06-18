@@ -142,7 +142,7 @@ export default function FigurePage() {
       }
     });
     return () => unsubscribe();
-  }, [figure?.id, currentUser]); // Added currentUser dependency
+  }, [figure?.id, currentUser]); 
 
   const resetEditFields = useCallback((currentFigure: Figure | null) => {
     if (currentFigure) {
@@ -328,12 +328,11 @@ export default function FigurePage() {
     
     const figureDocRef = doc(db, "figures", figure.id);
     const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
-    const currentStarsForComment = newCommentStars; // Capture state for use in transaction
+    const currentStarsForComment = newCommentStars;
 
     try {
       await runTransaction(db, async (transaction) => {
         const figureSnap = await transaction.get(figureDocRef);
-        // User's previous rating for THIS figure
         const userPrevRatingSnap = await transaction.get(userStarRatingDocRef); 
 
         if (!figureSnap.exists()) throw new Error("Figure document does not exist!");
@@ -344,26 +343,22 @@ export default function FigurePage() {
         
         const previousUserStarValue: StarValue | null = userPrevRatingSnap.exists() ? userPrevRatingSnap.data()!.starValue as StarValue : null;
 
-        // Step 1: Adjust aggregated counts based on previous user rating (if any)
         if (previousUserStarValue !== null) {
           const prevKey = previousUserStarValue.toString() as StarValueAsString;
           newAggregatedStarCounts[prevKey] = Math.max(0, (newAggregatedStarCounts[prevKey] || 0) - 1);
         }
         
-        // Step 2: Adjust aggregated counts based on current user rating for this comment (if any)
-        // And update/create/delete the user's specific star rating document
-        if (currentStarsForComment !== null) { // User selected stars for THIS comment submission
+        if (currentStarsForComment !== null) {
           const newKey = currentStarsForComment.toString() as StarValueAsString;
           newAggregatedStarCounts[newKey] = (newAggregatedStarCounts[newKey] || 0) + 1;
           
-          transaction.set(userStarRatingDocRef, { // Set/update user's specific rating
+          transaction.set(userStarRatingDocRef, { 
             userId: currentUser.uid,
             figureId: figure.id,
             starValue: currentStarsForComment,
             timestamp: serverTimestamp(),
           });
-        } else { // User did NOT select stars for THIS comment submission
-          // If they had a previous rating, their specific rating document is deleted (effectively clearing their vote for the figure)
+        } else { 
           if (userPrevRatingSnap.exists()) {
             transaction.delete(userStarRatingDocRef);
           }
@@ -399,7 +394,6 @@ export default function FigurePage() {
       }
       toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
       setNewComment("");
-      // newCommentStars will be re-evaluated by useEffect based on the updated userStarRatings
       fetchFigureAndComments(); 
     } catch (error: any) {
       console.error("Error submitting opinion:", error);
@@ -480,7 +474,15 @@ export default function FigurePage() {
   if (figure === null) return <div className="text-center py-10"><h1 className="text-2xl font-bold">Figura No Encontrada</h1><p className="text-muted-foreground">ID: {id || "desconocido"}</p><Button asChild className="mt-4"><Link href="/">Ir al Inicio</Link></Button></div>;
 
   const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 3);
-  const isValidEditedPhotoUrl = editedPhotoUrl && (editedPhotoUrl.startsWith('https://upload.wikimedia.org') || editedPhotoUrl.startsWith('https://static.wikia.nocookie.net') || editedPhotoUrl.startsWith('https://firebasestorage.googleapis.com') || editedPhotoUrl.startsWith('https://placehold.co'));
+  const isValidEditedPhotoUrl = editedPhotoUrl && (
+    editedPhotoUrl.startsWith('https://upload.wikimedia.org') || 
+    editedPhotoUrl.startsWith('https://static.wikia.nocookie.net') || 
+    editedPhotoUrl.startsWith('https://firebasestorage.googleapis.com') || 
+    editedPhotoUrl.startsWith('https://placehold.co') ||
+    editedPhotoUrl.startsWith('https://i.pinimg.com') ||
+    editedPhotoUrl.startsWith('https://encrypted-tbn0.gstatic.com') ||
+    editedPhotoUrl.startsWith('https://m.media-amazon.com')
+  );
 
   const renderDetailItem = (icon: React.ElementType, label: string, value?: string) => {
     const IconComponent = icon;
@@ -524,7 +526,7 @@ export default function FigurePage() {
                   {isEditing && canUserInteract ? (
                     <div className="space-y-4">
                       {renderEditInput("photoUrl", "URL de Imagen", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://...")}
-                      <p className="text-xs text-muted-foreground mt-1">Wikimedia, Wikia, Firebase Storage o Placehold.co.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Dominios permitidos: Wikimedia, Wikia, Firebase Storage, Placehold.co, Pinterest, Google Images, Amazon.</p>
                       {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center" data-ai-hint="image preview"><Image src={editedPhotoUrl} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground" data-ai-hint="placeholder abstract"><ImageOff className="h-10 w-10" /></div>}
                       {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
