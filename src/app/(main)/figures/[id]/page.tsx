@@ -142,7 +142,7 @@ export default function FigurePage() {
       }
     });
     return () => unsubscribe();
-  }, [figure?.id]); 
+  }, [figure?.id, currentUser]); // Added currentUser dependency
 
   const resetEditFields = useCallback((currentFigure: Figure | null) => {
     if (currentFigure) {
@@ -328,43 +328,48 @@ export default function FigurePage() {
     
     const figureDocRef = doc(db, "figures", figure.id);
     const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
-    const currentStarsForComment = newCommentStars;
+    const currentStarsForComment = newCommentStars; // Capture state for use in transaction
 
     try {
       await runTransaction(db, async (transaction) => {
         const figureSnap = await transaction.get(figureDocRef);
-        const userPrevRatingSnap = await transaction.get(userStarRatingDocRef);
+        // User's previous rating for THIS figure
+        const userPrevRatingSnap = await transaction.get(userStarRatingDocRef); 
 
         if (!figureSnap.exists()) throw new Error("Figure document does not exist!");
         
         const figureData = figureSnap.data()!;
-        const currentStarCounts = (figureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
-        const newStarCounts = { ...currentStarCounts };
+        const currentAggregatedStarCounts = (figureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
+        const newAggregatedStarCounts = { ...currentAggregatedStarCounts };
         
-        const prevStarValue: StarValue | null = userPrevRatingSnap.exists() ? userPrevRatingSnap.data()!.starValue as StarValue : null;
+        const previousUserStarValue: StarValue | null = userPrevRatingSnap.exists() ? userPrevRatingSnap.data()!.starValue as StarValue : null;
 
-        if (prevStarValue !== null) {
-          const prevKey = prevStarValue.toString() as StarValueAsString;
-          newStarCounts[prevKey] = Math.max(0, (newStarCounts[prevKey] || 0) - 1);
+        // Step 1: Adjust aggregated counts based on previous user rating (if any)
+        if (previousUserStarValue !== null) {
+          const prevKey = previousUserStarValue.toString() as StarValueAsString;
+          newAggregatedStarCounts[prevKey] = Math.max(0, (newAggregatedStarCounts[prevKey] || 0) - 1);
         }
         
-        if (currentStarsForComment !== null) {
+        // Step 2: Adjust aggregated counts based on current user rating for this comment (if any)
+        // And update/create/delete the user's specific star rating document
+        if (currentStarsForComment !== null) { // User selected stars for THIS comment submission
           const newKey = currentStarsForComment.toString() as StarValueAsString;
-          newStarCounts[newKey] = (newStarCounts[newKey] || 0) + 1;
+          newAggregatedStarCounts[newKey] = (newAggregatedStarCounts[newKey] || 0) + 1;
           
-          transaction.set(userStarRatingDocRef, {
+          transaction.set(userStarRatingDocRef, { // Set/update user's specific rating
             userId: currentUser.uid,
             figureId: figure.id,
             starValue: currentStarsForComment,
             timestamp: serverTimestamp(),
           });
-        } else {
+        } else { // User did NOT select stars for THIS comment submission
+          // If they had a previous rating, their specific rating document is deleted (effectively clearing their vote for the figure)
           if (userPrevRatingSnap.exists()) {
             transaction.delete(userStarRatingDocRef);
           }
         }
         
-        transaction.update(figureDocRef, { starRatingCounts: newStarCounts });
+        transaction.update(figureDocRef, { starRatingCounts: newAggregatedStarCounts });
       });
 
       const commentData = {
@@ -394,6 +399,7 @@ export default function FigurePage() {
       }
       toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
       setNewComment("");
+      // newCommentStars will be re-evaluated by useEffect based on the updated userStarRatings
       fetchFigureAndComments(); 
     } catch (error: any) {
       console.error("Error submitting opinion:", error);
@@ -438,12 +444,11 @@ export default function FigurePage() {
           newStarCounts[starKey] = Math.max(0, (newStarCounts[starKey] || 0) - 1);
           updates.starRatingCounts = newStarCounts;
 
-          // If the comment being deleted was the user's current star rating for the figure, remove it
           const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${figure.id}`);
           const userStarRatingSnap = await transaction.get(userStarRatingDocRef);
           if (userStarRatingSnap.exists() && userStarRatingSnap.data().starValue === starRatingOfCommentToDelete) {
              transaction.delete(userStarRatingDocRef);
-             setNewCommentStars(null); // Clear local state as well
+             setNewCommentStars(null); 
           }
         }
         
@@ -487,12 +492,12 @@ export default function FigurePage() {
     );
   };
   
-  const renderEditInput = (id: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, placeholder?: string) => (
-    <div><Label htmlFor={id} className="font-semibold text-foreground/90">{label}</Label><Input id={id} value={value} onChange={onChange} placeholder={placeholder || `Ej: ${label}`} className="mt-1" /></div>
+  const renderEditInput = (idField: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, placeholder?: string) => (
+    <div><Label htmlFor={idField} className="font-semibold text-foreground/90">{label}</Label><Input id={idField} value={value} onChange={onChange} placeholder={placeholder || `Ej: ${label}`} className="mt-1" /></div>
   );
 
-  const renderEditTextarea = (id: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, placeholder?: string, rows?: number) => (
-    <div><Label htmlFor={id} className="font-semibold text-foreground/90">{label}</Label><Textarea id={id} value={value} onChange={onChange} placeholder={placeholder || `Añade ${label.toLowerCase()}...`} rows={rows || 3} className="mt-1" /></div>
+  const renderEditTextarea = (idField: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, placeholder?: string, rows?: number) => (
+    <div><Label htmlFor={idField} className="font-semibold text-foreground/90">{label}</Label><Textarea id={idField} value={value} onChange={onChange} placeholder={placeholder || `Añade ${label.toLowerCase()}...`} rows={rows || 3} className="mt-1" /></div>
   );
 
   return (
@@ -520,7 +525,7 @@ export default function FigurePage() {
                     <div className="space-y-4">
                       {renderEditInput("photoUrl", "URL de Imagen", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://...")}
                       <p className="text-xs text-muted-foreground mt-1">Wikimedia, Wikia, Firebase Storage o Placehold.co.</p>
-                      {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center data-ai-hint='image preview'"><Image src={editedPhotoUrl} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground data-ai-hint='placeholder abstract'"><ImageOff className="h-10 w-10" /></div>}
+                      {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center" data-ai-hint="image preview"><Image src={editedPhotoUrl} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground" data-ai-hint="placeholder abstract"><ImageOff className="h-10 w-10" /></div>}
                       {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                         {renderEditInput("alias", "Alias", editedAlias, (e) => setEditedAlias(e.target.value))}
@@ -575,7 +580,6 @@ export default function FigurePage() {
             <TabsContent value="perception-emotions">{figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
           </Tabs>
           
-          {/* RatingSummaryDisplay and Comments Card moved here */}
           {figure && (<RatingSummaryDisplay figureName={figure.name} starRatingCounts={figure.starRatingCounts} />)}
 
           <Card className="mt-8 w-full">
@@ -670,4 +674,3 @@ export default function FigurePage() {
     </div>
   );
 }
-
