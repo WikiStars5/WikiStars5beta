@@ -11,10 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { UserPlus, Loader2 } from "lucide-react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { useRouter } from "next-intl/client"; // Changed to next-intl's useRouter
+import { useRouter } from "next/navigation"; 
 import { auth } from '@/lib/firebase';
 import { ensureUserProfileExists } from "@/lib/userData";
-import { useTranslations } from "next-intl";
 
 const signupSchema = z.object({
   displayName: z.string().min(2, { message: "El nombre de usuario debe tener al menos 2 caracteres." }).max(50, {message: "El nombre de usuario no debe exceder los 50 caracteres."}),
@@ -25,7 +24,6 @@ const signupSchema = z.object({
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 export function SignupForm() {
-  const t = useTranslations('SignupForm');
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -53,10 +51,10 @@ export function SignupForm() {
       }
 
       toast({
-        title: t('successTitle'),
-        description: t('successDescription', {username: user.displayName || user.email}),
+        title: "¡Cuenta Creada!",
+        description: `¡Bienvenido a WikiStars5, ${user.displayName || user.email}!`,
       });
-      router.push('/home'); // next-intl router handles locale automatically
+      router.push('/home'); 
 
       if (user) {
         try {
@@ -84,7 +82,7 @@ export function SignupForm() {
       }
       
       toast({
-        title: t('errorTitle'),
+        title: "Registro Fallido",
         description: displayErrorMessage,
         variant: "destructive",
       });
@@ -101,9 +99,9 @@ export function SignupForm() {
           name="displayName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t('usernameLabel')}</FormLabel>
+              <FormLabel>Nombre de Usuario Público</FormLabel>
               <FormControl>
-                <Input placeholder={t('usernamePlaceholder')} {...field} disabled={isLoading} />
+                <Input placeholder="Tu Nombre" {...field} disabled={isLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -114,9 +112,9 @@ export function SignupForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t('emailLabel')}</FormLabel>
+              <FormLabel>Correo Electrónico</FormLabel>
               <FormControl>
-                <Input type="email" placeholder={t('emailPlaceholder')} {...field} disabled={isLoading} />
+                <Input type="email" placeholder="tu@ejemplo.com" {...field} disabled={isLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -127,9 +125,9 @@ export function SignupForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t('passwordLabel')}</FormLabel>
+              <FormLabel>Contraseña</FormLabel>
               <FormControl>
-                <Input type="password" placeholder={t('passwordPlaceholder')} {...field} disabled={isLoading} />
+                <Input type="password" placeholder="•••••••• (mín. 6 caracteres)" {...field} disabled={isLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -137,7 +135,7 @@ export function SignupForm() {
         />
         <Button type="submit" className="w-full text-lg py-3" disabled={isLoading}>
           {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
-          {isLoading ? t('signingUpButton') : t('signupButton')}
+          {isLoading ? "Creando cuenta..." : "Registrarse"}
         </Button>
       </form>
     </Form>

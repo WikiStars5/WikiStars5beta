@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import { useRouter } from 'next-intl/client'; // Changed to next-intl's useRouter
+import { useRouter } from 'next/navigation'; 
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { ensureUserProfileExists } from '@/lib/userData';
@@ -13,10 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Loader2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 
 export function LoginForm() {
-  const t = useTranslations('LoginForm');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -34,10 +32,10 @@ export function LoginForm() {
       const user = userCredential.user;
       
       toast({
-        title: t('successTitle'),
-        description: t('successDescription', {username: user.displayName || user.email}),
+        title: "Inicio de Sesión Exitoso",
+        description: `¡Bienvenido de nuevo, ${user.displayName || user.email}!`,
       });
-      router.push('/home'); // next-intl router handles locale automatically
+      router.push('/home'); 
 
       if (user) {
         try {
@@ -76,12 +74,12 @@ export function LoginForm() {
       {error && (
         <Alert variant="destructive">
           <Terminal className="h-4 w-4" />
-          <AlertTitle>{t('errorTitle')}</AlertTitle>
+          <AlertTitle>Error de inicio de sesión</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
       <div>
-        <Label htmlFor="email">{t('emailLabel')}</Label>
+        <Label htmlFor="email">Correo electrónico</Label>
         <Input
           id="email"
           name="email"
@@ -90,12 +88,12 @@ export function LoginForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder={t('emailPlaceholder')}
+          placeholder="tu@ejemplo.com"
           disabled={isLoading}
         />
       </div>
       <div>
-        <Label htmlFor="password">{t('passwordLabel')}</Label>
+        <Label htmlFor="password">Contraseña</Label>
         <Input
           id="password"
           name="password"
@@ -104,14 +102,14 @@ export function LoginForm() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder={t('passwordPlaceholder')}
+          placeholder="••••••••"
           disabled={isLoading}
         />
       </div>
       <div>
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {isLoading ? t('loggingInButton') : t('loginButton')}
+          {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
         </Button>
       </div>
     </form>

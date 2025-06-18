@@ -3,14 +3,11 @@
 
 import { Logo } from '@/components/shared/Logo';
 import { UserNav } from './UserNav';
-import Link from 'next-intl/link'; // Changed to next-intl's Link
+import Link from 'next/link'; 
 import { MobileSearchButton } from './MobileSearchButton';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
 import { useState } from 'react';
-import { LanguageSwitcher } from './LanguageSwitcher';
-import { useTranslations } from 'next-intl';
-
 
 interface HeaderProps {
   theme: 'light' | 'dark';
@@ -19,7 +16,6 @@ interface HeaderProps {
 
 export function Header({ theme, toggleTheme }: HeaderProps) {
   const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
-  const t = useTranslations('Header');
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
@@ -38,15 +34,15 @@ export function Header({ theme, toggleTheme }: HeaderProps) {
         <div className={`flex items-center gap-1 md:gap-2 lg:gap-3 transition-opacity duration-300 ${isHeaderSearchFocused && !isHeaderSearchFocused ? 'opacity-0 md:opacity-100' : 'opacity-100'}`}>
           <nav className={`hidden md:flex items-center gap-3 text-sm transition-opacity duration-300 ${isHeaderSearchFocused ? 'lg:flex opacity-0 lg:opacity-100' : 'flex opacity-100'}`}>
             <Link href="/home" className="text-foreground/70 hover:text-foreground transition-colors">
-              {t('home')}
+              Hogar
             </Link>
             <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">
-              {t('explore')}
+              Explorar
             </Link>
           </nav>
 
           <MobileSearchButton />
-          <LanguageSwitcher />
+          {/* LanguageSwitcher removed */}
           <ThemeToggleButton theme={theme} toggleTheme={toggleTheme} />
           <UserNav />
         </div>

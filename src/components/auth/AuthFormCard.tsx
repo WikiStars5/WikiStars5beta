@@ -1,11 +1,10 @@
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next-intl/link"; // Changed to next-intl's Link
+import Link from "next/link"; 
 import type { ReactNode } from "react";
 import { Logo } from "@/components/shared/Logo";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { useTranslations } from "next-intl";
 
 interface AuthFormCardProps {
   title: string;
@@ -25,11 +24,7 @@ const GoogleIcon = () => (
 );
 
 export function AuthFormCard({ title, description, children, footerLinkHref, footerLinkText, footerText, onGoogleSignIn, isGoogleLoading }: AuthFormCardProps) {
-  const t = useTranslations('AuthFormCard');
-  // Determine current theme for Logo - assuming a way to get it, or default
-  // For simplicity, let's assume 'light' or pass it if available contextually
   const currentTheme = (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) ? 'dark' : 'light';
-
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] py-12">
@@ -49,7 +44,7 @@ export function AuthFormCard({ title, description, children, footerLinkHref, foo
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-card px-2 text-muted-foreground">
-                    {t('orContinueWith')}
+                    O continuar con
                   </span>
                 </div>
               </div>
@@ -65,7 +60,7 @@ export function AuthFormCard({ title, description, children, footerLinkHref, foo
                   ) : (
                     <GoogleIcon />
                   )}
-                  {t('continueWithGoogle')}
+                  Continuar con Google
                 </Button>
               </div>
             </>

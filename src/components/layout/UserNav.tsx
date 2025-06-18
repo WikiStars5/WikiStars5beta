@@ -1,7 +1,7 @@
 
 "use client";
 
-import Link from 'next-intl/link'; // Changed to next-intl's Link
+import Link from 'next/link'; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,13 +17,11 @@ import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, Loader2, UserCirc
 import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next-intl/client'; // Changed to next-intl's useRouter
-import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation'; 
 
 const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
 
 export function UserNav() {
-  const t = useTranslations('UserNav');
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -40,12 +38,12 @@ export function UserNav() {
   const handleLogout = async () => {
     try {
       await firebaseSignOut(auth);
-      toast({ title: t('logoutSuccessTitle'), description: t('logoutSuccessDescription') });
+      toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       router.push('/login');
       router.refresh(); 
     } catch (error) {
       console.error("Error logging out: ", error);
-      toast({ title: t('logoutErrorTitle'), description: t('logoutErrorDescription'), variant: "destructive" });
+      toast({ title: "Cierre de Sesión Fallido", description: "No se pudo cerrar tu sesión.", variant: "destructive" });
     }
   };
 
@@ -90,25 +88,25 @@ export function UserNav() {
           <Link href="/profile">
             <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
-              <span>{t('profile')}</span>
+              <span>Editar Perfil</span>
             </DropdownMenuItem>
           </Link>
           <DropdownMenuItem disabled>
             <Settings className="mr-2 h-4 w-4" />
-            <span>{t('settings')}</span>
+            <span>Configuración</span>
           </DropdownMenuItem>
           {isAdmin && !currentUser.isAnonymous && (
             <Link href="/admin">
               <DropdownMenuItem>
                 <ShieldCheck className="mr-2 h-4 w-4" />
-                <span>{t('adminPanel')}</span>
+                <span>Panel de Administración</span>
               </DropdownMenuItem>
             </Link>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
-            <span>{t('logout')}</span>
+            <span>Cerrar Sesión</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -120,22 +118,22 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="h-9 w-9">
           <UserCircle className="h-6 w-6 text-foreground/70" />
-          <span className="sr-only">{t('openMenu')}</span>
+          <span className="sr-only">Abrir menú de usuario</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-48" align="end" forceMount>
-        <DropdownMenuLabel>{t('access')}</DropdownMenuLabel>
+        <DropdownMenuLabel>Acceso</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <Link href="/login">
           <DropdownMenuItem>
             <LogIn className="mr-2 h-4 w-4" />
-            <span>{t('login')}</span>
+            <span>Iniciar Sesión</span>
           </DropdownMenuItem>
         </Link>
         <Link href="/signup">
           <DropdownMenuItem>
             <UserPlus className="mr-2 h-4 w-4" />
-            <span>{t('signup')}</span>
+            <span>Registrarse</span>
           </DropdownMenuItem>
         </Link>
       </DropdownMenuContent>
