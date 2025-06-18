@@ -6,6 +6,8 @@ import { UserNav } from './UserNav';
 import Link from 'next/link';
 import { MobileSearchButton } from './MobileSearchButton';
 import { ThemeToggleButton } from './ThemeToggleButton';
+import { SearchBar } from '@/components/shared/SearchBar'; // Importar SearchBar
+
 // Button and PlusCircle removed as "Proponer Figura" is being removed
 // import { Button } from '@/components/ui/button';
 // import { PlusCircle } from 'lucide-react';
@@ -38,8 +40,17 @@ export function Header({ theme, toggleTheme }: HeaderProps) {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
         <Logo />
-        <div className="flex items-center gap-2 md:gap-4">
-          <nav className="hidden md:flex items-center gap-4 text-sm">
+        {/* Grupo de elementos a la derecha del logo */}
+        <div className="flex items-center gap-2 md:gap-4 lg:gap-6">
+          {/* SearchBar para escritorio, visible en md y superior */}
+          <div className="hidden md:block">
+            <div className="w-56 lg:w-72"> {/* Ancho para la barra de búsqueda */}
+              <SearchBar />
+            </div>
+          </div>
+
+          {/* Enlaces de navegación para escritorio */}
+          <nav className="hidden md:flex items-center gap-3 text-sm">
             <Link href="/home" className="text-foreground/70 hover:text-foreground transition-colors">
               Hogar
             </Link>
@@ -48,6 +59,8 @@ export function Header({ theme, toggleTheme }: HeaderProps) {
             </Link>
             {/* "Proponer Figura" button removed */}
           </nav>
+
+          {/* Botón de búsqueda para móviles (ya tiene md:hidden internamente) */}
            <MobileSearchButton />
            <ThemeToggleButton theme={theme} toggleTheme={toggleTheme} />
           <UserNav />

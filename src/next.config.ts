@@ -1,48 +1,53 @@
+import type {NextConfig} from 'next'; 
 
-import type {NextConfig} from 'next';
-
-const nextConfig: NextConfig = {
-  /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'upload.wikimedia.org',
-        port: '',
-        pathname: '/wikipedia/commons/**', // Path específico para Wikimedia Commons
-      },
-      {
-        protocol: 'https',
-        hostname: 'static.wikia.nocookie.net', // Dominio para Wikia/Fandom
-        port: '',
-        pathname: '/**', // Permitir cualquier ruta de imagen bajo este hostname
-      },
-    ],
-  },
-  devIndicators: {
-    allowedDevOrigins: [
-      'https://9000-firebase-studio-1749775328349.cluster-vpxjqdstfzgs6qeiaf7rdlsqrc.cloudworkstations.dev',
-      'https://6000-firebase-studio-1749775328349.cluster-vpxjqdstfzgs6qeiaf7rdlsqrc.cloudworkstations.dev',
-    ],
-  },
-};
+const nextConfig: NextConfig = { 
+  /* config options here */ 
+  typescript: { 
+    // Ignora los errores de construcción de TypeScript. Útil para entornos de desarrollo.
+    ignoreBuildErrors: true, 
+  }, 
+  eslint: { 
+    // Ignora los errores de ESLint durante el proceso de construcción.
+    ignoreDuringBuilds: true, 
+  }, 
+  images: { 
+    // Configuración para permitir la carga de imágenes desde dominios remotos específicos.
+    remotePatterns: [ 
+      { 
+        protocol: 'https', 
+        hostname: 'placehold.co', 
+        port: '', 
+        pathname: '/**', 
+      }, 
+      { 
+        protocol: 'https', 
+        hostname: 'firebasestorage.googleapis.com', 
+        port: '', 
+        pathname: '/**', 
+      }, 
+      { 
+        protocol: 'https', 
+        hostname: 'upload.wikimedia.org', 
+        port: '', 
+        // Ruta específica para Wikimedia Commons para mayor seguridad.
+        pathname: '/wikipedia/commons/**', 
+      }, 
+      { 
+        protocol: 'https', 
+        hostname: 'static.wikia.nocookie.net', // Dominio para Wikia/Fandom 
+        port: '', 
+        // Permite cualquier ruta de imagen bajo este hostname.
+        pathname: '/**', 
+      }, 
+    ], 
+  }, 
+  devIndicators: { 
+    // Orígenes permitidos para los indicadores de desarrollo de Next.js.
+    allowedDevOrigins: [ 
+      'https://9000-firebase-studio-1749775328349.cluster-vpxjqdstfzgs6qeiaf7rdlsqrc.cloudworkstations.dev', 
+      'https://6000-firebase-studio-1749775328349.cluster-vpxjqdstfzgs6qeiaf7rdlsqrc.cloudworkstations.dev', 
+    ], 
+  }, 
+}; 
 
 export default nextConfig;
