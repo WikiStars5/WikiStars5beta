@@ -32,29 +32,25 @@ export { app };
 
 // === REGLAS DE SEGURIDAD DE FIRESTORE (APLICAR EN CONSOLA FIREBASE) ===
 // Ve a Firebase Console -> Firestore Database -> Rules.
-// REEMPLAZA TUS REGLAS EXISTENTES CON ESTAS (SON MUY PERMISIVAS, SOLO PARA DESARROLLO):
+// REEMPLAZA TUS REGLAS EXISTENTES CON ESTAS.
 /*
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // ADVERTENCIA: ESTAS REGLAS SON ALTAMENTE PERMISIVAS Y SOLO PARA DESARROLLO.
+    // NO USAR EN PRODUCCIÓN.
+
     // Función para verificar si el usuario es el administrador
     function isAdmin() {
-      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // REEMPLAZA CON TU ADMIN UID REAL
+      // REEMPLAZA CON TU ADMIN UID REAL SI ES NECESARIO PARA REGLAS MÁS ESPECÍFICAS
+      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
     }
 
     // Función para verificar si el usuario está autenticado y no es anónimo
     function isAuthenticatedNonAnonymous() {
       return request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
-    }
-
-    // Función para verificar si el usuario es el propietario del documento específico de voto/percepción
-    // El docId debe ser 'userId_figureId'
-    function isOwnerOfUserSpecificDoc() {
-      // request.path structure: /databases/(default)/documents/COLLECTION_NAME/DOC_ID
-      // So DOC_ID is at index 5
-      return isAuthenticatedNonAnonymous() && request.auth.uid == request.path.split('/')[5].split('_')[0];
     }
     
     // Permite leer y escribir en todas las colecciones sin restricciones (SOLO PARA DESARROLLO)
@@ -76,17 +72,7 @@ service cloud.firestore {
 
     // --- REGLAS PARA LA COLECCIÓN userComments ---
     match /userComments/{commentId} {
-      // Cualquiera puede leer comentarios
-      allow read: if true; // Permisivo para desarrollo
-
-      // Solo usuarios autenticados y no anónimos pueden crear comentarios
-      // Las validaciones de campos específicos se harían en reglas más estrictas
-      allow create: if isAuthenticatedNonAnonymous(); // Permisivo para desarrollo, idealmente validar request.resource.data
-      
-      // El autor del comentario o un administrador pueden actualizar/eliminar
-      // (Reglas más permisivas para desarrollo)
-      allow update: if isAuthenticatedNonAnonymous(); // Permisivo para desarrollo
-      allow delete: if isAuthenticatedNonAnonymous(); // Permisivo para desarrollo
+      allow read, write: if true; // Permisivo para desarrollo
 
       // EJEMPLO DE REGLAS MÁS SEGURAS PARA userComments (PARA PRODUCCIÓN):
       // allow read: if true;
