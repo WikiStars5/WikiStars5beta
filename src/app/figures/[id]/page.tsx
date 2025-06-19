@@ -6,9 +6,9 @@ import { getFigureFromFirestore, getAllFiguresFromFirestore, updateFigureInFires
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
-  Image as ImageIconLucide, ImageOff, BarChartHorizontal, Star as StarIcon,
+  ImageOff, BarChartHorizontal, Star as StarIcon,
   BookOpen, Cake, MapPin, HeartHandshake, StretchVertical, Scale, Palette, Zap,
-  MessagesSquare, Send, Trash2, Images, PlusCircle
+  MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide
 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
@@ -368,9 +368,7 @@ export default function FigurePage() {
         return;
     }
     setIsSubmittingComment(true);
-    // ... (resto de la lógica de handleSubmitComment) ...
-    // (No la repito aquí para brevedad, pero la lógica existente se mantiene)
-
+    
      const figureDocRef = doc(db, "figures", figure.id);
     const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
     const currentStarsForComment = newCommentStars;
@@ -481,8 +479,6 @@ export default function FigurePage() {
 
   const handleDeleteCommentConfirmation = async () => {
     if (!commentToDeleteId || !figure || !currentUser) return;
-    // ... (resto de la lógica de handleDeleteCommentConfirmation) ...
-    // (No la repito aquí para brevedad, pero la lógica existente se mantiene)
     const commentRef = doc(db, "userComments", commentToDeleteId);
     const figureRef = doc(db, "figures", figure.id);
 
@@ -687,7 +683,7 @@ export default function FigurePage() {
                             data-ai-hint="gallery image"
                           />
                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <ImageIconLucide className="h-8 w-8 text-white/80" />
+                              <ImageIconLucide className="h-10 w-10 text-white/80" />
                             </div>
                         </a>
                       ))}
@@ -798,3 +794,4 @@ export default function FigurePage() {
     </div>
   );
 }
+
