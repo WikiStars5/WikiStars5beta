@@ -37,12 +37,6 @@ export interface Figure {
   weight?: string; 
   hairColor?: string;
 
-  // Campos eliminados de la UI pero pueden existir en datos antiguos
-  alias?: string;
-  statusLiveOrDead?: string;
-  eyeColor?: string;
-  distinctiveFeatures?: string;
-
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
   starRatingCounts?: Record<StarValueAsString, number>;
@@ -106,4 +100,12 @@ export interface UserProfile {
   role: 'user' | 'admin';
   createdAt: string; 
   lastLoginAt?: string; 
+}
+
+export interface GalleryImage {
+  id: string;
+  imageUrl: string;
+  userId: string;
+  username?: string;
+  createdAt: Timestamp;
 }

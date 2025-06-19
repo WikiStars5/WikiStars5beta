@@ -1,14 +1,14 @@
 
 "use client";
 
-import type { Figure, UserComment, StarValue, StarValueAsString } from "@/lib/types";
+import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage } from "@/lib/types";
 import { getFigureFromFirestore, getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
-  Image as ImageIcon, ImageOff, BarChartHorizontal, Star as StarIcon,
+  Image as ImageIconLucide, ImageOff, BarChartHorizontal, Star as StarIcon,
   BookOpen, Cake, MapPin, HeartHandshake, StretchVertical, Scale, Palette, Zap,
-  MessagesSquare, Send, Trash2
+  MessagesSquare, Send, Trash2, Images, PlusCircle
 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { AttitudeVote } from '@/components/figures/AttitudeVote';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
@@ -41,6 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { submitGalleryImageAction } from "@/app/actions/figureGalleryActions";
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
   1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
@@ -67,7 +68,6 @@ export default function FigurePage() {
   const [editedOccupation, setEditedOccupation] = useState("");
   const [editedGender, setEditedGender] = useState("");
   const [editedPhotoUrl, setEditedPhotoUrl] = useState("");
-
   const [editedSpecies, setEditedSpecies] = useState("");
   const [editedFirstAppearance, setEditedFirstAppearance] = useState("");
   const [editedBirthDateOrAge, setEditedBirthDateOrAge] = useState("");
@@ -77,13 +77,12 @@ export default function FigurePage() {
   const [editedWeight, setEditedWeight] = useState("");
   const [editedHairColor, setEditedHairColor] = useState("");
 
-
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   const [canEditFigure, setCanEditFigure] = useState(false);
   const [canCommentOrRate, setCanCommentOrRate] = useState(false);
-
+  const [canSubmitGalleryImage, setCanSubmitGalleryImage] = useState(false);
 
   const [newComment, setNewComment] = useState("");
   const [newCommentStars, setNewCommentStars] = useState<StarValue | null>(null);
@@ -96,6 +95,19 @@ export default function FigurePage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [commentToDeleteId, setCommentToDeleteId] = useState<string | null>(null);
   const [starRatingOfCommentToDelete, setStarRatingOfCommentToDelete] = useState<StarValue | null>(null);
+
+  const [newImageUrl, setNewImageUrl] = useState("");
+  const [isSubmittingImage, setIsSubmittingImage] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [isLoadingGalleryImages, setIsLoadingGalleryImages] = useState(true);
+
+  const allowedImageDomains = useMemo(() => {
+    // Simulating fetching from next.config.js or defining them directly
+    return [
+      'placehold.co', 'firebasestorage.googleapis.com', 'upload.wikimedia.org', 
+      'static.wikia.nocookie.net', 'i.pinimg.com', 'encrypted-tbn0.gstatic.com', 'm.media-amazon.com'
+    ];
+  }, []);
 
 
   useEffect(() => {
@@ -127,10 +139,12 @@ export default function FigurePage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
       setCurrentUser(user);
-      setCanEditFigure(!!user && !user.isAnonymous);
+      const isNonAnonymous = !!user && !user.isAnonymous;
+      setCanEditFigure(isNonAnonymous);
       setCanCommentOrRate(!!user); // Anonymous users can comment and rate
+      setCanSubmitGalleryImage(isNonAnonymous);
 
-      if (user && figure?.id) { // Both anonymous and non-anonymous can have star ratings
+      if (user && figure?.id) { 
         const userStarRatingDocRef = doc(db, 'userStarRatings', `${user.uid}_${figure.id}`);
         getDoc(userStarRatingDocRef).then(docSnap => {
           if (docSnap.exists()) {
@@ -164,23 +178,19 @@ export default function FigurePage() {
     }
   }, []);
 
-  const fetchFigureAndComments = useCallback(async () => {
+  const fetchFigureData = useCallback(async () => {
     if (!id) {
       setFigure(undefined); 
-      setCommentsList([]);
-      setIsLoadingComments(false);
       return;
     }
     setFigure(undefined); 
-    setCommentsList([]); 
-    setIsLoadingComments(true);
 
     try {
       const fetchedFigure = await getFigureFromFirestore(id);
       setFigure(fetchedFigure || null); 
       if (fetchedFigure) {
         resetEditFields(fetchedFigure);
-        if (currentUser && fetchedFigure.id) { // currentUser could be anonymous
+        if (currentUser && fetchedFigure.id) {
           const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${fetchedFigure.id}`);
           const docSnap = await getDoc(userStarRatingDocRef);
           if (docSnap.exists()) {
@@ -196,6 +206,22 @@ export default function FigurePage() {
       setFigure(null); 
     }
 
+    try {
+      const fetchedAllFigures = await getAllFiguresFromFirestore();
+      setAllFigures(fetchedAllFigures);
+    } catch (error) {
+      console.error("Error fetching all figures for related section:", error);
+    }
+  }, [id, resetEditFields, toast, currentUser]);
+
+  const fetchComments = useCallback(async () => {
+     if (!id) {
+      setCommentsList([]);
+      setIsLoadingComments(false);
+      return;
+    }
+    setCommentsList([]); 
+    setIsLoadingComments(true);
     try {
       const commentsQuery = query(
         collection(db, 'userComments'),
@@ -236,20 +262,44 @@ export default function FigurePage() {
     } finally {
       setIsLoadingComments(false);
     }
+  }, [id, toast]);
 
-    try {
-      const fetchedAllFigures = await getAllFiguresFromFirestore();
-      setAllFigures(fetchedAllFigures);
-    } catch (error) {
-      console.error("Error fetching all figures for related section:", error);
+  const fetchGalleryImages = useCallback(async () => {
+    if (!id) {
+      setGalleryImages([]);
+      setIsLoadingGalleryImages(false);
+      return;
     }
-  }, [id, resetEditFields, toast, currentUser]);
+    setGalleryImages([]);
+    setIsLoadingGalleryImages(true);
+    try {
+      const galleryImagesQuery = query(
+        collection(db, `figures/${id}/galleryImages`),
+        orderBy('createdAt', 'desc'),
+        limit(50) 
+      );
+      const querySnapshot = await getDocs(galleryImagesQuery);
+      const fetchedImages: GalleryImage[] = [];
+      querySnapshot.forEach((docSnap) => {
+        fetchedImages.push({ id: docSnap.id, ...docSnap.data() } as GalleryImage);
+      });
+      setGalleryImages(fetchedImages);
+    } catch (error: any) {
+      console.error("Error fetching gallery images:", error);
+      toast({ title: "Error al Cargar Galería", description: "No se pudieron cargar las imágenes de la galería.", variant: "destructive"});
+    } finally {
+      setIsLoadingGalleryImages(false);
+    }
+  }, [id, toast]);
+
 
   useEffect(() => {
     if (id) {
-      fetchFigureAndComments();
+      fetchFigureData();
+      fetchComments();
+      fetchGalleryImages();
     }
-  }, [id, fetchFigureAndComments]);
+  }, [id, fetchFigureData, fetchComments, fetchGalleryImages]);
 
   useEffect(() => {
     if (figure && isEditing) {
@@ -294,7 +344,7 @@ export default function FigurePage() {
       await updateFigureInFirestore(updatedFigureData);
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
       setIsEditing(false);
-      fetchFigureAndComments(); 
+      fetchFigureData(); 
     } catch (error: any) {
       console.error("Error saving figure details:", error);
       let errorMessage = "No se pudo guardar la información.";
@@ -309,18 +359,19 @@ export default function FigurePage() {
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canCommentOrRate || !currentUser || !figure) { // currentUser might be anonymous
-        toast({ title: "Error", description: "Debes estar conectado (incluso como invitado) para opinar.", variant: "destructive" });
+    if (!canCommentOrRate || !currentUser || !figure) {
+        toast({ title: "Error", description: "Debes estar conectado para opinar.", variant: "destructive" });
         return;
     }
     if (newCommentStars === null && newComment.trim() === "") {
         toast({ title: "Opinión Vacía", description: "Por favor, selecciona una calificación o escribe un comentario.", variant: "default" });
         return;
     }
-
     setIsSubmittingComment(true);
-    
-    const figureDocRef = doc(db, "figures", figure.id);
+    // ... (resto de la lógica de handleSubmitComment) ...
+    // (No la repito aquí para brevedad, pero la lógica existente se mantiene)
+
+     const figureDocRef = doc(db, "figures", figure.id);
     const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
     const currentStarsForComment = newCommentStars;
 
@@ -388,12 +439,32 @@ export default function FigurePage() {
       }
       toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
       setNewComment("");
-      fetchFigureAndComments(); 
+      fetchComments(); 
+      fetchFigureData(); // Re-fetch figure data to update rating summary
     } catch (error: any) {
       console.error("Error submitting opinion:", error);
       toast({ title: "Error al Enviar", description: `No se pudo enviar tu opinión. ${error.message}`, variant: "destructive" });
     } finally {
       setIsSubmittingComment(false);
+    }
+  };
+
+  const handleSubmitGalleryImage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmitGalleryImage || !currentUser || !figure || !newImageUrl.trim()) {
+      toast({ title: "Error", description: "Debes iniciar sesión y proporcionar una URL de imagen válida.", variant: "destructive" });
+      return;
+    }
+    setIsSubmittingImage(true);
+    const result = await submitGalleryImageAction(figure.id, newImageUrl, currentUser.uid, currentUser.displayName || "Usuario Anónimo");
+    setIsSubmittingImage(false);
+
+    if (result.success) {
+      toast({ title: "Imagen Añadida", description: result.message });
+      setNewImageUrl("");
+      fetchGalleryImages(); // Re-fetch gallery images
+    } else {
+      toast({ title: "Error al Añadir Imagen", description: result.message, variant: "destructive" });
     }
   };
 
@@ -410,7 +481,8 @@ export default function FigurePage() {
 
   const handleDeleteCommentConfirmation = async () => {
     if (!commentToDeleteId || !figure || !currentUser) return;
-
+    // ... (resto de la lógica de handleDeleteCommentConfirmation) ...
+    // (No la repito aquí para brevedad, pero la lógica existente se mantiene)
     const commentRef = doc(db, "userComments", commentToDeleteId);
     const figureRef = doc(db, "figures", figure.id);
 
@@ -445,7 +517,8 @@ export default function FigurePage() {
       });
 
       toast({ title: "Comentario Eliminado", description: "El comentario ha sido eliminado." });
-      fetchFigureAndComments(); 
+      fetchComments(); 
+      fetchFigureData(); // Re-fetch figure data to update rating summary
     } catch (error: any) {
       console.error("Error deleting comment:", error);
       toast({ title: "Error al Eliminar", description: `No se pudo eliminar el comentario. ${error.message}`, variant: "destructive" });
@@ -473,7 +546,9 @@ export default function FigurePage() {
     editedPhotoUrl.startsWith('https://static.wikia.nocookie.net') || 
     editedPhotoUrl.startsWith('https://firebasestorage.googleapis.com') || 
     editedPhotoUrl.startsWith('https://placehold.co') ||
-    editedPhotoUrl.startsWith('https://i.pinimg.com')
+    editedPhotoUrl.startsWith('https://i.pinimg.com') ||
+    editedPhotoUrl.startsWith('https://encrypted-tbn0.gstatic.com') ||
+    editedPhotoUrl.startsWith('https://m.media-amazon.com')
   );
 
   const renderDetailItem = (icon: React.ElementType, label: string, value?: string) => {
@@ -501,10 +576,11 @@ export default function FigurePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2 space-y-8">
           <Tabs defaultValue="personal-info" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6"> 
+            <TabsList className="grid w-full grid-cols-4 mb-6"> 
               <TabsTrigger value="personal-info" className="text-base py-2.5 flex items-center gap-2"><Info className="h-5 w-5" />Información</TabsTrigger>
               <TabsTrigger value="attitude-poll" className="text-base py-2.5 flex items-center gap-2"><MessageSquare className="h-5 w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-base py-2.5 flex items-center gap-2"><SmilePlus className="h-5 w-5" />Emoción</TabsTrigger>
+              <TabsTrigger value="image-gallery" className="text-base py-2.5 flex items-center gap-2"><Images className="h-5 w-5" />Galería</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal-info">
@@ -518,7 +594,7 @@ export default function FigurePage() {
                   {isEditing && canEditFigure ? (
                     <div className="space-y-4">
                       {renderEditInput("photoUrl", "URL de Imagen", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://...")}
-                      <p className="text-xs text-muted-foreground mt-1">Dominios permitidos: Wikimedia, Wikia, Firebase Storage, Placehold.co, Pinterest.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Dominios permitidos: Wikimedia, Wikia, Firebase Storage, Placehold.co, Pinterest, etc.</p>
                       {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center" data-ai-hint="image preview"><Image src={editedPhotoUrl} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground" data-ai-hint="placeholder abstract"><ImageOff className="h-10 w-10" /></div>}
                       {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
@@ -564,6 +640,64 @@ export default function FigurePage() {
 
             <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
             <TabsContent value="perception-emotions">{figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
+            
+            <TabsContent value="image-gallery">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center text-2xl font-headline"><Images className="mr-3 h-7 w-7 text-primary" />Galería de Imágenes de {figure.name}</CardTitle>
+                  <CardDescription>Imágenes de la comunidad. Dominos permitidos: Wikimedia, Wikia, Firebase Storage, Placehold.co, Pinterest, etc.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {canSubmitGalleryImage && (
+                    <form onSubmit={handleSubmitGalleryImage} className="flex items-end gap-2 mb-6 p-4 border rounded-lg bg-muted/50">
+                      <div className="flex-grow">
+                        <Label htmlFor="newImageUrl" className="sr-only">URL de la Imagen</Label>
+                        <Input 
+                          id="newImageUrl" 
+                          type="url" 
+                          value={newImageUrl} 
+                          onChange={(e) => setNewImageUrl(e.target.value)} 
+                          placeholder="Pega aquí la URL de la imagen..." 
+                          disabled={isSubmittingImage}
+                          required
+                        />
+                      </div>
+                      <Button type="submit" disabled={isSubmittingImage || !newImageUrl.trim()}>
+                        {isSubmittingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                        Añadir
+                      </Button>
+                    </form>
+                  )}
+                  {!canSubmitGalleryImage && (
+                     <Alert variant="default"><LogIn className="h-4 w-4" /><AlertTitle>Añadir a la Galería</AlertTitle><AlertDescription><Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión con una cuenta</Link> para añadir imágenes.</AlertDescription></Alert>
+                  )}
+
+                  {isLoadingGalleryImages ? (
+                    <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando galería...</p></div>
+                  ) : galleryImages.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                      {galleryImages.map((img) => (
+                        <a key={img.id} href={img.imageUrl} target="_blank" rel="noopener noreferrer" className="group block aspect-square relative overflow-hidden rounded-md shadow-md hover:shadow-xl transition-shadow">
+                          <Image 
+                            src={img.imageUrl} 
+                            alt={`Imagen de galería para ${figure.name} - ${img.id}`} 
+                            fill
+                            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                            className="object-cover group-hover:scale-105 transition-transform"
+                            data-ai-hint="gallery image"
+                          />
+                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <ImageIconLucide className="h-8 w-8 text-white/80" />
+                            </div>
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-10">Aún no hay imágenes en la galería. ¡Sé el primero en añadir una!</p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
           
           {figure && (<RatingSummaryDisplay figureName={figure.name} starRatingCounts={figure.starRatingCounts} />)}
@@ -636,7 +770,7 @@ export default function FigurePage() {
 
         <aside className="lg:col-span-1 space-y-6">
           <Alert><Terminal className="h-4 w-4" /><AlertTitle className="font-headline">Cómo Funciona</AlertTitle><AlertDescription className="text-sm">
-            Puedes votar y comentar como invitado. Para editar información o tener un perfil guardado, <Link href="/signup" className="font-semibold text-primary hover:underline">crea una cuenta</Link>.
+            Puedes votar y comentar como invitado. Para editar información, añadir imágenes a la galería, o tener un perfil guardado, <Link href="/signup" className="font-semibold text-primary hover:underline">crea una cuenta</Link>.
             </AlertDescription></Alert>
           {relatedFigures.length > 0 && (<div><h3 className="text-xl font-headline mb-4">También te podría interesar</h3><div className="space-y-4">{relatedFigures.map(relatedFig => (<FigureListItem key={relatedFig.id} figure={relatedFig} />))}</div></div>)}
         </aside>
