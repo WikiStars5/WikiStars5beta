@@ -26,9 +26,16 @@ interface SearchBarProps {
   startAsIcon?: boolean;
   onFocusChange?: (isFocused: boolean) => void;
   className?: string;
+  onResultClick?: () => void; // Nueva prop
 }
 
-export function SearchBar({ initialQuery = '', startAsIcon = false, onFocusChange, className }: SearchBarProps) {
+export function SearchBar({ 
+  initialQuery = '', 
+  startAsIcon = false, 
+  onFocusChange, 
+  className,
+  onResultClick // Nueva prop
+}: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<Figure[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,6 +72,14 @@ export function SearchBar({ initialQuery = '', startAsIcon = false, onFocusChang
   );
 
   useEffect(() => {
+    // Si el componente se monta con una query inicial y no es solo un icono, buscar inmediatamente.
+    if (isInputActive && initialQuery.trim().length >= 2) {
+      debouncedSearch(initialQuery);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInputActive, initialQuery]); // Solo re-ejecutar si estas props cambian, debouncedSearch es estable
+
+  useEffect(() => {
     if (isInputActive && query.trim() === '') {
       setResults([]);
       setIsLoading(false);
@@ -92,7 +107,7 @@ export function SearchBar({ initialQuery = '', startAsIcon = false, onFocusChang
     };
   }, [searchContainerRef, startAsIcon, query, isInputActive, onFocusChange]);
 
-  const handleResultClick = () => {
+  const handleResultItemClick = () => {
     setQuery('');
     setResults([]);
     setIsDropdownOpen(false);
@@ -100,17 +115,18 @@ export function SearchBar({ initialQuery = '', startAsIcon = false, onFocusChang
       setIsInputActive(false);
       onFocusChange?.(false);
     }
+    onResultClick?.(); // Llamar al nuevo callback
   };
 
   const clearSearch = () => {
     setQuery('');
     setResults([]);
     setIsDropdownOpen(false);
-    if (startAsIcon) {
+    if (startAsIcon && isInputActive) { // Solo desactivar si realmente era un icono
       setIsInputActive(false);
       onFocusChange?.(false);
     }
-    inputRef.current?.focus(); // Keep focus or allow it to be refocused
+    inputRef.current?.focus(); 
   };
 
   const handleIconClick = () => {
@@ -148,13 +164,15 @@ export function SearchBar({ initialQuery = '', startAsIcon = false, onFocusChang
           onFocus={() => { 
             if (query.trim().length > 0) setIsDropdownOpen(true);
             onFocusChange?.(true);
+            if (!isInputActive && startAsIcon) { // Asegurarse que input está activo si era icono
+              setIsInputActive(true);
+            }
           }}
           onBlur={() => {
-            // Delay blur handling to allow click on dropdown/clear button
             setTimeout(() => {
               if (!searchContainerRef.current?.contains(document.activeElement)) {
                 setIsDropdownOpen(false);
-                if (startAsIcon && query.trim() === '') {
+                if (startAsIcon && query.trim() === '' && isInputActive) {
                   setIsInputActive(false);
                   onFocusChange?.(false);
                 }
@@ -195,7 +213,7 @@ export function SearchBar({ initialQuery = '', startAsIcon = false, onFocusChang
                 <li key={figure.id}>
                   <Link
                     href={`/figures/${figure.id}`}
-                    onClick={handleResultClick}
+                    onClick={handleResultItemClick} // Cambiado de handleResultClick a handleResultItemClick
                     className="flex items-center p-2 hover:bg-muted transition-colors duration-150 ease-in-out"
                   >
                     <div className="flex-shrink-0 mr-2">
@@ -206,9 +224,10 @@ export function SearchBar({ initialQuery = '', startAsIcon = false, onFocusChang
                           width={32}
                           height={40}
                           className="rounded-sm object-cover aspect-[4/5]"
+                          data-ai-hint="thumbnail person"
                         />
                       ) : (
-                        <div className="w-8 h-10 bg-muted rounded-sm flex items-center justify-center">
+                        <div className="w-8 h-10 bg-muted rounded-sm flex items-center justify-center" data-ai-hint="placeholder icon">
                           <ImageOff className="h-4 w-4 text-muted-foreground" />
                         </div>
                       )}
