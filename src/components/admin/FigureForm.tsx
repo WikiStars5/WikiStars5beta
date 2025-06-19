@@ -56,14 +56,19 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [nationality, setNationality] = useState(initialData?.nationality || '');
 
   // New detailed fields
+  const [alias, setAlias] = useState(initialData?.alias || '');
   const [species, setSpecies] = useState(initialData?.species || '');
   const [firstAppearance, setFirstAppearance] = useState(initialData?.firstAppearance || '');
   const [birthDateOrAge, setBirthDateOrAge] = useState(initialData?.birthDateOrAge || '');
   const [birthPlace, setBirthPlace] = useState(initialData?.birthPlace || '');
+  const [statusLiveOrDead, setStatusLiveOrDead] = useState(initialData?.statusLiveOrDead || '');
   const [maritalStatus, setMaritalStatus] = useState(initialData?.maritalStatus || '');
   const [height, setHeight] = useState(initialData?.height || '');
   const [weight, setWeight] = useState(initialData?.weight || '');
   const [hairColor, setHairColor] = useState(initialData?.hairColor || '');
+  const [eyeColor, setEyeColor] = useState(initialData?.eyeColor || '');
+  const [distinctiveFeatures, setDistinctiveFeatures] = useState(initialData?.distinctiveFeatures || '');
+
 
   const [perceptionCounts, setPerceptionCounts] = useState(initialData?.perceptionCounts || { ...defaultPerceptionCounts });
   const [attitudeCounts, setAttitudeCounts] = useState(initialData?.attitudeCounts || { ...defaultAttitudeCounts });
@@ -110,14 +115,18 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setGender(initialData.gender || '');
       setNationality(initialData.nationality || '');
       
+      setAlias(initialData.alias || '');
       setSpecies(initialData.species || '');
       setFirstAppearance(initialData.firstAppearance || '');
       setBirthDateOrAge(initialData.birthDateOrAge || '');
       setBirthPlace(initialData.birthPlace || '');
+      setStatusLiveOrDead(initialData.statusLiveOrDead || '');
       setMaritalStatus(initialData.maritalStatus || '');
       setHeight(initialData.height || '');
       setWeight(initialData.weight || '');
       setHairColor(initialData.hairColor || '');
+      setEyeColor(initialData.eyeColor || '');
+      setDistinctiveFeatures(initialData.distinctiveFeatures || '');
 
       setPerceptionCounts(initialData.perceptionCounts || { ...defaultPerceptionCounts });
       setAttitudeCounts(initialData.attitudeCounts || { ...defaultAttitudeCounts });
@@ -133,14 +142,18 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setOccupation('');
       setGender('');
       setNationality('');
+      setAlias('');
       setSpecies('');
       setFirstAppearance('');
       setBirthDateOrAge('');
       setBirthPlace('');
+      setStatusLiveOrDead('');
       setMaritalStatus('');
       setHeight('');
       setWeight('');
       setHairColor('');
+      setEyeColor('');
+      setDistinctiveFeatures('');
       setPerceptionCounts({ ...defaultPerceptionCounts });
       setAttitudeCounts({ ...defaultAttitudeCounts });
       setStarRatingCounts({ ...defaultStarRatingCounts });
@@ -228,23 +241,27 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       }
 
 
-      const figureData: Omit<Figure, 'id' | 'createdAt' | 'alias' | 'statusLiveOrDead' | 'eyeColor' | 'distinctiveFeatures'> & { createdAt?: any; familyMembers?: FamilyMember[] } = { 
+      const figureData: Omit<Figure, 'id' | 'createdAt'> & { createdAt?: any; familyMembers?: FamilyMember[] } = { 
         name: name.trim(),
         nameLower: name.trim().toLowerCase(),
         description: description.trim() || initialData?.description || "", 
         photoUrl: finalPhotoUrlToSave,
+        nationality: nationality.trim(),
         occupation: occupation.trim(),
         gender: gender.trim(),
-        nationality: nationality.trim(),
         
+        alias: alias.trim(),
         species: species.trim(),
         firstAppearance: firstAppearance.trim(),
         birthDateOrAge: birthDateOrAge.trim(),
         birthPlace: birthPlace.trim(),
+        statusLiveOrDead: statusLiveOrDead.trim(),
         maritalStatus: maritalStatus.trim(),
         height: height.trim(),
         weight: weight.trim(),
         hairColor: hairColor.trim(),
+        eyeColor: eyeColor.trim(),
+        distinctiveFeatures: distinctiveFeatures.trim(),
 
         perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
         attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
@@ -338,7 +355,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           className="mb-2"
         />
         <p className="text-sm text-muted-foreground">
-          Pega la URL de una imagen externa. Dominios permitidos: Wikimedia, Wikia, Placehold.co, Firebase Storage, Pinterest. Si también seleccionas un archivo, se priorizará el archivo subido.
+          Pega la URL de una imagen externa. Dominios permitidos: Wikimedia, Wikia, Placehold.co, Firebase Storage, Pinterest, etc. Si también seleccionas un archivo, se priorizará el archivo subido.
         </p>
         
         {currentPreviewUrl ? (
@@ -376,54 +393,25 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Información Detallada</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="species">Especie / Raza</Label>
-          <Input id="species" value={species} onChange={(e) => setSpecies(e.target.value)} placeholder="Ej: Demonio, Humano" />
-        </div>
-        <div>
-          <Label htmlFor="firstAppearance">Primera Aparición</Label>
-          <Input id="firstAppearance" value={firstAppearance} onChange={(e) => setFirstAppearance(e.target.value)} placeholder="Ej: High School DxD, Novela Ligera, 2008" />
-        </div>
-        <div>
-          <Label htmlFor="birthDateOrAge">Fecha de Nacimiento / Edad</Label>
-          <Input id="birthDateOrAge" value={birthDateOrAge} onChange={(e) => setBirthDateOrAge(e.target.value)} placeholder="Ej: Desconocida / Apariencia de 18 años" />
-        </div>
-        <div>
-          <Label htmlFor="birthPlace">Lugar de Nacimiento</Label>
-          <Input id="birthPlace" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} placeholder="Ej: Inframundo, Japón" />
-        </div>
-        <div>
-          <Label htmlFor="nationality">Nacionalidad</Label>
-          <Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ej: Estadounidense, Peruano" />
-        </div>
-        <div>
-          <Label htmlFor="maritalStatus">Estado Civil</Label>
-          <Input id="maritalStatus" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} placeholder="Ej: Soltero/a, Casado/a" />
-        </div>
-        <div>
-          <Label htmlFor="occupation">Ocupación/Profesión</Label>
-          <Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" />
-        </div>
-         <div>
-          <Label htmlFor="gender">Género</Label>
-          <Input id="gender" value={gender} onChange={(e) => setGender(e.target.value)} placeholder="Ej: Masculino, Femenino" />
-        </div>
+        <div><Label htmlFor="alias">Alias / Apodos</Label><Input id="alias" value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Ej: El Sabio, Princesa de Fuego" /></div>
+        <div><Label htmlFor="species">Especie / Raza</Label><Input id="species" value={species} onChange={(e) => setSpecies(e.target.value)} placeholder="Ej: Demonio, Humano" /></div>
+        <div><Label htmlFor="firstAppearance">Primera Aparición</Label><Input id="firstAppearance" value={firstAppearance} onChange={(e) => setFirstAppearance(e.target.value)} placeholder="Ej: High School DxD, Novela Ligera, 2008" /></div>
+        <div><Label htmlFor="birthDateOrAge">Fecha de Nacimiento / Edad</Label><Input id="birthDateOrAge" value={birthDateOrAge} onChange={(e) => setBirthDateOrAge(e.target.value)} placeholder="Ej: Desconocida / Apariencia de 18 años" /></div>
+        <div><Label htmlFor="birthPlace">Lugar de Nacimiento</Label><Input id="birthPlace" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} placeholder="Ej: Inframundo, Japón" /></div>
+        <div><Label htmlFor="nationality">Nacionalidad</Label><Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ej: Estadounidense, Peruano" /></div>
+        <div><Label htmlFor="occupation">Ocupación/Profesión</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
+        <div><Label htmlFor="gender">Género</Label><Input id="gender" value={gender} onChange={(e) => setGender(e.target.value)} placeholder="Ej: Masculino, Femenino" /></div>
+        <div><Label htmlFor="statusLiveOrDead">Estado (Vivo/Muerto)</Label><Input id="statusLiveOrDead" value={statusLiveOrDead} onChange={(e) => setStatusLiveOrDead(e.target.value)} placeholder="Ej: Vivo, Fallecido, Inmortal" /></div>
+        <div><Label htmlFor="maritalStatus">Estado Civil</Label><Input id="maritalStatus" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} placeholder="Ej: Soltero/a, Casado/a" /></div>
       </div>
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Apariencia y Rasgos Físicos</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="height">Altura</Label>
-          <Input id="height" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Ej: 1.68 cm" />
-        </div>
-        <div>
-          <Label htmlFor="weight">Peso</Label>
-          <Input id="weight" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="Ej: 56 kg (Opcional)" />
-        </div>
-        <div>
-          <Label htmlFor="hairColor">Color de Cabello</Label>
-          <Input id="hairColor" value={hairColor} onChange={(e) => setHairColor(e.target.value)} placeholder="Ej: Negro" />
-        </div>
+        <div><Label htmlFor="height">Altura</Label><Input id="height" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Ej: 1.68 cm" /></div>
+        <div><Label htmlFor="weight">Peso</Label><Input id="weight" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="Ej: 56 kg (Opcional)" /></div>
+        <div><Label htmlFor="hairColor">Color de Cabello</Label><Input id="hairColor" value={hairColor} onChange={(e) => setHairColor(e.target.value)} placeholder="Ej: Negro" /></div>
+        <div><Label htmlFor="eyeColor">Color de Ojos</Label><Input id="eyeColor" value={eyeColor} onChange={(e) => setEyeColor(e.target.value)} placeholder="Ej: Violeta, Azules" /></div>
+        <div className="md:col-span-2"><Label htmlFor="distinctiveFeatures">Rasgos Distintivos</Label><Textarea id="distinctiveFeatures" value={distinctiveFeatures} onChange={(e) => setDistinctiveFeatures(e.target.value)} placeholder="Ej: Cicatriz en el ojo, Alas de demonio" rows={2}/></div>
       </div>
       
       <div className="mt-6 border-t pt-4 border-border">
@@ -434,7 +422,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           id="familyMembersJson"
           value={familyMembersJson}
           onChange={(e) => setFamilyMembersJson(e.target.value)}
-          placeholder='Ej: [{"id": "fm1", "name": "Nombre Padre", "relationship": "Padre", "figureId": "id-del-padre"}]'
+          placeholder='Ej: [{"id": "fm1", "name": "Nombre Padre", "relationship": "Padre", "figureId": "id-del-padre-si-existe"}]'
           rows={8}
           className="mt-1 font-mono text-xs"
         />

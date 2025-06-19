@@ -64,6 +64,10 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
     return <p className="text-muted-foreground text-center py-6">No hay información familiar disponible para {figure.name}.</p>;
   }
 
+  // For now, just a placeholder if data exists. The actual tree rendering will be more complex.
+  // return <p className="text-foreground text-center py-6">Visualización del árbol genealógico en desarrollo. Datos familiares presentes.</p>;
+
+  // Basic rendering based on relationship (example - can be expanded)
   const getMember = (relationship: string): FamilyMember | undefined => 
     familyMembers.find(fm => fm.relationship.toLowerCase() === relationship.toLowerCase());
 

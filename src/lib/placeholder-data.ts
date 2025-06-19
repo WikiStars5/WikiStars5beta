@@ -1,5 +1,5 @@
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, StarValueAsString } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, StarValueAsString, FamilyMember } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where } from "firebase/firestore";
@@ -71,7 +71,6 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     occupation: data.occupation || "",
     gender: data.gender || "",
     
-    // New detailed fields
     alias: data.alias || "",
     species: data.species || "",
     firstAppearance: data.firstAppearance || "",
@@ -88,7 +87,8 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
     starRatingCounts: data.starRatingCounts || { ...defaultStarRatingCounts },
-    commentCount: data.commentCount || 0, // Añadido el contador de comentarios
+    commentCount: data.commentCount || 0,
+    familyMembers: data.familyMembers || [], // Initialize as empty array if undefined
     createdAt: createdAtString,
     status: data.status || 'approved',
   };
@@ -102,7 +102,8 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
       attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
       starRatingCounts: figure.starRatingCounts || { ...defaultStarRatingCounts },
-      commentCount: figure.commentCount || 0, // Inicializar contador de comentarios
+      commentCount: figure.commentCount || 0,
+      familyMembers: figure.familyMembers || [], // Ensure familyMembers is an array
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
@@ -117,20 +118,16 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: string }): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
-    // Destructure all known fields to ensure only defined ones are passed.
-    // This prevents accidental writes of undefined fields if they are not part of the partial update.
     const { 
-        id, createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts, commentCount,
-        // List all other Figure fields here
+        id, createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts, commentCount, familyMembers,
         name, photoUrl, description, nationality, occupation, gender, alias, species,
         firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
         height, weight, hairColor, eyeColor, distinctiveFeatures, status,
-        ...rest // Should be empty if all fields are listed
+        ...rest
     } = figure;
 
     const updatePayload: Partial<Figure> = {};
 
-    // Only add fields to payload if they are explicitly provided in the `figure` partial object
     if (name !== undefined) updatePayload.name = name;
     if (photoUrl !== undefined) updatePayload.photoUrl = photoUrl;
     if (description !== undefined) updatePayload.description = description;
@@ -151,15 +148,13 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
     if (distinctiveFeatures !== undefined) updatePayload.distinctiveFeatures = distinctiveFeatures;
     if (status !== undefined) updatePayload.status = status;
     if (nameLower !== undefined) updatePayload.nameLower = nameLower;
-    // commentCount is typically updated by backend logic/Cloud Functions, not directly in this generic update
     if (commentCount !== undefined) updatePayload.commentCount = commentCount; 
+    if (familyMembers !== undefined) updatePayload.familyMembers = familyMembers;
 
-    // Handle count objects carefully
     if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
     if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
     if (starRatingCounts) updatePayload.starRatingCounts = starRatingCounts;
     
-    // Ensure no unknown fields are passed
     if (Object.keys(rest).length > 0) {
       console.warn("Unknown fields in updateFigureInFirestore:", rest);
     }
@@ -259,4 +254,3 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
     return [];
   }
 }
-
