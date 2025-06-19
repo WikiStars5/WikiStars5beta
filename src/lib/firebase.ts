@@ -32,119 +32,50 @@ export { app };
 
 // === REGLAS DE SEGURIDAD DE FIRESTORE (APLICAR EN CONSOLA FIREBASE) ===
 // Ve a Firebase Console -> Firestore Database -> Rules.
-// REEMPLAZA TUS REGLAS EXISTENTES CON ESTAS.
+// REEMPLAZA TUS REGLAS EXISTENTES CON ESTAS PARA DEPURACIÓN.
 /*
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ADVERTENCIA: ESTAS REGLAS SON ALTAMENTE PERMISIVAS Y SOLO PARA DESARROLLO.
-    // NO USAR EN PRODUCCIÓN.
-
-    // Función para verificar si el usuario es el administrador
-    function isAdmin() {
-      // REEMPLAZA CON TU ADMIN UID REAL SI ES NECESARIO PARA REGLAS MÁS ESPECÍFICAS
-      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
-    }
-
-    // Función para verificar si el usuario está autenticado y no es anónimo
-    function isAuthenticatedNonAnonymous() {
-      return request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
-    }
-
     // --- REGLAS PARA LA COLECCIÓN figures Y SU SUBCOLECCIÓN galleryImages ---
     match /figures/{figureId} {
-      // Esta regla general permite leer/escribir en el documento de la figura
-      // y, por defecto, también en sus subcolecciones si no hay reglas más específicas.
-      // Para desarrollo, esto está bien. En producción, querrías ser más específico.
-      allow read, write: if true; // Permisivo para desarrollo
+      // Regla permisiva para el documento de la figura.
+      // Para desarrollo, puedes usar `allow read, write: if true;`
+      // Para un poco más de seguridad mínima:
+      allow read: if true;
+      allow write: if request.auth != null; // Permite escritura si el usuario está autenticado (anónimo o no)
 
       // REGLAS ESPECÍFICAS PARA LA SUBCOLECCIÓN galleryImages (ANIDADA)
-      // Estas reglas se aplican a la ruta: /figures/{figureId}/galleryImages/{galleryImageId}
+      // Esta es la parte CRÍTICA para la funcionalidad de la galería.
       match /galleryImages/{galleryImageId} {
         allow read: if true; // Todos pueden leer las imágenes de la galería
 
-        allow create: if request.auth != null &&
-                         !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-                         request.resource.data.userId == request.auth.uid &&
-                         request.resource.data.imageUrl != null;
-                         // Correcto: ya no se comprueba request.resource.data.createdAt == request.time para 'create'
+        // REGLA DE CREACIÓN SIMPLIFICADA PARA DEPURACIÓN:
+        // Solo permite crear si el usuario está autenticado y NO es anónimo.
+        // Esto coincide con la lógica de tu aplicación que verifica `!currentUser.isAnonymous`.
+        allow create: if request.auth != null && 
+                         !request.auth.token.firebase.sign_in_provider.matches('anonymous');
 
-        // Opcional: permitir borrar al admin o al usuario que subió la imagen
-        // allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
-        // Opcional: permitir actualizar (ej. para un sistema de likes en imágenes)
-        // allow update: if request.auth != null;
+        // Si la regla de arriba AÚN FALLA, como ÚLTIMO RECURSO para depurar,
+        // puedes probar temporalmente (¡Y RECUERDA CAMBIARLO DESPUÉS!):
+        // allow create: if true; 
+
+        // Para update y delete, puedes añadir reglas más específicas después:
+        // allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+        // allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
       }
     }
     // --- Fin de reglas para figures y galleryImages ---
 
 
-    // --- OTRAS COLECCIONES PRINCIPALES ---
-    match /userPerceptions/{perceptionDocId} {
-      allow read, write: if true;
-    }
-
-    match /userAttitudes/{attitudeDocId} {
-      allow read, write: if true;
-    }
-
-    match /userStarRatings/{starRatingDocId} {
-      allow read, write: if true;
-    }
-
-    match /users/{userId} {
-      allow read, write: if true;
-    }
-
-    // --- REGLAS PARA LA COLECCIÓN userComments ---
-    match /userComments/{commentId} {
-      allow read, write: if true; // Permisivo para desarrollo
-
-      // EJEMPLO DE REGLAS MÁS SEGURAS PARA userComments (PARA PRODUCCIÓN):
-      // allow read: if true;
-      // allow create: if isAuthenticatedNonAnonymous() &&
-      //                 request.resource.data.userId == request.auth.uid &&
-      //                 request.resource.data.figureId != null &&
-      //                 request.resource.data.text != null && request.resource.data.text.size() > 0 && request.resource.data.text.size() < 1000 &&
-      //                 request.resource.data.username != null &&
-      //                 // starRatingGiven puede ser null o un número entre 1 y 5
-      //                 (request.resource.data.starRatingGiven == null || (request.resource.data.starRatingGiven >= 1 && request.resource.data.starRatingGiven <= 5)) &&
-      //                 request.resource.data.likes == 0 &&
-      //                 request.resource.data.dislikes == 0 &&
-      //                 request.resource.data.likedBy.size() == 0 &&
-      //                 request.resource.data.dislikedBy.size() == 0 &&
-      //                 request.resource.data.createdAt == request.time; // Para 'create', el timestamp se puede validar así si es enviado por el cliente
-
-      // allow update: if isAuthenticatedNonAnonymous() &&
-      //                 (
-      //                   // Autor editando su propio comentario (solo texto y updatedAt)
-      //                   (resource.data.userId == request.auth.uid &&
-      //                    request.resource.data.text != resource.data.text &&
-      //                    request.resource.data.text.size() > 0 && request.resource.data.text.size() < 1000 &&
-      //                    request.resource.data.updatedAt == request.time &&
-      //                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt']))
-      //                   ||
-      //                   // Otro usuario dando like/dislike (no el autor)
-      //                   (resource.data.userId != request.auth.uid &&
-      //                    (
-      //                       request.resource.data.likes != resource.data.likes ||
-      //                       request.resource.data.dislikes != resource.data.dislikes ||
-      //                       request.resource.data.likedBy != resource.data.likedBy ||
-      //                       request.resource.data.dislikedBy != resource.data.dislikedBy
-      //                    ) &&
-      //                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'dislikes', 'likedBy', 'dislikedBy']) &&
-      //                    request.resource.data.figureId == resource.data.figureId &&
-      //                    request.resource.data.userId == resource.data.userId &&
-      //                    request.resource.data.text == resource.data.text &&
-      //                    request.resource.data.createdAt == resource.data.createdAt
-      //                   )
-      //                 );
-
-      // allow delete: if isAuthenticatedNonAnonymous() && (resource.data.userId == request.auth.uid || isAdmin());
-    }
-    // --- Fin de reglas para userComments ---
-
+    // --- OTRAS COLECCIONES PRINCIPALES (Mantenlas permisivas por ahora para depuración) ---
+    match /userPerceptions/{docId} { allow read, write: if true; }
+    match /userAttitudes/{docId} { allow read, write: if true; }
+    match /userStarRatings/{docId} { allow read, write: if true; }
+    match /users/{userId} { allow read, write: if true; }
+    match /userComments/{commentId} { allow read, write: if true; }
   }
 }
 */
@@ -178,3 +109,4 @@ service firebase.storage {
   }
 }
 */
+
