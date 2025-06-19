@@ -31,7 +31,7 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     username: data.username || '',
     country: data.country || '',
     countryCode: data.countryCode || '',
-    gender: data.gender || '', // Added gender
+    gender: data.gender || '', 
     photoURL: data.photoURL || null,
     role: data.role || 'user',
     createdAt: createdAtString,
@@ -115,7 +115,6 @@ export async function ensureUserProfileExists(
         updates.username = authDisplayName;
       }
 
-      // If additional data is provided and fields are not set, update them
       if (additionalData?.countryCode && !existingProfileData.countryCode) {
         const selectedCountry = COUNTRIES.find(c => c.code === additionalData.countryCode);
         updates.countryCode = additionalData.countryCode;
@@ -141,7 +140,7 @@ export async function ensureUserProfileExists(
         photoURL: user.photoURL || null,
         country: selectedCountry ? selectedCountry.name : '',
         countryCode: additionalData?.countryCode || '',
-        gender: additionalData?.gender || '', // Set gender from additionalData
+        gender: additionalData?.gender || '', 
         role: 'user',
         createdAt: serverTimestamp(),
         lastLoginAt: serverTimestamp(),
@@ -167,7 +166,7 @@ export async function ensureUserProfileExists(
  */
 export async function updateUserProfile(
   uid: string,
-  data: Partial<Pick<UserProfile, 'username' | 'country' | 'countryCode' | 'gender'>> // Added gender
+  data: Partial<Pick<UserProfile, 'username' | 'country' | 'countryCode' | 'gender'>>
 ): Promise<void> {
   if (!uid) {
     console.error("updateUserProfile: UID is required.");
@@ -181,16 +180,17 @@ export async function updateUserProfile(
 
   try {
     const userDocRef = doc(db, 'users', uid);
-    const updateData: any = { ...data, lastLoginAt: serverTimestamp() };
+    const updateData: any = { ...data, lastLoginAt: serverTimestamp() }; // Ensure lastLoginAt is updated
 
     if (data.hasOwnProperty('countryCode')) { 
-      if (data.countryCode === '') {
+      if (data.countryCode === '') { // If countryCode is explicitly set to empty (e.g. 'No especificado')
         updateData.country = ''; 
       } else {
         const selectedCountry = COUNTRIES.find(c => c.code === data.countryCode);
         updateData.country = selectedCountry ? selectedCountry.name : '';
       }
     } else if (data.hasOwnProperty('country') && data.country === '') {
+        // If only country is being cleared, ensure countryCode is also cleared
         updateData.countryCode = ''; 
     }
     

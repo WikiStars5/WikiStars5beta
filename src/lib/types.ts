@@ -1,3 +1,4 @@
+
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -35,6 +36,12 @@ export interface Figure {
   height?: string;
   weight?: string; 
   hairColor?: string;
+
+  // Campos eliminados de la UI pero pueden existir en datos antiguos
+  alias?: string;
+  statusLiveOrDead?: string;
+  eyeColor?: string;
+  distinctiveFeatures?: string;
 
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
@@ -94,7 +101,7 @@ export interface UserProfile {
   username: string;
   country?: string;
   countryCode?: string;
-  gender?: string; // e.g., 'male', 'female', 'other', 'prefer_not_to_say'
+  gender?: string; 
   photoURL?: string | null;
   role: 'user' | 'admin';
   createdAt: string; 

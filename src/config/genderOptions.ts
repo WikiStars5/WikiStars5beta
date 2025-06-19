@@ -1,3 +1,4 @@
+
 export interface GenderOption {
   value: string; // e.g., 'male', 'female', 'other', 'prefer_not_to_say'
   label: string; // e.g., 'Masculino', 'Femenino', 'Otro', 'Prefiero no decirlo'

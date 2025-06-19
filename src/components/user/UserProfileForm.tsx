@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { UserProfile, Country } from '@/lib/types';
 import { COUNTRIES } from '@/config/countries';
+import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { updateUserProfile } from '@/lib/userData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ initialProfile }) => 
 
   const [username, setUsername] = useState(initialProfile.username || '');
   const [selectedCountryCode, setSelectedCountryCode] = useState(initialProfile.countryCode || '');
+  const [selectedGender, setSelectedGender] = useState(initialProfile.gender || '');
   
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ initialProfile }) => 
     if (initialProfile) {
       setUsername(initialProfile.username || '');
       setSelectedCountryCode(initialProfile.countryCode || '');
+      setSelectedGender(initialProfile.gender || '');
     }
   }, [initialProfile]);
 
@@ -61,11 +64,10 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ initialProfile }) => 
     setError(null);
 
     try {
-      const selectedCountry = COUNTRIES.find(c => c.code === selectedCountryCode);
-      const profileUpdateData: Partial<Pick<UserProfile, 'username' | 'country' | 'countryCode'>> = {
+      const profileUpdateData: Partial<Pick<UserProfile, 'username' | 'country' | 'countryCode' | 'gender'>> = {
         username: username.trim(),
-        country: selectedCountry ? selectedCountry.name : '',
-        countryCode: selectedCountry ? selectedCountry.code : '',
+        countryCode: selectedCountryCode, // country name will be derived in updateUserProfile
+        gender: selectedGender,
       };
 
       await updateUserProfile(currentUser.uid, profileUpdateData);
@@ -73,7 +75,7 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ initialProfile }) => 
         title: "Perfil Actualizado",
         description: "Tu información de perfil ha sido guardada.",
       });
-      router.refresh(); // Re-fetch server-side props, or consider client-side update
+      router.refresh(); 
     } catch (err: any) {
       console.error("Error saving profile:", err);
       setError(err.message || "No se pudo guardar el perfil.");
@@ -91,12 +93,12 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ initialProfile }) => 
     if (initialProfile) {
       setUsername(initialProfile.username || '');
       setSelectedCountryCode(initialProfile.countryCode || '');
+      setSelectedGender(initialProfile.gender || '');
     }
     setError(null);
   };
 
   if (!initialProfile) {
-    // This case should ideally be handled by the parent page showing a loader or error
     return <p>Cargando perfil...</p>;
   }
 
@@ -104,7 +106,7 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ initialProfile }) => 
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="text-2xl font-headline">Editar Perfil</CardTitle>
-        <CardDescription>Actualiza tu nombre de usuario y país.</CardDescription>
+        <CardDescription>Actualiza tu nombre de usuario, país y sexo.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSave}>
         <CardContent className="space-y-6">
@@ -142,6 +144,28 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ initialProfile }) => 
                   <SelectItem key={country.code} value={country.code}>
                     <span role="img" aria-label={country.name} className="mr-2">{country.emoji}</span>
                     {country.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="gender">Sexo</Label>
+            <Select
+              value={selectedGender}
+              onValueChange={setSelectedGender}
+              disabled={isSaving}
+            >
+              <SelectTrigger id="gender">
+                <SelectValue placeholder="Selecciona tu sexo" />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                 <SelectItem value="">No especificado</SelectItem>
+                {GENDER_OPTIONS.map((gender) => (
+                  <SelectItem key={gender.value} value={gender.value}>
+                    {gender.emoji && <span role="img" aria-label={gender.label} className="mr-2">{gender.emoji}</span>}
+                    {gender.label}
                   </SelectItem>
                 ))}
               </SelectContent>

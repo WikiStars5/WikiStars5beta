@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -22,7 +23,7 @@ const signupSchema = z.object({
   email: z.string().email({ message: "Dirección de correo electrónico inválida." }),
   password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
   countryCode: z.string().min(1, { message: "Por favor, selecciona tu país." }),
-  gender: z.string().min(1, { message: "Por favor, selecciona tu género." }),
+  gender: z.string().min(1, { message: "Por favor, selecciona tu sexo." }),
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
@@ -67,7 +68,6 @@ export function SignupForm() {
             "SignupForm: Error during ensureUserProfileExists after successful Firebase Auth signup:",
             profileError.message
           );
-          // Potentially inform user or log, but auth succeeded.
         }
       }
       
