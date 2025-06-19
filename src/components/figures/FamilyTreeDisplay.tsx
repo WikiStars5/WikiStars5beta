@@ -5,16 +5,19 @@ import type { Figure } from "@/lib/types";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-import { ImageOff, PlusCircle, Edit3 } from "lucide-react";
+import { ImageOff, PlusCircle, Edit3, Save, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import React, { useState } from 'react';
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { updateFigureInFirestore } from "@/lib/placeholder-data"; // Asumiendo que esta función puede actualizar solo el photoUrl
 
 interface FamilyTreeDisplayProps {
   figure: Figure;
-  allFigures: Figure[]; // Para futuras vinculaciones
+  allFigures: Figure[]; 
 }
 
-// Componente para los botones de añadir relación
 const AddRelationButton = ({ onClick, label, positionClass, title }: { onClick: () => void; label: string, positionClass: string, title: string }) => (
   <Button
     variant="outline"
@@ -30,37 +33,67 @@ const AddRelationButton = ({ onClick, label, positionClass, title }: { onClick: 
 
 
 export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, allFigures }) => {
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const [isEditingCentralNode, setIsEditingCentralNode] = useState(false);
+  const [editableCentralPhotoUrl, setEditableCentralPhotoUrl] = useState(figure.photoUrl || '');
+  const [isSavingCentralNode, setIsSavingCentralNode] = useState(false);
+
   const handleAddParents = () => {
-    // TODO: Implementar lógica para añadir padres (abrir modal/formulario)
-    // Por ejemplo, podría abrir un dropdown con "Añadir Padre" y "Añadir Madre"
-    alert("Funcionalidad para añadir Padres/Madre (ej. Papá, Mamá) aún no implementada.");
-    console.log("Añadir Padres para:", figure.name);
+    toast({ title: "Próximamente", description: "Funcionalidad para añadir Padres/Madre aún no implementada." });
   };
 
   const handleAddPartner = () => {
-    // TODO: Implementar lógica para añadir pareja (abrir modal/formulario)
-    // Por ejemplo, podría abrir un dropdown con "Añadir Esposo/a" y "Añadir Novio/a"
-    alert("Funcionalidad para añadir Pareja (ej. Esposo, Novio) aún no implementada.");
-    console.log("Añadir Pareja para:", figure.name);
+    toast({ title: "Próximamente", description: "Funcionalidad para añadir Pareja aún no implementada." });
   };
 
   const handleAddChildren = () => {
-    // TODO: Implementar lógica para añadir hijos (abrir modal/formulario)
-    alert("Funcionalidad para añadir Hijos aún no implementada.");
-    console.log("Añadir Hijos para:", figure.name);
+    toast({ title: "Próximamente", description: "Funcionalidad para añadir Hijos aún no implementada." });
   };
 
-  const handleEditFigureCard = () => {
-    // TODO: Implementar lógica para editar la tarjeta/figura
-    // Podría redirigir a la página de edición de figura o abrir un modal específico para editar datos familiares aquí.
-    alert("Funcionalidad para EDITAR la tarjeta de la figura aún no implementada.");
-    console.log("Editar tarjeta de:", figure.name);
-  }
+  const handleEditCentralNode = () => {
+    setEditableCentralPhotoUrl(figure.photoUrl || '');
+    setIsEditingCentralNode(true);
+  };
+
+  const handleCancelCentralNodeEdit = () => {
+    setEditableCentralPhotoUrl(figure.photoUrl || ''); // Revertir a la original
+    setIsEditingCentralNode(false);
+  };
+
+  const handleSaveCentralNodeImage = async () => {
+    if (!editableCentralPhotoUrl.trim()) {
+        toast({ title: "Error", description: "La URL de la imagen no puede estar vacía.", variant: "destructive"});
+        return;
+    }
+    // Simple URL validation (basic check, can be improved)
+    try {
+        new URL(editableCentralPhotoUrl);
+    } catch (_) {
+        toast({ title: "Error", description: "La URL de la imagen no es válida.", variant: "destructive"});
+        return;
+    }
+
+    setIsSavingCentralNode(true);
+    try {
+      await updateFigureInFirestore({ id: figure.id, photoUrl: editableCentralPhotoUrl });
+      toast({ title: "Éxito", description: "La imagen principal de la figura ha sido actualizada." });
+      setIsEditingCentralNode(false);
+      router.refresh(); // Para recargar los datos del servidor
+    } catch (error: any) {
+      toast({ title: "Error al Guardar", description: `No se pudo actualizar la imagen: ${error.message}`, variant: "destructive" });
+    } finally {
+      setIsSavingCentralNode(false);
+    }
+  };
+
+  const displayImageUrl = isEditingCentralNode ? editableCentralPhotoUrl : (figure.photoUrl || '');
+
 
   return (
     <div className="flex flex-col items-center justify-center p-4 md:p-8 min-h-[500px] w-full">
-      <div className="relative" style={{ marginBottom: '40px', marginTop: '40px', marginRight: '40px', marginLeft: '40px' }}> {/* Espacio para los botones flotantes */}
-        {/* Botón Añadir Padres (arriba) */}
+      <div className="relative" style={{ marginBottom: '40px', marginTop: '40px', marginRight: '40px', marginLeft: '40px' }}>
         <AddRelationButton
           onClick={handleAddParents}
           label="Añadir Padres"
@@ -68,17 +101,17 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
           positionClass="-top-12 left-1/2 -translate-x-1/2 transform"
         />
 
-        {/* Tarjeta Central de la Figura Principal */}
         <Card className="w-60 md:w-64 shadow-xl border-2 border-primary/30 relative overflow-visible bg-card">
           <CardHeader className="p-0">
             <div className="relative w-full aspect-[3/4] bg-muted rounded-t-md overflow-hidden mx-auto border-b border-primary/20">
-              {figure.photoUrl ? (
+              {displayImageUrl ? (
                 <Image
-                  src={figure.photoUrl}
+                  src={displayImageUrl}
                   alt={`Imagen de ${figure.name}`}
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 240px, 256px"
+                  key={displayImageUrl} // Fuerza el re-renderizado si la URL cambia
                   data-ai-hint="figure portrait"
                 />
               ) : (
@@ -93,34 +126,57 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
               {figure.name}
             </h3>
             
-            <div className="space-y-1">
-              <Label htmlFor={`imageUrl-${figure.id}`} className="text-xs text-muted-foreground">
-                Url de la imagen: <span className="italic">(esto solo es visible cuando se edita)</span>
-              </Label>
-              <Input
-                id={`imageUrl-${figure.id}`}
-                type="text"
-                value={figure.photoUrl || ''}
-                readOnly // Este campo se llenará/editará mediante el botón EDITAR
-                className="text-xs h-7 bg-muted/30 cursor-default"
-                placeholder="Link de dominio permitido"
-              />
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full mt-1 py-1 h-auto text-xs border-primary/40 text-primary/70 hover:bg-primary/10 hover:text-primary"
-              onClick={handleEditFigureCard}
-              // disabled // Habilitar cuando la funcionalidad esté lista
-            >
-              <Edit3 className="mr-1.5 h-3.5 w-3.5" />
-              EDITAR
-            </Button>
+            {isEditingCentralNode ? (
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor={`imageUrl-${figure.id}`} className="text-xs text-muted-foreground block mb-1">
+                    Url de la imagen: <span className="italic">(esto solo es visible cuando se edita)</span>
+                  </Label>
+                  <Input
+                    id={`imageUrl-${figure.id}`}
+                    type="url"
+                    value={editableCentralPhotoUrl}
+                    onChange={(e) => setEditableCentralPhotoUrl(e.target.value)}
+                    className="text-xs h-8"
+                    placeholder="Link de dominio permitido"
+                    disabled={isSavingCentralNode}
+                  />
+                </div>
+                <div className="flex justify-between gap-2 mt-2">
+                   <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 py-1 h-auto text-xs"
+                    onClick={handleCancelCentralNodeEdit}
+                    disabled={isSavingCentralNode}
+                  >
+                    <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1 py-1 h-auto text-xs"
+                    onClick={handleSaveCentralNodeImage}
+                    disabled={isSavingCentralNode}
+                  >
+                    {isSavingCentralNode ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
+                    Guardar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-1 py-1 h-auto text-xs border-primary/40 text-primary/70 hover:bg-primary/10 hover:text-primary"
+                onClick={handleEditCentralNode}
+              >
+                <Edit3 className="mr-1.5 h-3.5 w-3.5" />
+                EDITAR
+              </Button>
+            )}
           </CardContent>
         </Card>
 
-        {/* Botón Añadir Pareja (lateral derecho) */}
         <AddRelationButton
           onClick={handleAddPartner}
           label="Añadir Pareja"
@@ -128,7 +184,6 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
           positionClass="top-1/2 -right-12 -translate-y-1/2 transform"
         />
 
-        {/* Botón Añadir Hijos (abajo) */}
         <AddRelationButton
           onClick={handleAddChildren}
           label="Añadir Hijos"
@@ -138,9 +193,8 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
       </div>
       <CardDescription className="text-center mt-6 text-xs px-4 max-w-md">
         Esta es la vista inicial para construir el árbol genealógico. Haz clic en los botones (+) para añadir familiares.
-        La funcionalidad completa de adición y edición se implementará en los próximos pasos.
+        Haz clic en "EDITAR" en la tarjeta para cambiar la imagen principal de esta figura.
       </CardDescription>
     </div>
   );
 };
-
