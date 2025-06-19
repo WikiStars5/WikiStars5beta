@@ -13,12 +13,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal } from 'lucide-react';
+import { Terminal, ImageOff, Users2 } from 'lucide-react'; // Added Users2 for family tree icon
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'; 
-import type { Figure, EmotionKey, AttitudeKey, StarValueAsString } from '@/lib/types';
+import type { Figure, EmotionKey, AttitudeKey, StarValueAsString, FamilyMember } from '@/lib/types';
 import slugify from 'slugify'; 
 
 interface FigureFormProps {
@@ -35,10 +35,7 @@ const defaultPerceptionCounts: Record<EmotionKey, number> = {
 };
 
 const defaultAttitudeCounts: Record<AttitudeKey, number> = {
-  neutral: 0,
-  fan: 0,
-  simp: 0,
-  hater: 0,
+  neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
 const defaultStarRatingCounts: Record<StarValueAsString, number> = {
@@ -71,6 +68,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [perceptionCounts, setPerceptionCounts] = useState(initialData?.perceptionCounts || { ...defaultPerceptionCounts });
   const [attitudeCounts, setAttitudeCounts] = useState(initialData?.attitudeCounts || { ...defaultAttitudeCounts });
   const [starRatingCounts, setStarRatingCounts] = useState(initialData?.starRatingCounts || { ...defaultStarRatingCounts });
+  
+  const [familyMembersJson, setFamilyMembersJson] = useState(
+    initialData?.familyMembers ? JSON.stringify(initialData.familyMembers, null, 2) : '[]'
+  );
 
 
   const [isLoading, setIsLoading] = useState(false);
@@ -121,6 +122,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setPerceptionCounts(initialData.perceptionCounts || { ...defaultPerceptionCounts });
       setAttitudeCounts(initialData.attitudeCounts || { ...defaultAttitudeCounts });
       setStarRatingCounts(initialData.starRatingCounts || { ...defaultStarRatingCounts });
+      setFamilyMembersJson(initialData.familyMembers ? JSON.stringify(initialData.familyMembers, null, 2) : '[]');
       setSelectedFile(null);
       setPreviewFileUrl(null);
     } else {
@@ -142,6 +144,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setPerceptionCounts({ ...defaultPerceptionCounts });
       setAttitudeCounts({ ...defaultAttitudeCounts });
       setStarRatingCounts({ ...defaultStarRatingCounts });
+      setFamilyMembersJson('[]');
       setSelectedFile(null);
       setPreviewFileUrl(null);
     }
@@ -211,8 +214,21 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         finalPhotoUrlToSave = 'https://placehold.co/400x600.png';
       }
 
+      let parsedFamilyMembers: FamilyMember[] = [];
+      try {
+        parsedFamilyMembers = JSON.parse(familyMembersJson);
+        if (!Array.isArray(parsedFamilyMembers)) {
+          throw new Error("El JSON de miembros de la familia debe ser un array.");
+        }
+        // Aquí podrías añadir validación más detallada para cada objeto FamilyMember si es necesario.
+      } catch (jsonError: any) {
+        setError(`Error en el formato JSON de Miembros de la Familia: ${jsonError.message}`);
+        setIsLoading(false);
+        return;
+      }
 
-      const figureData: Omit<Figure, 'id' | 'createdAt' | 'alias' | 'statusLiveOrDead' | 'eyeColor' | 'distinctiveFeatures'> & { createdAt?: any } = { 
+
+      const figureData: Omit<Figure, 'id' | 'createdAt' | 'alias' | 'statusLiveOrDead' | 'eyeColor' | 'distinctiveFeatures'> & { createdAt?: any; familyMembers?: FamilyMember[] } = { 
         name: name.trim(),
         nameLower: name.trim().toLowerCase(),
         description: description.trim() || initialData?.description || "", 
@@ -233,6 +249,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
         attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
         starRatingCounts: starRatingCounts || { ...defaultStarRatingCounts },
+        familyMembers: parsedFamilyMembers,
         status: initialData?.status || 'approved',
       };
 
@@ -336,7 +353,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           </div>
         ) : (
            <div className="relative w-40 h-60 border rounded-md overflow-hidden bg-muted flex items-center justify-center mt-2 text-muted-foreground" data-ai-hint="placeholder abstract">
-             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M21.2 15c.7-1.2 1-2.5.7-3.9-.6-2.4-3-4-5.4-4-1.2 0-2.3.5-3.2 1.2M4.8 9A5.5 5.5 0 0 0 10 14.5c0 1.2-.3 2.3-.8 3.2M14.5 19c-1.2.8-2.5 1-3.9.7-2.4-.6-4-3-4-5.4 0-1.2.5-2.3 1.2-3.2M9 4.5c.8-.7 1.9-1.2 3.2-1.2 2.4.6 4 3 4 5.4 0 1.2-.5 2.3-1.2 3.2M2 22l20-20"/></svg>
+             <ImageOff className="h-16 w-16" />
              <span>Sin Imagen</span>
            </div>
         )}
@@ -409,6 +426,25 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         </div>
       </div>
       
+      <div className="mt-6 border-t pt-4 border-border">
+        <Label htmlFor="familyMembersJson" className="flex items-center gap-2 text-lg font-semibold">
+          <Users2 className="h-5 w-5" /> Miembros de la Familia (JSON)
+        </Label>
+        <Textarea
+          id="familyMembersJson"
+          value={familyMembersJson}
+          onChange={(e) => setFamilyMembersJson(e.target.value)}
+          placeholder='Ej: [{"id": "fm1", "name": "Nombre Padre", "relationship": "Padre", "figureId": "id-del-padre"}]'
+          rows={8}
+          className="mt-1 font-mono text-xs"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Ingresa un array de objetos JSON. Cada objeto debe tener: `id` (string, único), `name` (string), `relationship` (string), `figureId` (opcional, string), `photoUrl` (opcional, string).
+        </p>
+         <p className="text-xs text-muted-foreground mt-1">
+          Ejemplo de relación: "Padre", "Madre", "Abuelo paterno", "Abuela paterna", "Abuelo materno", "Abuela materna", "Hijo/a", "Hermano/a", "Tío (Paterno)", "Tía (Paterna)", "Tío (Materno)", "Tía (Materna)".
+        </p>
+      </div>
 
       <Button type="submit" className="w-full mt-6" disabled={isLoading || !isAuthReady}>
         {isLoading ? 'Guardando...' : (initialData?.id ? 'Actualizar Figura' : 'Crear Figura')}

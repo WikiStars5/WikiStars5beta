@@ -1,11 +1,11 @@
 
 "use client";
 
-import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage } from "@/lib/types";
+import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage, FamilyMember } from "@/lib/types";
 import { getFigureFromFirestore, getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
-  Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
+  Terminal, Info, UserCircle, Globe, Briefcase, Users2 as FamilyIcon, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   ImageOff, BarChartHorizontal, Star as StarIcon,
   BookOpen, Cake, MapPin, HeartHandshake, StretchVertical, Scale, Palette, Zap,
   MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide
@@ -25,6 +25,7 @@ import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
+import { FamilyTreeDisplay } from "@/components/figures/FamilyTreeDisplay"; // Importar el nuevo componente
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
@@ -581,11 +582,12 @@ export default function FigurePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2 space-y-8">
           <Tabs defaultValue="personal-info" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6"> 
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-5 mb-6"> 
               <TabsTrigger value="personal-info" className="text-base py-2.5 flex items-center gap-2"><Info className="h-5 w-5" />Información</TabsTrigger>
               <TabsTrigger value="attitude-poll" className="text-base py-2.5 flex items-center gap-2"><MessageSquare className="h-5 w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-base py-2.5 flex items-center gap-2"><SmilePlus className="h-5 w-5" />Emoción</TabsTrigger>
               <TabsTrigger value="image-gallery" className="text-base py-2.5 flex items-center gap-2"><Images className="h-5 w-5" />Galería</TabsTrigger>
+              <TabsTrigger value="family-tree" className="text-base py-2.5 flex items-center gap-2"><FamilyIcon className="h-5 w-5" />Familia</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal-info">
@@ -625,7 +627,7 @@ export default function FigurePage() {
                       <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{figure.description || (canEditFigure ? "No hay descripción. ¡Añade una!" : "No hay descripción. Inicia sesión con una cuenta para añadir una.")}</p>
                       <div className="space-y-3 pt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                         {renderDetailItem(UserCircle, "Nombre Completo", figure.name)}
-                        {renderDetailItem(Users2, "Género", figure.gender)}
+                        {renderDetailItem(FamilyIcon, "Género", figure.gender)}
                         {renderDetailItem(Zap, "Especie", figure.species)}
                         {renderDetailItem(BookOpen, "Primera Aparición", figure.firstAppearance)}
                         {renderDetailItem(Cake, "Nacimiento/Edad", figure.birthDateOrAge)}
@@ -707,6 +709,18 @@ export default function FigurePage() {
                   ) : (
                     <p className="text-muted-foreground text-center py-10">Aún no hay imágenes en la galería. ¡Sé el primero en añadir una!</p>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="family-tree">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center text-2xl font-headline"><FamilyIcon className="mr-3 h-7 w-7 text-primary" />Árbol Genealógico de {figure.name}</CardTitle>
+                   <CardDescription>Relaciones familiares conocidas de {figure.name}.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FamilyTreeDisplay figure={figure} allFigures={allFigures} />
                 </CardContent>
               </Card>
             </TabsContent>
