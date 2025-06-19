@@ -33,12 +33,10 @@ const AddRelationButton = ({ onClick, label, positionClass, title, icon: IconCom
 );
 
 const RELATIONSHIP_TYPES = [
-  { value: "Pareja", label: "Pareja" },
-  { value: "Esposo/a", label: "Esposo/a" },
-  { value: "Novio/a", label: "Novio/a" },
-  { value: "Compañero/a", label: "Compañero/a sentimental" },
-  { value: "Ex-Pareja", label: "Ex-Pareja" },
-  { value: "Otro", label: "Otro (especificar)" }, // Considerar un input si es 'Otro'
+  { value: "Esposo", label: "Esposo" },
+  { value: "Esposa", label: "Esposa" },
+  { value: "Novio", label: "Novio" },
+  { value: "Novia", label: "Novia" },
 ];
 
 
@@ -54,7 +52,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
   const [isEditingPartner, setIsEditingPartner] = useState(false);
   const [editablePartnerName, setEditablePartnerName] = useState('');
   const [editablePartnerPhotoUrl, setEditablePartnerPhotoUrl] = useState('');
-  const [editablePartnerRelationship, setEditablePartnerRelationship] = useState('Pareja'); // Default relationship
+  const [editablePartnerRelationship, setEditablePartnerRelationship] = useState(RELATIONSHIP_TYPES[0].value); 
   const [isSavingPartner, setIsSavingPartner] = useState(false);
 
 
@@ -66,18 +64,18 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
     if (!partnerData) {
       const newPartner: FamilyMember = {
         id: `new-partner-${Date.now()}`,
-        name: "", // Start with empty name
-        relationship: "Pareja", // Default relationship
-        photoUrl: "", // Start with empty photo URL
+        name: "", 
+        relationship: RELATIONSHIP_TYPES[0].value, 
+        photoUrl: "", 
         figureId: null,
       };
       setPartnerData(newPartner);
       setEditablePartnerName(newPartner.name);
       setEditablePartnerPhotoUrl(newPartner.photoUrl || '');
       setEditablePartnerRelationship(newPartner.relationship);
-      setIsEditingPartner(true); // Open directly in edit mode
+      setIsEditingPartner(true); 
     } else {
-      // If partner card is already shown, clicking again will hide it
+      
       setPartnerData(null);
       setIsEditingPartner(false);
     }
@@ -99,7 +97,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
 
   const handleSaveCentralNodeImage = async () => {
     if (editableCentralPhotoUrl.trim() && !isValidHttpUrl(editableCentralPhotoUrl)) {
-        toast({ title: "Error", description: "La URL de la imagen no es válida. Debe ser un enlace HTTP/HTTPS.", variant: "destructive"});
+        toast({ title: "URL Inválida", description: "La URL de la imagen para la figura principal no es válida o no pertenece a un dominio permitido. Debe ser un enlace HTTP/HTTPS.", variant: "destructive"});
         return;
     }
     setIsSavingCentralNode(true);
@@ -149,7 +147,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
       return;
     }
     if (editablePartnerPhotoUrl.trim() && !isValidHttpUrl(editablePartnerPhotoUrl)) {
-        toast({ title: "Error", description: "La URL de la imagen para la pareja no es válida. Debe ser un enlace HTTP/HTTPS.", variant: "destructive"});
+        toast({ title: "URL Inválida", description: "La URL de la imagen para la pareja no es válida o no pertenece a un dominio permitido. Debe ser un enlace HTTP/HTTPS.", variant: "destructive"});
         return;
     }
     if (!editablePartnerRelationship.trim()) {
@@ -161,22 +159,23 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
     const updatedPartnerData: FamilyMember = {
       ...partnerData,
       name: editablePartnerName.trim(),
-      photoUrl: editablePartnerPhotoUrl.trim(), // Store empty string if input is empty
+      photoUrl: editablePartnerPhotoUrl.trim(), 
       relationship: editablePartnerRelationship.trim(),
     };
     
     // TODO: Update figure.familyMembers in Firestore with updatedPartnerData
+    // This will require modifying the figure's document
     console.log("Guardando datos de pareja (simulado):", updatedPartnerData);
     setPartnerData(updatedPartnerData); 
-    toast({ title: "Pareja Guardada (Simulado)", description: `Datos de ${editablePartnerName} actualizados localmente.` });
+    toast({ title: "Pareja Guardada (Simulado)", description: `Datos de ${editablePartnerName} actualizados localmente. La integración con Firestore está pendiente.` });
     setIsEditingPartner(false);
     // router.refresh(); // Uncomment when Firestore save is implemented
     setIsSavingPartner(false);
   };
 
   const partnerImageToDisplay = isEditingPartner 
-    ? (editablePartnerPhotoUrl || "https://placehold.co/200x267.png") 
-    : (partnerData?.photoUrl || "https://placehold.co/200x267.png");
+    ? (editablePartnerPhotoUrl || "") 
+    : (partnerData?.photoUrl || "");
 
 
   return (
@@ -198,7 +197,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
                 <h3 className="text-md font-semibold text-center text-primary truncate" title={figure.name}>{figure.name}</h3>
                 {isEditingCentralNode ? (
                   <div className="space-y-3">
-                    <div><Label htmlFor={`imageUrl-${figure.id}`} className="text-xs text-muted-foreground block mb-1">Url de la imagen: <span className="italic">(visible al editar)</span></Label><Input id={`imageUrl-${figure.id}`} type="url" value={editableCentralPhotoUrl} onChange={(e) => setEditableCentralPhotoUrl(e.target.value)} className="text-xs h-8" placeholder="Link de dominio permitido" disabled={isSavingCentralNode} /></div>
+                    <div><Label htmlFor={`imageUrl-${figure.id}`} className="text-xs text-muted-foreground block mb-1">Url de la imagen: <span className="italic">(visible al editar)</span></Label><Input id={`imageUrl-${figure.id}`} type="url" value={editableCentralPhotoUrl} onChange={(e) => setEditableCentralPhotoUrl(e.target.value)} className="text-xs h-8" placeholder="Dejar vacío para predeterminado" disabled={isSavingCentralNode} /></div>
                     <div className="flex justify-between gap-2 mt-2"><Button variant="outline" size="sm" className="flex-1 py-1 h-auto text-xs" onClick={handleCancelCentralNodeEdit} disabled={isSavingCentralNode}><X className="mr-1.5 h-3.5 w-3.5" /> Cancelar</Button><Button size="sm" className="flex-1 py-1 h-auto text-xs" onClick={handleSaveCentralNodeImage} disabled={isSavingCentralNode}>{isSavingCentralNode ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}Guardar</Button></div>
                   </div>
                 ) : ( <Button variant="outline" size="sm" className="w-full mt-1 py-1 h-auto text-xs border-primary/40 text-primary/70 hover:bg-primary/10 hover:text-primary" onClick={handleEditCentralNode}><Edit3 className="mr-1.5 h-3.5 w-3.5" />EDITAR</Button> )}
