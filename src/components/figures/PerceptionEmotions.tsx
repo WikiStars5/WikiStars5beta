@@ -163,8 +163,8 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Percepción Emocional de {figureName}</CardTitle>
-          <CardDescription>¿Qué emoción te provoca esta figura?</CardDescription>
+          <CardTitle>¿Qué emoción te provoca {figureName}?</CardTitle>
+          <CardDescription>Cargando opciones de emoción...</CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center items-center h-40">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -177,10 +177,10 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Percepción Emocional de {figureName}</CardTitle>
+        <CardTitle>¿Qué emoción te provoca {figureName}?</CardTitle>
         <CardDescription>
-          {currentUser // If a user (anonymous or not) exists
-            ? "¿Qué emoción te provoca esta figura? Haz clic en una emoción para votar."
+          {currentUser
+            ? "Haz clic en una emoción para votar."
             : "Inicia sesión o continúa como invitado para poder expresar tu emoción."}
         </CardDescription>
       </CardHeader>
