@@ -1,144 +1,144 @@
 
 "use client";
 
-import type { Figure, FamilyMember } from "@/lib/types";
+import type { Figure } from "@/lib/types";
 import Image from "next/image";
-import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ImageOff, UserCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { ImageOff, PlusCircle, Edit3 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface FamilyTreeDisplayProps {
-  figure: Figure; // The main figure for whom the tree is displayed
-  allFigures: Figure[]; // For linking to other existing profiles
+  figure: Figure;
+  allFigures: Figure[]; // Para futuras vinculaciones
 }
 
-// Internal component to render each family member node
-interface FamilyNodeProps {
-  member: FamilyMember; // Accepts the FamilyMember type, which includes id, name, relationship, figureId, photoUrl
-  allFigures: Figure[]; // To find linked profiles
-  isMainFigure?: boolean; // To style the main figure differently
-}
-
-const FamilyNode: React.FC<FamilyNodeProps> = ({ member, allFigures, isMainFigure = false }) => {
-  // Try to find an existing profile for this family member if figureId is provided
-  const existingFigureProfile = member.figureId ? allFigures.find(f => f.id === member.figureId) : null;
-
-  const photoToDisplay = member.photoUrl || existingFigureProfile?.photoUrl;
-  const nameToDisplay = member.name || existingFigureProfile?.name || "Desconocido";
-  const linkHref = existingFigureProfile ? `/figures/${existingFigureProfile.id}` : undefined;
-
-  const nodeContent = (
-    <div className={`flex flex-col items-center p-2 rounded-lg shadow-md w-28 min-h-[11rem] h-auto text-center transition-all duration-200 ease-in-out ${isMainFigure ? 'bg-primary/10 border-2 border-primary' : 'bg-card border'}`}>
-      <div className="relative w-20 h-20 rounded-full overflow-hidden mb-1 border-2 border-muted bg-muted">
-        {photoToDisplay ? (
-          <Image 
-            src={photoToDisplay} 
-            alt={nameToDisplay} 
-            fill 
-            className="object-cover"
-            data-ai-hint="portrait person" 
-            sizes="80px" // Provide a reasonable size for the avatar
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center" data-ai-hint="placeholder avatar">
-            <UserCircle className="w-12 h-12 text-muted-foreground" />
-          </div>
-        )}
-      </div>
-      <p className={`font-semibold text-xs ${isMainFigure ? 'text-primary-foreground dark:text-primary' : 'text-foreground'}`}>{nameToDisplay}</p>
-      <p className={`text-xs ${isMainFigure ? 'text-primary-foreground/80 dark:text-primary/90' : 'text-muted-foreground'}`}>{member.relationship}</p>
-    </div>
-  );
-
-  if (linkHref) {
-    return <Link href={linkHref} className="hover:scale-105 transform transition-transform">{nodeContent}</Link>;
-  }
-  return <div className="hover:scale-105 transform transition-transform cursor-default">{nodeContent}</div>;
-};
+// Componente para los botones de añadir relación
+const AddRelationButton = ({ onClick, label, positionClass, title }: { onClick: () => void; label: string, positionClass: string, title: string }) => (
+  <Button
+    variant="outline"
+    size="icon"
+    className={`absolute ${positionClass} rounded-full w-10 h-10 bg-card hover:bg-primary/10 border-primary text-primary z-10 shadow-lg flex items-center justify-center`}
+    onClick={onClick}
+    aria-label={label}
+    title={title}
+  >
+    <PlusCircle className="h-6 w-6" />
+  </Button>
+);
 
 
 export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, allFigures }) => {
-  // Create a FamilyMember object for the main figure
-  const selfMember: FamilyMember = {
-    id: figure.id, // Use figure's id as a unique key for this node
-    name: figure.name,
-    relationship: "Principal", 
-    figureId: figure.id, // Link to self
-    photoUrl: figure.photoUrl,
+  const handleAddParents = () => {
+    // TODO: Implementar lógica para añadir padres (abrir modal/formulario)
+    // Por ejemplo, podría abrir un dropdown con "Añadir Padre" y "Añadir Madre"
+    alert("Funcionalidad para añadir Padres/Madre (ej. Papá, Mamá) aún no implementada.");
+    console.log("Añadir Padres para:", figure.name);
   };
 
-  const familyMembers = figure.familyMembers || [];
+  const handleAddPartner = () => {
+    // TODO: Implementar lógica para añadir pareja (abrir modal/formulario)
+    // Por ejemplo, podría abrir un dropdown con "Añadir Esposo/a" y "Añadir Novio/a"
+    alert("Funcionalidad para añadir Pareja (ej. Esposo, Novio) aún no implementada.");
+    console.log("Añadir Pareja para:", figure.name);
+  };
 
-  // Specific roles for layout
-  const father = familyMembers.find(fm => fm.relationship.toLowerCase() === "padre");
-  const mother = familyMembers.find(fm => fm.relationship.toLowerCase() === "madre");
-  const paternalGrandfather = familyMembers.find(fm => fm.relationship.toLowerCase() === "abuelo paterno");
-  const paternalGrandmother = familyMembers.find(fm => fm.relationship.toLowerCase() === "abuela paterna");
-  const maternalGrandfather = familyMembers.find(fm => fm.relationship.toLowerCase() === "abuelo materno");
-  const maternalGrandmother = familyMembers.find(fm => fm.relationship.toLowerCase() === "abuela materna");
-  
-  const siblings = familyMembers.filter(fm => fm.relationship.toLowerCase().includes("herman")); // Catches Hermano, Hermana
-  const children = familyMembers.filter(fm => fm.relationship.toLowerCase().includes("hijo") || fm.relationship.toLowerCase().includes("hija"));
-  const partner = familyMembers.find(fm => ["esposo", "esposa", "pareja", "novio", "novia"].includes(fm.relationship.toLowerCase()));
+  const handleAddChildren = () => {
+    // TODO: Implementar lógica para añadir hijos (abrir modal/formulario)
+    alert("Funcionalidad para añadir Hijos aún no implementada.");
+    console.log("Añadir Hijos para:", figure.name);
+  };
 
-  // Determine if there's any family data at all, besides the main figure itself
-  const hasAnyActualFamilyData = familyMembers.length > 0;
-
+  const handleEditFigureCard = () => {
+    // TODO: Implementar lógica para editar la tarjeta/figura
+    // Podría redirigir a la página de edición de figura o abrir un modal específico para editar datos familiares aquí.
+    alert("Funcionalidad para EDITAR la tarjeta de la figura aún no implementada.");
+    console.log("Editar tarjeta de:", figure.name);
+  }
 
   return (
-    <div className="relative p-4 md:p-8 overflow-x-auto min-w-[700px]">
-      <div className="flex flex-col items-center space-y-8">
-        {/* Grandparents Row */}
-        {(paternalGrandfather || paternalGrandmother || maternalGrandfather || maternalGrandmother) && (
-          <div className="flex justify-center gap-8 md:gap-16 w-full">
-            {/* Paternal Grandparents */}
-            <div className="flex gap-4">
-              {paternalGrandfather && <FamilyNode member={paternalGrandfather} allFigures={allFigures} />}
-              {paternalGrandmother && <FamilyNode member={paternalGrandmother} allFigures={allFigures} />}
+    <div className="flex flex-col items-center justify-center p-4 md:p-8 min-h-[500px] w-full">
+      <div className="relative" style={{ marginBottom: '40px', marginTop: '40px', marginRight: '40px', marginLeft: '40px' }}> {/* Espacio para los botones flotantes */}
+        {/* Botón Añadir Padres (arriba) */}
+        <AddRelationButton
+          onClick={handleAddParents}
+          label="Añadir Padres"
+          title="Añadir Padre o Madre"
+          positionClass="-top-12 left-1/2 -translate-x-1/2 transform"
+        />
+
+        {/* Tarjeta Central de la Figura Principal */}
+        <Card className="w-60 md:w-64 shadow-xl border-2 border-primary/30 relative overflow-visible bg-card">
+          <CardHeader className="p-0">
+            <div className="relative w-full aspect-[3/4] bg-muted rounded-t-md overflow-hidden mx-auto border-b border-primary/20">
+              {figure.photoUrl ? (
+                <Image
+                  src={figure.photoUrl}
+                  alt={`Imagen de ${figure.name}`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 240px, 256px"
+                  data-ai-hint="figure portrait"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground" data-ai-hint="placeholder abstract person">
+                  <ImageOff className="w-16 h-16" />
+                </div>
+              )}
             </div>
-            {/* Maternal Grandparents */}
-            <div className="flex gap-4">
-              {maternalGrandfather && <FamilyNode member={maternalGrandfather} allFigures={allFigures} />}
-              {maternalGrandmother && <FamilyNode member={maternalGrandmother} allFigures={allFigures} />}
+          </CardHeader>
+          <CardContent className="p-3 space-y-2 text-sm">
+            <h3 className="text-md font-semibold text-center text-primary truncate" title={figure.name}>
+              {figure.name}
+            </h3>
+            
+            <div className="space-y-1">
+              <Label htmlFor={`imageUrl-${figure.id}`} className="text-xs text-muted-foreground">
+                Url de la imagen: <span className="italic">(esto solo es visible cuando se edita)</span>
+              </Label>
+              <Input
+                id={`imageUrl-${figure.id}`}
+                type="text"
+                value={figure.photoUrl || ''}
+                readOnly // Este campo se llenará/editará mediante el botón EDITAR
+                className="text-xs h-7 bg-muted/30 cursor-default"
+                placeholder="Link de dominio permitido"
+              />
             </div>
-          </div>
-        )}
 
-        {/* Parents Row */}
-        {(father || mother) && (
-          <div className="flex justify-center gap-8 md:gap-16 w-full">
-            {father && <FamilyNode member={father} allFigures={allFigures} />}
-            {mother && <FamilyNode member={mother} allFigures={allFigures} />}
-          </div>
-        )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-1 py-1 h-auto text-xs border-primary/40 text-primary/70 hover:bg-primary/10 hover:text-primary"
+              onClick={handleEditFigureCard}
+              // disabled // Habilitar cuando la funcionalidad esté lista
+            >
+              <Edit3 className="mr-1.5 h-3.5 w-3.5" />
+              EDITAR
+            </Button>
+          </CardContent>
+        </Card>
 
-        {/* Main Figure, Siblings, and Partner Row */}
-        <div className="flex items-center justify-center gap-4 md:gap-8 w-full">
-          {siblings.slice(0, Math.floor(siblings.length / 2)).map(sibling => (
-            <FamilyNode key={sibling.id} member={sibling} allFigures={allFigures} />
-          ))}
-          <FamilyNode member={selfMember} allFigures={allFigures} isMainFigure />
-          {partner && <FamilyNode member={partner} allFigures={allFigures} />}
-          {siblings.slice(Math.floor(siblings.length / 2)).map(sibling => (
-             <FamilyNode key={sibling.id} member={sibling} allFigures={allFigures} />
-          ))}
-        </div>
+        {/* Botón Añadir Pareja (lateral derecho) */}
+        <AddRelationButton
+          onClick={handleAddPartner}
+          label="Añadir Pareja"
+          title="Añadir Pareja (ej. Esposo/a, Novio/a)"
+          positionClass="top-1/2 -right-12 -translate-y-1/2 transform"
+        />
 
-        {/* Children Row */}
-        {children.length > 0 && (
-          <div className="flex justify-center gap-4 md:gap-8 flex-wrap w-full pt-4">
-            {children.map(child => (
-              <FamilyNode key={child.id} member={child} allFigures={allFigures} />
-            ))}
-          </div>
-        )}
-        
-        {!hasAnyActualFamilyData && (
-           <p className="text-muted-foreground text-center py-6">No hay información familiar disponible para {figure.name}.</p>
-        )}
+        {/* Botón Añadir Hijos (abajo) */}
+        <AddRelationButton
+          onClick={handleAddChildren}
+          label="Añadir Hijos"
+          title="Añadir Hijos"
+          positionClass="-bottom-12 left-1/2 -translate-x-1/2 transform"
+        />
       </div>
-       <CardDescription className="text-center mt-8 text-xs">
-        Nota: El árbol genealógico se basa en la información disponible. Las líneas de conexión son ilustrativas.
+      <CardDescription className="text-center mt-6 text-xs px-4 max-w-md">
+        Esta es la vista inicial para construir el árbol genealógico. Haz clic en los botones (+) para añadir familiares.
+        La funcionalidad completa de adición y edición se implementará en los próximos pasos.
       </CardDescription>
     </div>
   );
