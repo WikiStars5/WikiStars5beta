@@ -1,4 +1,3 @@
-
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -23,70 +22,63 @@ export interface Figure {
   photoUrl: string;
   description?: string;
   
-  // Basic Info previously present
   nationality?: string;
   occupation?: string;
   gender?: string;
 
-  // New detailed fields
-  alias?: string; // Will be removed from display/forms
-  species?: string; // e.g., Human, Demon, Elf
-  firstAppearance?: string; // e.g., "High School DxD, Light Novel, 2008"
-  birthDateOrAge?: string; // e.g., "Unknown / Appears 18"
+  species?: string; 
+  firstAppearance?: string; 
+  birthDateOrAge?: string; 
   birthPlace?: string;
-  statusLiveOrDead?: string; // Will be removed from display/forms, e.g., "Alive", "Deceased", "Unknown"
-  maritalStatus?: string; // e.g., "Single", "Married"
+  maritalStatus?: string; 
   
-  // Physical Appearance
   height?: string;
-  weight?: string; // Often optional for fictional
+  weight?: string; 
   hairColor?: string;
-  eyeColor?: string; // Will be removed from display/forms
-  distinctiveFeatures?: string; // Will be removed from display/forms, e.g., "Tall ponytail", "Scar over left eye"
 
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
   starRatingCounts?: Record<StarValueAsString, number>;
-  commentCount?: number; // Contador de comentarios
-  createdAt?: string; // ISO string
-  status?: 'approved' | 'rejected'; // For proposals, not directly used now
+  commentCount?: number; 
+  createdAt?: string; 
+  status?: 'approved' | 'rejected'; 
 }
 
 export interface UserPerception {
   userId: string;
   figureId: string;
   emotion: EmotionKey;
-  timestamp: Timestamp; // Firestore Timestamp
+  timestamp: Timestamp; 
 }
 
 export interface UserAttitude {
   userId: string;
   figureId: string;
   attitude: AttitudeKey;
-  timestamp: Timestamp; // Firestore Timestamp
+  timestamp: Timestamp; 
 }
 
 export interface UserStarRating {
   userId: string;
   figureId: string;
-  starValue: StarValue; // 1, 2, 3, 4, or 5
-  timestamp: Timestamp; // Firestore Timestamp
+  starValue: StarValue; 
+  timestamp: Timestamp; 
 }
 
 export interface UserComment {
-  id: string; // Document ID
+  id: string; 
   figureId: string;
   userId: string;
-  username: string; // Denormalized for display
-  userPhotoURL: string | null; // Denormalized for display
+  username: string; 
+  userPhotoURL: string | null; 
   text: string;
-  starRatingGiven: StarValue | null; // User's star rating for the FIGURE at the time of comment
-  createdAt: Timestamp; // Firestore Timestamp for server-side ordering
+  starRatingGiven: StarValue | null; 
+  createdAt: Timestamp; 
   updatedAt?: Timestamp | null;
   likes: number;
   dislikes: number;
-  likedBy: string[]; // Array of user IDs
-  dislikedBy: string[]; // Array of user IDs
+  likedBy: string[]; 
+  dislikedBy: string[]; 
 }
 
 
@@ -102,9 +94,9 @@ export interface UserProfile {
   username: string;
   country?: string;
   countryCode?: string;
+  gender?: string; // e.g., 'male', 'female', 'other', 'prefer_not_to_say'
   photoURL?: string | null;
   role: 'user' | 'admin';
-  createdAt: string; // ISO string
-  lastLoginAt?: string; // ISO string
+  createdAt: string; 
+  lastLoginAt?: string; 
 }
-

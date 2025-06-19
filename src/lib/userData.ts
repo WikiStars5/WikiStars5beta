@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData, Timestamp } from 'firebase/firestore';
 import type { User as FirebaseUser } from 'firebase/auth';
+import { COUNTRIES } from '@/config/countries'; // Import COUNTRIES
 
 // Helper to map Firestore document data to UserProfile interface
 const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
@@ -30,6 +31,7 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     username: data.username || '',
     country: data.country || '',
     countryCode: data.countryCode || '',
+    gender: data.gender || '', // Added gender
     photoURL: data.photoURL || null,
     role: data.role || 'user',
     createdAt: createdAtString,
@@ -64,10 +66,13 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 
 /**
  * Ensures a user profile document exists in Firestore.
- * If it doesn't exist, it creates one with default values.
+ * If it doesn't exist, it creates one with default values and additional data from signup.
  * If it exists, it updates the lastLoginAt timestamp and potentially other auth-related fields.
  */
-export async function ensureUserProfileExists(user: FirebaseUser): Promise<UserProfile> {
+export async function ensureUserProfileExists(
+  user: FirebaseUser, 
+  additionalData?: { countryCode?: string; gender?: string }
+): Promise<UserProfile> {
   if (!user || !user.uid) {
     console.error("ensureUserProfileExists: Valid Firebase user object is required.");
     throw new Error("ensureUserProfileExists: Valid Firebase user object is required.");
@@ -83,17 +88,23 @@ export async function ensureUserProfileExists(user: FirebaseUser): Promise<UserP
     if (userDocSnap.exists()) {
       console.log(`[ensureUserProfileExists] Profile found for UID: ${user.uid}. Updating...`);
       const existingProfileData = userDocSnap.data();
-      const updates: { lastLoginAt: any; photoURL?: string | null; email?: string | null; username?: string } = {
+      const updates: { 
+        lastLoginAt: any; 
+        photoURL?: string | null; 
+        email?: string | null; 
+        username?: string;
+        country?: string;
+        countryCode?: string;
+        gender?: string;
+      } = {
         lastLoginAt: serverTimestamp(),
       };
 
       if (user.photoURL !== undefined && user.photoURL !== existingProfileData.photoURL) {
         updates.photoURL = user.photoURL;
-        console.log(`[ensureUserProfileExists] Updating photoURL to: ${user.photoURL}`);
       }
       if (user.email !== undefined && user.email !== existingProfileData.email) {
         updates.email = user.email;
-        console.log(`[ensureUserProfileExists] Updating email to: ${user.email}`);
       }
 
       const currentUsername = existingProfileData.username;
@@ -102,32 +113,42 @@ export async function ensureUserProfileExists(user: FirebaseUser): Promise<UserP
 
       if (authDisplayName && (authDisplayName !== currentUsername || isDefaultUsername)) {
         updates.username = authDisplayName;
-        console.log(`[ensureUserProfileExists] Updating username to: ${authDisplayName}`);
+      }
+
+      // If additional data is provided and fields are not set, update them
+      if (additionalData?.countryCode && !existingProfileData.countryCode) {
+        const selectedCountry = COUNTRIES.find(c => c.code === additionalData.countryCode);
+        updates.countryCode = additionalData.countryCode;
+        updates.country = selectedCountry ? selectedCountry.name : '';
+      }
+      if (additionalData?.gender && !existingProfileData.gender) {
+        updates.gender = additionalData.gender;
       }
       
-      console.log("[ensureUserProfileExists] Data for updateDoc:", updates);
       await updateDoc(userDocRef, updates);
       
-      const updatedDocSnap = await getDoc(userDocRef); // Re-fetch to get actual server timestamp
+      const updatedDocSnap = await getDoc(userDocRef); 
       userProfileDataForMapping = updatedDocSnap.data()!;
       console.log(`[ensureUserProfileExists] Successfully updated existing user profile for UID: ${user.uid}`);
     } else {
       console.log(`[ensureUserProfileExists] Profile NOT found for UID: ${user.uid}. Creating new profile...`);
+      const selectedCountry = additionalData?.countryCode ? COUNTRIES.find(c => c.code === additionalData.countryCode) : null;
+      
       const newProfileData: Omit<UserProfile, 'createdAt' | 'lastLoginAt'> & { createdAt: any; lastLoginAt: any } = {
         uid: user.uid,
         email: user.email || null,
         username: user.displayName || user.email?.split('@')[0] || `user_${user.uid.substring(0, 6)}`,
         photoURL: user.photoURL || null,
-        country: '',
-        countryCode: '',
+        country: selectedCountry ? selectedCountry.name : '',
+        countryCode: additionalData?.countryCode || '',
+        gender: additionalData?.gender || '', // Set gender from additionalData
         role: 'user',
         createdAt: serverTimestamp(),
         lastLoginAt: serverTimestamp(),
       };
-      console.log("[ensureUserProfileExists] Data for setDoc (new profile):", newProfileData);
       await setDoc(userDocRef, newProfileData);
       
-      const createdDocSnap = await getDoc(userDocRef); // Re-fetch to get actual server timestamp
+      const createdDocSnap = await getDoc(userDocRef); 
       userProfileDataForMapping = createdDocSnap.data()!;
       console.log(`[ensureUserProfileExists] Successfully created new user profile for UID: ${user.uid}`);
     }
@@ -146,7 +167,7 @@ export async function ensureUserProfileExists(user: FirebaseUser): Promise<UserP
  */
 export async function updateUserProfile(
   uid: string,
-  data: Partial<Pick<UserProfile, 'username' | 'country' | 'countryCode'>>
+  data: Partial<Pick<UserProfile, 'username' | 'country' | 'countryCode' | 'gender'>> // Added gender
 ): Promise<void> {
   if (!uid) {
     console.error("updateUserProfile: UID is required.");
@@ -165,6 +186,9 @@ export async function updateUserProfile(
     if (data.hasOwnProperty('countryCode')) { 
       if (data.countryCode === '') {
         updateData.country = ''; 
+      } else {
+        const selectedCountry = COUNTRIES.find(c => c.code === data.countryCode);
+        updateData.country = selectedCountry ? selectedCountry.name : '';
       }
     } else if (data.hasOwnProperty('country') && data.country === '') {
         updateData.countryCode = ''; 
@@ -174,7 +198,7 @@ export async function updateUserProfile(
     await updateDoc(userDocRef, updateData);
     console.log(`[updateUserProfile] User profile successfully updated for UID: ${uid}`);
   } catch (error: any) {
-    console.error(`[updateUserProfile] Firestore error for UID ${uid}: Message: ${error.message}, Code: ${error.code}`, error);
-    throw new Error(`Failed to update user profile. Firebase error: ${error.message} (Code: ${error.code})`);
+    console.error(`[updateUserProfile] Error updating profile for UID ${uid}:`, error);
+    throw new Error(`Failed to update user profile. Firebase error: ${error.message}`);
   }
 }

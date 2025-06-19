@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -7,6 +6,7 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { UserPlus, Loader2 } from "lucide-react";
@@ -14,11 +14,15 @@ import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { useRouter } from "next/navigation"; 
 import { auth } from '@/lib/firebase';
 import { ensureUserProfileExists } from "@/lib/userData";
+import { COUNTRIES } from "@/config/countries";
+import { GENDER_OPTIONS } from "@/config/genderOptions";
 
 const signupSchema = z.object({
   displayName: z.string().min(2, { message: "El nombre de usuario debe tener al menos 2 caracteres." }).max(50, {message: "El nombre de usuario no debe exceder los 50 caracteres."}),
   email: z.string().email({ message: "Dirección de correo electrónico inválida." }),
   password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
+  countryCode: z.string().min(1, { message: "Por favor, selecciona tu país." }),
+  gender: z.string().min(1, { message: "Por favor, selecciona tu género." }),
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
@@ -34,6 +38,8 @@ export function SignupForm() {
       displayName: "",
       email: "",
       password: "",
+      countryCode: "",
+      gender: "",
     },
   });
 
@@ -50,22 +56,27 @@ export function SignupForm() {
         });
       }
 
+      if (user) {
+        try {
+          await ensureUserProfileExists(user, { 
+            countryCode: values.countryCode, 
+            gender: values.gender 
+          });
+        } catch (profileError: any) {
+          console.error(
+            "SignupForm: Error during ensureUserProfileExists after successful Firebase Auth signup:",
+            profileError.message
+          );
+          // Potentially inform user or log, but auth succeeded.
+        }
+      }
+      
       toast({
         title: "¡Cuenta Creada!",
         description: `¡Bienvenido a WikiStars5, ${user.displayName || user.email}!`,
       });
       router.push('/home'); 
 
-      if (user) {
-        try {
-          await ensureUserProfileExists(user);
-        } catch (profileError: any) {
-          console.error(
-            "SignupForm: Error during ensureUserProfileExists after successful Firebase Auth signup:",
-            profileError.message
-          );
-        }
-      }
 
     } catch (authError: any) {
       console.error("SignupForm onSubmit authError object:", authError);
@@ -129,6 +140,56 @@ export function SignupForm() {
               <FormControl>
                 <Input type="password" placeholder="•••••••• (mín. 6 caracteres)" {...field} disabled={isLoading} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="countryCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>País</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona tu país" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent className="max-h-60">
+                  {COUNTRIES.map((country) => (
+                    <SelectItem key={country.code} value={country.code}>
+                      <span role="img" aria-label={country.name} className="mr-2">{country.emoji}</span>
+                      {country.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="gender"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Sexo</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona tu sexo" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {GENDER_OPTIONS.map((gender) => (
+                    <SelectItem key={gender.value} value={gender.value}>
+                      {gender.emoji && <span role="img" aria-label={gender.label} className="mr-2">{gender.emoji}</span>}
+                      {gender.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
