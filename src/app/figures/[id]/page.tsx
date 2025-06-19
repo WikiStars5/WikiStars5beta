@@ -102,7 +102,6 @@ export default function FigurePage() {
   const [isLoadingGalleryImages, setIsLoadingGalleryImages] = useState(true);
 
   const allowedImageDomains = useMemo(() => {
-    // Simulating fetching from next.config.js or defining them directly
     return [
       'placehold.co', 'firebasestorage.googleapis.com', 'upload.wikimedia.org', 
       'static.wikia.nocookie.net', 'i.pinimg.com', 'encrypted-tbn0.gstatic.com', 'm.media-amazon.com'
@@ -141,7 +140,7 @@ export default function FigurePage() {
       setCurrentUser(user);
       const isNonAnonymous = !!user && !user.isAnonymous;
       setCanEditFigure(isNonAnonymous);
-      setCanCommentOrRate(!!user); // Anonymous users can comment and rate
+      setCanCommentOrRate(!!user); 
       setCanSubmitGalleryImage(isNonAnonymous);
 
       if (user && figure?.id) { 
@@ -438,7 +437,7 @@ export default function FigurePage() {
       toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
       setNewComment("");
       fetchComments(); 
-      fetchFigureData(); // Re-fetch figure data to update rating summary
+      fetchFigureData(); 
     } catch (error: any) {
       console.error("Error submitting opinion:", error);
       toast({ title: "Error al Enviar", description: `No se pudo enviar tu opinión. ${error.message}`, variant: "destructive" });
@@ -460,7 +459,7 @@ export default function FigurePage() {
     if (result.success) {
       toast({ title: "Imagen Añadida", description: result.message });
       setNewImageUrl("");
-      fetchGalleryImages(); // Re-fetch gallery images
+      fetchGalleryImages(); 
     } else {
       toast({ title: "Error al Añadir Imagen", description: result.message, variant: "destructive" });
     }
@@ -514,7 +513,7 @@ export default function FigurePage() {
 
       toast({ title: "Comentario Eliminado", description: "El comentario ha sido eliminado." });
       fetchComments(); 
-      fetchFigureData(); // Re-fetch figure data to update rating summary
+      fetchFigureData(); 
     } catch (error: any) {
       console.error("Error deleting comment:", error);
       toast({ title: "Error al Eliminar", description: `No se pudo eliminar el comentario. ${error.message}`, variant: "destructive" });
@@ -671,15 +670,23 @@ export default function FigurePage() {
                   {isLoadingGalleryImages ? (
                     <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando galería...</p></div>
                   ) : galleryImages.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    <div className="columns-1 xs:columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-3">
                       {galleryImages.map((img) => (
-                        <a key={img.id} href={img.imageUrl} target="_blank" rel="noopener noreferrer" className="group block aspect-square relative overflow-hidden rounded-md shadow-md hover:shadow-xl transition-shadow">
+                        <a 
+                          key={img.id} 
+                          href={img.imageUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="group mb-3 block break-inside-avoid relative overflow-hidden rounded-md shadow-md hover:shadow-xl transition-shadow"
+                        >
                           <Image 
                             src={img.imageUrl} 
                             alt={`Imagen de galería para ${figure.name} - ${img.id}`} 
-                            fill
-                            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                            className="object-cover group-hover:scale-105 transition-transform"
+                            width={0}
+                            height={0}
+                            sizes="(max-width: 639px) 100vw, (max-width: 767px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, 20vw"
+                            style={{ width: '100%', height: 'auto' }}
+                            className="w-full h-auto object-contain rounded-md group-hover:scale-105 transition-transform"
                             data-ai-hint="gallery image"
                           />
                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
