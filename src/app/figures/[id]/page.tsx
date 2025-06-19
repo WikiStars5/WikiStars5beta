@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   Terminal, Info, UserCircle, Globe, Briefcase, Users2, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   Image as ImageIcon, ImageOff, BarChartHorizontal, Star as StarIcon,
-  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
+  BookOpen, Cake, MapPin, HeartHandshake, StretchVertical, Scale, Palette, Zap,
   MessagesSquare, Send, Trash2
 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
@@ -68,18 +68,15 @@ export default function FigurePage() {
   const [editedGender, setEditedGender] = useState("");
   const [editedPhotoUrl, setEditedPhotoUrl] = useState("");
 
-  const [editedAlias, setEditedAlias] = useState("");
   const [editedSpecies, setEditedSpecies] = useState("");
   const [editedFirstAppearance, setEditedFirstAppearance] = useState("");
   const [editedBirthDateOrAge, setEditedBirthDateOrAge] = useState("");
   const [editedBirthPlace, setEditedBirthPlace] = useState("");
-  const [editedStatusLiveOrDead, setEditedStatusLiveOrDead] = useState("");
   const [editedMaritalStatus, setEditedMaritalStatus] = useState("");
   const [editedHeight, setEditedHeight] = useState("");
   const [editedWeight, setEditedWeight] = useState("");
   const [editedHairColor, setEditedHairColor] = useState("");
-  const [editedEyeColor, setEditedEyeColor] = useState("");
-  const [editedDistinctiveFeatures, setEditedDistinctiveFeatures] = useState("");
+
 
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -156,18 +153,14 @@ export default function FigurePage() {
       setEditedOccupation(currentFigure.occupation || "");
       setEditedGender(currentFigure.gender || "");
       setEditedPhotoUrl(currentFigure.photoUrl || "");
-      setEditedAlias(currentFigure.alias || "");
       setEditedSpecies(currentFigure.species || "");
       setEditedFirstAppearance(currentFigure.firstAppearance || "");
       setEditedBirthDateOrAge(currentFigure.birthDateOrAge || "");
       setEditedBirthPlace(currentFigure.birthPlace || "");
-      setEditedStatusLiveOrDead(currentFigure.statusLiveOrDead || "");
       setEditedMaritalStatus(currentFigure.maritalStatus || "");
       setEditedHeight(currentFigure.height || "");
       setEditedWeight(currentFigure.weight || "");
       setEditedHairColor(currentFigure.hairColor || "");
-      setEditedEyeColor(currentFigure.eyeColor || "");
-      setEditedDistinctiveFeatures(currentFigure.distinctiveFeatures || "");
     }
   }, []);
 
@@ -289,18 +282,14 @@ export default function FigurePage() {
         occupation: editedOccupation,
         gender: editedGender,
         photoUrl: editedPhotoUrl.trim() || 'https://placehold.co/400x600.png',
-        alias: editedAlias,
         species: editedSpecies,
         firstAppearance: editedFirstAppearance,
         birthDateOrAge: editedBirthDateOrAge,
         birthPlace: editedBirthPlace,
-        statusLiveOrDead: editedStatusLiveOrDead,
         maritalStatus: editedMaritalStatus,
         height: editedHeight,
         weight: editedWeight,
         hairColor: editedHairColor,
-        eyeColor: editedEyeColor,
-        distinctiveFeatures: editedDistinctiveFeatures,
       };
       await updateFigureInFirestore(updatedFigureData);
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
@@ -533,7 +522,6 @@ export default function FigurePage() {
                       {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center" data-ai-hint="image preview"><Image src={editedPhotoUrl} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground" data-ai-hint="placeholder abstract"><ImageOff className="h-10 w-10" /></div>}
                       {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                        {renderEditInput("alias", "Alias", editedAlias, (e) => setEditedAlias(e.target.value))}
                         {renderEditInput("species", "Especie", editedSpecies, (e) => setEditedSpecies(e.target.value))}
                         {renderEditInput("firstAppearance", "Primera Aparición", editedFirstAppearance, (e) => setEditedFirstAppearance(e.target.value))}
                         {renderEditInput("birthDateOrAge", "Nacimiento/Edad", editedBirthDateOrAge, (e) => setEditedBirthDateOrAge(e.target.value))}
@@ -541,13 +529,10 @@ export default function FigurePage() {
                         {renderEditInput("nationality", "Nacionalidad", editedNationality, (e) => setEditedNationality(e.target.value))}
                         {renderEditInput("occupation", "Ocupación", editedOccupation, (e) => setEditedOccupation(e.target.value))}
                         {renderEditInput("gender", "Género", editedGender, (e) => setEditedGender(e.target.value))}
-                        {renderEditInput("statusLiveOrDead", "Estado (Vivo/Muerto)", editedStatusLiveOrDead, (e) => setEditedStatusLiveOrDead(e.target.value))}
                         {renderEditInput("maritalStatus", "Estado Civil", editedMaritalStatus, (e) => setEditedMaritalStatus(e.target.value))}
                         {renderEditInput("height", "Altura", editedHeight, (e) => setEditedHeight(e.target.value))}
                         {renderEditInput("weight", "Peso", editedWeight, (e) => setEditedWeight(e.target.value))}
                         {renderEditInput("hairColor", "Color Cabello", editedHairColor, (e) => setEditedHairColor(e.target.value))}
-                        {renderEditInput("eyeColor", "Color Ojos", editedEyeColor, (e) => setEditedEyeColor(e.target.value))}
-                        {renderEditTextarea("distinctiveFeatures", "Rasgos Distintivos", editedDistinctiveFeatures, (e) => setEditedDistinctiveFeatures(e.target.value), "Ej: Cicatriz...", 3)}
                       </div>
                       <div className="flex justify-end space-x-2 pt-4">
                         <Button variant="outline" onClick={handleEditToggle} disabled={isSaving}><X className="mr-2 h-4 w-4" />Cancelar</Button>
@@ -559,7 +544,6 @@ export default function FigurePage() {
                       <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{figure.description || (canEditFigure ? "No hay descripción. ¡Añade una!" : "No hay descripción. Inicia sesión con una cuenta para añadir una.")}</p>
                       <div className="space-y-3 pt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                         {renderDetailItem(UserCircle, "Nombre Completo", figure.name)}
-                        {renderDetailItem(NotepadText, "Alias", figure.alias)}
                         {renderDetailItem(Users2, "Género", figure.gender)}
                         {renderDetailItem(Zap, "Especie", figure.species)}
                         {renderDetailItem(BookOpen, "Primera Aparición", figure.firstAppearance)}
@@ -567,13 +551,10 @@ export default function FigurePage() {
                         {renderDetailItem(MapPin, "Lugar Nacimiento", figure.birthPlace)}
                         {renderDetailItem(Globe, "Nacionalidad", figure.nationality)}
                         {renderDetailItem(Briefcase, "Ocupación", figure.occupation)}
-                        {renderDetailItem(Activity, "Estado", figure.statusLiveOrDead)}
                         {renderDetailItem(HeartHandshake, "Estado Civil", figure.maritalStatus)}
                         {renderDetailItem(StretchVertical, "Altura", figure.height)}
                         {renderDetailItem(Scale, "Peso", figure.weight)}
                         {renderDetailItem(Palette, "Color Cabello", figure.hairColor)}
-                        {renderDetailItem(Eye, "Color Ojos", figure.eyeColor)}
-                        {renderDetailItem(Scan, "Rasgos Distintivos", figure.distinctiveFeatures)}
                       </div>
                     </>
                   )}

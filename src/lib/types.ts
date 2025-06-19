@@ -29,20 +29,20 @@ export interface Figure {
   gender?: string;
 
   // New detailed fields
-  alias?: string;
+  alias?: string; // Will be removed from display/forms
   species?: string; // e.g., Human, Demon, Elf
   firstAppearance?: string; // e.g., "High School DxD, Light Novel, 2008"
   birthDateOrAge?: string; // e.g., "Unknown / Appears 18"
   birthPlace?: string;
-  statusLiveOrDead?: string; // e.g., "Alive", "Deceased", "Unknown"
+  statusLiveOrDead?: string; // Will be removed from display/forms, e.g., "Alive", "Deceased", "Unknown"
   maritalStatus?: string; // e.g., "Single", "Married"
   
   // Physical Appearance
   height?: string;
   weight?: string; // Often optional for fictional
   hairColor?: string;
-  eyeColor?: string;
-  distinctiveFeatures?: string; // e.g., "Tall ponytail", "Scar over left eye"
+  eyeColor?: string; // Will be removed from display/forms
+  distinctiveFeatures?: string; // Will be removed from display/forms, e.g., "Tall ponytail", "Scar over left eye"
 
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;

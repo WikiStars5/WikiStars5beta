@@ -59,18 +59,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [nationality, setNationality] = useState(initialData?.nationality || '');
 
   // New detailed fields
-  const [alias, setAlias] = useState(initialData?.alias || '');
   const [species, setSpecies] = useState(initialData?.species || '');
   const [firstAppearance, setFirstAppearance] = useState(initialData?.firstAppearance || '');
   const [birthDateOrAge, setBirthDateOrAge] = useState(initialData?.birthDateOrAge || '');
   const [birthPlace, setBirthPlace] = useState(initialData?.birthPlace || '');
-  const [statusLiveOrDead, setStatusLiveOrDead] = useState(initialData?.statusLiveOrDead || '');
   const [maritalStatus, setMaritalStatus] = useState(initialData?.maritalStatus || '');
   const [height, setHeight] = useState(initialData?.height || '');
   const [weight, setWeight] = useState(initialData?.weight || '');
   const [hairColor, setHairColor] = useState(initialData?.hairColor || '');
-  const [eyeColor, setEyeColor] = useState(initialData?.eyeColor || '');
-  const [distinctiveFeatures, setDistinctiveFeatures] = useState(initialData?.distinctiveFeatures || '');
 
   const [perceptionCounts, setPerceptionCounts] = useState(initialData?.perceptionCounts || { ...defaultPerceptionCounts });
   const [attitudeCounts, setAttitudeCounts] = useState(initialData?.attitudeCounts || { ...defaultAttitudeCounts });
@@ -113,18 +109,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setGender(initialData.gender || '');
       setNationality(initialData.nationality || '');
       
-      setAlias(initialData.alias || '');
       setSpecies(initialData.species || '');
       setFirstAppearance(initialData.firstAppearance || '');
       setBirthDateOrAge(initialData.birthDateOrAge || '');
       setBirthPlace(initialData.birthPlace || '');
-      setStatusLiveOrDead(initialData.statusLiveOrDead || '');
       setMaritalStatus(initialData.maritalStatus || '');
       setHeight(initialData.height || '');
       setWeight(initialData.weight || '');
       setHairColor(initialData.hairColor || '');
-      setEyeColor(initialData.eyeColor || '');
-      setDistinctiveFeatures(initialData.distinctiveFeatures || '');
 
       setPerceptionCounts(initialData.perceptionCounts || { ...defaultPerceptionCounts });
       setAttitudeCounts(initialData.attitudeCounts || { ...defaultAttitudeCounts });
@@ -139,18 +131,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setOccupation('');
       setGender('');
       setNationality('');
-      setAlias('');
       setSpecies('');
       setFirstAppearance('');
       setBirthDateOrAge('');
       setBirthPlace('');
-      setStatusLiveOrDead('');
       setMaritalStatus('');
       setHeight('');
       setWeight('');
       setHairColor('');
-      setEyeColor('');
-      setDistinctiveFeatures('');
       setPerceptionCounts({ ...defaultPerceptionCounts });
       setAttitudeCounts({ ...defaultAttitudeCounts });
       setStarRatingCounts({ ...defaultStarRatingCounts });
@@ -224,7 +212,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       }
 
 
-      const figureData: Omit<Figure, 'id' | 'createdAt'> & { createdAt?: any } = { 
+      const figureData: Omit<Figure, 'id' | 'createdAt' | 'alias' | 'statusLiveOrDead' | 'eyeColor' | 'distinctiveFeatures'> & { createdAt?: any } = { 
         name: name.trim(),
         nameLower: name.trim().toLowerCase(),
         description: description.trim() || initialData?.description || "", 
@@ -233,18 +221,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         gender: gender.trim(),
         nationality: nationality.trim(),
         
-        alias: alias.trim(),
         species: species.trim(),
         firstAppearance: firstAppearance.trim(),
         birthDateOrAge: birthDateOrAge.trim(),
         birthPlace: birthPlace.trim(),
-        statusLiveOrDead: statusLiveOrDead.trim(),
         maritalStatus: maritalStatus.trim(),
         height: height.trim(),
         weight: weight.trim(),
         hairColor: hairColor.trim(),
-        eyeColor: eyeColor.trim(),
-        distinctiveFeatures: distinctiveFeatures.trim(),
 
         perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
         attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
@@ -376,10 +360,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="alias">Alias / Otros Nombres</Label>
-          <Input id="alias" value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Ej: La Sacerdotisa del Trueno" />
-        </div>
-        <div>
           <Label htmlFor="species">Especie / Raza</Label>
           <Input id="species" value={species} onChange={(e) => setSpecies(e.target.value)} placeholder="Ej: Demonio, Humano" />
         </div>
@@ -398,10 +378,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div>
           <Label htmlFor="nationality">Nacionalidad</Label>
           <Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ej: Estadounidense, Peruano" />
-        </div>
-        <div>
-          <Label htmlFor="statusLiveOrDead">Estado (Vivo/Muerto)</Label>
-          <Input id="statusLiveOrDead" value={statusLiveOrDead} onChange={(e) => setStatusLiveOrDead(e.target.value)} placeholder="Ej: Viva, Muerto" />
         </div>
         <div>
           <Label htmlFor="maritalStatus">Estado Civil</Label>
@@ -431,14 +407,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           <Label htmlFor="hairColor">Color de Cabello</Label>
           <Input id="hairColor" value={hairColor} onChange={(e) => setHairColor(e.target.value)} placeholder="Ej: Negro" />
         </div>
-        <div>
-          <Label htmlFor="eyeColor">Color de Ojos</Label>
-          <Input id="eyeColor" value={eyeColor} onChange={(e) => setEyeColor(e.target.value)} placeholder="Ej: Violeta" />
-        </div>
-        <div className="md:col-span-2">
-          <Label htmlFor="distinctiveFeatures">Rasgos Distintivos</Label>
-          <Textarea id="distinctiveFeatures" value={distinctiveFeatures} onChange={(e) => setDistinctiveFeatures(e.target.value)} placeholder="Ej: Una cola de caballo alta, cicatriz..." rows={3} />
-        </div>
       </div>
       
 
@@ -450,4 +418,3 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 };
 
 export default FigureForm;
-
