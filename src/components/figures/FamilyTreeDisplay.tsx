@@ -42,8 +42,6 @@ const PARTNER_RELATIONSHIP_TYPES = [
   { value: "Novia", label: "Novia" },
 ];
 
-// CHILD_RELATIONSHIP_TYPES is removed as per user request
-
 export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, allFigures }) => {
   const { toast } = useToast();
   const router = useRouter();
@@ -63,7 +61,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
   const [isEditingActiveChild, setIsEditingActiveChild] = useState(false);
   const [editableChildName, setEditableChildName] = useState('');
   const [editableChildPhotoUrl, setEditableChildPhotoUrl] = useState('');
-  const [editableChildRelationship, setEditableChildRelationship] = useState("Hijo/a"); // Default relationship
+  const [editableChildRelationship, setEditableChildRelationship] = useState("Hijo/a");
   const [isSavingActiveChild, setIsSavingActiveChild] = useState(false);
 
   useEffect(() => {
@@ -77,15 +75,17 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
     }
 
     const firstChild = figure.familyMembers?.find(fm =>
-      // A simple check for child-like relationships, or a specific default one.
-      // Since the dropdown is removed, we might check for a default like "Hijo/a" or "Descendiente"
-      // if we start storing that explicitly.
-      fm.relationship.toLowerCase().includes("hijo") || fm.relationship.toLowerCase().includes("hija") || fm.relationship.toLowerCase() === "descendiente"
+      fm.relationship.toLowerCase() === "hijo/a" || 
+      fm.relationship.toLowerCase() === "hijo" || 
+      fm.relationship.toLowerCase() === "hija" || 
+      fm.relationship.toLowerCase() === "descendiente"
     );
-    // if (firstChild) { // To load first existing child. Commented out to favor adding new.
-    //   setActiveChildData(firstChild);
-    //   setIsEditingActiveChild(false); 
-    // }
+     if (firstChild) {
+       setActiveChildData(firstChild);
+       setIsEditingActiveChild(false); 
+     } else {
+        setActiveChildData(null);
+     }
 
   }, [figure.familyMembers]);
 
@@ -97,12 +97,12 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
   const handleAddPartner = () => {
     if (partnerData && isEditingPartner) return;
 
-    if (partnerData && !isEditingPartner) { // If partner exists and not editing, switch to edit
+    if (partnerData && !isEditingPartner) {
       setEditablePartnerName(partnerData.name);
       setEditablePartnerPhotoUrl(partnerData.photoUrl || '');
       setEditablePartnerRelationship(partnerData.relationship);
       setIsEditingPartner(true);
-    } else { // No partner data or was cancelled, create new and start editing
+    } else { 
         const newPartner: FamilyMember = {
           id: `new-partner-${Date.now()}`, 
           name: "", 
@@ -112,7 +112,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
         };
         setPartnerData(newPartner);
         setEditablePartnerName(newPartner.name);
-        setEditablePartnerPhotoUrl(""); // Start with empty URL field
+        setEditablePartnerPhotoUrl(""); 
         setEditablePartnerRelationship(newPartner.relationship);
         setIsEditingPartner(true); 
     }
@@ -124,19 +124,19 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
     if (activeChildData && !isEditingActiveChild) {
         setEditableChildName(activeChildData.name);
         setEditableChildPhotoUrl(activeChildData.photoUrl || '');
-        setEditableChildRelationship(activeChildData.relationship); // This will be our default "Hijo/a"
+        setEditableChildRelationship(activeChildData.relationship);
         setIsEditingActiveChild(true);
     } else {
         const newChild: FamilyMember = {
           id: `new-child-${Date.now()}`,
           name: "",
-          relationship: "Hijo/a", // Default relationship as dropdown is removed
+          relationship: "Hijo/a", 
           photoUrl: "",
           figureId: null,
         };
         setActiveChildData(newChild);
         setEditableChildName(newChild.name);
-        setEditableChildPhotoUrl(""); // Start with empty URL field
+        setEditableChildPhotoUrl(""); 
         setEditableChildRelationship(newChild.relationship);
         setIsEditingActiveChild(true);
     }
@@ -193,9 +193,11 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
   };
 
   const handleCancelPartnerEdit = () => {
-    // If it was a "new" partner being added, clear it
     if (partnerData && partnerData.id.startsWith('new-partner-')) {
-        setPartnerData(null); 
+        const originalPartner = figure.familyMembers?.find(fm => 
+          PARTNER_RELATIONSHIP_TYPES.some(rt => rt.value.toLowerCase() === fm.relationship.toLowerCase()) && fm.id !== partnerData.id
+        );
+        setPartnerData(originalPartner || null);
     }
     setIsEditingPartner(false);
   };
@@ -262,14 +264,20 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
     if (activeChildData) {
       setEditableChildName(activeChildData.name);
       setEditableChildPhotoUrl(activeChildData.photoUrl || '');
-      setEditableChildRelationship(activeChildData.relationship); // Stays as default "Hijo/a"
+      setEditableChildRelationship(activeChildData.relationship); 
       setIsEditingActiveChild(true);
     }
   };
 
   const handleCancelActiveChildEdit = () => {
     if (activeChildData && activeChildData.id.startsWith('new-child-')) {
-        setActiveChildData(null);
+      const originalChild = figure.familyMembers?.find(fm =>
+        (fm.relationship.toLowerCase() === "hijo/a" || 
+         fm.relationship.toLowerCase() === "hijo" || 
+         fm.relationship.toLowerCase() === "hija" || 
+         fm.relationship.toLowerCase() === "descendiente") && fm.id !== activeChildData.id
+      );
+      setActiveChildData(originalChild || null);
     }
     setIsEditingActiveChild(false);
   };
@@ -284,7 +292,6 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
         toast({ title: "URL Inválida", description: "La URL de la imagen para el hijo/a no es válida.", variant: "destructive"});
         return;
     }
-    // No validation for editableChildRelationship as it's now a default
 
     setIsSavingActiveChild(true);
     
@@ -293,7 +300,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
       id: activeChildData.id.startsWith('new-child-') ? `fm-child-${Date.now()}` : activeChildData.id,
       name: editableChildName.trim(),
       photoUrl: editableChildPhotoUrl.trim() || null,
-      relationship: editableChildRelationship, // This will be the default "Hijo/a"
+      relationship: editableChildRelationship, 
     };
 
     const currentFamilyMembers = figure.familyMembers || [];
@@ -304,7 +311,22 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
       updatedFamilyMembers = [...currentFamilyMembers];
       updatedFamilyMembers[existingMemberIndex] = finalChildData;
     } else {
-      updatedFamilyMembers = [...currentFamilyMembers, finalChildData];
+      // Ensure we are not adding a duplicate if the placeholder ID was different
+      // This logic might need refinement if multiple children can be "new" simultaneously
+      const trulyExistingIndexByNameAndRel = currentFamilyMembers.findIndex(
+        fm => fm.name === finalChildData.name && fm.relationship === finalChildData.relationship && !fm.id.startsWith('new-')
+      );
+      if (trulyExistingIndexByNameAndRel > -1 && activeChildData.id.startsWith('new-child-')) {
+        // This logic is tricky - if we are "creating" a new child but one with same name/rel exists,
+        // we should probably prompt user or update existing. For now, let's assume new ID means new entry if no exact ID match.
+        // console.warn("Potential duplicate child by name/relationship, but creating with new ID:", finalChildData);
+        updatedFamilyMembers = [...currentFamilyMembers, finalChildData];
+      } else if (existingMemberIndex === -1) { // No ID match, so it's new or was new
+         updatedFamilyMembers = [...currentFamilyMembers, finalChildData];
+      } else { // This case should not be hit if logic above is correct
+         updatedFamilyMembers = [...currentFamilyMembers];
+         updatedFamilyMembers[existingMemberIndex] = finalChildData;
+      }
     }
     
     try {
@@ -362,7 +384,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
           {/* Partner Node */}
           {partnerData && (
             <>
-              {!isEditingPartner && <div className="hidden sm:block absolute top-1/2 left-1/2 h-0.5 w-8 md:w-12 bg-foreground/30" style={{ transform: 'translate(calc(var(--card-width, 256px)/2 - var(--gap-width, 64px)/2 + 1rem), -50%)', zIndex: -1 }} aria-hidden="true"></div>}
+              {!isEditingPartner && !isEditingCentralNode && <div className="hidden sm:block absolute top-1/2 left-1/2 h-0.5 w-8 md:w-12 bg-foreground/30" style={{ transform: 'translate(calc(var(--card-width, 256px)/2 - var(--gap-width, 64px)/2 + 1rem), -50%)', zIndex: -1, '--card-width': '256px', '--gap-width': '64px'} as React.CSSProperties} aria-hidden="true"></div>}
               <div className="relative" style={{ margin: '40px 0' }}>
                 <Card className="w-60 md:w-64 shadow-xl border-2 border-pink-500/30 relative overflow-visible bg-card">
                   <CardHeader className="p-0">
@@ -407,7 +429,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
         {/* Child Node (Interactive Slot) */}
         {activeChildData && (
             <>
-            {!isEditingActiveChild && <div className="w-0.5 h-8 md:h-12 bg-foreground/30 mx-auto" aria-hidden="true"></div>}
+            {!isEditingActiveChild && !isEditingCentralNode && <div className="w-0.5 h-8 md:h-12 bg-foreground/30 mx-auto" aria-hidden="true"></div>}
             <div className="relative" style={{ margin: '20px 0' }}>
                 <Card className="w-60 md:w-64 shadow-xl border-2 border-green-500/30 relative overflow-visible bg-card">
                 <CardHeader className="p-0">
@@ -420,7 +442,6 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
                 <CardContent className="p-3 space-y-2 text-sm">
                     {isEditingActiveChild ? (
                     <div className="space-y-3">
-                        {/* Tipo de Relación for Child removed */}
                         <div><Label htmlFor="childName" className="text-xs text-muted-foreground block mb-1">Nombre del Hijo/a:</Label><Input id="childName" type="text" value={editableChildName} onChange={(e) => setEditableChildName(e.target.value)} className="text-xs h-8" placeholder="Nombre" disabled={isSavingActiveChild} /></div>
                         <div><Label htmlFor="childImageUrl" className="text-xs text-muted-foreground block mb-1">Url de la imagen: <span className="italic">(visible al editar)</span></Label><Input id="childImageUrl" type="url" value={editableChildPhotoUrl} onChange={(e) => setEditableChildPhotoUrl(e.target.value)} className="text-xs h-8" placeholder="https://..." disabled={isSavingActiveChild} /></div>
                         <div className="flex justify-between gap-2 mt-2"><Button variant="outline" size="sm" className="flex-1 py-1 h-auto text-xs" onClick={handleCancelActiveChildEdit} disabled={isSavingActiveChild}><X className="mr-1.5 h-3.5 w-3.5" /> Cancelar</Button><Button size="sm" className="flex-1 py-1 h-auto text-xs" onClick={handleSaveActiveChild} disabled={isSavingActiveChild}>{isSavingActiveChild ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}Guardar</Button></div>
@@ -428,7 +449,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
                     ) : (
                     <>
                         <h3 className="text-md font-semibold text-center text-green-500 truncate" title={activeChildData.name || "Nombre Hijo/a"}>{activeChildData.name || "Nombre Hijo/a"}</h3>
-                        <p className="text-xs text-muted-foreground text-center">{activeChildData.relationship}</p> {/* Still displays the default relationship */}
+                        <p className="text-xs text-muted-foreground text-center">{activeChildData.relationship}</p>
                         <Button variant="outline" size="sm" className="w-full mt-1 py-1 h-auto text-xs border-green-500/40 text-green-500/70 hover:bg-green-500/10 hover:text-green-500" onClick={handleEditActiveChild}><Edit3 className="mr-1.5 h-3.5 w-3.5" />EDITAR</Button>
                     </>
                     )}
@@ -446,5 +467,4 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
     </div>
   );
 };
-
     
