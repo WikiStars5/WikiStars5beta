@@ -24,6 +24,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
+import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
@@ -100,6 +101,10 @@ export default function FigurePage() {
   const [isSubmittingImage, setIsSubmittingImage] = useState(false);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [isLoadingGalleryImages, setIsLoadingGalleryImages] = useState(true);
+
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
 
   const allowedImageDomains = useMemo(() => {
     return [
@@ -530,6 +535,11 @@ export default function FigurePage() {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleOpenImageViewer = (index: number) => {
+    setSelectedImageIndex(index);
+    setIsViewerOpen(true);
+  };
+
 
   if (!id && figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="ml-2">Cargando ID...</p></div>;
   if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
@@ -671,17 +681,16 @@ export default function FigurePage() {
                     <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando galería...</p></div>
                   ) : galleryImages.length > 0 ? (
                     <div className="columns-1 xs:columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-3">
-                      {galleryImages.map((img) => (
-                        <a 
-                          key={img.id} 
-                          href={img.imageUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="group mb-3 block break-inside-avoid relative overflow-hidden rounded-md shadow-md hover:shadow-xl transition-shadow"
+                      {galleryImages.map((img, index) => (
+                        <button
+                          key={img.id}
+                          onClick={() => handleOpenImageViewer(index)}
+                          className="group mb-3 block break-inside-avoid relative overflow-hidden rounded-md shadow-md hover:shadow-xl transition-shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                          aria-label={`Ver imagen ${index + 1} de ${figure.name}`}
                         >
                           <Image 
                             src={img.imageUrl} 
-                            alt={`Imagen de galería para ${figure.name} - ${img.id}`} 
+                            alt={`Imagen de galería para ${figure.name} - ${index + 1}`} 
                             width={0}
                             height={0}
                             sizes="(max-width: 639px) 100vw, (max-width: 767px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, 20vw"
@@ -692,7 +701,7 @@ export default function FigurePage() {
                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                               <ImageIconLucide className="h-10 w-10 text-white/80" />
                             </div>
-                        </a>
+                        </button>
                       ))}
                     </div>
                   ) : (
@@ -798,7 +807,15 @@ export default function FigurePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {isViewerOpen && galleryImages.length > 0 && (
+        <ImageGalleryViewer
+          images={galleryImages}
+          initialIndex={selectedImageIndex}
+          isOpen={isViewerOpen}
+          onClose={() => setIsViewerOpen(false)}
+        />
+      )}
     </div>
   );
 }
-
