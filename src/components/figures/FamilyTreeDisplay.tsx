@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { 
   ImageOff, PlusCircle, Edit3, Save, X, Loader2, Users2, Heart, UserPlus, Trash2,
-  ChevronDown, ChevronUp, ChevronLeft, ChevronRight
+  ChevronDown, ChevronUp
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,15 +34,15 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
   const { toast } = useToast();
   const router = useRouter();
 
-  // Central Node (Main Figure)
   const [isEditingCentralNode, setIsEditingCentralNode] = useState(false);
   const [editableCentralPhotoUrl, setEditableCentralPhotoUrl] = useState(figure.photoUrl || '');
   const [isSavingCentralNode, setIsSavingCentralNode] = useState(false);
 
-  // Section Visibility States
+  const [showGrandparentsSection, setShowGrandparentsSection] = useState(false);
   const [showParentsSection, setShowParentsSection] = useState(false);
-  const [showPartnerSection, setShowPartnerSection] = useState(false);
+  const [showPartnerSection, setShowPartnerSection] = useState(true); // Default to true
   const [showChildrenSection, setShowChildrenSection] = useState(false);
+  const [showGrandchildrenSection, setShowGrandchildrenSection] = useState(false);
 
   // Partner States
   const [partnerData, setPartnerData] = useState<FamilyMember | null>(null);
@@ -52,7 +52,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
   const [editablePartnerRelationship, setEditablePartnerRelationship] = useState(PARTNER_RELATIONSHIP_TYPES[0].value);
   const [isSavingPartner, setIsSavingPartner] = useState(false);
 
-  // Child States
+  // Child States (for active editing/adding)
   const [activeChildData, setActiveChildData] = useState<FamilyMember | null>(null);
   const [isEditingActiveChild, setIsEditingActiveChild] = useState(false);
   const [editableChildName, setEditableChildName] = useState('');
@@ -73,16 +73,51 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
   const [editableMotherPhotoUrl, setEditableMotherPhotoUrl] = useState('');
   const [isSavingMother, setIsSavingMother] = useState(false);
 
+  // Grandparent States
+  const [paternalGrandfatherData, setPaternalGrandfatherData] = useState<FamilyMember | null>(null);
+  const [isEditingPaternalGrandfather, setIsEditingPaternalGrandfather] = useState(false);
+  const [editablePaternalGrandfatherName, setEditablePaternalGrandfatherName] = useState('');
+  const [editablePaternalGrandfatherPhotoUrl, setEditablePaternalGrandfatherPhotoUrl] = useState('');
+  const [isSavingPaternalGrandfather, setIsSavingPaternalGrandfather] = useState(false);
+
+  const [paternalGrandmotherData, setPaternalGrandmotherData] = useState<FamilyMember | null>(null);
+  const [isEditingPaternalGrandmother, setIsEditingPaternalGrandmother] = useState(false);
+  const [editablePaternalGrandmotherName, setEditablePaternalGrandmotherName] = useState('');
+  const [editablePaternalGrandmotherPhotoUrl, setEditablePaternalGrandmotherPhotoUrl] = useState('');
+  const [isSavingPaternalGrandmother, setIsSavingPaternalGrandmother] = useState(false);
+  
+  const [maternalGrandfatherData, setMaternalGrandfatherData] = useState<FamilyMember | null>(null);
+  const [isEditingMaternalGrandfather, setIsEditingMaternalGrandfather] = useState(false);
+  const [editableMaternalGrandfatherName, setEditableMaternalGrandfatherName] = useState('');
+  const [editableMaternalGrandfatherPhotoUrl, setEditableMaternalGrandfatherPhotoUrl] = useState('');
+  const [isSavingMaternalGrandfather, setIsSavingMaternalGrandfather] = useState(false);
+
+  const [maternalGrandmotherData, setMaternalGrandmotherData] = useState<FamilyMember | null>(null);
+  const [isEditingMaternalGrandmother, setIsEditingMaternalGrandmother] = useState(false);
+  const [editableMaternalGrandmotherName, setEditableMaternalGrandmotherName] = useState('');
+  const [editableMaternalGrandmotherPhotoUrl, setEditableMaternalGrandmotherPhotoUrl] = useState('');
+  const [isSavingMaternalGrandmother, setIsSavingMaternalGrandmother] = useState(false);
+
+  // Grandchild States
+  const [activeGrandchildData, setActiveGrandchildData] = useState<FamilyMember | null>(null);
+  const [isEditingActiveGrandchild, setIsEditingActiveGrandchild] = useState(false);
+  const [editableGrandchildName, setEditableGrandchildName] = useState('');
+  const [editableGrandchildPhotoUrl, setEditableGrandchildPhotoUrl] = useState('');
+  const [isSavingActiveGrandchild, setIsSavingActiveGrandchild] = useState(false);
+
+
   useEffect(() => {
     const family = figure.familyMembers || [];
     const firstPartner = family.find(fm => PARTNER_RELATIONSHIP_TYPES.some(rt => rt.value.toLowerCase() === fm.relationship.toLowerCase()));
     setPartnerData(firstPartner || null);
 
-    const firstFather = family.find(fm => fm.relationship.toLowerCase() === "padre");
-    setFatherData(firstFather || null);
+    setFatherData(family.find(fm => fm.relationship === "Padre") || null);
+    setMotherData(family.find(fm => fm.relationship === "Madre") || null);
 
-    const firstMother = family.find(fm => fm.relationship.toLowerCase() === "madre");
-    setMotherData(firstMother || null);
+    setPaternalGrandfatherData(family.find(fm => fm.relationship === "Abuelo Paterno") || null);
+    setPaternalGrandmotherData(family.find(fm => fm.relationship === "Abuela Paterna") || null);
+    setMaternalGrandfatherData(family.find(fm => fm.relationship === "Abuelo Materno") || null);
+    setMaternalGrandmotherData(family.find(fm => fm.relationship === "Abuela Materna") || null);
     
     // Reset edit states when figure changes
     setIsEditingCentralNode(false);
@@ -90,7 +125,13 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
     setIsEditingActiveChild(false);
     setIsEditingFather(false);
     setIsEditingMother(false);
+    setIsEditingPaternalGrandfather(false);
+    setIsEditingPaternalGrandmother(false);
+    setIsEditingMaternalGrandfather(false);
+    setIsEditingMaternalGrandmother(false);
+    setIsEditingActiveGrandchild(false);
     setActiveChildData(null);
+    setActiveGrandchildData(null);
 
   }, [figure.familyMembers, figure.id, figure.photoUrl]);
   
@@ -100,7 +141,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
 
 
   const isValidHttpUrl = (string: string) => {
-    if (!string) return true;
+    if (!string) return true; // Allow empty URL
     let url;
     try {
       url = new URL(string);
@@ -138,8 +179,6 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
     );
   };
 
-
-  // --- CENTRAL NODE ---
   const handleEditCentralNode = () => {
     setEditableCentralPhotoUrl(figure.photoUrl || '');
     setIsEditingCentralNode(true);
@@ -167,13 +206,14 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
   };
   const displayCentralImageUrl = isEditingCentralNode ? editableCentralPhotoUrl : (figure.photoUrl || '');
 
-  // --- GENERIC FAMILY MEMBER LOGIC ---
   const saveFamilyMember = async (
     memberDataToSave: FamilyMember,
     setSavingState: (isSaving: boolean) => void,
-    setLocalMemberState: (member: FamilyMember | null) => void,
+    setLocalMemberState: (member: FamilyMember | null) => void | ((prev: FamilyMember[] | null) => FamilyMember[] | null), // For lists
     setEditingState: (isEditing: boolean) => void,
-    relationshipTypeLabel: string // e.g. "Pareja", "Padre", "Madre", "Hijo/a"
+    relationshipTypeLabel: string,
+    isListMember: boolean = false,
+    listSetter?: React.Dispatch<React.SetStateAction<FamilyMember | null>> // For active list item being edited
   ) => {
     if (!figure) return;
     if (!memberDataToSave.name.trim()) {
@@ -206,10 +246,13 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
 
     try {
       await updateFigureInFirestore({ id: figure.id, familyMembers: updatedFamilyMembers });
-      setLocalMemberState(finalMemberData);
+      if (!isListMember) {
+        (setLocalMemberState as (member: FamilyMember | null) => void)(finalMemberData);
+      } else if (listSetter) {
+         listSetter(null); // Clear active editing item
+      }
       toast({ title: `${relationshipTypeLabel} Guardado/a`, description: `Datos de ${finalMemberData.name} actualizados.` });
       setEditingState(false);
-      if (relationshipTypeLabel === "Hijo/a") setActiveChildData(null);
       router.refresh();
     } catch (error: any) {
       toast({ title: `Error al Guardar ${relationshipTypeLabel}`, description: `No se pudo guardar: ${error.message}`, variant: "destructive" });
@@ -219,74 +262,45 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
   };
 
   const deleteFamilyMember = async (
-    memberId: string,
-    setLocalMemberState: (member: FamilyMember | null) => void,
+    memberIdToDelete: string,
+    setLocalMemberState: (member: FamilyMember | null) => void | ((prev: FamilyMember[] | null) => FamilyMember[] | null), // For lists
     setEditingState: (isEditing: boolean) => void,
     relationshipTypeLabel: string,
-    isChildSlot?: boolean
+    isListMember: boolean = false,
+    listSetter?: React.Dispatch<React.SetStateAction<FamilyMember | null>> // For active list item being edited
   ) => {
-    if (!figure || !memberId) return;
-    if (!window.confirm(`¿Estás seguro de que quieres eliminar a este ${relationshipTypeLabel.toLowerCase()} (${memberId.startsWith('new-') ? 'aún no guardado' : 'guardado'})?`)) return;
+    if (!figure || !memberIdToDelete) return;
+    if (!window.confirm(`¿Estás seguro de que quieres eliminar a este ${relationshipTypeLabel.toLowerCase()} (${memberIdToDelete.startsWith('new-') ? 'aún no guardado' : 'guardado'})?`)) return;
     
-    if (memberId.startsWith('new-')) { // If it's a new, unsaved member
-      setLocalMemberState(null);
+    if (memberIdToDelete.startsWith('new-')) { 
+      if (!isListMember) {
+        (setLocalMemberState as (member: FamilyMember | null) => void)(null);
+      } else if (listSetter) {
+         listSetter(null);
+      }
       setEditingState(false);
-      if (isChildSlot) setActiveChildData(null);
       toast({ title: `${relationshipTypeLabel} Eliminado/a`, description: "El familiar no guardado ha sido descartado." });
       return;
     }
 
     const currentFamilyMembers = figure.familyMembers || [];
-    const updatedFamilyMembers = currentFamilyMembers.filter(fm => fm.id !== memberId);
+    const updatedFamilyMembers = currentFamilyMembers.filter(fm => fm.id !== memberIdToDelete);
 
     try {
       await updateFigureInFirestore({ id: figure.id, familyMembers: updatedFamilyMembers });
       toast({ title: `${relationshipTypeLabel} Eliminado/a`, description: "El familiar ha sido eliminado." });
-      setLocalMemberState(null);
+      if (!isListMember) {
+        (setLocalMemberState as (member: FamilyMember | null) => void)(null);
+      } else if (listSetter && (activeChildData?.id === memberIdToDelete || activeGrandchildData?.id === memberIdToDelete)) {
+          listSetter(null);
+      }
       setEditingState(false);
-      if (isChildSlot && activeChildData?.id === memberId) setActiveChildData(null);
       router.refresh();
     } catch (error: any) {
       toast({ title: `Error al Eliminar ${relationshipTypeLabel}`, description: `No se pudo eliminar: ${error.message}`, variant: "destructive" });
     }
   };
 
-  // --- PARENTS LOGIC ---
-  const handleAddOrEditFather = () => {
-    if (!fatherData) {
-      const newFather: FamilyMember = { id: `new-father-${Date.now()}`, name: "", relationship: "Padre", photoUrl: "", figureId: null };
-      setFatherData(newFather);
-      setEditableFatherName("");
-      setEditableFatherPhotoUrl("");
-    } else {
-      setEditableFatherName(fatherData.name);
-      setEditableFatherPhotoUrl(fatherData.photoUrl || "");
-    }
-    setIsEditingFather(true);
-    setShowParentsSection(true);
-  };
-  const handleSaveFather = () => { if (fatherData) saveFamilyMember({ ...fatherData, name: editableFatherName, photoUrl: editableFatherPhotoUrl, relationship: "Padre" }, setIsSavingFather, setFatherData, setIsEditingFather, "Padre"); };
-  const handleCancelFatherEdit = () => { if (fatherData && fatherData.id.startsWith('new-')) setFatherData(null); setIsEditingFather(false); };
-  const handleDeleteFather = () => { if (fatherData) deleteFamilyMember(fatherData.id, setFatherData, setIsEditingFather, "Padre"); };
-  const fatherImageToDisplay = isEditingFather ? editableFatherPhotoUrl : (fatherData?.photoUrl || "");
-
-  const handleAddOrEditMother = () => {
-    if (!motherData) {
-      const newMother: FamilyMember = { id: `new-mother-${Date.now()}`, name: "", relationship: "Madre", photoUrl: "", figureId: null };
-      setMotherData(newMother);
-      setEditableMotherName("");
-      setEditableMotherPhotoUrl("");
-    } else {
-      setEditableMotherName(motherData.name);
-      setEditableMotherPhotoUrl(motherData.photoUrl || "");
-    }
-    setIsEditingMother(true);
-    setShowParentsSection(true);
-  };
-  const handleSaveMother = () => { if (motherData) saveFamilyMember({ ...motherData, name: editableMotherName, photoUrl: editableMotherPhotoUrl, relationship: "Madre" }, setIsSavingMother, setMotherData, setIsEditingMother, "Madre"); };
-  const handleCancelMotherEdit = () => { if (motherData && motherData.id.startsWith('new-')) setMotherData(null); setIsEditingMother(false); };
-  const handleDeleteMother = () => { if (motherData) deleteFamilyMember(motherData.id, setMotherData, setIsEditingMother, "Madre"); };
-  const motherImageToDisplay = isEditingMother ? editableMotherPhotoUrl : (motherData?.photoUrl || "");
 
   // --- PARTNER LOGIC ---
   const handleAddOrEditPartner = () => {
@@ -315,7 +329,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
     setActiveChildData(newChild);
     setEditableChildName(newChild.name);
     setEditableChildPhotoUrl("");
-    setEditableChildRelationship("Hijo/a");
+    setEditableChildRelationship("Hijo/a"); // Default relationship
     setIsEditingActiveChild(true);
     setShowChildrenSection(true);
   };
@@ -327,11 +341,119 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
     setIsEditingActiveChild(true);
     setShowChildrenSection(true);
   };
-  const handleSaveActiveChild = () => { if (activeChildData) saveFamilyMember({ ...activeChildData, name: editableChildName, photoUrl: editableChildPhotoUrl, relationship: editableChildRelationship }, setIsSavingActiveChild, (savedChild) => { setActiveChildData(null); }, setIsEditingActiveChild, "Hijo/a");};
+  const handleSaveActiveChild = () => { if (activeChildData) saveFamilyMember({ ...activeChildData, name: editableChildName, photoUrl: editableChildPhotoUrl, relationship: editableChildRelationship }, setIsSavingActiveChild, (savedChild) => {}, setIsEditingActiveChild, "Hijo/a", true, setActiveChildData);};
   const handleCancelActiveChildEdit = () => { if (activeChildData && activeChildData.id.startsWith('new-')) setActiveChildData(null); setIsEditingActiveChild(false); };
-  const handleDeleteActiveChild = () => { if (activeChildData) deleteFamilyMember(activeChildData.id, setActiveChildData, setIsEditingActiveChild, "Hijo/a", true); };
-  const activeChildImageToDisplay = isEditingActiveChild ? (editableChildPhotoUrl || "") : (activeChildData?.photoUrl || "");
+  const handleDeleteActiveChild = (childId: string) => { deleteFamilyMember(childId, (deletedChild) => {}, setIsEditingActiveChild, "Hijo/a", true, setActiveChildData); };
   const allChildren = figure.familyMembers?.filter(fm => fm.relationship.toLowerCase() === "hijo/a") || [];
+
+  // --- PARENTS LOGIC ---
+  const handleAddOrEditFather = () => { if (!fatherData) { const newFather: FamilyMember = { id: `new-father-${Date.now()}`, name: "", relationship: "Padre", photoUrl: "", figureId: null }; setFatherData(newFather); setEditableFatherName(""); setEditableFatherPhotoUrl(""); } else { setEditableFatherName(fatherData.name); setEditableFatherPhotoUrl(fatherData.photoUrl || ""); } setIsEditingFather(true); setShowParentsSection(true); };
+  const handleSaveFather = () => { if (fatherData) saveFamilyMember({ ...fatherData, name: editableFatherName, photoUrl: editableFatherPhotoUrl, relationship: "Padre" }, setIsSavingFather, setFatherData, setIsEditingFather, "Padre"); };
+  const handleCancelFatherEdit = () => { if (fatherData && fatherData.id.startsWith('new-')) setFatherData(null); setIsEditingFather(false); };
+  const handleDeleteFather = () => { if (fatherData) deleteFamilyMember(fatherData.id, setFatherData, setIsEditingFather, "Padre"); };
+  const fatherImageToDisplay = isEditingFather ? editableFatherPhotoUrl : (fatherData?.photoUrl || "");
+
+  const handleAddOrEditMother = () => { if (!motherData) { const newMother: FamilyMember = { id: `new-mother-${Date.now()}`, name: "", relationship: "Madre", photoUrl: "", figureId: null }; setMotherData(newMother); setEditableMotherName(""); setEditableMotherPhotoUrl(""); } else { setEditableMotherName(motherData.name); setEditableMotherPhotoUrl(motherData.photoUrl || ""); } setIsEditingMother(true); setShowParentsSection(true); };
+  const handleSaveMother = () => { if (motherData) saveFamilyMember({ ...motherData, name: editableMotherName, photoUrl: editableMotherPhotoUrl, relationship: "Madre" }, setIsSavingMother, setMotherData, setIsEditingMother, "Madre"); };
+  const handleCancelMotherEdit = () => { if (motherData && motherData.id.startsWith('new-')) setMotherData(null); setIsEditingMother(false); };
+  const handleDeleteMother = () => { if (motherData) deleteFamilyMember(motherData.id, setMotherData, setIsEditingMother, "Madre"); };
+  const motherImageToDisplay = isEditingMother ? editableMotherPhotoUrl : (motherData?.photoUrl || "");
+
+  // GRANDPARENTS LOGIC
+  const createGrandparentHandler = (
+    gpType: 'PaternalGrandfather' | 'PaternalGrandmother' | 'MaternalGrandfather' | 'MaternalGrandmother',
+    relationshipLabel: "Abuelo Paterno" | "Abuela Paterna" | "Abuelo Materno" | "Abuela Materna"
+  ) => {
+    const setData = eval(`set${gpType}Data`);
+    const setEditName = eval(`setEditable${gpType}Name`);
+    const setEditPhoto = eval(`setEditable${gpType}PhotoUrl`);
+    const setIsEditing = eval(`setIsEditing${gpType}`);
+    
+    return () => {
+      const currentData = eval(`${gpType.charAt(0).toLowerCase() + gpType.slice(1)}Data`);
+      if (!currentData) {
+        const newData: FamilyMember = { id: `new-${gpType.toLowerCase()}-${Date.now()}`, name: "", relationship: relationshipLabel, photoUrl: "", figureId: null };
+        setData(newData);
+        setEditName("");
+        setEditPhoto("");
+      } else {
+        setEditName(currentData.name);
+        setEditPhoto(currentData.photoUrl || "");
+      }
+      setIsEditing(true);
+      setShowGrandparentsSection(true);
+    };
+  };
+
+  const saveGrandparentHandler = (
+    gpType: 'PaternalGrandfather' | 'PaternalGrandmother' | 'MaternalGrandfather' | 'MaternalGrandmother',
+    relationshipLabel: "Abuelo Paterno" | "Abuela Paterna" | "Abuelo Materno" | "Abuela Materna"
+  ) => {
+    const data = eval(`${gpType.charAt(0).toLowerCase() + gpType.slice(1)}Data`);
+    const name = eval(`editable${gpType}Name`);
+    const photo = eval(`editable${gpType}PhotoUrl`);
+    const setSaving = eval(`setIsSaving${gpType}`);
+    const setData = eval(`set${gpType}Data`);
+    const setIsEditing = eval(`setIsEditing${gpType}`);
+
+    return () => {
+      if (data) saveFamilyMember({ ...data, name, photoUrl: photo, relationship: relationshipLabel }, setSaving, setData, setIsEditing, relationshipLabel.split(' ')[0]);
+    };
+  };
+  
+  const cancelGrandparentEditHandler = (
+    gpType: 'PaternalGrandfather' | 'PaternalGrandmother' | 'MaternalGrandfather' | 'MaternalGrandmother'
+  ) => {
+    const data = eval(`${gpType.charAt(0).toLowerCase() + gpType.slice(1)}Data`);
+    const setData = eval(`set${gpType}Data`);
+    const setIsEditing = eval(`setIsEditing${gpType}`);
+    return () => { if (data && data.id.startsWith('new-')) setData(null); setIsEditing(false); };
+  };
+
+  const deleteGrandparentHandler = (
+    gpType: 'PaternalGrandfather' | 'PaternalGrandmother' | 'MaternalGrandfather' | 'MaternalGrandmother',
+    relationshipLabel: "Abuelo Paterno" | "Abuela Paterna" | "Abuelo Materno" | "Abuela Materna"
+  ) => {
+    const data = eval(`${gpType.charAt(0).toLowerCase() + gpType.slice(1)}Data`);
+    const setData = eval(`set${gpType}Data`);
+    const setIsEditing = eval(`setIsEditing${gpType}`);
+    return () => { if (data) deleteFamilyMember(data.id, setData, setIsEditing, relationshipLabel.split(' ')[0]); };
+  };
+
+  const handleAddOrEditPaternalGrandfather = createGrandparentHandler('PaternalGrandfather', "Abuelo Paterno");
+  const handleSavePaternalGrandfather = saveGrandparentHandler('PaternalGrandfather', "Abuelo Paterno");
+  const handleAddOrEditPaternalGrandmother = createGrandparentHandler('PaternalGrandmother', "Abuela Paterna");
+  const handleSavePaternalGrandmother = saveGrandparentHandler('PaternalGrandmother', "Abuela Paterna");
+  const handleAddOrEditMaternalGrandfather = createGrandparentHandler('MaternalGrandfather', "Abuelo Materno");
+  const handleSaveMaternalGrandfather = saveGrandparentHandler('MaternalGrandfather', "Abuelo Materno");
+  const handleAddOrEditMaternalGrandmother = createGrandparentHandler('MaternalGrandmother', "Abuela Materna");
+  const handleSaveMaternalGrandmother = saveGrandparentHandler('MaternalGrandmother', "Abuela Materna");
+
+  const paternalGrandfatherImageToDisplay = isEditingPaternalGrandfather ? editablePaternalGrandfatherPhotoUrl : (paternalGrandfatherData?.photoUrl || "");
+  const paternalGrandmotherImageToDisplay = isEditingPaternalGrandmother ? editablePaternalGrandmotherPhotoUrl : (paternalGrandmotherData?.photoUrl || "");
+  const maternalGrandfatherImageToDisplay = isEditingMaternalGrandfather ? editableMaternalGrandfatherPhotoUrl : (maternalGrandfatherData?.photoUrl || "");
+  const maternalGrandmotherImageToDisplay = isEditingMaternalGrandmother ? editableMaternalGrandmotherPhotoUrl : (maternalGrandmotherData?.photoUrl || "");
+
+  // GRANDCHILDREN LOGIC
+  const handleAddNewGrandchild = () => {
+    const newGrandchild: FamilyMember = { id: `new-grandchild-${Date.now()}`, name: "", relationship: "Nieto/a", photoUrl: "", figureId: null };
+    setActiveGrandchildData(newGrandchild);
+    setEditableGrandchildName(newGrandchild.name);
+    setEditableGrandchildPhotoUrl("");
+    setIsEditingActiveGrandchild(true);
+    setShowGrandchildrenSection(true);
+  };
+  const handleEditExistingGrandchild = (grandchildToEdit: FamilyMember) => {
+    setActiveGrandchildData(grandchildToEdit);
+    setEditableGrandchildName(grandchildToEdit.name);
+    setEditableGrandchildPhotoUrl(grandchildToEdit.photoUrl || '');
+    setIsEditingActiveGrandchild(true);
+    setShowGrandchildrenSection(true);
+  };
+  const handleSaveActiveGrandchild = () => { if (activeGrandchildData) saveFamilyMember({ ...activeGrandchildData, name: editableGrandchildName, photoUrl: editableGrandchildPhotoUrl, relationship: "Nieto/a" }, setIsSavingActiveGrandchild, () => {}, setIsEditingActiveGrandchild, "Nieto/a", true, setActiveGrandchildData);};
+  const handleCancelActiveGrandchildEdit = () => { if (activeGrandchildData && activeGrandchildData.id.startsWith('new-')) setActiveGrandchildData(null); setIsEditingActiveGrandchild(false); };
+  const handleDeleteActiveGrandchild = (grandchildId: string) => { deleteFamilyMember(grandchildId, () => {}, setIsEditingActiveGrandchild, "Nieto/a", true, setActiveGrandchildData); };
+  const allGrandchildren = figure.familyMembers?.filter(fm => fm.relationship.toLowerCase() === "nieto/a") || [];
 
 
   const renderFamilyMemberCard = (
@@ -342,9 +464,9 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
     setEditableName: (name: string) => void,
     editablePhotoUrl: string,
     setEditablePhotoUrl: (url: string) => void,
-    editableRelationshipValue: string | null,
-    setEditableRelationshipValue: ((rel: string) => void) | null,
-    relationshipTypesList: { value: string, label: string }[] | null,
+    editableRelationshipValue: string | null, // For partner relationship type
+    setEditableRelationshipValue: ((rel: string) => void) | null, // For partner relationship type
+    relationshipTypesList: { value: string, label: string }[] | null, // For partner relationship type
     defaultRelationshipLabel: string,
     onSaveHandler: () => Promise<void>,
     onCancelHandler: () => void,
@@ -375,7 +497,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
         <CardContent className="p-2.5 space-y-1.5 text-xs flex-grow flex flex-col justify-between">
           {isEditing ? (
             <div className="space-y-2 flex-grow">
-              {editableRelationshipValue !== null && setEditableRelationshipValue && relationshipTypesList && (
+              {editableRelationshipValue !== null && setEditableRelationshipValue && relationshipTypesList && ( // Only for partner
                 <div><Label htmlFor={`relationship-${member?.id || 'new'}`} className="text-2xs text-muted-foreground block mb-0.5">Relación:</Label>
                   <Select value={editableRelationshipValue} onValueChange={setEditableRelationshipValue} disabled={isSavingState}>
                     <SelectTrigger id={`relationship-${member?.id || 'new'}`} className="text-2xs h-7"><SelectValue placeholder="Relación" /></SelectTrigger>
@@ -399,7 +521,7 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
                   <Button variant="outline" size="sm" className="flex-1 py-1 h-auto text-2xs" onClick={onCancelHandler} disabled={isSavingState}><X className="mr-1 h-3 w-3" /> Cancelar</Button>
                   <Button size="sm" className="flex-1 py-1 h-auto text-2xs" onClick={onSaveHandler} disabled={isSavingState}>{isSavingState ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Save className="mr-1 h-3 w-3" />}Guardar</Button>
                 </div>
-                {onDeleteHandler && (member || isMainNode) && (!member?.id?.startsWith('new-') || isMainNode) && ( // Show delete only for existing saved members or when editing a new one
+                {onDeleteHandler && (member || isMainNode) && ( 
                   <Button variant="destructive" size="sm" className="w-full mt-1 py-1 h-auto text-2xs" onClick={onDeleteHandler} disabled={isSavingState}><Trash2 className="mr-1 h-3 w-3" />Eliminar</Button>
                 )}
               </>
@@ -414,36 +536,44 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
   
   return (
     <div className="flex flex-col items-center p-2 md:p-4 min-h-[calc(100vh-250px)] w-full space-y-4 overflow-auto">
-      {/* Central Node Controls */}
       <div className="mb-4 p-3 border rounded-lg bg-card/50 shadow w-full max-w-md sticky top-0 z-10">
          <h3 className="text-sm font-medium text-center mb-2 text-primary">Panel de Control del Árbol</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+          <ToggleSectionButton onClick={() => setShowGrandparentsSection(!showGrandparentsSection)} label={showGrandparentsSection ? "Ocultar Abuelos" : "Mostrar Abuelos"} isExpanded={showGrandparentsSection} icon={Users2} />
           <ToggleSectionButton onClick={() => setShowParentsSection(!showParentsSection)} label={showParentsSection ? "Ocultar Padres" : "Mostrar Padres"} isExpanded={showParentsSection} icon={Users2} />
           <ToggleSectionButton onClick={() => setShowPartnerSection(!showPartnerSection)} label={showPartnerSection ? "Ocultar Pareja" : "Mostrar Pareja"} isExpanded={showPartnerSection} icon={Heart} />
           <ToggleSectionButton onClick={() => setShowChildrenSection(!showChildrenSection)} label={showChildrenSection ? "Ocultar Hijos" : "Mostrar Hijos"} isExpanded={showChildrenSection} icon={UserPlus} />
+          <ToggleSectionButton onClick={() => setShowGrandchildrenSection(!showGrandchildrenSection)} label={showGrandchildrenSection ? "Ocultar Nietos" : "Mostrar Nietos"} isExpanded={showGrandchildrenSection} icon={UserPlus} />
         </div>
       </div>
+
+      {/* Grandparents Section */}
+      {showGrandparentsSection && (
+        <div className="w-full flex flex-col items-center space-y-3 mb-6">
+          <h4 className="text-xs font-semibold uppercase text-muted-foreground">Abuelos</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+            {isEditingPaternalGrandfather || paternalGrandfatherData ? renderFamilyMemberCard(paternalGrandfatherData, isEditingPaternalGrandfather, setIsEditingPaternalGrandfather, editablePaternalGrandfatherName, setEditablePaternalGrandfatherName, paternalGrandfatherImageToDisplay, setEditablePaternalGrandfatherPhotoUrl, null, null, null, "Abuelo Paterno", handleSavePaternalGrandfather, cancelGrandparentEditHandler('PaternalGrandfather'), deleteGrandparentHandler('PaternalGrandfather', "Abuelo Paterno"), isSavingPaternalGrandfather, "border-sky-500/30", "text-sky-500") : (isEditingCentralNode && <AddNodeButton onClick={handleAddOrEditPaternalGrandfather} label="Añadir Abuelo P." icon={PlusCircle} title="Añadir Abuelo Paterno"/>) }
+            {isEditingPaternalGrandmother || paternalGrandmotherData ? renderFamilyMemberCard(paternalGrandmotherData, isEditingPaternalGrandmother, setIsEditingPaternalGrandmother, editablePaternalGrandmotherName, setEditablePaternalGrandmotherName, paternalGrandmotherImageToDisplay, setEditablePaternalGrandmotherPhotoUrl, null, null, null, "Abuela Paterna", handleSavePaternalGrandmother, cancelGrandparentEditHandler('PaternalGrandmother'), deleteGrandparentHandler('PaternalGrandmother', "Abuela Paterna"), isSavingPaternalGrandmother, "border-fuchsia-500/30", "text-fuchsia-500") : (isEditingCentralNode && <AddNodeButton onClick={handleAddOrEditPaternalGrandmother} label="Añadir Abuela P." icon={PlusCircle} title="Añadir Abuela Paterna"/>) }
+            {isEditingMaternalGrandfather || maternalGrandfatherData ? renderFamilyMemberCard(maternalGrandfatherData, isEditingMaternalGrandfather, setIsEditingMaternalGrandfather, editableMaternalGrandfatherName, setEditableMaternalGrandfatherName, maternalGrandfatherImageToDisplay, setEditableMaternalGrandfatherPhotoUrl, null, null, null, "Abuelo Materno", handleSaveMaternalGrandfather, cancelGrandparentEditHandler('MaternalGrandfather'), deleteGrandparentHandler('MaternalGrandfather', "Abuelo Materno"), isSavingMaternalGrandfather, "border-teal-500/30", "text-teal-500") : (isEditingCentralNode && <AddNodeButton onClick={handleAddOrEditMaternalGrandfather} label="Añadir Abuelo M." icon={PlusCircle} title="Añadir Abuelo Materno"/>) }
+            {isEditingMaternalGrandmother || maternalGrandmotherData ? renderFamilyMemberCard(maternalGrandmotherData, isEditingMaternalGrandmother, setIsEditingMaternalGrandmother, editableMaternalGrandmotherName, setEditableMaternalGrandmotherName, maternalGrandmotherImageToDisplay, setEditableMaternalGrandmotherPhotoUrl, null, null, null, "Abuela Materna", handleSaveMaternalGrandmother, cancelGrandparentEditHandler('MaternalGrandmother'), deleteGrandparentHandler('MaternalGrandmother', "Abuela Materna"), isSavingMaternalGrandmother, "border-rose-500/30", "text-rose-500") : (isEditingCentralNode && <AddNodeButton onClick={handleAddOrEditMaternalGrandmother} label="Añadir Abuela M." icon={PlusCircle} title="Añadir Abuela Materna"/>) }
+          </div>
+        </div>
+      )}
+
 
       {/* Parents Section */}
       {showParentsSection && (
         <div className="w-full flex flex-col items-center space-y-3 mb-6">
           <h4 className="text-xs font-semibold uppercase text-muted-foreground">Padres</h4>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-6">
-            {isEditingFather || fatherData ? renderFamilyMemberCard(fatherData, isEditingFather, setIsEditingFather, editableFatherName, setEditableFatherName, fatherImageToDisplay, setEditableFatherPhotoUrl, null, null, null, "Padre", handleSaveFather, handleCancelFatherEdit, handleDeleteFather, isSavingFather, "border-blue-500/30", "text-blue-500") : null }
-            {isEditingMother || motherData ? renderFamilyMemberCard(motherData, isEditingMother, setIsEditingMother, editableMotherName, setEditableMotherName, motherImageToDisplay, setEditableMotherPhotoUrl, null, null, null, "Madre", handleSaveMother, handleCancelMotherEdit, handleDeleteMother, isSavingMother, "border-purple-500/30", "text-purple-500") : null}
+            {isEditingFather || fatherData ? renderFamilyMemberCard(fatherData, isEditingFather, setIsEditingFather, editableFatherName, setEditableFatherName, fatherImageToDisplay, setEditableFatherPhotoUrl, null, null, null, "Padre", handleSaveFather, handleCancelFatherEdit, handleDeleteFather, isSavingFather, "border-blue-500/30", "text-blue-500") : (isEditingCentralNode && <AddNodeButton onClick={handleAddOrEditFather} label="Añadir Padre" icon={PlusCircle} title="Añadir Padre"/>) }
+            {isEditingMother || motherData ? renderFamilyMemberCard(motherData, isEditingMother, setIsEditingMother, editableMotherName, setEditableMotherName, motherImageToDisplay, setEditableMotherPhotoUrl, null, null, null, "Madre", handleSaveMother, handleCancelMotherEdit, handleDeleteMother, isSavingMother, "border-purple-500/30", "text-purple-500") : (isEditingCentralNode && <AddNodeButton onClick={handleAddOrEditMother} label="Añadir Madre" icon={PlusCircle} title="Añadir Madre"/>) }
           </div>
-           {(isEditingCentralNode && (!fatherData || !motherData)) && (
-            <div className="flex gap-2 mt-2">
-              {!fatherData && <AddNodeButton onClick={handleAddOrEditFather} label="Añadir Padre" icon={PlusCircle} title="Añadir Padre" />}
-              {!motherData && <AddNodeButton onClick={handleAddOrEditMother} label="Añadir Madre" icon={PlusCircle} title="Añadir Madre" />}
-            </div>
-          )}
         </div>
       )}
 
       {/* Main Figure and Partner Section */}
       <div className="w-full flex flex-col items-center space-y-3 md:space-y-0 md:flex-row md:items-start md:justify-center md:gap-6 mb-6 relative">
-        {/* Main Figure Node */}
         <div className="relative">
           {renderFamilyMemberCard(
             { id: figure.id, name: figure.name, photoUrl: displayCentralImageUrl, relationship: "Principal" },
@@ -458,14 +588,13 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
           )}
         </div>
 
-        {/* Partner Node */}
         {showPartnerSection && (isEditingPartner || partnerData) && (
           <div className="relative mt-3 md:mt-0">
             {renderFamilyMemberCard(partnerData, isEditingPartner, setIsEditingPartner, editablePartnerName, setEditablePartnerName, partnerImageToDisplay, setEditablePartnerPhotoUrl, editablePartnerRelationship, setEditablePartnerRelationship, PARTNER_RELATIONSHIP_TYPES, partnerData?.relationship || "Pareja", handleSavePartner, handleCancelPartnerEdit, handleDeletePartner, isSavingPartner, "border-pink-500/30", "text-pink-500")}
           </div>
         )}
          {(isEditingCentralNode && !partnerData && showPartnerSection )&& (
-             <AddNodeButton onClick={handleAddOrEditPartner} label="Añadir Pareja" icon={Heart} className="md:absolute md:top-1/2 md:-right-28 md:-translate-y-1/2 mt-2 md:mt-0" title="Añadir Pareja"/>
+             <AddNodeButton onClick={handleAddOrEditPartner} label="Añadir Pareja" icon={Heart} title="Añadir Pareja"/>
         )}
       </div>
       
@@ -478,16 +607,18 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
               <div key={child.id} className="relative">
                 {renderFamilyMemberCard(child, activeChildData?.id === child.id && isEditingActiveChild, 
                   (editing) => { if(editing) handleEditExistingChild(child); else { setActiveChildData(null); setIsEditingActiveChild(false);} }, 
-                  editableChildName, setEditableChildName, editableChildPhotoUrl, setEditableChildPhotoUrl, 
+                  editableChildName, setEditableChildName, 
+                  isEditingActiveChild && activeChildData?.id === child.id ? editableChildPhotoUrl : child.photoUrl || "", // Show current photoUrl or editable one
+                  setEditableChildPhotoUrl, 
                   null, null, null, 
                   child.relationship, handleSaveActiveChild, handleCancelActiveChildEdit, 
-                  () => deleteFamilyMember(child.id, (deletedChild) => { setActiveChildData(null); }, setIsEditingActiveChild, "Hijo/a"), 
+                  () => handleDeleteActiveChild(child.id), 
                   isSavingActiveChild && activeChildData?.id === child.id, "border-green-500/30", "text-green-500"
                 )}
               </div>
             ))}
             {isEditingActiveChild && activeChildData && activeChildData.id.startsWith('new-child-') && (
-               renderFamilyMemberCard(activeChildData, true, setIsEditingActiveChild, editableChildName, setEditableChildName, activeChildImageToDisplay, setEditableChildPhotoUrl, null, null, null, "Hijo/a", handleSaveActiveChild, handleCancelActiveChildEdit, handleDeleteActiveChild, isSavingActiveChild, "border-green-500/30", "text-green-500")
+               renderFamilyMemberCard(activeChildData, true, setIsEditingActiveChild, editableChildName, setEditableChildName, editableChildPhotoUrl, setEditableChildPhotoUrl, null, null, null, "Hijo/a", handleSaveActiveChild, handleCancelActiveChildEdit, () => handleDeleteActiveChild(activeChildData.id), isSavingActiveChild, "border-green-500/30", "text-green-500")
             )}
           </div>
           {isEditingCentralNode && (
@@ -496,8 +627,37 @@ export const FamilyTreeDisplay: React.FC<FamilyTreeDisplayProps> = ({ figure, al
         </div>
       )}
 
+       {/* Grandchildren Section */}
+      {showGrandchildrenSection && (
+        <div className="w-full flex flex-col items-center space-y-3 mt-6">
+          <h4 className="text-xs font-semibold uppercase text-muted-foreground">Nietos/as</h4>
+          <div className="flex flex-wrap items-start justify-center gap-3 md:gap-6">
+            {allGrandchildren.map(grandchild => (
+              <div key={grandchild.id} className="relative">
+                {renderFamilyMemberCard(grandchild, activeGrandchildData?.id === grandchild.id && isEditingActiveGrandchild, 
+                  (editing) => { if(editing) handleEditExistingGrandchild(grandchild); else { setActiveGrandchildData(null); setIsEditingActiveGrandchild(false);} }, 
+                  editableGrandchildName, setEditableGrandchildName, 
+                  isEditingActiveGrandchild && activeGrandchildData?.id === grandchild.id ? editableGrandchildPhotoUrl : grandchild.photoUrl || "",
+                  setEditableGrandchildPhotoUrl, 
+                  null, null, null, 
+                  grandchild.relationship, handleSaveActiveGrandchild, handleCancelActiveGrandchildEdit, 
+                  () => handleDeleteActiveGrandchild(grandchild.id), 
+                  isSavingActiveGrandchild && activeGrandchildData?.id === grandchild.id, "border-orange-500/30", "text-orange-500"
+                )}
+              </div>
+            ))}
+            {isEditingActiveGrandchild && activeGrandchildData && activeGrandchildData.id.startsWith('new-grandchild-') && (
+               renderFamilyMemberCard(activeGrandchildData, true, setIsEditingActiveGrandchild, editableGrandchildName, setEditableGrandchildName, editableGrandchildPhotoUrl, setEditableGrandchildPhotoUrl, null, null, null, "Nieto/a", handleSaveActiveGrandchild, handleCancelActiveGrandchildEdit, () => handleDeleteActiveGrandchild(activeGrandchildData.id), isSavingActiveGrandchild, "border-orange-500/30", "text-orange-500")
+            )}
+          </div>
+          {isEditingCentralNode && (
+            <AddNodeButton onClick={handleAddNewGrandchild} label="Añadir Nieto/a" icon={UserPlus} className="mt-2" title="Añadir Nuevo Nieto/a"/>
+          )}
+        </div>
+      )}
+
       <CardDescription className="text-center mt-6 text-xs px-2 max-w-sm mx-auto">
-        Usa los botones de mostrar/ocultar para navegar el árbol. Para añadir o editar familiares directos, primero haz clic en "EDITAR" en la tarjeta principal de {figure.name}.
+        Usa los botones de mostrar/ocultar para navegar el árbol. Para añadir o editar familiares, primero haz clic en "EDITAR" en la tarjeta principal de {figure.name}, luego usa los botones "+" para añadir nuevos miembros o "EDITAR" en las tarjetas existentes.
       </CardDescription>
     </div>
   );
