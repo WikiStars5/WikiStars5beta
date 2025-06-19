@@ -25,7 +25,7 @@ import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
-import { FamilyTreeDisplay } from "@/components/figures/FamilyTreeDisplay"; // Importar el nuevo componente
+import { FamilyTreeDisplay } from "@/components/figures/FamilyTreeDisplay";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
@@ -152,9 +152,9 @@ export default function FigurePage() {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
       setCurrentUser(user);
       const isNonAnonymous = !!user && !user.isAnonymous;
-      setCanEditFigure(isNonAnonymous); // Only non-anonymous can edit main figure details
-      setCanCommentOrRate(!!user); // Anonymous can also comment/rate
-      setCanSubmitGalleryImage(isNonAnonymous); // Only non-anonymous can submit gallery images
+      setCanEditFigure(isNonAnonymous); 
+      setCanCommentOrRate(!!user); 
+      setCanSubmitGalleryImage(isNonAnonymous); 
 
       if (user && figure?.id) { 
         const userStarRatingDocRef = doc(db, 'userStarRatings', `${user.uid}_${figure.id}`);
@@ -612,12 +612,12 @@ export default function FigurePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-2 space-y-8">
           <Tabs defaultValue="personal-info" className="w-full">
-            <TabsList className="grid w-full grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-6"> 
-              <TabsTrigger value="personal-info" className="text-base py-2.5 flex items-center gap-2"><Info className="h-5 w-5" />Información</TabsTrigger>
-              <TabsTrigger value="attitude-poll" className="text-base py-2.5 flex items-center gap-2"><MessageSquare className="h-5 w-5" />Actitud</TabsTrigger>
-              <TabsTrigger value="perception-emotions" className="text-base py-2.5 flex items-center gap-2"><SmilePlus className="h-5 w-5" />Emoción</TabsTrigger>
-              <TabsTrigger value="image-gallery" className="text-base py-2.5 flex items-center gap-2"><Images className="h-5 w-5" />Galería</TabsTrigger>
-              <TabsTrigger value="family-tree" className="text-base py-2.5 flex items-center gap-2"><FamilyIcon className="h-5 w-5" />Familia</TabsTrigger>
+            <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-muted"> 
+              <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
+              <TabsTrigger value="attitude-poll" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><MessageSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
+              <TabsTrigger value="perception-emotions" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
+              <TabsTrigger value="image-gallery" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Images className="h-4 sm:h-5 w-4 sm:w-5" />Galería</TabsTrigger>
+              <TabsTrigger value="family-tree" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><FamilyIcon className="h-4 sm:h-5 w-4 sm:w-5" />Familia</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal-info">
@@ -882,3 +882,5 @@ export default function FigurePage() {
     </div>
   );
 }
+
+    
