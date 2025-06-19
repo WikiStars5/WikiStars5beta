@@ -33,6 +33,7 @@ export { app };
 // === REGLAS DE SEGURIDAD DE FIRESTORE (APLICAR EN CONSOLA FIREBASE) ===
 // Ve a Firebase Console -> Firestore Database -> Rules.
 // REEMPLAZA TUS REGLAS EXISTENTES CON ESTAS PARA DEPURACIÓN.
+// ASEGÚRATE DE QUE LA ANIDACIÓN DE 'galleryImages' SEA CORRECTA.
 /*
 rules_version = '2';
 
@@ -41,30 +42,30 @@ service cloud.firestore {
 
     // --- REGLAS PARA LA COLECCIÓN figures Y SU SUBCOLECCIÓN galleryImages ---
     match /figures/{figureId} {
-      // Regla permisiva para el documento de la figura.
-      // Para desarrollo, puedes usar `allow read, write: if true;`
-      // Para un poco más de seguridad mínima:
-      allow read: if true;
-      allow write: if request.auth != null; // Permite escritura si el usuario está autenticado (anónimo o no)
+      // Regla permisiva para el documento principal de la figura
+      // Esto permite leer/escribir en campos como 'name', 'description', 'attitudeCounts', etc.
+      allow read: if true; // O para más granularidad: allow get: if true; allow list: if true;
+      allow write: if request.auth != null; // Permite escritura al documento principal si el usuario está autenticado
+                                         // O 'if true;' para MÁXIMA permisividad en desarrollo
 
-      // REGLAS ESPECÍFICAS PARA LA SUBCOLECCIÓN galleryImages (ANIDADA)
-      // Esta es la parte CRÍTICA para la funcionalidad de la galería.
+      // REGLAS ESPECÍFICAS PARA LA SUBCOLECCIÓN galleryImages (ANIDADA DENTRO DE figures/{figureId})
+      // Estas reglas se aplican a la ruta: /figures/{ALGUN_FIGURE_ID}/galleryImages/{ALGUN_GALLERYIMAGE_ID}
       match /galleryImages/{galleryImageId} {
         allow read: if true; // Todos pueden leer las imágenes de la galería
 
-        // REGLA DE CREACIÓN SIMPLIFICADA PARA DEPURACIÓN:
-        // Solo permite crear si el usuario está autenticado y NO es anónimo.
-        // Esto coincide con la lógica de tu aplicación que verifica `!currentUser.isAnonymous`.
-        allow create: if request.auth != null && 
+        // REGLA DE CREACIÓN SÚPER PERMISIVA PARA DEPURAR:
+        // Permite crear si el usuario está autenticado (NO anónimo).
+        // Esta es la regla más simple que debería funcionar con tu lógica de app actual.
+        allow create: if request.auth != null &&
                          !request.auth.token.firebase.sign_in_provider.matches('anonymous');
 
-        // Si la regla de arriba AÚN FALLA, como ÚLTIMO RECURSO para depurar,
-        // puedes probar temporalmente (¡Y RECUERDA CAMBIARLO DESPUÉS!):
-        // allow create: if true; 
-
-        // Para update y delete, puedes añadir reglas más específicas después:
-        // allow update: if request.auth != null && request.auth.uid == resource.data.userId;
-        // allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+        // SI LA REGLA ANTERIOR AÚN FALLA (asegúrate de que la anidación es correcta):
+        // Como ÚLTIMO RECURSO para depuración extrema, podrías probar TEMPORALMENTE:
+        // allow create: if true;
+        // ¡PERO RECUERDA CAMBIARLO! Esto permitiría a CUALQUIERA (incluso sin autenticar) escribir.
+        // No olvides también las reglas para update y delete si las necesitas:
+        // allow update: if request.auth != null && request.auth.uid == resource.data.userId; // Ejemplo
+        // allow delete: if request.auth != null && request.auth.uid == resource.data.userId; // Ejemplo
       }
     }
     // --- Fin de reglas para figures y galleryImages ---
@@ -101,11 +102,6 @@ service firebase.storage {
       allow read: if true;
     }
     // Puedes añadir reglas más específicas para otras carpetas si es necesario.
-    // Por ejemplo, para fotos de perfil de usuario:
-    // match /userProfilePictures/{userId}/{allPaths=**} {
-    //   allow read: if true;
-    //   allow write: if request.auth != null && request.auth.uid == userId;
-    // }
   }
 }
 */
