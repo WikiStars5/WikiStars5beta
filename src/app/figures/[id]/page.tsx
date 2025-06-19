@@ -83,7 +83,10 @@ export default function FigurePage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [canUserInteract, setCanUserInteract] = useState(false);
+  
+  const [canEditFigure, setCanEditFigure] = useState(false);
+  const [canCommentOrRate, setCanCommentOrRate] = useState(false);
+
 
   const [newComment, setNewComment] = useState("");
   const [newCommentStars, setNewCommentStars] = useState<StarValue | null>(null);
@@ -127,8 +130,10 @@ export default function FigurePage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
       setCurrentUser(user);
-      setCanUserInteract(!!user && !user.isAnonymous);
-      if (user && !user.isAnonymous && figure?.id) {
+      setCanEditFigure(!!user && !user.isAnonymous);
+      setCanCommentOrRate(!!user); // Anonymous users can comment and rate
+
+      if (user && figure?.id) { // Both anonymous and non-anonymous can have star ratings
         const userStarRatingDocRef = doc(db, 'userStarRatings', `${user.uid}_${figure.id}`);
         getDoc(userStarRatingDocRef).then(docSnap => {
           if (docSnap.exists()) {
@@ -137,12 +142,12 @@ export default function FigurePage() {
             setNewCommentStars(null);
           }
         });
-      } else if (!user || user.isAnonymous) {
+      } else {
         setNewCommentStars(null);
       }
     });
     return () => unsubscribe();
-  }, [figure?.id, currentUser]); 
+  }, [figure?.id]); 
 
   const resetEditFields = useCallback((currentFigure: Figure | null) => {
     if (currentFigure) {
@@ -182,8 +187,8 @@ export default function FigurePage() {
       setFigure(fetchedFigure || null); 
       if (fetchedFigure) {
         resetEditFields(fetchedFigure);
-        if (currentUser && !currentUser.isAnonymous) {
-          const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${id}`);
+        if (currentUser && fetchedFigure.id) { // currentUser could be anonymous
+          const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${fetchedFigure.id}`);
           const docSnap = await getDoc(userStarRatingDocRef);
           if (docSnap.exists()) {
             setNewCommentStars(docSnap.data().starValue as StarValue);
@@ -260,7 +265,7 @@ export default function FigurePage() {
   }, [figure, isEditing, resetEditFields]);
 
   const handleEditToggle = () => {
-    if (!canUserInteract) {
+    if (!canEditFigure) {
       toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para editar.", variant: "default" });
       return;
     }
@@ -271,8 +276,8 @@ export default function FigurePage() {
   };
 
   const handleSave = async () => {
-    if (!figure || !canUserInteract) {
-      toast({ title: "Error", description: "Debes iniciar sesión con una cuenta para guardar.", variant: "destructive" });
+    if (!figure || !canEditFigure) {
+      toast({ title: "Error", description: "Debes iniciar sesión con una cuenta completa para guardar.", variant: "destructive" });
       return;
     }
     setIsSaving(true);
@@ -315,8 +320,8 @@ export default function FigurePage() {
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canUserInteract || !currentUser || !figure) {
-        toast({ title: "Error", description: "Debes iniciar sesión para opinar.", variant: "destructive" });
+    if (!canCommentOrRate || !currentUser || !figure) { // currentUser might be anonymous
+        toast({ title: "Error", description: "Debes estar conectado (incluso como invitado) para opinar.", variant: "destructive" });
         return;
     }
     if (newCommentStars === null && newComment.trim() === "") {
@@ -370,7 +375,7 @@ export default function FigurePage() {
       const commentData = {
         figureId: figure.id,
         userId: currentUser.uid,
-        username: currentUser.displayName || "Usuario Anónimo",
+        username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
         userPhotoURL: currentUser.photoURL || null,
         text: newComment.trim(),
         starRatingGiven: currentStarsForComment, 
@@ -517,11 +522,11 @@ export default function FigurePage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div className="flex items-center"><Info className="mr-2 h-6 w-6 text-primary" /><CardTitle className="text-2xl font-headline">Sobre {figure.name}</CardTitle></div>
-                  {canUserInteract && !isEditing && (<Button variant="outline" size="sm" onClick={handleEditToggle}><Edit className="mr-2 h-4 w-4" />Editar</Button>)}
+                  {canEditFigure && !isEditing && (<Button variant="outline" size="sm" onClick={handleEditToggle}><Edit className="mr-2 h-4 w-4" />Editar</Button>)}
                 </CardHeader>
                 <CardContent className="space-y-6 pt-4">
-                  {!canUserInteract && !isEditing && (<Alert variant="default" className="mb-4"><LogIn className="h-4 w-4" /><AlertTitle>Edición Restringida</AlertTitle><AlertDescription><Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión</Link> para editar.</AlertDescription></Alert>)}
-                  {isEditing && canUserInteract ? (
+                  {!canEditFigure && !isEditing && (<Alert variant="default" className="mb-4"><LogIn className="h-4 w-4" /><AlertTitle>Edición Restringida</AlertTitle><AlertDescription><Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión con una cuenta</Link> para editar.</AlertDescription></Alert>)}
+                  {isEditing && canEditFigure ? (
                     <div className="space-y-4">
                       {renderEditInput("photoUrl", "URL de Imagen", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://...")}
                       <p className="text-xs text-muted-foreground mt-1">Dominios permitidos: Wikimedia, Wikia, Firebase Storage, Placehold.co, Pinterest.</p>
@@ -551,7 +556,7 @@ export default function FigurePage() {
                     </div>
                   ) : (
                     <>
-                      <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{figure.description || (canUserInteract ? "No hay descripción. ¡Añade una!" : "No hay descripción. Inicia sesión para añadir una.")}</p>
+                      <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{figure.description || (canEditFigure ? "No hay descripción. ¡Añade una!" : "No hay descripción. Inicia sesión con una cuenta para añadir una.")}</p>
                       <div className="space-y-3 pt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                         {renderDetailItem(UserCircle, "Nombre Completo", figure.name)}
                         {renderDetailItem(NotepadText, "Alias", figure.alias)}
@@ -587,7 +592,7 @@ export default function FigurePage() {
               <CardTitle className="flex items-center text-2xl font-headline"><MessagesSquare className="mr-3 h-7 w-7 text-primary" />Califica y Comenta sobre {figure.name}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {canUserInteract && figure && currentUser !== undefined ? (
+              {canCommentOrRate && figure && currentUser !== undefined ? (
                 <form onSubmit={handleSubmitComment} className="space-y-6">
                   <div className="mb-4">
                     <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">Tu calificación (haz clic para seleccionar):</Label>
@@ -608,7 +613,9 @@ export default function FigurePage() {
                     <Button type="submit" disabled={isSubmittingComment || (!newComment.trim() && !newCommentStars)}>{isSubmittingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{isSubmittingComment ? "Enviando..." : "Enviar Opinión"}</Button>
                   </div>
                 </form>
-              ) : ( <Alert><LogIn className="h-4 w-4" /><AlertTitle>Participación Restringida</AlertTitle><AlertDescription><Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión</Link> para calificar y comentar.</AlertDescription></Alert>)}
+              ) : ( <Alert><LogIn className="h-4 w-4" /><AlertTitle>Participación</AlertTitle><AlertDescription>
+                {currentUser === null ? "Cargando estado de usuario..." : "Para calificar o comentar, considera <Link href=\"/login\" class=\"font-semibold text-primary hover:underline\">iniciar sesión</Link> o <Link href=\"/signup\" class=\"font-semibold text-primary hover:underline\">registrarte</Link> para una experiencia completa, aunque puedes continuar como invitado."}
+                </AlertDescription></Alert>)}
               
               <div className="border-t pt-6 mt-6 space-y-6">
                 <h4 className="text-lg font-medium">Comentarios Recientes ({commentsList.length})</h4>
@@ -622,7 +629,7 @@ export default function FigurePage() {
                             <p className="text-sm font-semibold text-foreground">{comment.username}</p>
                             <div className="flex items-center space-x-2">
                                 <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
-                                {currentUser && (currentUser.uid === comment.userId || currentUser.uid === ADMIN_UID) && (
+                                {currentUser && (currentUser.uid === comment.userId || (canEditFigure && currentUser.uid === ADMIN_UID) ) && (
                                 <Button 
                                     variant="ghost" 
                                     size="icon" 
@@ -647,7 +654,9 @@ export default function FigurePage() {
         </div> 
 
         <aside className="lg:col-span-1 space-y-6">
-          <Alert><Terminal className="h-4 w-4" /><AlertTitle className="font-headline">Cómo Funciona</AlertTitle><AlertDescription className="text-sm">Edita información, expresa actitud/emoción y califica si tienes cuenta.</AlertDescription></Alert>
+          <Alert><Terminal className="h-4 w-4" /><AlertTitle className="font-headline">Cómo Funciona</AlertTitle><AlertDescription className="text-sm">
+            Puedes votar y comentar como invitado. Para editar información o tener un perfil guardado, <Link href="/signup" className="font-semibold text-primary hover:underline">crea una cuenta</Link>.
+            </AlertDescription></Alert>
           {relatedFigures.length > 0 && (<div><h3 className="text-xl font-headline mb-4">También te podría interesar</h3><div className="space-y-4">{relatedFigures.map(relatedFig => (<FigureListItem key={relatedFig.id} figure={relatedFig} />))}</div></div>)}
         </aside>
       </div>

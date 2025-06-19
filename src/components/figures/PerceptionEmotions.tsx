@@ -21,15 +21,15 @@ interface PerceptionEmotionsProps {
   currentUser: User | null; 
 }
 
-const FIREBASE_PROJECT_ID = "wikistars5-2yctr"; // Extracted for clarity
+const FIREBASE_PROJECT_ID = "wikistars5-2yctr"; 
 
 const EMOTIONS_CONFIG: { key: EmotionKey; label: string; imageUrl: string; colorClass: string }[] = [
-  { key: 'alegria', label: 'Alegría', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414`, colorClass: 'hover:bg-yellow-400/20 border-yellow-500 text-yellow-600' },
-  { key: 'envidia', label: 'Envidia', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fenvidia.png?alt=media&token=940aa136-2235-48db-84d6-2c461730fde5`, colorClass: 'hover:bg-green-400/20 border-green-500 text-green-600' },
-  { key: 'tristeza', label: 'Tristeza', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ftrizteza.png?alt=media&token=0115df4b-55e4-4281-9cff-a8a560c38903`, colorClass: 'hover:bg-blue-400/20 border-blue-500 text-blue-600' },
-  { key: 'miedo', label: 'Miedo', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985`, colorClass: 'hover:bg-purple-400/20 border-purple-500 text-purple-600' },
-  { key: 'desagrado', label: 'Desagrado', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb`, colorClass: 'hover:bg-lime-400/20 border-lime-500 text-lime-600' },
-  { key: 'furia', label: 'Furia', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f`, colorClass: 'hover:bg-red-400/20 border-red-500 text-red-600' },
+  { key: 'alegria', label: 'Alegría', imageUrl: `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.appspot.com/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414`, colorClass: 'hover:bg-yellow-400/20 border-yellow-500 text-yellow-600' },
+  { key: 'envidia', label: 'Envidia', imageUrl: `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.appspot.com/o/emociones%2Fenvidia.png?alt=media&token=940aa136-2235-48db-84d6-2c461730fde5`, colorClass: 'hover:bg-green-400/20 border-green-500 text-green-600' },
+  { key: 'tristeza', label: 'Tristeza', imageUrl: `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.appspot.com/o/emociones%2Ftrizteza.png?alt=media&token=0115df4b-55e4-4281-9cff-a8a560c38903`, colorClass: 'hover:bg-blue-400/20 border-blue-500 text-blue-600' },
+  { key: 'miedo', label: 'Miedo', imageUrl: `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.appspot.com/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985`, colorClass: 'hover:bg-purple-400/20 border-purple-500 text-purple-600' },
+  { key: 'desagrado', label: 'Desagrado', imageUrl: `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.appspot.com/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb`, colorClass: 'hover:bg-lime-400/20 border-lime-500 text-lime-600' },
+  { key: 'furia', label: 'Furia', imageUrl: `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_PROJECT_ID}.appspot.com/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f`, colorClass: 'hover:bg-red-400/20 border-red-500 text-red-600' },
 ];
 
 const defaultPerceptionCountsData: Record<EmotionKey, number> = {
@@ -44,7 +44,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
   const [isComponentLoading, setIsComponentLoading] = useState(true);
   const { toast } = useToast();
 
-  const canUserVote = !!currentUser && !currentUser.isAnonymous;
+  const canUserVote = !!currentUser; // Allow anonymous users to vote
 
   useEffect(() => {
     if (!figureId) return;
@@ -68,7 +68,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     });
 
     let unsubscribeUserPerception: Unsubscribe | undefined;
-    if (currentUser && figureId) { 
+    if (currentUser && figureId) { // currentUser can be anonymous
       const userPerceptionDocId = `${currentUser.uid}_${figureId}`;
       const userPerceptionDocRef = doc(db, "userPerceptions", userPerceptionDocId);
       
@@ -98,11 +98,12 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
 
   const handleEmotionClick = async (emotionKey: EmotionKey) => {
-    if (!canUserVote) {
-      toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para votar.", variant: "default" });
+    if (!canUserVote) { // This check might be redundant if anonymous sign-in is robust
+      toast({ title: "Acción Requerida", description: "Inicia sesión o continúa como invitado para votar.", variant: "default" });
       return;
     }
     if (isLoadingEmotionAction) return;
+    if (!currentUser) return;
 
     setIsLoadingEmotionAction(emotionKey);
 
@@ -122,7 +123,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         const currentCounts = (figureDoc.data()?.perceptionCounts || { ...defaultPerceptionCountsData }) as Record<EmotionKey, number>;
         const newCounts = { ...currentCounts };
 
-        if (selectedEmotion && selectedEmotion !== emotionKey) {
+        if (selectedEmotion && selectedEmotion !== emotionKey) { // User is changing their vote
           newCounts[selectedEmotion] = Math.max(0, (newCounts[selectedEmotion] || 0) - 1);
         }
         if (selectedEmotion === emotionKey) { // User is deselecting the current emotion
@@ -178,21 +179,25 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
       <CardHeader>
         <CardTitle>Percepción Emocional de {figureName}</CardTitle>
         <CardDescription>
-          {canUserVote 
+          {currentUser // If a user (anonymous or not) exists
             ? "¿Qué emoción te provoca esta figura? Haz clic en una emoción para votar."
-            : "Debes iniciar sesión con una cuenta para poder expresar tu emoción."}
+            : "Inicia sesión o continúa como invitado para poder expresar tu emoción."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {!canUserVote && (
+        {!currentUser && ( // Show if no user at all (e.g., anonymous sign-in failed)
           <Alert variant="default" className="mb-4">
             <LogIn className="h-4 w-4" />
-            <AlertTitle>Votación Restringida</AlertTitle>
+            <AlertTitle>Votación</AlertTitle>
             <AlertDescription>
-              <Link href="/login" className="font-semibold text-primary hover:underline">
-                Inicia sesión con una cuenta
+               <Link href="/login" className="font-semibold text-primary hover:underline">
+                Inicia sesión
               </Link>
-              {" "}para votar por la emoción que te provoca esta figura.
+              {" "}o{" "}
+              <Link href="/signup" className="font-semibold text-primary hover:underline">
+                regrístrate
+              </Link>
+              {" "}para votar o continúa como invitado (intentaremos conectarte).
             </AlertDescription>
           </Alert>
         )}
@@ -204,10 +209,10 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
               className={`flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 
                 ${selectedEmotion === key ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 dark:ring-offset-card' : `text-foreground ${colorClass}`}
                 ${isLoadingEmotionAction === key ? 'opacity-50 cursor-not-allowed' : ''}
-                ${!canUserVote ? 'cursor-not-allowed opacity-60' : ''}
+                ${!canUserVote ? 'cursor-not-allowed opacity-60' : ''} 
               `}
               onClick={() => handleEmotionClick(key)}
-              disabled={!canUserVote || !!isLoadingEmotionAction}
+              disabled={!canUserVote || !!isLoadingEmotionAction} // Disabled if no user or loading
               style={{ minHeight: '120px' }}
             >
               <div className="relative w-10 h-10 mb-1" data-ai-hint={`emoji ${label}`}>

@@ -12,8 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User as FirebaseUser, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, Loader2, UserCircle } from 'lucide-react';
+import { User as FirebaseUser, onAuthStateChanged, signOut as firebaseSignOut, signInAnonymously } from 'firebase/auth';
+import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, Loader2, UserCircle, Ghost } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -28,9 +28,21 @@ export function UserNav() {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setIsLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        setIsLoading(false);
+      } else {
+        // No user, try to sign in anonymously
+        try {
+          await signInAnonymously(auth);
+          // onAuthStateChanged will be called again with the anonymous user
+        } catch (error) {
+          console.error("Error signing in anonymously: ", error);
+          setCurrentUser(null); // Explicitly set to null if anonymous sign-in fails
+          setIsLoading(false);
+        }
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -39,7 +51,7 @@ export function UserNav() {
     try {
       await firebaseSignOut(auth);
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
-      router.push('/login');
+      router.push('/login'); // Or home, consider where to redirect
       router.refresh(); 
     } catch (error) {
       console.error("Error logging out: ", error);
@@ -55,7 +67,7 @@ export function UserNav() {
     );
   }
 
-  if (currentUser) {
+  if (currentUser && !currentUser.isAnonymous) {
     const isAdmin = currentUser.uid === ADMIN_UID;
     const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || "Usuario";
     const photoURL = currentUser.photoURL;
@@ -95,7 +107,7 @@ export function UserNav() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Configuración</span>
           </DropdownMenuItem>
-          {isAdmin && !currentUser.isAnonymous && (
+          {isAdmin && (
             <Link href="/admin">
               <DropdownMenuItem>
                 <ShieldCheck className="mr-2 h-4 w-4" />
@@ -113,17 +125,33 @@ export function UserNav() {
     );
   }
 
+  // For anonymous users or no user (fallback if anonymous sign-in fails)
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="h-9 w-9">
-          <UserCircle className="h-6 w-6 text-foreground/70" />
+          {currentUser && currentUser.isAnonymous ? (
+            <Ghost className="h-6 w-6 text-foreground/70" /> 
+          ) : (
+            <UserCircle className="h-6 w-6 text-foreground/70" />
+          )}
           <span className="sr-only">Abrir menú de usuario</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-48" align="end" forceMount>
-        <DropdownMenuLabel>Acceso</DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        {currentUser && currentUser.isAnonymous && (
+          <>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">Modo Invitado</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  Interactúa y luego crea una cuenta.
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <Link href="/login">
           <DropdownMenuItem>
             <LogIn className="mr-2 h-4 w-4" />

@@ -39,7 +39,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   const [isComponentLoading, setIsComponentLoading] = useState(true);
   const { toast } = useToast();
 
-  const canUserVote = !!currentUser && !currentUser.isAnonymous;
+  const canUserVote = !!currentUser; // Allow anonymous users to vote
 
   useEffect(() => {
     if (!figureId) {
@@ -60,7 +60,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         setTotalVotes(0);
         console.warn(`Figure document with ID ${figureId} does not exist.`);
       }
-      // Defer setting isComponentLoading to false until user's attitude is also checked
     }, (error) => {
       console.error("Error fetching figure attitude counts:", error);
       toast({ title: "Error", description: "No se pudieron cargar los conteos de actitudes.", variant: "destructive" });
@@ -70,7 +69,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     });
 
     let unsubscribeUserAttitude: Unsubscribe | undefined;
-    if (currentUser && figureId) {
+    if (currentUser && figureId) { // currentUser can be anonymous
       const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
       const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
       
@@ -100,8 +99,8 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
 
   const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
-    if (!canUserVote) {
-      toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para votar.", variant: "default" });
+    if (!canUserVote) { // This check might be redundant if anonymous sign-in is robust
+      toast({ title: "Acción Requerida", description: "Inicia sesión o continúa como invitado para votar.", variant: "default" });
       return;
     }
     if (isLoadingAttitudeAction) return;
@@ -144,11 +143,11 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           attitude: newAttitudeToSet,
           timestamp: serverTimestamp(),
         });
-        setSelectedAttitude(newAttitudeToSet); // Reinstated direct state update
+        setSelectedAttitude(newAttitudeToSet);
         toast({ title: "Voto Registrado", description: `Tu actitud como "${ATTITUDE_OPTIONS_CONFIG.find(e => e.key === newAttitudeToSet)?.label}" ha sido guardada.` });
       } else { 
         await deleteDoc(userAttitudeDocRef);
-        setSelectedAttitude(null); // Reinstated direct state update
+        setSelectedAttitude(null);
         toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
       }
 
@@ -185,21 +184,25 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       <CardHeader>
         <CardTitle>¿Qué te consideras con respecto a {figureName}?</CardTitle>
         <CardDescription>
-          {canUserVote 
+          {currentUser // If a user (anonymous or not) exists
             ? "Selecciona una opción para compartir tu postura."
-            : "Debes iniciar sesión con una cuenta para poder participar."}
+            : "Inicia sesión o continúa como invitado para poder participar."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {!canUserVote && (
+        {!currentUser && ( // Show if no user at all (e.g., anonymous sign-in failed)
           <Alert variant="default" className="mb-4">
             <LogIn className="h-4 w-4" />
-            <AlertTitle>Participación Restringida</AlertTitle>
+            <AlertTitle>Participación</AlertTitle>
             <AlertDescription>
               <Link href="/login" className="font-semibold text-primary hover:underline">
-                Inicia sesión con una cuenta
+                Inicia sesión
               </Link>
-              {" "}para seleccionar tu actitud.
+              {" "}o{" "}
+              <Link href="/signup" className="font-semibold text-primary hover:underline">
+                regrístrate
+              </Link>
+              {" "}para participar o continúa como invitado (intentaremos conectarte).
             </AlertDescription>
           </Alert>
         )}
@@ -214,7 +217,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                 ${!canUserVote ? 'cursor-not-allowed opacity-60' : ''}
               `}
               onClick={() => handleAttitudeClick(key)}
-              disabled={!canUserVote || !!isLoadingAttitudeAction}
+              disabled={!canUserVote || !!isLoadingAttitudeAction} // Disabled if no user or loading
               style={{ minHeight: '100px' }}
             >
               <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
