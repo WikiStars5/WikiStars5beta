@@ -85,8 +85,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Removed local auth handling (isAuthReady, signInAnonymously). 
-  // Component relies on AdminLayout to ensure admin is authenticated.
 
   useEffect(() => {
     if (initialData) {
@@ -161,14 +159,21 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   };
 
   const uploadFileToFirebaseStorage = async (file: File, figureDocId: string): Promise<string> => {
-    const storageRef = ref(storage, `figures/${figureDocId}/${file.name}`);
+    const storagePath = `figures/${figureDocId}/${file.name}`;
+    console.log(`[uploadFileToFirebaseStorage] Uploading to path: ${storagePath}`);
+    const storageRef = ref(storage, storagePath);
     try {
+      console.log(`[uploadFileToFirebaseStorage] Starting uploadBytes for ${file.name}`);
       const snapshot = await uploadBytes(storageRef, file);
+      console.log(`[uploadFileToFirebaseStorage] uploadBytes successful for ${file.name}. Getting download URL...`);
       const downloadURL = await getDownloadURL(snapshot.ref);
+      console.log(`[uploadFileToFirebaseStorage] Download URL for ${file.name}: ${downloadURL}`);
       return downloadURL;
     } catch (uploadError: any) {
-      console.error(`Storage Upload Error for ${figureDocId}/${file.name}:`, uploadError);
-      throw uploadError; // Re-throw to be caught by handleSubmit
+      console.error(`[uploadFileToFirebaseStorage] Storage Upload Error for ${storagePath}:`, uploadError);
+      if (uploadError.code) console.error(`[uploadFileToFirebaseStorage] Error Code: ${uploadError.code}`);
+      if (uploadError.serverResponse) console.error(`[uploadFileToFirebaseStorage] Server Response: ${uploadError.serverResponse}`);
+      throw uploadError; 
     }
   };
 
@@ -178,30 +183,28 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     setError(null);
     setSuccess(null);
 
-    // AdminLayout ensures user is authenticated.
-    // We assume auth.currentUser is the admin user here.
-
     let figureDocId = initialData?.id || slugify(name.trim(), { lower: true, strict: true });
 
     try {
       if (!name.trim()) {
         throw new Error('El nombre de la figura es obligatorio.');
       }
-      if (!figureDocId) { // Check if slugify resulted in an empty ID
+      if (!figureDocId) { 
          throw new Error('No se pudo generar un ID para la figura a partir del nombre.');
       }
       
       let finalPhotoUrlToSave = photoUrl.trim();
       
       if (selectedFile) {
+        console.log(`[FigureForm handleSubmit] Attempting to upload file: ${selectedFile.name} for figure ID: ${figureDocId}`);
         try {
-          console.log(`Attempting to upload file for figure ID: ${figureDocId}`);
           finalPhotoUrlToSave = await uploadFileToFirebaseStorage(selectedFile, figureDocId);
-          console.log(`File uploaded, URL: ${finalPhotoUrlToSave}`);
+          console.log(`[FigureForm handleSubmit] File uploaded successfully, URL: ${finalPhotoUrlToSave}`);
         } catch (uploadError: any) {
-          setError(`Error al subir la imagen: ${uploadError.message}. Verifica los permisos de Storage y la consola para más detalles.`);
-          setIsLoading(false); // Ensure loading is stopped
-          return;
+          console.error(`[FigureForm handleSubmit] Error during file upload for figure ${figureDocId}:`, uploadError);
+          setError(`Error al subir la imagen: ${uploadError.message}. Revisa las reglas de Storage y la consola del navegador para más detalles.`);
+          setIsLoading(false); 
+          return; 
         }
       } else if (!finalPhotoUrlToSave && initialData?.photoUrl) {
         finalPhotoUrlToSave = initialData.photoUrl;
@@ -220,7 +223,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         setIsLoading(false);
         return;
       }
-
 
       const figureData: Omit<Figure, 'id' | 'createdAt'> & { createdAt?: any; familyMembers?: FamilyMember[] } = { 
         name: name.trim(),
@@ -256,11 +258,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         figureData.createdAt = serverTimestamp();
       }
 
-
       const figureRef = doc(db, 'figures', figureDocId);
-      console.log(`Attempting to setDoc for figure ID: ${figureDocId}`);
+      console.log(`[FigureForm handleSubmit] Attempting to setDoc for figure ID: ${figureDocId}`);
       await setDoc(figureRef, figureData, { merge: true });
-      console.log(`setDoc successful for figure ID: ${figureDocId}`);
+      console.log(`[FigureForm handleSubmit] setDoc successful for figure ID: ${figureDocId}`);
 
       setSuccess(`Figura "${name}" guardada exitosamente.`);
       
@@ -274,7 +275,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       }, 1500);
 
     } catch (err: any) {
-      console.error("ERROR en handleSubmit:", err);
+      console.error("[FigureForm handleSubmit] ERROR en handleSubmit:", err);
       setError(err.message || 'Error al guardar la figura. Revisa la consola del navegador para más detalles.');
     } finally {
       setIsLoading(false);
