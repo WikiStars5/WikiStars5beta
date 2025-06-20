@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData, Timestamp, collection, query, getDocs, orderBy } from 'firebase/firestore';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { COUNTRIES } from '@/config/countries'; // Import COUNTRIES
 
@@ -200,5 +200,34 @@ export async function updateUserProfile(
   } catch (error: any) {
     console.error(`[updateUserProfile] Error updating profile for UID ${uid}:`, error);
     throw new Error(`Failed to update user profile. Firebase error: ${error.message}`);
+  }
+}
+
+
+export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
+  try {
+    const usersCollectionRef = collection(db, 'users');
+    const q = query(usersCollectionRef, orderBy('username', 'asc')); // Order by username
+    const querySnapshot = await getDocs(q);
+
+    const users: UserProfile[] = [];
+    if (querySnapshot.empty) {
+      console.log("No users found in Firestore.");
+    } else {
+      querySnapshot.forEach((docSnap) => {
+        users.push(mapDocToUserProfile(docSnap.id, docSnap.data()));
+      });
+    }
+    return users;
+  } catch (error: any) {
+    console.error("Error fetching all users from Firestore:", error);
+    // Handle specific errors like permission denied or missing index
+    if (String(error.message).toLowerCase().includes("permission")) {
+      console.error("Firestore permission error: Check your security rules for the 'users' collection.");
+    } else if (String(error.message).toLowerCase().includes("index")) {
+      console.error("Firestore index error: Check the browser console for a link to create the required index for ordering by 'username'.");
+    }
+    // Return empty array on error to prevent crashing the page
+    return [];
   }
 }

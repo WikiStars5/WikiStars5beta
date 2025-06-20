@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Users, ListOrdered, PlusCircle, AlertTriangle } from "lucide-react";
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
+import { getAllUsersFromFirestore } from "@/lib/userData"; // Import new function
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export const revalidate = 0; 
@@ -14,20 +15,25 @@ export default async function AdminDashboardPage() {
   let figures = [];
   let totalFigures = 0;
   let fetchError: string | null = null;
+  let users = [];
+  let totalUsers = 0;
 
   try {
-    figures = await getAllFiguresFromFirestore();
+    // Fetch figures and users in parallel
+    [figures, users] = await Promise.all([
+      getAllFiguresFromFirestore(),
+      getAllUsersFromFirestore()
+    ]);
     totalFigures = figures.length;
+    totalUsers = users.length;
   } catch (error: any) {
     console.error("Error fetching admin dashboard data:", error);
     if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
-      fetchError = `No se pudieron obtener los datos del panel debido a permisos de Firestore faltantes o insuficientes. Por favor, revisa tus Reglas de Seguridad de Firebase en la consola de Firebase. Asegúrate de que el usuario administrador (UID: ${ADMIN_UID_FOR_MESSAGE}) tenga acceso de lectura a las colecciones 'figures'.`;
+      fetchError = `No se pudieron obtener los datos del panel debido a permisos de Firestore faltantes o insuficientes. Por favor, revisa tus Reglas de Seguridad de Firebase en la consola de Firebase. Asegúrate de que el usuario administrador (UID: ${ADMIN_UID_FOR_MESSAGE}) tenga acceso de lectura a las colecciones 'figures' y 'users'.`;
     } else {
       fetchError = `Ocurrió un error inesperado al obtener los datos del panel: ${error.message || 'Error desconocido'}`;
     }
   }
-
-  const totalUsers = 150; 
 
   return (
     <div className="space-y-8">
@@ -41,7 +47,7 @@ export default async function AdminDashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Panel de Administración</CardTitle>
-          <CardDescription>Resumen del estado de la aplicación WikiStars5. Datos de figuras desde Firestore.</CardDescription>
+          <CardDescription>Resumen del estado de la aplicación WikiStars5. Datos de figuras y usuarios desde Firestore.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-2 gap-6">
@@ -57,11 +63,11 @@ export default async function AdminDashboardPage() {
             </Card>
             <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total de Usuarios (Simulado)</CardTitle>
+                <CardTitle className="text-sm font-medium">Total de Usuarios</CardTitle>
                 <Users className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{totalUsers}</div>
+                <div className="text-2xl font-bold">{fetchError ? 'N/A' : totalUsers}</div>
                 <p className="text-xs text-muted-foreground">usuarios registrados</p>
               </CardContent>
             </Card>
@@ -88,7 +94,7 @@ export default async function AdminDashboardPage() {
               </span>
             </Link>
           </Button>
-           <Button variant="outline" disabled asChild>
+           <Button variant="outline" asChild>
             <Link href="/admin/users">Gestionar Usuarios</Link>
           </Button>
         </CardContent>
