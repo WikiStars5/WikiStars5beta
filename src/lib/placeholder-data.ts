@@ -91,6 +91,7 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     familyMembers: data.familyMembers || [], // Initialize as empty array if undefined
     createdAt: createdAtString,
     status: data.status || 'approved',
+    isFeatured: data.isFeatured || false, // Added isFeatured field
   };
 };
 
@@ -104,6 +105,7 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       starRatingCounts: figure.starRatingCounts || { ...defaultStarRatingCounts },
       commentCount: figure.commentCount || 0,
       familyMembers: figure.familyMembers || [], // Ensure familyMembers is an array
+      isFeatured: figure.isFeatured || false, // Ensure isFeatured is set
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
@@ -122,7 +124,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
         id, createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts, commentCount, familyMembers,
         name, photoUrl, description, nationality, occupation, gender, alias, species,
         firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
-        height, weight, hairColor, eyeColor, distinctiveFeatures, status,
+        height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured, // Added isFeatured
         ...rest
     } = figure;
 
@@ -150,6 +152,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
     if (nameLower !== undefined) updatePayload.nameLower = nameLower;
     if (commentCount !== undefined) updatePayload.commentCount = commentCount; 
     if (familyMembers !== undefined) updatePayload.familyMembers = familyMembers;
+    if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured; // Add isFeatured to update payload
 
     if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
     if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
@@ -223,19 +226,25 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
 export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef, limit(count) );
+    // Query for figures where isFeatured is true
+    const q = query(
+      figuresCollectionRef, 
+      where("isFeatured", "==", true), 
+      limit(count)
+      // Consider adding an orderBy clause here if you want a specific order for featured figures
+      // e.g., orderBy("name", "asc") or orderBy("featuredAt", "desc") if you add such a field
+    );
     const querySnapshot = await getDocs(q);
     let figures: Figure[] = [];
     querySnapshot.forEach((docSnap) => {
       figures.push(mapDocToFigure(docSnap));
     });
 
-    if (figures.length < count && querySnapshot.size < count) {
-      const allFigures = await getAllFiguresFromFirestore();
-      const additionalFigures = allFigures.filter(af => !figures.find(f => f.id === af.id));
-      figures.push(...additionalFigures.slice(0, count - figures.length));
-    }
+    // If no figures are marked as featured, or less than 'count' are featured, 
+    // this will return only those that are actually featured.
+    // The old fallback logic to fill with any figures is removed to strictly show only featured ones.
 
+    // Ensure unique figures if limit is high and there are duplicates (though unlikely with Firestore IDs)
     const uniqueFigureIds = new Set<string>();
     figures = figures.filter(figure => {
         if (uniqueFigureIds.has(figure.id)) {
@@ -244,12 +253,15 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
         uniqueFigureIds.add(figure.id);
         return true;
     });
-    figures.sort((a,b) => a.name.localeCompare(b.name));
-    return figures.slice(0, count);
+    
+    // Optional: sort client-side if not ordered by Firestore and a specific order is desired
+    // figures.sort((a,b) => a.name.localeCompare(b.name)); 
+
+    return figures.slice(0, count); // Ensure we don't exceed the count due to client-side manipulations
   } catch (error) {
     console.error("Error fetching featured figures from Firestore: ", error);
     if (String(error).toLowerCase().includes("index") || String(error).toLowerCase().includes("permission")) {
-        console.error("ACTION: Check BROWSER'S DEVELOPER CONSOLE (F12) for Firestore index creation links related to ordering by 'name' or listing permissions.");
+        console.error("ACTION: Check BROWSER'S DEVELOPER CONSOLE (F12) for Firestore index creation links related to querying by 'isFeatured' or listing permissions.");
     }
     return [];
   }

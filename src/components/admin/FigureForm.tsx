@@ -20,6 +20,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'; 
 import type { Figure, EmotionKey, AttitudeKey, StarValueAsString, FamilyMember } from '@/lib/types';
 import slugify from 'slugify'; 
+import { Checkbox } from '@/components/ui/checkbox'; // Import Checkbox
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -68,6 +69,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [hairColor, setHairColor] = useState(initialData?.hairColor || '');
   const [eyeColor, setEyeColor] = useState(initialData?.eyeColor || '');
   const [distinctiveFeatures, setDistinctiveFeatures] = useState(initialData?.distinctiveFeatures || '');
+  const [isFeatured, setIsFeatured] = useState(initialData?.isFeatured || false); // State for featured flag
 
 
   const [perceptionCounts, setPerceptionCounts] = useState(initialData?.perceptionCounts || { ...defaultPerceptionCounts });
@@ -127,6 +129,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setHairColor(initialData.hairColor || '');
       setEyeColor(initialData.eyeColor || '');
       setDistinctiveFeatures(initialData.distinctiveFeatures || '');
+      setIsFeatured(initialData.isFeatured || false); // Set featured state
 
       setPerceptionCounts(initialData.perceptionCounts || { ...defaultPerceptionCounts });
       setAttitudeCounts(initialData.attitudeCounts || { ...defaultAttitudeCounts });
@@ -154,6 +157,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setHairColor('');
       setEyeColor('');
       setDistinctiveFeatures('');
+      setIsFeatured(false); // Reset featured state
       setPerceptionCounts({ ...defaultPerceptionCounts });
       setAttitudeCounts({ ...defaultAttitudeCounts });
       setStarRatingCounts({ ...defaultStarRatingCounts });
@@ -262,6 +266,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         hairColor: hairColor.trim(),
         eyeColor: eyeColor.trim(),
         distinctiveFeatures: distinctiveFeatures.trim(),
+        isFeatured: isFeatured, // Save featured status
 
         perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
         attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
@@ -433,6 +438,24 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           Ejemplo de relación: "Padre", "Madre", "Abuelo paterno", "Abuela paterna", "Abuelo materno", "Abuela materna", "Hijo/a", "Hermano/a", "Tío (Paterno)", "Tía (Paterna)", "Tío (Materno)", "Tía (Materna)".
         </p>
       </div>
+
+      <div className="mt-6 border-t pt-4 border-border">
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="isFeatured"
+            checked={isFeatured}
+            onCheckedChange={(checked) => setIsFeatured(checked as boolean)}
+            disabled={isLoading}
+          />
+          <Label htmlFor="isFeatured" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            Marcar como Figura Destacada
+          </Label>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1 ml-6"> {/* Added ml-6 for alignment with checkbox text */}
+          Las figuras destacadas aparecerán en la sección principal de la página de inicio.
+        </p>
+      </div>
+
 
       <Button type="submit" className="w-full mt-6" disabled={isLoading || !isAuthReady}>
         {isLoading ? 'Guardando...' : (initialData?.id ? 'Actualizar Figura' : 'Crear Figura')}

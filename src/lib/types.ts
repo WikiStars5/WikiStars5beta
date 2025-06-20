@@ -55,6 +55,7 @@ export interface Figure {
   familyMembers?: FamilyMember[]; // Array to store family members
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
+  isFeatured?: boolean; // New field for featured figures
 }
 
 export interface UserPerception {
