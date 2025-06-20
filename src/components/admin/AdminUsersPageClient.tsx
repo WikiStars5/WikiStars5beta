@@ -17,16 +17,25 @@ interface AdminUsersPageClientProps {
 export default function AdminUsersPageClient({ initialUsers }: AdminUsersPageClientProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
+  const processedUsers = useMemo(() => {
+    // 1. Filter out anonymous users (those without an email)
+    const realUsers = initialUsers.filter(user => user.email);
+    // 2. Sort the filtered users by username
+    realUsers.sort((a, b) => a.username.localeCompare(b.username));
+    return realUsers;
+  }, [initialUsers]);
+
+
   const filteredUsers = useMemo(() => {
     if (!searchTerm) {
-      return initialUsers;
+      return processedUsers;
     }
-    return initialUsers.filter(
+    return processedUsers.filter(
       (user) =>
         user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-  }, [initialUsers, searchTerm]);
+  }, [processedUsers, searchTerm]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
@@ -45,7 +54,7 @@ export default function AdminUsersPageClient({ initialUsers }: AdminUsersPageCli
     <Card>
       <CardHeader>
         <CardTitle className="text-2xl font-headline">Gestionar Usuarios</CardTitle>
-        <CardDescription>Ver y buscar usuarios registrados en la plataforma.</CardDescription>
+        <CardDescription>Ver y buscar usuarios registrados en la plataforma. Los usuarios anónimos no se muestran aquí.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="mb-6">
@@ -103,7 +112,7 @@ export default function AdminUsersPageClient({ initialUsers }: AdminUsersPageCli
           </div>
         ) : (
           <p className="text-center text-muted-foreground py-8">
-            {searchTerm ? "No se encontraron usuarios." : "No hay usuarios registrados."}
+            {searchTerm ? "No se encontraron usuarios." : "No hay usuarios registrados con perfiles en Firestore."}
           </p>
         )}
       </CardContent>

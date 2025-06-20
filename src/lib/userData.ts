@@ -207,7 +207,8 @@ export async function updateUserProfile(
 export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
   try {
     const usersCollectionRef = collection(db, 'users');
-    const q = query(usersCollectionRef, orderBy('username', 'asc')); // Order by username
+    // REMOVED: orderBy('username', 'asc') to avoid index dependency
+    const q = query(usersCollectionRef); 
     const querySnapshot = await getDocs(q);
 
     const users: UserProfile[] = [];
@@ -221,13 +222,11 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
     return users;
   } catch (error: any) {
     console.error("Error fetching all users from Firestore:", error);
-    // Handle specific errors like permission denied or missing index
     if (String(error.message).toLowerCase().includes("permission")) {
-      console.error("Firestore permission error: Check your security rules for the 'users' collection.");
+      console.error("Firestore permission error: Check your security rules for the 'users' collection to ensure the admin has 'list' permissions.");
     } else if (String(error.message).toLowerCase().includes("index")) {
-      console.error("Firestore index error: Check the browser console for a link to create the required index for ordering by 'username'.");
+      console.error("Firestore index error: An index is required for the query. Check the browser console for a link to create it.");
     }
-    // Return empty array on error to prevent crashing the page
     return [];
   }
 }
