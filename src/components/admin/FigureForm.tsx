@@ -15,9 +15,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, ImageOff, Users2 } from 'lucide-react'; // Added Users2 for family tree icon
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db, storage } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase'; // db and storage from shared firebase.ts
+// auth import from firebase/auth directly is fine for types, but actual auth state comes from AdminLayout context
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'; 
 import type { Figure, EmotionKey, AttitudeKey, StarValueAsString, FamilyMember } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox'; // Import Checkbox
@@ -85,28 +85,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [isAuthReady, setIsAuthReady] = useState(false); 
-
-  useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        console.log("No hay usuario autenticado. Intentando autenticación anónima...");
-        try {
-          await signInAnonymously(auth);
-          console.log("Autenticación anónima exitosa.");
-        } catch (authError: any) {
-          console.error("Error durante la autenticación anónima:", authError.message);
-          setError(`Error de autenticación: ${authError.message}. Asegúrate de que la autenticación anónima esté habilitada en Firebase.`);
-        }
-      } else {
-        console.log("Usuario autenticado:", user.uid);
-      }
-      setIsAuthReady(true); 
-    });
-
-    return () => unsubscribe(); 
-  }, []); 
+  // Removed local auth handling (isAuthReady, signInAnonymously). 
+  // Component relies on AdminLayout to ensure admin is authenticated.
 
   useEffect(() => {
     if (initialData) {
@@ -187,7 +167,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       const downloadURL = await getDownloadURL(snapshot.ref);
       return downloadURL;
     } catch (uploadError: any) {
-      throw uploadError; 
+      console.error(`Storage Upload Error for ${figureDocId}/${file.name}:`, uploadError);
+      throw uploadError; // Re-throw to be caught by handleSubmit
     }
   };
 
@@ -197,11 +178,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     setError(null);
     setSuccess(null);
 
-    if (!isAuthReady) {
-      setError("La autenticación no está lista. Por favor, espera un momento o recarga la página.");
-      setIsLoading(false);
-      return;
-    }
+    // AdminLayout ensures user is authenticated.
+    // We assume auth.currentUser is the admin user here.
 
     let figureDocId = initialData?.id || slugify(name.trim(), { lower: true, strict: true });
 
@@ -209,20 +187,20 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       if (!name.trim()) {
         throw new Error('El nombre de la figura es obligatorio.');
       }
-      if (!figureDocId) { 
-         figureDocId = slugify(name.trim(), { lower: true, strict: true });
-         if(!figureDocId) throw new Error('No se pudo generar un ID para la figura.');
+      if (!figureDocId) { // Check if slugify resulted in an empty ID
+         throw new Error('No se pudo generar un ID para la figura a partir del nombre.');
       }
       
       let finalPhotoUrlToSave = photoUrl.trim();
       
-
       if (selectedFile) {
         try {
+          console.log(`Attempting to upload file for figure ID: ${figureDocId}`);
           finalPhotoUrlToSave = await uploadFileToFirebaseStorage(selectedFile, figureDocId);
+          console.log(`File uploaded, URL: ${finalPhotoUrlToSave}`);
         } catch (uploadError: any) {
-          setError(`Error al subir la imagen: ${uploadError.message}.`);
-          setIsLoading(false);
+          setError(`Error al subir la imagen: ${uploadError.message}. Verifica los permisos de Storage y la consola para más detalles.`);
+          setIsLoading(false); // Ensure loading is stopped
           return;
         }
       } else if (!finalPhotoUrlToSave && initialData?.photoUrl) {
@@ -233,11 +211,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
       let parsedFamilyMembers: FamilyMember[] = [];
       try {
-        parsedFamilyMembers = JSON.parse(familyMembersJson);
+        parsedFamilyMembers = JSON.parse(familyMembersJson || "[]");
         if (!Array.isArray(parsedFamilyMembers)) {
           throw new Error("El JSON de miembros de la familia debe ser un array.");
         }
-        // Aquí podrías añadir validación más detallada para cada objeto FamilyMember si es necesario.
       } catch (jsonError: any) {
         setError(`Error en el formato JSON de Miembros de la Familia: ${jsonError.message}`);
         setIsLoading(false);
@@ -266,7 +243,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         hairColor: hairColor.trim(),
         eyeColor: eyeColor.trim(),
         distinctiveFeatures: distinctiveFeatures.trim(),
-        isFeatured: isFeatured, // Save featured status
+        isFeatured: isFeatured,
 
         perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
         attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
@@ -281,8 +258,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
 
       const figureRef = doc(db, 'figures', figureDocId);
-
+      console.log(`Attempting to setDoc for figure ID: ${figureDocId}`);
       await setDoc(figureRef, figureData, { merge: true });
+      console.log(`setDoc successful for figure ID: ${figureDocId}`);
 
       setSuccess(`Figura "${name}" guardada exitosamente.`);
       
@@ -297,7 +275,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
     } catch (err: any) {
       console.error("ERROR en handleSubmit:", err);
-      setError(err.message || 'Error al guardar la figura.');
+      setError(err.message || 'Error al guardar la figura. Revisa la consola del navegador para más detalles.');
     } finally {
       setIsLoading(false);
     }
@@ -457,7 +435,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       </div>
 
 
-      <Button type="submit" className="w-full mt-6" disabled={isLoading || !isAuthReady}>
+      <Button type="submit" className="w-full mt-6" disabled={isLoading}>
         {isLoading ? 'Guardando...' : (initialData?.id ? 'Actualizar Figura' : 'Crear Figura')}
       </Button>
     </form>
