@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   Terminal, Info, UserCircle, Globe, Briefcase, Users2 as FamilyIcon, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   ImageOff, BarChartHorizontal, Star as StarIcon,
-  BookOpen, Cake, MapPin, HeartHandshake, StretchVertical, Scale, Palette, Zap,
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
   MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide
 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
@@ -670,23 +670,23 @@ export default function FigurePage() {
                     </div>
                   ) : (
                     <>
-                      <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{figure.description || (canEditFigure ? "No hay descripción. ¡Añade una!" : "No hay descripción. Inicia sesión con una cuenta para añadir una.")}</p>
+                      {figure.description && <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{figure.description}</p>}
                       <div className="space-y-3 pt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
-                        {renderDetailItem(UserCircle, "Alias", figure.alias)}
-                        {renderDetailItem(FamilyIcon, "Género", figure.gender)}
-                        {renderDetailItem(Zap, "Especie", figure.species)}
-                        {renderDetailItem(BookOpen, "Primera Aparición", figure.firstAppearance)}
-                        {renderDetailItem(Cake, "Nacimiento/Edad", figure.birthDateOrAge)}
-                        {renderDetailItem(MapPin, "Lugar Nacimiento", figure.birthPlace)}
-                        {renderDetailItem(Globe, "Nacionalidad", figure.nationality)}
-                        {renderDetailItem(Briefcase, "Ocupación", figure.occupation)}
-                        {renderDetailItem(Info, "Estado (Vivo/Muerto)", figure.statusLiveOrDead)}
-                        {renderDetailItem(HeartHandshake, "Estado Civil", figure.maritalStatus)}
-                        {renderDetailItem(StretchVertical, "Altura", figure.height)}
-                        {renderDetailItem(Scale, "Peso", figure.weight)}
-                        {renderDetailItem(Palette, "Color Cabello", figure.hairColor)}
-                        {renderDetailItem(ImageIconLucide, "Color Ojos", figure.eyeColor)}
-                        {renderDetailItem(Info, "Rasgos Distintivos", figure.distinctiveFeatures)}
+                        {figure.alias && renderDetailItem(NotepadText, "Alias", figure.alias)}
+                        {figure.gender && renderDetailItem(FamilyIcon, "Género", figure.gender)}
+                        {figure.species && renderDetailItem(Zap, "Especie", figure.species)}
+                        {figure.firstAppearance && renderDetailItem(BookOpen, "Primera Aparición", figure.firstAppearance)}
+                        {figure.birthDateOrAge && renderDetailItem(Cake, "Nacimiento/Edad", figure.birthDateOrAge)}
+                        {figure.birthPlace && renderDetailItem(MapPin, "Lugar Nacimiento", figure.birthPlace)}
+                        {figure.nationality && renderDetailItem(Globe, "Nacionalidad", figure.nationality)}
+                        {figure.occupation && renderDetailItem(Briefcase, "Ocupación", figure.occupation)}
+                        {figure.statusLiveOrDead && renderDetailItem(Activity, "Estado (Vivo/Muerto)", figure.statusLiveOrDead)}
+                        {figure.maritalStatus && renderDetailItem(HeartHandshake, "Estado Civil", figure.maritalStatus)}
+                        {figure.height && renderDetailItem(StretchVertical, "Altura", figure.height)}
+                        {figure.weight && renderDetailItem(Scale, "Peso", figure.weight)}
+                        {figure.hairColor && renderDetailItem(Palette, "Color Cabello", figure.hairColor)}
+                        {figure.eyeColor && renderDetailItem(Eye, "Color Ojos", figure.eyeColor)}
+                        {figure.distinctiveFeatures && renderDetailItem(Scan, "Rasgos Distintivos", figure.distinctiveFeatures)}
                       </div>
                     </>
                   )}
