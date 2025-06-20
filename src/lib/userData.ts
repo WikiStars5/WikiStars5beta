@@ -219,6 +219,8 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
         users.push(mapDocToUserProfile(docSnap.id, docSnap.data()));
       });
     }
+    // Sort client-side instead of in the query
+    users.sort((a, b) => a.username.localeCompare(b.username));
     return users;
   } catch (error: any) {
     console.error("Error fetching all users from Firestore:", error);

@@ -40,10 +40,17 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAdmin() {
-      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // REEMPLAZA CON TU ADMIN_UID
+      // Reemplaza esto con el UID de tu cuenta de administrador
+      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
-
-    // --- REGLAS PARA LA COLECCIÓN figures Y SU SUBCOLECCIÓN galleryImages ---
+    
+    // REGLA CLAVE PARA PERFILES DE USUARIO
+    match /users/{userId} {
+      // Un usuario puede leer y escribir en su propio perfil.
+      // El administrador también puede leer y escribir en cualquier perfil.
+      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+    
     match /figures/{figureId} {
       allow read: if true;
       // Solo el admin puede crear, actualizar o eliminar figuras.
@@ -56,22 +63,10 @@ service cloud.firestore {
                          request.resource.data.userId == request.auth.uid &&
                          request.resource.data.imageUrl != null;
         allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
-        // update podría ser más restrictivo si es necesario.
         allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
       }
     }
-    // --- Fin de reglas para figures y galleryImages ---
 
-
-    // --- OTRAS COLECCIONES PRINCIPALES ---
-    // Usuarios pueden leer sus propios datos y admin puede leer/escribir todo.
-    match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
-    }
-
-    // Votos de percepción y actitud: autenticados (incluyendo anónimos) pueden crear/actualizar/borrar sus propios votos.
-    // Admin puede leer todo.
     match /userPerceptions/{docId} {
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == docId.split('_')[0]);
       allow write: if request.auth != null && request.auth.uid == docId.split('_')[0];
@@ -85,7 +80,6 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == docId.split('_')[0];
     }
 
-    // Comentarios: Autenticados (no anónimos) pueden crear. Dueños de comentarios y admin pueden borrar/actualizar. Todos pueden leer.
     match /userComments/{commentId} {
       allow read: if true;
       allow create: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
@@ -104,7 +98,8 @@ service firebase.storage {
   match /b/{bucket}/o {
 
     function isAdmin() {
-      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // REEMPLAZA CON TU ADMIN_UID
+      // Reemplaza esto con el UID de tu cuenta de administrador
+      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
     }
 
     // Permite la lectura de todas las imágenes en la carpeta 'figures' y 'emociones'

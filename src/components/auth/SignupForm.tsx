@@ -48,28 +48,21 @@ export function SignupForm() {
     setIsLoading(true);
     
     try {
+      // 1. Create user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      if (user) {
-        await updateProfile(user, {
-          displayName: values.displayName,
-        });
-      }
+      // 2. Update the Auth user's profile (this is separate from Firestore)
+      await updateProfile(user, {
+        displayName: values.displayName,
+      });
 
-      if (user) {
-        try {
-          await ensureUserProfileExists(user, { 
-            countryCode: values.countryCode, 
-            gender: values.gender 
-          });
-        } catch (profileError: any) {
-          console.error(
-            "SignupForm: Error during ensureUserProfileExists after successful Firebase Auth signup:",
-            profileError.message
-          );
-        }
-      }
+      // 3. Create the user's profile document in Firestore
+      // This is a critical step. If it fails, the whole process fails.
+      await ensureUserProfileExists(user, { 
+        countryCode: values.countryCode, 
+        gender: values.gender 
+      });
       
       toast({
         title: "¡Cuenta Creada!",
@@ -77,19 +70,21 @@ export function SignupForm() {
       });
       router.push('/home'); 
 
-
-    } catch (authError: any) {
-      console.error("SignupForm onSubmit authError object:", authError);
+    } catch (error: any) {
+      console.error("SignupForm onSubmit error:", error);
       let displayErrorMessage = "No se pudo crear la cuenta. Intenta de nuevo.";
       
-      if (authError.code === 'auth/email-already-in-use') {
+      if (error.code === 'auth/email-already-in-use') {
         displayErrorMessage = "Esta dirección de correo electrónico ya está en uso.";
-      } else if (authError.code === 'auth/invalid-email') {
+      } else if (error.code === 'auth/invalid-email') {
         displayErrorMessage = "El formato del correo electrónico es inválido.";
-      } else if (authError.code === 'auth/weak-password') {
+      } else if (error.code === 'auth/weak-password') {
         displayErrorMessage = "La contraseña es demasiado débil.";
-      } else if (authError.message) {
-        displayErrorMessage = `Error de registro: ${authError.message}`;
+      } else if (error.message && error.message.startsWith('Firestore_Profile_Error:')) {
+        // Custom error from ensureUserProfileExists
+        displayErrorMessage = `No se pudo guardar tu perfil. Revisa las reglas de Firestore. ${error.message}`;
+      } else if (error.message) {
+        displayErrorMessage = `Error de registro: ${error.message}`;
       }
       
       toast({

@@ -20,8 +20,12 @@ export default function SignupPage() {
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
     try {
+      // 1. Sign in with Google popup
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+
+      // 2. Create the user's profile document in Firestore
+      // This is a critical step.
       await ensureUserProfileExists(user); 
 
       toast({
@@ -29,9 +33,11 @@ export default function SignupPage() {
         description: `¡Bienvenido a WikiStars5, ${user.displayName || user.email}!`,
       });
       router.push('/home'); 
+
     } catch (error: any) {
       console.error("Google sign-up/sign-in error:", error, "Code:", error.code, "Message:", error.message);
       let errorMessage = "No se pudo registrar/iniciar sesión con Google. Intenta de nuevo más tarde.";
+      
       switch (error.code) {
         case 'auth/popup-closed-by-user':
           errorMessage = "El proceso con Google fue cancelado por el usuario.";
@@ -45,21 +51,15 @@ export default function SignupPage() {
         case 'auth/popup-blocked':
           errorMessage = "El navegador bloqueó la ventana emergente de Google. Por favor, permite las ventanas emergentes para este sitio e inténtalo de nuevo.";
           break;
-        case 'auth/cancelled-popup-request':
-          errorMessage = "Se canceló la solicitud de ventana emergente de Google, posiblemente porque se abrieron varias.";
-          break;
-        case 'auth/unauthorized-domain':
-          errorMessage = "Este dominio no está autorizado para operaciones de OAuth. Verifica los dominios autorizados en Firebase Console.";
-          break;
-        case 'auth/internal-error':
-            errorMessage = "Ocurrió un error interno en el servidor de autenticación. Por favor, inténtalo de nuevo más tarde.";
-            break;
         default:
-          if (error.message) {
+          if (error.message && error.message.startsWith('Firestore_Profile_Error:')) {
+            errorMessage = `No se pudo guardar tu perfil. Revisa las reglas de Firestore. ${error.message}`;
+          } else if (error.message) {
             errorMessage = `Error: ${error.message}`;
           }
           break;
       }
+      
       toast({
         title: "Error con Google",
         description: errorMessage,
