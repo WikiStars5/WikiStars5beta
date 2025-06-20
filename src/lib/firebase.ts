@@ -63,8 +63,8 @@ service cloud.firestore {
 
     // --- REGLAS PARA OTRAS COLECCIONES PRINCIPALES ---
     
-    // REGLA CLAVE PARA PERFILES DE USUARIO (CORREGIDA Y SIN DUPLICADOS)
-    match /users/{userId} {
+    // REGLA CLAVE PARA PERFILES DE USUARIO REGISTRADOS
+    match /registered_users/{userId} {
       // Un usuario puede leer y escribir en su propio perfil.
       // El administrador también puede leer y escribir en cualquier perfil.
       allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
@@ -124,4 +124,3 @@ service firebase.storage {
   }
 }
 */
-

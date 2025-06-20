@@ -7,6 +7,8 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData, Tim
 import type { User as FirebaseUser } from 'firebase/auth';
 import { COUNTRIES } from '@/config/countries'; // Import COUNTRIES
 
+const USER_COLLECTION = 'registered_users';
+
 // Helper to map Firestore document data to UserProfile interface
 const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
   let createdAtString: string;
@@ -49,7 +51,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     return null;
   }
   try {
-    const userDocRef = doc(db, 'users', uid);
+    const userDocRef = doc(db, USER_COLLECTION, uid);
     const userDocSnap = await getDoc(userDocRef);
 
     if (userDocSnap.exists()) {
@@ -79,7 +81,7 @@ export async function ensureUserProfileExists(
   }
   console.log(`[ensureUserProfileExists] Called for user UID: ${user.uid}, Email: ${user.email}, DisplayName: ${user.displayName}`);
 
-  const userDocRef = doc(db, 'users', user.uid);
+  const userDocRef = doc(db, USER_COLLECTION, user.uid);
   let userProfileDataForMapping: DocumentData;
 
   try {
@@ -179,7 +181,7 @@ export async function updateUserProfile(
   console.log(`[updateUserProfile] Updating profile for UID: ${uid} with data:`, data);
 
   try {
-    const userDocRef = doc(db, 'users', uid);
+    const userDocRef = doc(db, USER_COLLECTION, uid);
     const updateData: any = { ...data, lastLoginAt: serverTimestamp() }; // Ensure lastLoginAt is updated
 
     if (data.hasOwnProperty('countryCode')) { 
@@ -206,7 +208,7 @@ export async function updateUserProfile(
 
 export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
   try {
-    const usersCollectionRef = collection(db, 'users');
+    const usersCollectionRef = collection(db, USER_COLLECTION);
     // REMOVED: orderBy('username', 'asc') to avoid index dependency
     const q = query(usersCollectionRef); 
     const querySnapshot = await getDocs(q);
@@ -225,7 +227,7 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
   } catch (error: any) {
     console.error("Error fetching all users from Firestore:", error);
     if (String(error.message).toLowerCase().includes("permission")) {
-      console.error("Firestore permission error: Check your security rules for the 'users' collection to ensure the admin has 'list' permissions.");
+      console.error("Firestore permission error: Check your security rules for the 'registered_users' collection to ensure the admin has 'list' permissions.");
     } else if (String(error.message).toLowerCase().includes("index")) {
       console.error("Firestore index error: An index is required for the query. Check the browser console for a link to create it.");
     }
