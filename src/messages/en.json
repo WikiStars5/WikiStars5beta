@@ -1,1 +1,31 @@
-{}
+
+{
+    "HomePage": {
+        "welcome": "Welcome to StarSage",
+        "description": "Discover, rate, and discuss the public perception of your favorite (and not-so-favorite) famous figures. Share your opinion and see what the world thinks!",
+        "searchPlaceholder": "Type a name and press enter or click search.",
+        "howItWorksTitle": "How StarSage Works",
+        "discoverFigures": "Discover Figures",
+        "discoverFiguresDesc": "Search or browse through profiles of public figures from various fields.",
+        "expressPerception": "Express Your Perception",
+        "expressPerceptionDesc": "Vote for the emotion a figure evokes in you and see global results.",
+        "joinDiscussions": "Join Discussions",
+        "joinDiscussionsDesc": "Share your opinions in comment sections and react to others.",
+        "shareProfiles": "Share Profiles",
+        "shareProfilesDesc": "Easily share profiles with your friends on social media.",
+        "featuredFigures": "Featured Figures",
+        "exploreAllFigures": "Explore All Figures"
+    },
+    "LoginForm": {
+        "title": "Welcome Back!",
+        "description": "Log in to your StarSage account to continue.",
+        "noAccount": "Don't have an account?",
+        "signupLink": "Sign Up"
+    },
+    "SignupForm": {
+        "title": "Create an Account",
+        "description": "Join StarSage to rate, discuss, and customize your profile.",
+        "alreadyHaveAccount": "Already have an account?",
+        "loginLink": "Log In"
+    }
+}

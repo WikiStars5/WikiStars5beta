@@ -1,1 +1,31 @@
-{}
+
+{
+    "HomePage": {
+        "welcome": "Bem-vindo ao StarSage",
+        "description": "Descubra, avalie e discuta a percepção pública de suas figuras famosas favoritas (e não tão favoritas). Compartilhe sua opinião e veja o que o mundo pensa!",
+        "searchPlaceholder": "Digite um nome e pressione enter ou clique em pesquisar.",
+        "howItWorksTitle": "Como Funciona o StarSage",
+        "discoverFigures": "Descubra Figuras",
+        "discoverFiguresDesc": "Pesquise ou navegue por perfis de figuras públicas de diversas áreas.",
+        "expressPerception": "Expresse sua Percepção",
+        "expressPerceptionDesc": "Vote na emoção que uma figura evoca em você e veja os resultados globais.",
+        "joinDiscussions": "Participe das Discussões",
+        "joinDiscussionsDesc": "Compartilhe suas opiniões nas seções de comentários e reaja aos outros.",
+        "shareProfiles": "Compartilhe Perfis",
+        "shareProfilesDesc": "Compartilhe facilmente perfis com seus amigos nas redes sociais.",
+        "featuredFigures": "Figuras em Destaque",
+        "exploreAllFigures": "Explorar Todas as Figuras"
+    },
+    "LoginForm": {
+        "title": "Bem-vindo de Volta!",
+        "description": "Faça login na sua conta StarSage para continuar.",
+        "noAccount": "Não tem uma conta?",
+        "signupLink": "Inscreva-se"
+    },
+    "SignupForm": {
+        "title": "Criar uma Conta",
+        "description": "Junte-se ao StarSage para avaliar, discutir e personalizar seu perfil.",
+        "alreadyHaveAccount": "Já tem uma conta?",
+        "loginLink": "Entrar"
+    }
+}
