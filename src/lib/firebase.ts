@@ -32,65 +32,86 @@ export { app };
 
 // === REGLAS DE SEGURIDAD DE FIRESTORE (APLICAR EN CONSOLA FIREBASE) ===
 // Ve a Firebase Console -> Firestore Database -> Rules.
-// ASEGÚRATE DE QUE LA ANIDACIÓN DE 'galleryImages' SEA CORRECTA.
+// REEMPLAZA 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' CON TU ADMIN_UID REAL SI ES DIFERENTE.
 /*
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // REEMPLAZA CON TU ADMIN_UID
+    }
+
     // --- REGLAS PARA LA COLECCIÓN figures Y SU SUBCOLECCIÓN galleryImages ---
     match /figures/{figureId} {
-      // Regla permisiva para el documento principal de la figura
-      allow read: if true; // O para más granularidad: allow get: if true; allow list: if true;
-      allow write: if request.auth != null; // Permite escritura al documento principal si el usuario está autenticado
-                                         // O 'if true;' para MÁXIMA permisividad en desarrollo
+      allow read: if true;
+      // Solo el admin puede crear, actualizar o eliminar figuras.
+      allow write: if isAdmin();
 
-      // REGLAS ESPECÍFICAS PARA LA SUBCOLECCIÓN galleryImages (ANIDADA DENTRO DE figures/{figureId})
-      // Estas reglas se aplican a la ruta: /figures/{ALGUN_FIGURE_ID}/galleryImages/{ALGUN_GALLERYIMAGE_ID}
-      match /galleryImages/{galleryImageId} { // Cambié {imageId} a {galleryImageId} para evitar confusión
-        
-        // !! REGLA EXTREMADAMENTE PERMISIVA PARA DEPURACIÓN URGENTE !!
-        // SI ESTO NO FUNCIONA, EL PROBLEMA NO ES LA CONDICIÓN DE LA REGLA SINO LA RUTA/ESTRUCTURA O ALGO MÁS FUNDAMENTAL.
-        // ¡RECUERDA CAMBIAR ESTO A UNA REGLA SEGURA DESPUÉS DE DEPURAR!
-        allow read, write: if true; 
-
-        // REGLA SEGURA RECOMENDADA (una vez que funcione lo anterior):
-        // allow read: if true;
-        // allow create: if request.auth != null &&
-        //                  !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-        //                  request.resource.data.userId == request.auth.uid &&
-        //                  request.resource.data.imageUrl != null;
-        // allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin()); // Define isAdmin()
-        // allow update: if request.auth != null && request.auth.uid == resource.data.userId; // Ejemplo
+      match /galleryImages/{galleryImageId} {
+        allow read: if true;
+        allow create: if request.auth != null &&
+                         !request.auth.token.firebase.sign_in_provider.matches('anonymous') && // No anónimos
+                         request.resource.data.userId == request.auth.uid &&
+                         request.resource.data.imageUrl != null;
+        allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+        // update podría ser más restrictivo si es necesario.
+        allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
       }
     }
     // --- Fin de reglas para figures y galleryImages ---
 
 
-    // --- OTRAS COLECCIONES PRINCIPALES (Mantenlas permisivas por ahora para depuración) ---
-    match /userPerceptions/{docId} { allow read, write: if true; }
-    match /userAttitudes/{docId} { allow read, write: if true; }
-    match /userStarRatings/{docId} { allow read, write: if true; }
-    match /users/{userId} { allow read, write: if true; }
-    match /userComments/{commentId} { allow read, write: if true; }
+    // --- OTRAS COLECCIONES PRINCIPALES ---
+    // Usuarios pueden leer sus propios datos y admin puede leer/escribir todo.
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Votos de percepción y actitud: autenticados (incluyendo anónimos) pueden crear/actualizar/borrar sus propios votos.
+    // Admin puede leer todo.
+    match /userPerceptions/{docId} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == docId.split('_')[0]);
+      allow write: if request.auth != null && request.auth.uid == docId.split('_')[0];
+    }
+    match /userAttitudes/{docId} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == docId.split('_')[0]);
+      allow write: if request.auth != null && request.auth.uid == docId.split('_')[0];
+    }
+    match /userStarRatings/{docId} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == docId.split('_')[0]);
+      allow write: if request.auth != null && request.auth.uid == docId.split('_')[0];
+    }
+
+    // Comentarios: Autenticados (no anónimos) pueden crear. Dueños de comentarios y admin pueden borrar/actualizar. Todos pueden leer.
+    match /userComments/{commentId} {
+      allow read: if true;
+      allow create: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+    }
   }
 }
 */
 
 // === REGLAS DE SEGURIDAD DE FIREBASE STORAGE (APLICAR EN CONSOLA FIREBASE STORAGE > REGLAS) ===
 // Ve a Firebase Console -> Storage -> Rules.
+// REEMPLAZA 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' CON TU ADMIN_UID REAL SI ES DIFERENTE.
 /*
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // REEMPLAZA CON TU ADMIN_UID
+    }
+
     // Permite la lectura de todas las imágenes en la carpeta 'figures' y 'emociones'
     match /figures/{allPaths=**} {
       allow read: if true;
       // Permite la escritura en 'figures' solo al administrador (UID específico)
-      allow write: if request.auth != null &&
-                      !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-                      request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; // ADMIN UID
+      allow write: if isAdmin();
     }
     match /emociones/{allPaths=**} {
       allow read: if true; // Permite a todos leer las imágenes de emociones

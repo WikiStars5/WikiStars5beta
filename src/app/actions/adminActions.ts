@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -43,6 +44,10 @@ export async function toggleFigureFeaturedStatus(
     return { success: true, newStatus, message: `Figura ${newStatus ? 'marcada como destacada' : 'desmarcada como destacada'}.` };
   } catch (error: any) {
     console.error('Error toggling figure featured status:', error);
-    return { success: false, message: `Error al cambiar estado: ${error.message}` };
+    let errorMessage = `Error al cambiar estado: ${error.message}`;
+    if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
+        errorMessage = "Error al cambiar estado: Permisos insuficientes. Verifica las Reglas de Seguridad de Firestore.";
+    }
+    return { success: false, message: errorMessage };
   }
 }
