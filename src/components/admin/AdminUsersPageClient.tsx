@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Search as SearchIcon, User } from "lucide-react";
 import type { UserProfile } from "@/lib/types";
+import { GENDER_OPTIONS } from "@/config/genderOptions";
 
 interface AdminUsersPageClientProps {
   initialUsers: UserProfile[];
@@ -18,13 +19,10 @@ export default function AdminUsersPageClient({ initialUsers }: AdminUsersPageCli
   const [searchTerm, setSearchTerm] = useState("");
 
   const processedUsers = useMemo(() => {
-    // 1. Filter out anonymous users (those without an email)
     const realUsers = initialUsers.filter(user => user.email);
-    // 2. Sort the filtered users by username
     realUsers.sort((a, b) => a.username.localeCompare(b.username));
     return realUsers;
   }, [initialUsers]);
-
 
   const filteredUsers = useMemo(() => {
     if (!searchTerm) {
@@ -48,6 +46,12 @@ export default function AdminUsersPageClient({ initialUsers }: AdminUsersPageCli
     } catch (e) {
       return 'Fecha inválida';
     }
+  };
+
+  const getGenderLabel = (genderValue?: string) => {
+    if (!genderValue) return 'No especificado';
+    const option = GENDER_OPTIONS.find(opt => opt.value === genderValue);
+    return option ? option.label : 'No especificado';
   };
 
   return (
@@ -79,6 +83,7 @@ export default function AdminUsersPageClient({ initialUsers }: AdminUsersPageCli
                   <TableHead className="p-3">Nombre de Usuario</TableHead>
                   <TableHead className="p-3">Email</TableHead>
                   <TableHead className="p-3">País</TableHead>
+                  <TableHead className="p-3">Sexo</TableHead>
                   <TableHead className="text-center p-3">Rol</TableHead>
                   <TableHead className="text-right p-3">Último Acceso</TableHead>
                 </TableRow>
@@ -97,6 +102,7 @@ export default function AdminUsersPageClient({ initialUsers }: AdminUsersPageCli
                     <TableCell className="font-medium p-3">{user.username}</TableCell>
                     <TableCell className="text-sm text-muted-foreground p-3">{user.email}</TableCell>
                     <TableCell className="text-sm text-muted-foreground p-3">{user.country || 'No especificado'}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground p-3">{getGenderLabel(user.gender)}</TableCell>
                     <TableCell className="text-center p-3">
                       <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'}>
                         {user.role}
