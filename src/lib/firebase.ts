@@ -1,4 +1,3 @@
-
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.

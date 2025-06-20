@@ -1,4 +1,3 @@
-
 "use client";
 
 import { AuthFormCard } from "@/components/auth/AuthFormCard";
@@ -53,7 +52,7 @@ export default function SignupPage() {
           break;
         default:
           if (error.message && error.message.startsWith('Firestore_Profile_Error:')) {
-            errorMessage = `No se pudo guardar tu perfil. Revisa las reglas de Firestore. ${error.message}`;
+            errorMessage = `Error de perfil en Firestore. Revisa tus Reglas de Seguridad. Detalles: ${error.message}`;
           } else if (error.message) {
             errorMessage = `Error: ${error.message}`;
           }

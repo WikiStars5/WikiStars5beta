@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -82,7 +81,7 @@ export function SignupForm() {
         displayErrorMessage = "La contraseña es demasiado débil.";
       } else if (error.message && error.message.startsWith('Firestore_Profile_Error:')) {
         // Custom error from ensureUserProfileExists
-        displayErrorMessage = `No se pudo guardar tu perfil. Revisa las reglas de Firestore. ${error.message}`;
+        displayErrorMessage = `No se pudo guardar tu perfil en Firestore. Revisa tus Reglas de Seguridad. Error: ${error.message}`;
       } else if (error.message) {
         displayErrorMessage = `Error de registro: ${error.message}`;
       }
