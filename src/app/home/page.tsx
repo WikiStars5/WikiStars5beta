@@ -16,7 +16,7 @@ export default async function HomePage() {
       <section className="text-center py-12 md:py-20 bg-gradient-to-br from-primary/10 via-background to-accent/10 rounded-lg shadow-sm">
         <div className="container max-w-3xl mx-auto flex flex-col items-center">
           <h1 className="text-4xl md:text-5xl font-bold font-headline mb-6 text-foreground">
-            Bienvenido a WikiStars5
+            Bienvenido a <span className="text-primary">WikiStars5</span>
           </h1>
           <p className="text-lg md:text-xl text-foreground/80 mb-8 text-center">
             Descubre, califica y discute la percepción pública de tus figuras famosas favoritas (y no tan favoritas). ¡Comparte tu opinión y mira lo que piensa el mundo!
