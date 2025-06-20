@@ -171,8 +171,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       return downloadURL;
     } catch (uploadError: any) {
       console.error(`[uploadFileToFirebaseStorage] Storage Upload Error for ${storagePath}:`, uploadError);
-      if (uploadError.code) console.error(`[uploadFileToFirebaseStorage] Error Code: ${uploadError.code}`);
-      if (uploadError.serverResponse) console.error(`[uploadFileToFirebaseStorage] Server Response: ${uploadError.serverResponse}`);
+      console.error(`[uploadFileToFirebaseStorage] Error Code: ${uploadError.code}, Server Response: ${uploadError.serverResponse}`);
       throw uploadError; 
     }
   };
@@ -184,13 +183,20 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     setSuccess(null);
 
     let figureDocId = initialData?.id || slugify(name.trim(), { lower: true, strict: true });
+    
+    if (!figureDocId && name.trim()) { // Double check slugify result if initialData.id is not present
+      figureDocId = slugify(name.trim(), { lower: true, strict: true });
+    }
+    if (!figureDocId) {
+      setError('No se pudo generar un ID para la figura. Asegúrate de que el nombre no esté vacío.');
+      setIsLoading(false);
+      return;
+    }
+
 
     try {
       if (!name.trim()) {
         throw new Error('El nombre de la figura es obligatorio.');
-      }
-      if (!figureDocId) { 
-         throw new Error('No se pudo generar un ID para la figura a partir del nombre.');
       }
       
       let finalPhotoUrlToSave = photoUrl.trim();
@@ -267,7 +273,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       
       setTimeout(() => {
         if (!initialData?.id) { 
-          router.push(`/figures/${figureDocId}`);
+          router.push(`/admin/figures/${figureDocId}/edit`); // Redirect to edit page of new figure
         } else { 
           router.push('/admin/figures');
         }
@@ -282,7 +288,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     }
   };
 
-  const currentPreviewUrl = previewFileUrl || (photoUrl.trim() ? photoUrl.trim() : initialData?.photoUrl || null);
+  const urlToPreview = previewFileUrl || (photoUrl.trim() ? photoUrl.trim() : initialData?.photoUrl || null);
+  const canPreviewUrl = urlToPreview && (
+      urlToPreview.startsWith('http://') ||
+      urlToPreview.startsWith('https://') ||
+      urlToPreview.startsWith('blob:') ||
+      urlToPreview.startsWith('data:')
+  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-card rounded-lg shadow-md">
@@ -342,10 +354,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           Pega la URL de una imagen externa. Dominios permitidos: Wikimedia, Wikia, Placehold.co, Firebase Storage, Pinterest, etc. Si también seleccionas un archivo, se priorizará el archivo subido.
         </p>
         
-        {currentPreviewUrl ? (
+        {canPreviewUrl ? (
           <div className="relative w-40 h-60 border rounded-md overflow-hidden bg-muted flex items-center justify-center mt-2" data-ai-hint="image preview">
             <Image
-              src={currentPreviewUrl}
+              src={urlToPreview!}
               alt="Previsualización de la imagen"
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -355,7 +367,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         ) : (
            <div className="relative w-40 h-60 border rounded-md overflow-hidden bg-muted flex items-center justify-center mt-2 text-muted-foreground" data-ai-hint="placeholder abstract">
              <ImageOff className="h-16 w-16" />
-             <span>Sin Imagen</span>
+             <span>
+               {photoUrl.trim() && !previewFileUrl && !canPreviewUrl 
+                 ? "URL Inválida o incompleta" 
+                 : "Sin Imagen"}
+             </span>
            </div>
         )}
       </div>
@@ -444,3 +460,4 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 };
 
 export default FigureForm;
+
