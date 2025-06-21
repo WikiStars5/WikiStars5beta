@@ -6,7 +6,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { ensureUserProfileExists } from '@/lib/userData';
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -23,9 +22,8 @@ export default function SignupPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // 2. Create the user's profile document in Firestore
-      // This is a critical step.
-      await ensureUserProfileExists(user); 
+      // 2. The user's profile document will be created on their first login or when they visit their profile page.
+      // The call to create the document here has been removed to fix a bug.
 
       toast({
         title: "¡Cuenta Creada y Sesión Iniciada!",
@@ -51,9 +49,7 @@ export default function SignupPage() {
           errorMessage = "El navegador bloqueó la ventana emergente de Google. Por favor, permite las ventanas emergentes para este sitio e inténtalo de nuevo.";
           break;
         default:
-          if (error.message && error.message.startsWith('Firestore_Profile_Error:')) {
-            errorMessage = `Error de perfil en Firestore. Revisa tus Reglas de Seguridad. Detalles: ${error.message}`;
-          } else if (error.message) {
+          if (error.message) {
             errorMessage = `Error: ${error.message}`;
           }
           break;

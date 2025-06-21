@@ -13,7 +13,6 @@ import { UserPlus, Loader2 } from "lucide-react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { useRouter } from "next/navigation"; 
 import { auth } from '@/lib/firebase';
-import { ensureUserProfileExists } from "@/lib/userData";
 import { GENDER_OPTIONS } from "@/config/genderOptions";
 import { CountryCombobox } from "@/components/shared/CountryCombobox";
 
@@ -56,12 +55,8 @@ export function SignupForm() {
         displayName: values.displayName,
       });
 
-      // 3. Create the user's profile document in Firestore
-      // This is a critical step. If it fails, the whole process fails.
-      await ensureUserProfileExists(user, { 
-        countryCode: values.countryCode, 
-        gender: values.gender 
-      });
+      // 3. User profile document in Firestore is no longer created here.
+      // It will be created on first login or when visiting the profile page to avoid bugs.
       
       toast({
         title: "¡Cuenta Creada!",
@@ -79,9 +74,6 @@ export function SignupForm() {
         displayErrorMessage = "El formato del correo electrónico es inválido.";
       } else if (error.code === 'auth/weak-password') {
         displayErrorMessage = "La contraseña es demasiado débil.";
-      } else if (error.message && error.message.startsWith('Firestore_Profile_Error:')) {
-        // Custom error from ensureUserProfileExists
-        displayErrorMessage = `No se pudo guardar tu perfil en Firestore. Revisa tus Reglas de Seguridad. Error: ${error.message}`;
       } else if (error.message) {
         displayErrorMessage = `Error de registro: ${error.message}`;
       }
