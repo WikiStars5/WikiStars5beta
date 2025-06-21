@@ -1,10 +1,2 @@
-
-import { getAllUsersFromFirestore } from "@/lib/userData";
-import AdminUsersPageClient from "@/components/admin/AdminUsersPageClient";
-
-export const revalidate = 0;
-
-export default async function AdminLocaleUsersPage() {
-  const users = await getAllUsersFromFirestore();
-  return <AdminUsersPageClient initialUsers={users} />;
-}
+// This route is deprecated and has been replaced by the root /src/app/admin/users/page.tsx
+// Internationalization has been disabled to simplify the project.

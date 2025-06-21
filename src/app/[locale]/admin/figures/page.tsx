@@ -1,10 +1,2 @@
-
-import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
-import AdminFiguresPageClient from "./AdminFiguresPageClient"; // Path to the new client component
-
-export const revalidate = 0;
-
-export default async function AdminFiguresPageServer() {
-  const figures = await getAllFiguresFromFirestore();
-  return <AdminFiguresPageClient initialFigures={figures} />;
-}
+// This route is deprecated and has been replaced by the root /src/app/admin/figures/page.tsx
+// Internationalization has been disabled to simplify the project.

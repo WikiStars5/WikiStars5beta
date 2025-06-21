@@ -1,1 +1,1 @@
-// This component is no longer needed after reverting i18n changes.
+// This component is no longer needed after disabling internationalization.

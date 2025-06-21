@@ -16,7 +16,7 @@ export default async function HomePage() {
       <section className="text-center py-12 md:py-20 bg-gradient-to-br from-primary/10 via-background to-accent/10 rounded-lg shadow-sm">
         <div className="container max-w-3xl mx-auto flex flex-col items-center">
           <h1 className="text-4xl md:text-5xl font-bold font-headline mb-6 text-foreground">
-            Bienvenido a <span className="text-primary">WikiStars5</span>
+            Bienvenido a StarSage
           </h1>
           <p className="text-lg md:text-xl text-foreground/80 mb-8 text-center">
             Descubre, califica y discute la percepción pública de tus figuras famosas favoritas (y no tan favoritas). ¡Comparte tu opinión y mira lo que piensa el mundo!
@@ -31,7 +31,7 @@ export default async function HomePage() {
       </section>
 
       <section id="how-it-works" className="py-12">
-        <h2 className="text-3xl font-bold font-headline text-center mb-10">Cómo Funciona WikiStars5</h2>
+        <h2 className="text-3xl font-bold font-headline text-center mb-10">Cómo Funciona StarSage</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
             <Lightbulb className="w-12 h-12 text-accent mb-4" />
