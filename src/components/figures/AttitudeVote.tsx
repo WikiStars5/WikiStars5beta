@@ -212,7 +212,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
               key={key}
               variant={selectedAttitude === key ? "default" : "outline"}
               className={`flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 
-                ${selectedAttitude === key ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 dark:ring-offset-card' : `text-foreground ${colorClass}`}
+                ${selectedAttitude === key ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 dark:ring-offset-card' : `${colorClass}`}
                 ${isLoadingAttitudeAction === key ? 'opacity-50 cursor-not-allowed' : ''}
                 ${!canUserVote ? 'cursor-not-allowed opacity-60' : ''}
               `}
