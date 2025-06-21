@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -81,11 +80,12 @@ export function CountryCombobox({ value, onChange, disabled }: CountryComboboxPr
                 <CommandItem
                   key={country.code}
                   value={country.code}
-                  onSelect={() => {
-                    const newCode = country.code.toUpperCase();
-                    onChange(newCode === value.toUpperCase() ? "" : newCode);
-                    setOpen(false)
-                    setSearch("")
+                  onSelect={(currentValue) => {
+                    // Use the value from the callback, which is more reliable.
+                    // This ensures the correct value is passed on both keyboard and touch events.
+                    onChange(currentValue.toUpperCase());
+                    setOpen(false);
+                    setSearch("");
                   }}
                 >
                   <Check
