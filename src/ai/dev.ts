@@ -1,3 +1,1 @@
-
-// Flows will be imported for their side effects in this file.
-import './flows/enrich-figure-info-flow';
+// This file is no longer needed after removing the AI functionality and can be safely deleted.
