@@ -1,10 +1,9 @@
-import { redirect } from 'next/navigation';
+"use client";
 
-// This file creates a route conflict with /src/app/(auth)/signup/page.tsx
-// It is causing a "Maximum call stack size exceeded" error on the browser
-// by creating an infinite loop in the Next.js router.
-// This redirect points to the correct signup page, resolving the conflict.
-export default function ConflictingSignupPage() {
-    redirect('/signup');
-    return null; // The redirect is sufficient, but a return is needed.
+// This page is intentionally left blank to resolve a routing conflict
+// with the main signup page at /src/app/(auth)/signup/page.tsx.
+// By making this an inert client component, we prevent Next.js from
+// entering a redirect loop that causes a "Maximum call stack size exceeded" error.
+export default function ConflictingSignupRoute() {
+  return null;
 }
