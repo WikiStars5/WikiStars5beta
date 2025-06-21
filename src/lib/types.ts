@@ -92,7 +92,9 @@ export interface UserComment {
   likes: number;
   dislikes: number;
   likedBy: string[]; 
-  dislikedBy: string[]; 
+  dislikedBy: string[];
+  parentId?: string | null; // ID of the parent comment if this is a reply
+  replyCount?: number; // Number of replies this comment has
 }
 
 
