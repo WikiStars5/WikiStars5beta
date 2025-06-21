@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { COUNTRIES } from "@/config/countries" // Asegúrate de que este archivo exista y exporte COUNTRIES
+import { COUNTRIES } from "@/config/countries"
 
 interface CountryComboboxProps {
   value: string;
@@ -61,9 +61,19 @@ export function CountryCombobox({ value, onChange, disabled }: CountryComboboxPr
               {COUNTRIES.map((country) => (
                 <CommandItem
                   key={country.code}
-                  value={country.code}
+                  value={country.name}
                   onSelect={(currentValue) => {
-                    onChange(currentValue === value ? "" : currentValue.toUpperCase());
+                    const selected = COUNTRIES.find(
+                      (c) => c.name.toLowerCase() === currentValue.toLowerCase()
+                    );
+                    if (selected) {
+                      // Check if user is re-selecting the same country to clear it
+                      if (selected.code === value) {
+                        onChange("");
+                      } else {
+                        onChange(selected.code);
+                      }
+                    }
                     setOpen(false);
                   }}
                 >
