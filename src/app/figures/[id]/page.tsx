@@ -10,7 +10,6 @@ import {
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
   MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight
 } from "lucide-react";
-import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
 import Image from "next/image"; 
 import { Button } from "@/components/ui/button";
@@ -663,8 +662,6 @@ export default function FigurePage() {
   if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
   if (figure === null) return <div className="text-center py-10"><h1 className="text-2xl font-bold">Figura No Encontrada</h1><p className="text-muted-foreground">ID: {id || "desconocido"}</p><Button asChild className="mt-4"><Link href="/">Ir al Inicio</Link></Button></div>;
 
-  const relatedFigures = allFigures.filter(f => f.id !== figure.id).slice(0, 3);
-  
   const isValidUrl = (url: string, domains: string[]): boolean => {
     if (!url) return false;
     try {
@@ -1077,7 +1074,6 @@ export default function FigurePage() {
           <Alert><Terminal className="h-4 w-4" /><AlertTitle className="font-headline">Cómo Funciona</AlertTitle><AlertDescription className="text-sm">
             Puedes votar y comentar como invitado. Para editar información, añadir imágenes a la galería, o tener un perfil guardado, <Link href="/signup" className="font-semibold text-primary hover:underline">crea una cuenta</Link>.
             </AlertDescription></Alert>
-          {relatedFigures.length > 0 && (<div><h3 className="text-xl font-headline mb-4">También te podría interesar</h3><div className="space-y-4">{relatedFigures.map(relatedFig => (<FigureListItem key={relatedFig.id} figure={relatedFig} />))}</div></div>)}
         </aside>
       </div>
 
