@@ -1,3 +1,4 @@
+
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
@@ -46,7 +47,7 @@ service cloud.firestore {
     // --- REGLAS PARA LA COLECCIÓN figures Y SU SUBCOLECCIÓN galleryImages ---
     match /figures/{figureId} {
       allow read: if true;
-      // El admin puede crear y eliminar figuras.
+      // Admin puede crear y eliminar figuras.
       allow create, delete: if isAdmin();
       // Cualquier usuario autenticado (incluido anónimo) puede actualizar (para contadores de votos, etc.).
       allow update: if request.auth != null;
@@ -86,12 +87,24 @@ service cloud.firestore {
     }
 
     // Comentarios: Los usuarios autenticados (INCLUYENDO ANÓNIMOS) pueden crear.
-    // El dueño del comentario o un admin pueden actualizar o eliminar. Todos pueden leer.
+    // El dueño del comentario o un admin pueden eliminarlo.
+    // Cualquier usuario no-anónimo puede actualizarlo para dar like/dislike.
     match /userComments/{commentId} {
       allow read: if true;
-      // CORRECCIÓN: Se permite a cualquier usuario autenticado (anónimo o no) crear comentarios.
       allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+      allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+      // Permite actualizar si:
+      // 1. Eres el autor o un admin (puedes cambiar todo).
+      // 2. Eres un usuario logueado (no anónimo) Y NO estás cambiando el texto o la calificación de estrellas.
+      // Esto permite dar like/dislike.
+      allow update: if request.auth != null && (
+          (request.auth.uid == resource.data.userId || isAdmin()) ||
+          (
+            !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
+            request.resource.data.text == resource.data.text &&
+            request.resource.data.starRatingGiven == resource.data.starRatingGiven
+          )
+      );
     }
   }
 }
