@@ -157,7 +157,7 @@ export default function FigurePage() {
       const isNonAnonymous = !!user && !user.isAnonymous;
       setCanEditFigure(isNonAnonymous); 
       setCanCommentOrRate(!!user); 
-      setCanVoteOnComments(isNonAnonymous);
+      setCanVoteOnComments(!!user); // Allow anonymous users to vote as well
       setCanSubmitGalleryImage(isNonAnonymous); 
 
       if (user && figure?.id) { 
@@ -484,8 +484,8 @@ export default function FigurePage() {
   };
 
   const handleLikeDislike = async (commentId: string, action: 'like' | 'dislike') => {
-    if (!canVoteOnComments || !currentUser) {
-        toast({ title: 'Acción Requerida', description: 'Debes iniciar sesión con una cuenta para votar en comentarios.' });
+    if (!currentUser) {
+        toast({ title: 'Acción Requerida', description: 'Debes estar conectado (incluso como invitado) para votar.' });
         return;
     }
     setVotingCommentId(commentId);

@@ -50,17 +50,12 @@ service cloud.firestore {
 
     // Colección de figuras
     match /figures/{figureId} {
-      // Cualquiera puede leer.
       allow read: if true;
-      // Cualquier usuario autenticado puede actualizar.
-      // Solo el administrador puede crear y eliminar para evitar borrados accidentales.
       allow update: if request.auth != null;
       allow create, delete: if isAdmin();
 
-      // Subcolección de galería de imágenes
       match /galleryImages/{galleryImageId} {
         allow read: if true;
-        // Solo usuarios no anónimos pueden crear/actualizar/eliminar imágenes.
         allow write: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
       }
     }
@@ -71,25 +66,28 @@ service cloud.firestore {
     }
 
     // Votos y comentarios: Cualquier usuario autenticado (incluido anónimo) puede escribir.
-    match /userPerceptions/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    match /userAttitudes/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    match /userStarRatings/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
+    match /userPerceptions/{docId} { allow read, write: if request.auth != null; }
+    match /userAttitudes/{docId} { allow read, write: if request.auth != null; }
+    match /userStarRatings/{docId} { allow read, write: if request.auth != null; }
+
+    // Colección de comentarios de usuario
     match /userComments/{commentId} {
       allow read: if true;
-      // Cualquier usuario autenticado puede crear.
       allow create: if request.auth != null;
-      // Para actualizar/eliminar: debe ser el dueño del comentario o un admin.
-      // Esta regla es menos permisiva pero necesaria para evitar que cualquiera borre comentarios.
-      allow update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
+
+      // REGLA DE ACTUALIZACIÓN CORREGIDA:
+      // Permite la actualización si el usuario es el dueño O un admin
+      // O si la actualización solo afecta a los campos de votación y no al contenido.
+      allow update: if request.auth != null &&
+        ( (resource.data.userId == request.auth.uid || isAdmin()) ||
+          (
+            request.resource.data.text == resource.data.text &&
+            request.resource.data.starRatingGiven == resource.data.starRatingGiven &&
+            request.resource.data.userId == resource.data.userId &&
+            request.resource.data.figureId == resource.data.figureId
+          )
+        );
     }
   }
 }
@@ -108,19 +106,19 @@ service firebase.storage {
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
     }
 
-    // Permite la lectura de todas las imágenes en la carpeta 'figures' y 'emociones'
     match /figures/{allPaths=**} {
       allow read: if true;
-      // Permite la escritura en 'figures' solo al administrador (UID específico)
       allow write: if isAdmin();
     }
     match /emociones/{allPaths=**} {
-      allow read: if true; // Permite a todos leer las imágenes de emociones
-    }
-    match /audio/{soundFilename} { // Rule for allowing public read access to audio files
       allow read: if true;
     }
-    // Puedes añadir reglas más específicas para otras carpetas si es necesario.
+    match /audio/{soundFilename} {
+      allow read: if true;
+    }
+    match /logo/{logoFilename} {
+      allow read: if true;
+    }
   }
 }
 */
