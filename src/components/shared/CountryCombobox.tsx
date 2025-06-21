@@ -31,21 +31,20 @@ const normalizeString = (str: string) =>
 
 export function CountryCombobox({ value, onChange, disabled }: CountryComboboxProps) {
   const [open, setOpen] = React.useState(false)
-  const [search, setSearch] = React.useState("")
-
-  const filteredCountries = React.useMemo(() => {
-    if (!search) {
-      return COUNTRIES;
-    }
-    const normalizedSearch = normalizeString(search);
-    return COUNTRIES.filter((country) =>
-      normalizeString(country.name).includes(normalizedSearch)
-    );
-  }, [search]);
 
   const selectedCountry = COUNTRIES.find(
     (country) => country.code.toLowerCase() === value.toLowerCase()
   );
+
+  // Custom filter for cmdk to handle accents and case-insensitivity
+  const customFilter = (value: string, search: string): number => {
+    // `value` is the `country.name` from `CommandItem`
+    // `search` is what the user types in `CommandInput`
+    if (normalizeString(value).includes(normalizeString(search))) {
+      return 1; // Show item
+    }
+    return 0; // Hide item
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -67,25 +66,18 @@ export function CountryCombobox({ value, onChange, disabled }: CountryComboboxPr
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput 
-            placeholder="Buscar país..."
-            value={search}
-            onValueChange={setSearch}
-          />
+        <Command filter={customFilter}>
+          <CommandInput placeholder="Buscar país..." />
           <CommandEmpty>No se encontró el país.</CommandEmpty>
           <CommandList>
             <CommandGroup>
-              {filteredCountries.map((country) => (
+              {COUNTRIES.map((country) => (
                 <CommandItem
                   key={country.code}
-                  value={country.code}
-                  onSelect={(currentValue) => {
-                    // Use the value from the callback, which is more reliable.
-                    // This ensures the correct value is passed on both keyboard and touch events.
-                    onChange(currentValue.toUpperCase());
+                  value={country.name} // This is the value the filter will use
+                  onSelect={() => {
+                    onChange(country.code.toUpperCase());
                     setOpen(false);
-                    setSearch("");
                   }}
                 >
                   <Check
