@@ -1,4 +1,3 @@
-
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
@@ -44,71 +43,53 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
     
-    // --- REGLAS PARA LA COLECCIÓN figures Y SU SUBCOLECCIÓN galleryImages ---
-    match /figures/{figureId} {
-      allow read: if true;
-      // Admin puede crear y eliminar. Cualquier usuario puede actualizar (para contadores, etc.).
-      allow create, delete: if isAdmin();
-      allow update: if request.auth != null;
+    // --- REGLAS DE DESARROLLO (MUY PERMISIVAS) ---
+    // ADVERTENCIA: Estas reglas son para probar la lógica de la app.
+    // CUALQUIER usuario autenticado (incluidos invitados) puede leer y escribir datos.
+    // Esto debería restringirse antes de pasar a producción.
 
+    // Colección de figuras
+    match /figures/{figureId} {
+      // Cualquiera puede leer.
+      allow read: if true;
+      // Cualquier usuario autenticado puede actualizar.
+      // Solo el administrador puede crear y eliminar para evitar borrados accidentales.
+      allow update: if request.auth != null;
+      allow create, delete: if isAdmin();
+
+      // Subcolección de galería de imágenes
       match /galleryImages/{galleryImageId} {
         allow read: if true;
-        allow create: if request.auth != null &&
-                         !request.auth.token.firebase.sign_in_provider.matches('anonymous') && // No anónimos
-                         request.resource.data.userId == request.auth.uid &&
-                         request.resource.data.imageUrl != null;
-        allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
-        allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+        // Solo usuarios no anónimos pueden crear/actualizar/eliminar imágenes.
+        allow write: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
       }
     }
 
-    // --- REGLAS PARA OTRAS COLECCIONES PRINCIPALES ---
-    
-    // REGLA PARA PERFILES DE USUARIO REGISTRADOS
+    // Perfiles de usuario: Solo el propio usuario o el admin pueden escribir.
     match /registered_users/{userId} {
-      // Un usuario puede leer y escribir en su propio perfil.
-      // El administrador también puede leer y escribir en cualquier perfil.
       allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
     }
-    
-    // Votos de percepción, actitud y estrellas: los usuarios autenticados pueden escribir sus propios votos.
+
+    // Votos y comentarios: Cualquier usuario autenticado (incluido anónimo) puede escribir.
     match /userPerceptions/{docId} {
-      allow read: if isAdmin() || (request.auth != null && request.auth.uid == docId.split('_')[0]);
-      allow write: if request.auth != null && request.auth.uid == docId.split('_')[0];
+      allow read: if true;
+      allow write: if request.auth != null;
     }
     match /userAttitudes/{docId} {
-      allow read: if isAdmin() || (request.auth != null && request.auth.uid == docId.split('_')[0]);
-      allow write: if request.auth != null && request.auth.uid == docId.split('_')[0];
+      allow read: if true;
+      allow write: if request.auth != null;
     }
     match /userStarRatings/{docId} {
-      allow read: if isAdmin() || (request.auth != null && request.auth.uid == docId.split('_')[0]);
-      allow write: if request.auth != null && request.auth.uid == docId.split('_')[0];
+      allow read: if true;
+      allow write: if request.auth != null;
     }
-
-    // Comentarios: Los usuarios autenticados (INCLUYENDO ANÓNIMOS) pueden crear.
-    // El dueño del comentario o un admin pueden eliminarlo.
-    // Cualquier usuario no-anónimo puede actualizarlo para dar like/dislike.
     match /userComments/{commentId} {
       allow read: if true;
-      allow create: if request.auth != null; // Allows anonymous users to create comments
-
-      // Delete is allowed for the comment owner or an admin
-      allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
-
-      // Update is more complex:
-      // - The owner or an admin can update anything.
-      // - A non-anonymous user can update ONLY the like/dislike fields.
-      allow update: if request.auth != null &&
-        (
-          // Case 1: The user is the owner or an admin (can edit anything)
-          request.auth.uid == resource.data.userId || isAdmin() ||
-          // Case 2: The user is logged in (not anonymous) and ONLY updating vote counts
-          (
-            !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-            // This checks that the ONLY fields being changed are the ones for voting.
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'dislikes', 'likedBy', 'dislikedBy'])
-          )
-        );
+      // Cualquier usuario autenticado puede crear.
+      allow create: if request.auth != null;
+      // Para actualizar/eliminar: debe ser el dueño del comentario o un admin.
+      // Esta regla es menos permisiva pero necesaria para evitar que cualquiera borre comentarios.
+      allow update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
     }
   }
 }
