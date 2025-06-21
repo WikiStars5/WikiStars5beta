@@ -73,21 +73,11 @@ service cloud.firestore {
     // Colección de comentarios de usuario
     match /userComments/{commentId} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
-
-      // REGLA DE ACTUALIZACIÓN CORREGIDA:
-      // Permite la actualización si el usuario es el dueño O un admin
-      // O si la actualización solo afecta a los campos de votación y no al contenido.
-      allow update: if request.auth != null &&
-        ( (resource.data.userId == request.auth.uid || isAdmin()) ||
-          (
-            request.resource.data.text == resource.data.text &&
-            request.resource.data.starRatingGiven == resource.data.starRatingGiven &&
-            request.resource.data.userId == resource.data.userId &&
-            request.resource.data.figureId == resource.data.figureId
-          )
-        );
+      // REGLA SÚPER PERMISIVA PARA DESARROLLO:
+      // Permite a CUALQUIER usuario autenticado (incluido anónimo)
+      // crear, actualizar y eliminar CUALQUIER comentario.
+      // Esto es solo para depurar la lógica de la app.
+      allow write: if request.auth != null;
     }
   }
 }
