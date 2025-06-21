@@ -14,8 +14,8 @@ import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { useRouter } from "next/navigation"; 
 import { auth } from '@/lib/firebase';
 import { ensureUserProfileExists } from "@/lib/userData";
-import { COUNTRIES } from "@/config/countries";
 import { GENDER_OPTIONS } from "@/config/genderOptions";
+import { CountryCombobox } from "@/components/shared/CountryCombobox";
 
 const signupSchema = z.object({
   displayName: z.string().min(2, { message: "El nombre de usuario debe tener al menos 2 caracteres." }).max(50, {message: "El nombre de usuario no debe exceder los 50 caracteres."}),
@@ -142,23 +142,13 @@ export function SignupForm() {
           control={form.control}
           name="countryCode"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="flex flex-col">
               <FormLabel>País</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona tu país" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="max-h-60">
-                  {COUNTRIES.map((country) => (
-                    <SelectItem key={country.code} value={country.code}>
-                      <span role="img" aria-label={country.name} className="mr-2">{country.emoji}</span>
-                      {country.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CountryCombobox
+                value={field.value}
+                onChange={field.onChange}
+                disabled={isLoading}
+              />
               <FormMessage />
             </FormItem>
           )}
