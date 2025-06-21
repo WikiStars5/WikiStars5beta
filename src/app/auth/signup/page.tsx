@@ -1,2 +1,7 @@
-// This file is a duplicate of /src/app/(auth)/signup/page.tsx and was likely causing a routing conflict.
-// It has been emptied to resolve the issue and can be safely deleted.
+
+// This file is a duplicate of /src/app/(auth)/signup/page.tsx and creates a routing conflict.
+// It should be deleted.
+// Returning null here to prevent the app from crashing due to an invalid page component.
+export default function ConflictingSignupPage() {
+    return null;
+}
