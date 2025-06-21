@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage, FamilyMember } from "@/lib/types";
@@ -8,7 +7,7 @@ import {
   Terminal, Info, UserCircle, Globe, Briefcase, Users2 as FamilyIcon, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   ImageOff, BarChartHorizontal, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
-  MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide
+  MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown
 } from "lucide-react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import Link from "next/link";
@@ -44,6 +43,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { submitGalleryImageAction } from "@/app/actions/figureGalleryActions";
+import { updateCommentLikes } from "@/app/actions/commentRatingActions";
+import { cn } from "@/lib/utils";
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
   1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
@@ -91,6 +92,7 @@ export default function FigurePage() {
   
   const [canEditFigure, setCanEditFigure] = useState(false);
   const [canCommentOrRate, setCanCommentOrRate] = useState(false);
+  const [canVoteOnComments, setCanVoteOnComments] = useState(false);
   const [canSubmitGalleryImage, setCanSubmitGalleryImage] = useState(false);
 
   const [newComment, setNewComment] = useState("");
@@ -98,6 +100,7 @@ export default function FigurePage() {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [commentsList, setCommentsList] = useState<UserComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(true);
+  const [votingCommentId, setVotingCommentId] = useState<string | null>(null);
 
   const [starAudios, setStarAudios] = useState<Partial<Record<StarValue, HTMLAudioElement>>>({});
 
@@ -154,6 +157,7 @@ export default function FigurePage() {
       const isNonAnonymous = !!user && !user.isAnonymous;
       setCanEditFigure(isNonAnonymous); 
       setCanCommentOrRate(!!user); 
+      setCanVoteOnComments(isNonAnonymous);
       setCanSubmitGalleryImage(isNonAnonymous); 
 
       if (user && figure?.id) { 
@@ -477,6 +481,77 @@ export default function FigurePage() {
     } finally {
       setIsSubmittingComment(false);
     }
+  };
+
+  const handleLikeDislike = async (commentId: string, action: 'like' | 'dislike') => {
+    if (!canVoteOnComments || !currentUser) {
+        toast({ title: 'Acción Requerida', description: 'Debes iniciar sesión con una cuenta para votar en comentarios.' });
+        return;
+    }
+    setVotingCommentId(commentId);
+
+    const originalComments = [...commentsList];
+    
+    // Optimistic update
+    setCommentsList(currentComments => currentComments.map(c => {
+        if (c.id === commentId) {
+            const hasLiked = c.likedBy.includes(currentUser.uid);
+            const hasDisliked = c.dislikedBy.includes(currentUser.uid);
+            let newLikes = c.likes;
+            let newDislikes = c.dislikes;
+            let newLikedBy = [...c.likedBy];
+            let newDislikedBy = [...c.dislikedBy];
+
+            if (action === 'like') {
+                if (hasLiked) { // un-like
+                    newLikes--;
+                    newLikedBy = newLikedBy.filter(id => id !== currentUser.uid);
+                } else { // like
+                    newLikes++;
+                    newLikedBy.push(currentUser.uid);
+                    if (hasDisliked) { // if previously disliked
+                        newDislikes--;
+                        newDislikedBy = newDislikedBy.filter(id => id !== currentUser.uid);
+                    }
+                }
+            } else { // dislike
+                if (hasDisliked) { // un-dislike
+                    newDislikes--;
+                    newDislikedBy = newDislikedBy.filter(id => id !== currentUser.uid);
+                } else { // dislike
+                    newDislikes++;
+                    newDislikedBy.push(currentUser.uid);
+                    if (hasLiked) { // if previously liked
+                        newLikes--;
+                        newLikedBy = newLikedBy.filter(id => id !== currentUser.uid);
+                    }
+                }
+            }
+            return { ...c, likes: newLikes, dislikes: newDislikes, likedBy: newLikedBy, dislikedBy: newDislikedBy };
+        }
+        return c;
+    }));
+
+    const result = await updateCommentLikes(commentId, figure!.id, currentUser.uid, action);
+
+    if (!result.success) {
+        toast({ title: 'Error', description: result.message, variant: 'destructive' });
+        // Revert UI on failure
+        setCommentsList(originalComments);
+    } else {
+        // More robust update with data from server
+        setCommentsList(currentComments => currentComments.map(c => {
+          if (c.id === commentId) {
+            return {
+              ...c,
+              likes: result.newLikes ?? c.likes,
+              dislikes: result.newDislikes ?? c.dislikes,
+            };
+          }
+          return c;
+        }));
+    }
+    setVotingCommentId(null);
   };
 
   const handleSubmitGalleryImage = async (e: React.FormEvent) => {
@@ -811,32 +886,47 @@ export default function FigurePage() {
                 <h4 className="text-lg font-medium">Comentarios Recientes ({commentsList.length})</h4>
                 {isLoadingComments ? (<div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando...</p></div>
                 ) : commentsList.length > 0 ? (
-                  commentsList.map((comment) => (
-                    <div key={comment.id} className="flex space-x-3 border-b pb-4 last:border-b-0 last:pb-0 relative group">
-                      <Avatar className="h-10 w-10"><AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" /><AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm font-semibold text-foreground">{comment.username}</p>
-                            <div className="flex items-center space-x-2">
-                                <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
-                                {currentUser && (currentUser.uid === comment.userId || (canEditFigure && currentUser.uid === ADMIN_UID) ) && (
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                    onClick={() => openDeleteDialog(comment.id, comment.starRatingGiven)}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Eliminar comentario</span>
-                                </Button>
-                                )}
-                            </div>
+                  commentsList.map((comment) => {
+                    const userHasLiked = !!currentUser && comment.likedBy.includes(currentUser.uid);
+                    const userHasDisliked = !!currentUser && comment.dislikedBy.includes(currentUser.uid);
+                    const isVoting = votingCommentId === comment.id;
+
+                    return (
+                      <div key={comment.id} className="flex space-x-3 border-b pb-4 last:border-b-0 last:pb-0 relative group">
+                        <Avatar className="h-10 w-10"><AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" /><AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                              <p className="text-sm font-semibold text-foreground">{comment.username}</p>
+                              <div className="flex items-center space-x-2">
+                                  <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
+                                  {currentUser && (currentUser.uid === comment.userId || (canEditFigure && currentUser.uid === ADMIN_UID) ) && (
+                                  <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                      onClick={() => openDeleteDialog(comment.id, comment.starRatingGiven)}
+                                  >
+                                      <Trash2 className="h-4 w-4" />
+                                      <span className="sr-only">Eliminar comentario</span>
+                                  </Button>
+                                  )}
+                              </div>
+                          </div>
+                          {comment.starRatingGiven && (<div className="mt-1"><StarRating rating={comment.starRatingGiven} size={14} readOnly /></div>)}
+                          {comment.text && comment.text.trim() !== "" && (<p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>)}
+                          <div className="flex items-center gap-2 mt-2">
+                            <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'like')} disabled={!canVoteOnComments || isVoting}>
+                               <ThumbsUp className={cn("h-4 w-4 mr-1", userHasLiked && "fill-blue-500 text-blue-500")} /> {comment.likes}
+                            </Button>
+                            <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'dislike')} disabled={!canVoteOnComments || isVoting}>
+                               <ThumbsDown className={cn("h-4 w-4 mr-1", userHasDisliked && "fill-red-500 text-red-500")} /> {comment.dislikes}
+                            </Button>
+                            {isVoting && <Loader2 className="h-4 w-4 animate-spin" />}
+                          </div>
                         </div>
-                        {comment.starRatingGiven && (<div className="mt-1"><StarRating rating={comment.starRatingGiven} size={14} readOnly /></div>)}
-                        {comment.text && comment.text.trim() !== "" && (<p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>)}
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 ) : (<p className="text-muted-foreground text-center py-4">No hay comentarios. ¡Sé el primero!</p>)}
               </div>
             </CardContent>
@@ -882,5 +972,3 @@ export default function FigurePage() {
     </div>
   );
 }
-
-    
