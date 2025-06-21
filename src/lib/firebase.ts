@@ -42,16 +42,13 @@ service cloud.firestore {
       // Reemplaza esto con el UID de tu cuenta de administrador
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
-    
+
     // --- REGLAS DE DESARROLLO (MUY PERMISIVAS) ---
     // ADVERTENCIA: Estas reglas son para probar la lógica de la app.
-    // CUALQUIER usuario autenticado (incluidos invitados) puede leer y escribir datos.
-    // Esto debería restringirse antes de pasar a producción.
-
-    // Colección de figuras
+    
     match /figures/{figureId} {
       allow read: if true;
-      allow update: if request.auth != null;
+      allow update: if request.auth != null; 
       allow create, delete: if isAdmin();
 
       match /galleryImages/{galleryImageId} {
@@ -60,12 +57,10 @@ service cloud.firestore {
       }
     }
 
-    // Perfiles de usuario: Solo el propio usuario o el admin pueden escribir.
     match /registered_users/{userId} {
       allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
     }
 
-    // Votos y comentarios: Cualquier usuario autenticado (incluido anónimo) puede escribir.
     match /userPerceptions/{docId} { allow read, write: if request.auth != null; }
     match /userAttitudes/{docId} { allow read, write: if request.auth != null; }
     match /userStarRatings/{docId} { allow read, write: if request.auth != null; }
@@ -73,11 +68,10 @@ service cloud.firestore {
     // Colección de comentarios de usuario
     match /userComments/{commentId} {
       allow read: if true;
-      // REGLA SÚPER PERMISIVA PARA DESARROLLO:
-      // Permite a CUALQUIER usuario autenticado (incluido anónimo)
-      // crear, actualizar y eliminar CUALQUIER comentario.
-      // Esto es solo para depurar la lógica de la app.
-      allow write: if request.auth != null;
+      // PRUEBA DEFINITIVA: Permitir escritura a CUALQUIERA para depurar.
+      // Si esto funciona, el problema está en la condición `request.auth != null`
+      // y cómo la interpreta el servidor para esta operación específica.
+      allow write: if true; 
     }
   }
 }
