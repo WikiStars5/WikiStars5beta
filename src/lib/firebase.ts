@@ -85,11 +85,12 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == docId.split('_')[0];
     }
 
-    // Comentarios: Los usuarios autenticados (no anónimos) pueden crear.
+    // Comentarios: Los usuarios autenticados (INCLUYENDO ANÓNIMOS) pueden crear.
     // El dueño del comentario o un admin pueden actualizar o eliminar. Todos pueden leer.
     match /userComments/{commentId} {
       allow read: if true;
-      allow create: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+      // CORRECCIÓN: Se permite a cualquier usuario autenticado (anónimo o no) crear comentarios.
+      allow create: if request.auth != null;
       allow update, delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
     }
   }
