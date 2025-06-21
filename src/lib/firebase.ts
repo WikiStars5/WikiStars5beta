@@ -47,9 +47,8 @@ service cloud.firestore {
     // --- REGLAS PARA LA COLECCIÓN figures Y SU SUBCOLECCIÓN galleryImages ---
     match /figures/{figureId} {
       allow read: if true;
-      // Admin puede crear y eliminar figuras.
+      // Admin puede crear y eliminar. Cualquier usuario puede actualizar (para contadores, etc.).
       allow create, delete: if isAdmin();
-      // Cualquier usuario autenticado (incluido anónimo) puede actualizar (para contadores de votos, etc.).
       allow update: if request.auth != null;
 
       match /galleryImages/{galleryImageId} {
@@ -65,7 +64,7 @@ service cloud.firestore {
 
     // --- REGLAS PARA OTRAS COLECCIONES PRINCIPALES ---
     
-    // REGLA CLAVE PARA PERFILES DE USUARIO REGISTRADOS
+    // REGLA PARA PERFILES DE USUARIO REGISTRADOS
     match /registered_users/{userId} {
       // Un usuario puede leer y escribir en su propio perfil.
       // El administrador también puede leer y escribir en cualquier perfil.
@@ -91,21 +90,25 @@ service cloud.firestore {
     // Cualquier usuario no-anónimo puede actualizarlo para dar like/dislike.
     match /userComments/{commentId} {
       allow read: if true;
-      allow create: if request.auth != null;
+      allow create: if request.auth != null; // Allows anonymous users to create comments
+
+      // Delete is allowed for the comment owner or an admin
       allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
-      // Permite actualizar si:
-      // 1. Eres el autor o un admin (puedes cambiar todo).
-      // 2. Eres un usuario logueado (no anónimo) Y NO estás cambiando el texto o la calificación de estrellas.
-      allow update: if request.auth != null && (
-          (request.auth.uid == resource.data.userId || isAdmin()) ||
+
+      // Update is more complex:
+      // - The owner or an admin can update anything.
+      // - A non-anonymous user can update ONLY the like/dislike fields.
+      allow update: if request.auth != null &&
+        (
+          // Case 1: The user is the owner or an admin (can edit anything)
+          request.auth.uid == resource.data.userId || isAdmin() ||
+          // Case 2: The user is logged in (not anonymous) and ONLY updating vote counts
           (
             !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-            // CORRECTO: O el campo 'text' no se está actualizando, O si se actualiza, no cambia.
-            (!('text' in request.resource.data) || request.resource.data.text == resource.data.text) &&
-            // CORRECTO: O el campo 'starRatingGiven' no se está actualizando, O si se actualiza, no cambia.
-            (!('starRatingGiven' in request.resource.data) || request.resource.data.starRatingGiven == resource.data.starRatingGiven)
+            // This checks that the ONLY fields being changed are the ones for voting.
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'dislikes', 'likedBy', 'dislikedBy'])
           )
-      );
+        );
     }
   }
 }
