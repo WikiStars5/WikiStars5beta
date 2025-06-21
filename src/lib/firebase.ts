@@ -68,10 +68,10 @@ service cloud.firestore {
     // Colección de comentarios de usuario
     match /userComments/{commentId} {
       allow read: if true;
-      // PRUEBA DEFINITIVA: Permitir escritura a CUALQUIERA para depurar.
-      // Si esto funciona, el problema está en la condición `request.auth != null`
-      // y cómo la interpreta el servidor para esta operación específica.
-      allow write: if true; 
+      // Permite la creación y actualización (likes/dislikes) a cualquier
+      // usuario autenticado, incluyendo invitados anónimos.
+      // La edición del texto y la eliminación del comentario se controlan en el frontend.
+      allow write: if request.auth != null;
     }
   }
 }
