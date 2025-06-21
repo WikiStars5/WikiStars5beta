@@ -46,8 +46,10 @@ service cloud.firestore {
     // --- REGLAS PARA LA COLECCIÓN figures Y SU SUBCOLECCIÓN galleryImages ---
     match /figures/{figureId} {
       allow read: if true;
-      // Solo el admin puede crear, actualizar o eliminar figuras.
-      allow write: if isAdmin();
+      // El admin puede crear y eliminar figuras.
+      allow create, delete: if isAdmin();
+      // Cualquier usuario autenticado (incluido anónimo) puede actualizar (para contadores de votos, etc.).
+      allow update: if request.auth != null;
 
       match /galleryImages/{galleryImageId} {
         allow read: if true;
