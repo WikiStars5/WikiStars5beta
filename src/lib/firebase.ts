@@ -96,13 +96,14 @@ service cloud.firestore {
       // Permite actualizar si:
       // 1. Eres el autor o un admin (puedes cambiar todo).
       // 2. Eres un usuario logueado (no anónimo) Y NO estás cambiando el texto o la calificación de estrellas.
-      // Esto permite dar like/dislike.
       allow update: if request.auth != null && (
           (request.auth.uid == resource.data.userId || isAdmin()) ||
           (
             !request.auth.token.firebase.sign_in_provider.matches('anonymous') &&
-            request.resource.data.text == resource.data.text &&
-            request.resource.data.starRatingGiven == resource.data.starRatingGiven
+            // CORRECTO: O el campo 'text' no se está actualizando, O si se actualiza, no cambia.
+            (!('text' in request.resource.data) || request.resource.data.text == resource.data.text) &&
+            // CORRECTO: O el campo 'starRatingGiven' no se está actualizando, O si se actualiza, no cambia.
+            (!('starRatingGiven' in request.resource.data) || request.resource.data.starRatingGiven == resource.data.starRatingGiven)
           )
       );
     }
