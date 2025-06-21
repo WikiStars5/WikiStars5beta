@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { COUNTRIES } from "@/config/countries"
+import { COUNTRIES } from "@/config/countries" // Asegúrate de que este archivo exista y exporte COUNTRIES
 
 interface CountryComboboxProps {
   value: string;
@@ -26,25 +26,12 @@ interface CountryComboboxProps {
   disabled?: boolean;
 }
 
-const normalizeString = (str: string) => 
-  str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-
 export function CountryCombobox({ value, onChange, disabled }: CountryComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
   const selectedCountry = COUNTRIES.find(
     (country) => country.code.toLowerCase() === value.toLowerCase()
   );
-
-  // Custom filter for cmdk to handle accents and case-insensitivity
-  const customFilter = (value: string, search: string): number => {
-    // `value` is the `country.name` from `CommandItem`
-    // `search` is what the user types in `CommandInput`
-    if (normalizeString(value).includes(normalizeString(search))) {
-      return 1; // Show item
-    }
-    return 0; // Hide item
-  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -58,15 +45,15 @@ export function CountryCombobox({ value, onChange, disabled }: CountryComboboxPr
         >
           {selectedCountry ? (
             <div className="flex items-center">
-               <span role="img" aria-label={selectedCountry.name} className="mr-2">{selectedCountry.emoji}</span>
-               {selectedCountry.name}
+              <span role="img" aria-label={selectedCountry.name} className="mr-2">{selectedCountry.emoji}</span>
+              {selectedCountry.name}
             </div>
           ) : "Selecciona tu país"}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command filter={customFilter}>
+        <Command>
           <CommandInput placeholder="Buscar país..." />
           <CommandEmpty>No se encontró el país.</CommandEmpty>
           <CommandList>
@@ -74,9 +61,9 @@ export function CountryCombobox({ value, onChange, disabled }: CountryComboboxPr
               {COUNTRIES.map((country) => (
                 <CommandItem
                   key={country.code}
-                  value={country.name} // This is the value the filter will use
-                  onSelect={() => {
-                    onChange(country.code.toUpperCase());
+                  value={country.code}
+                  onSelect={(currentValue) => {
+                    onChange(currentValue === value ? "" : currentValue.toUpperCase());
                     setOpen(false);
                   }}
                 >
