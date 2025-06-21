@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -80,8 +81,9 @@ export function CountryCombobox({ value, onChange, disabled }: CountryComboboxPr
                 <CommandItem
                   key={country.code}
                   value={country.code}
-                  onSelect={(currentValue) => {
-                    onChange(currentValue.toUpperCase() === value.toUpperCase() ? "" : currentValue.toUpperCase())
+                  onSelect={() => {
+                    const newCode = country.code.toUpperCase();
+                    onChange(newCode === value.toUpperCase() ? "" : newCode);
                     setOpen(false)
                     setSearch("")
                   }}
