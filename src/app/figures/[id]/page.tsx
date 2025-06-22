@@ -29,7 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, updateDoc as updateFirestoreDoc, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment } from 'firestore/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, updateDoc as updateFirestoreDoc, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/shared/StarRating";
 import {
@@ -47,11 +47,11 @@ import { updateCommentLikes } from "@/app/actions/commentRatingActions";
 import { cn } from "@/lib/utils";
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
-  1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
-  2: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar2.mp3?alt=media&token=58cbf607-df0b-4bbd-b28e-291cf1951c18",
-  3: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar3.mp3?alt=media&token=df67dc5b-28ab-4773-8266-60b9127a325f",
-  4: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826",
-  5: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f",
+  1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.appspot.com/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
+  2: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.appspot.com/o/audio%2Fstar2.mp3?alt=media&token=58cbf607-df0b-4bbd-b28e-291cf1951c18",
+  3: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.appspot.com/o/audio%2Fstar3.mp3?alt=media&token=df67dc5b-28ab-4773-8266-60b9127a325f",
+  4: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.appspot.com/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826",
+  5: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.appspot.com/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f",
 };
 
 const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
@@ -234,13 +234,6 @@ export default function FigurePage() {
       console.error("Error fetching figure details:", error);
       toast({ title: "Error al Cargar Figura", description: "No se pudo cargar la información de la figura.", variant: "destructive"});
       setFigure(null); 
-    }
-
-    try {
-      const fetchedAllFigures = await getAllFiguresFromFirestore();
-      setAllFigures(fetchedAllFigures);
-    } catch (error) {
-      console.error("Error fetching all figures for related section:", error);
     }
   }, [id, resetEditFields, toast, currentUser]);
 
@@ -779,80 +772,75 @@ export default function FigurePage() {
     <div><Label htmlFor={idField} className="font-semibold text-foreground/90">{label}</Label><Textarea id={idField} value={value} onChange={onChange} placeholder={placeholder || `Añade ${label.toLowerCase()}...`} rows={rows || 3} className="mt-1" /></div>
   );
 
-  const renderComment = (comment: UserComment, isReply: boolean) => {
+  const renderComment = (comment: UserComment, level: number) => {
+    const MAX_NESTING_LEVEL = 3; // Nivel 0, 1, 2, 3 (4 niveles en total)
     const userHasLiked = !!currentUser && comment.likedBy.includes(currentUser.uid);
     const userHasDisliked = !!currentUser && comment.dislikedBy.includes(currentUser.uid);
     const isVoting = votingCommentId === comment.id;
 
     return (
-      <div key={comment.id} className={cn("flex space-x-3 relative group", isReply && "pt-4")}>
-        {isReply && <CornerDownRight className="absolute -top-1 left-4 h-5 w-5 text-muted-foreground" />}
-        <Avatar className="h-10 w-10"><AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" /><AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
-        <div className="flex-1">
-          <div className="flex items-center justify-between">
+      <div key={comment.id} className="relative group/comment">
+        {/* Contenido principal del comentario */}
+        <div className="flex space-x-3">
+          <Avatar className="h-10 w-10 flex-shrink-0">
+            <AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" />
+            <AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-foreground">{comment.username}</p>
               <div className="flex items-center space-x-2">
-                  <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
-                  {currentUser && (currentUser.uid === comment.userId || (canEditFigure && currentUser.uid === ADMIN_UID) ) && (
-                  <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                      onClick={() => openDeleteDialog(comment.id, comment.starRatingGiven)}
-                  >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Eliminar comentario</span>
+                <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
+                {currentUser && (currentUser.uid === comment.userId || (canEditFigure && currentUser.uid === ADMIN_UID)) && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/comment:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => openDeleteDialog(comment.id, comment.starRatingGiven)}>
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">Eliminar comentario</span>
                   </Button>
-                  )}
+                )}
               </div>
-          </div>
-          {comment.starRatingGiven && (<div className="mt-1"><StarRating rating={comment.starRatingGiven} size={14} readOnly /></div>)}
-          {comment.text && comment.text.trim() !== "" && (<p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>)}
-          <div className="flex items-center gap-1 mt-2">
-            <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'like')} disabled={!canVoteOnComments || isVoting}>
-               <ThumbsUp className={cn("h-4 w-4 mr-1", userHasLiked && "fill-blue-500 text-blue-500")} /> {comment.likes}
-            </Button>
-            <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'dislike')} disabled={!canVoteOnComments || isVoting}>
-               <ThumbsDown className={cn("h-4 w-4 mr-1", userHasDisliked && "fill-red-500 text-red-500")} /> {comment.dislikes}
-            </Button>
-            {!isReply && (
-              <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleReplyClick(comment.id)} disabled={!canCommentOrRate}>
-                <MessageSquareReply className="h-4 w-4 mr-1" /> Responder
+            </div>
+            {comment.starRatingGiven && (<div className="mt-1"><StarRating rating={comment.starRatingGiven} size={14} readOnly /></div>)}
+            {comment.text && comment.text.trim() !== "" && (<p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>)}
+            <div className="flex items-center gap-1 mt-2">
+              <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'like')} disabled={!canVoteOnComments || isVoting}>
+                <ThumbsUp className={cn("h-4 w-4 mr-1", userHasLiked && "fill-blue-500 text-blue-500")} /> {comment.likes}
+              </Button>
+              <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'dislike')} disabled={!canVoteOnComments || isVoting}>
+                <ThumbsDown className={cn("h-4 w-4 mr-1", userHasDisliked && "fill-red-500 text-red-500")} /> {comment.dislikes}
+              </Button>
+              {level < MAX_NESTING_LEVEL && (
+                <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleReplyClick(comment.id)} disabled={!canCommentOrRate}>
+                  <MessageSquareReply className="h-4 w-4 mr-1" /> Responder
+                </Button>
+              )}
+              {isVoting && <Loader2 className="h-4 w-4 animate-spin" />}
+            </div>
+            {comment.replyCount > 0 && (
+              <Button variant="link" size="sm" className="px-0 h-auto text-xs mt-1" onClick={() => handleToggleReplies(comment.id)}>
+                {loadingReplies[comment.id] ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                {visibleReplies[comment.id] ? 'Ocultar respuestas' : `Ver ${comment.replyCount} respuestas`}
               </Button>
             )}
-            {isVoting && <Loader2 className="h-4 w-4 animate-spin" />}
-          </div>
-          {!isReply && comment.replyCount > 0 && (
-            <Button variant="link" size="sm" className="px-0 h-auto text-xs mt-1" onClick={() => handleToggleReplies(comment.id)}>
-              {loadingReplies[comment.id] ? <Loader2 className="h-3 w-3 animate-spin mr-1"/> : null}
-              {visibleReplies[comment.id] ? 'Ocultar respuestas' : `Ver ${comment.replyCount} respuestas`}
-            </Button>
-          )}
-          {replyingTo === comment.id && (
-            <div className="mt-4">
-              <Textarea
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder={`Respondiendo a ${comment.username}...`}
-                rows={2}
-                className="w-full text-sm"
-                disabled={isSubmittingReply === comment.id}
-              />
-              <div className="flex justify-end gap-2 mt-2">
-                <Button variant="ghost" size="sm" onClick={() => setReplyingTo(null)} disabled={isSubmittingReply === comment.id}>Cancelar</Button>
-                <Button size="sm" onClick={() => handleSubmitReply(comment.id)} disabled={isSubmittingReply === comment.id || !replyText.trim()}>
-                  {isSubmittingReply === comment.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                  Enviar Respuesta
-                </Button>
+            {replyingTo === comment.id && (
+              <div className="mt-4">
+                <Textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder={`Respondiendo a ${comment.username}...`} rows={2} className="w-full text-sm" disabled={isSubmittingReply === comment.id} />
+                <div className="flex justify-end gap-2 mt-2">
+                  <Button variant="ghost" size="sm" onClick={() => setReplyingTo(null)} disabled={isSubmittingReply === comment.id}>Cancelar</Button>
+                  <Button size="sm" onClick={() => handleSubmitReply(comment.id)} disabled={isSubmittingReply === comment.id || !replyText.trim()}>
+                    {isSubmittingReply === comment.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Enviar Respuesta
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-          {visibleReplies[comment.id] && replies[comment.id] && (
-            <div className="mt-4 pl-6 border-l-2 border-muted-foreground/20 space-y-4">
-              {replies[comment.id].map(reply => renderComment(reply, true))}
-            </div>
-          )}
+            )}
+          </div>
         </div>
+        {/* Sección para renderizar las respuestas de este comentario */}
+        {visibleReplies[comment.id] && replies[comment.id] && (
+          <div className="mt-4 pl-12 border-l-2 border-muted-foreground/20 space-y-4">
+            {replies[comment.id].map(reply => renderComment(reply, level + 1))}
+          </div>
+        )}
       </div>
     );
   };
@@ -1063,7 +1051,7 @@ export default function FigurePage() {
                 <h4 className="text-lg font-medium">Comentarios Recientes ({commentsList.length})</h4>
                 {isLoadingComments ? (<div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando...</p></div>
                 ) : commentsList.length > 0 ? (
-                  commentsList.map((comment) => renderComment(comment, false))
+                  commentsList.map((comment) => renderComment(comment, 0))
                 ) : (<p className="text-muted-foreground text-center py-4">No hay comentarios. ¡Sé el primero!</p>)}
               </div>
             </CardContent>
