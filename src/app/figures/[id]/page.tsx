@@ -490,73 +490,125 @@ export default function FigurePage() {
     }
   };
 
-  const handleLikeDislike = async (commentId: string, action: 'like' | 'dislike') => {
+  const handleLikeDislike = async (commentId: string, action: 'like' | 'dislike', parentCommentId: string | null = null) => {
     if (!currentUser) {
-        toast({ title: 'Acción Requerida', description: 'Debes estar conectado (incluso como invitado) para votar.' });
-        return;
+      toast({ title: 'Acción Requerida', description: 'Debes estar conectado (incluso como invitado) para votar.' });
+      return;
     }
+    if (votingCommentId) return;
     setVotingCommentId(commentId);
-
-    const originalComments = [...commentsList];
-    
-    // Optimistic update
-    setCommentsList(currentComments => currentComments.map(c => {
-        if (c.id === commentId) {
-            const hasLiked = c.likedBy.includes(currentUser.uid);
-            const hasDisliked = c.dislikedBy.includes(currentUser.uid);
-            let newLikes = c.likes;
-            let newDislikes = c.dislikes;
-            let newLikedBy = [...c.likedBy];
-            let newDislikedBy = [...c.dislikedBy];
-
-            if (action === 'like') {
-                if (hasLiked) { // un-like
-                    newLikes--;
-                    newLikedBy = newLikedBy.filter(id => id !== currentUser.uid);
-                } else { // like
-                    newLikes++;
-                    newLikedBy.push(currentUser.uid);
-                    if (hasDisliked) { // if previously disliked
-                        newDislikes--;
-                        newDislikedBy = newDislikedBy.filter(id => id !== currentUser.uid);
-                    }
-                }
-            } else { // dislike
-                if (hasDisliked) { // un-dislike
-                    newDislikes--;
-                    newDislikedBy = newDislikedBy.filter(id => id !== currentUser.uid);
-                } else { // dislike
-                    newDislikes++;
-                    newDislikedBy.push(currentUser.uid);
-                    if (hasLiked) { // if previously liked
-                        newLikes--;
-                        newLikedBy = newLikedBy.filter(id => id !== currentUser.uid);
-                    }
-                }
+  
+    const updateCommentRecursively = (comments: UserComment[], targetCommentId: string, currentUserId: string, action: 'like' | 'dislike'): UserComment[] => {
+      return comments.map(comment => {
+        if (comment.id === targetCommentId) {
+          let newLikes = comment.likes;
+          let newDislikes = comment.dislikes;
+          let newLikedBy = [...comment.likedBy];
+          let newDislikedBy = [...comment.dislikedBy];
+  
+          const hasLiked = newLikedBy.includes(currentUserId);
+          const hasDisliked = newDislikedBy.includes(currentUserId);
+  
+          if (action === 'like') {
+            if (hasLiked) {
+              newLikes--;
+              newLikedBy = newLikedBy.filter(id => id !== currentUserId);
+            } else {
+              newLikes++;
+              newLikedBy.push(currentUserId);
+              if (hasDisliked) {
+                newDislikes--;
+                newDislikedBy = newDislikedBy.filter(id => id !== currentUserId);
+              }
             }
-            return { ...c, likes: newLikes, dislikes: newDislikes, likedBy: newLikedBy, dislikedBy: newDislikedBy };
-        }
-        return c;
-    }));
-
-    const result = await updateCommentLikes(commentId, figure!.id, currentUser.uid, action);
-
-    if (!result.success) {
-        toast({ title: 'Error', description: result.message, variant: 'destructive' });
-        // Revert UI on failure
-        setCommentsList(originalComments);
-    } else {
-        // More robust update with data from server
-        setCommentsList(currentComments => currentComments.map(c => {
-          if (c.id === commentId) {
-            return {
-              ...c,
-              likes: result.newLikes ?? c.likes,
-              dislikes: result.newDislikes ?? c.dislikes,
-            };
+          } else {
+            if (hasDisliked) {
+              newDislikes--;
+              newDislikedBy = newDislikedBy.filter(id => id !== currentUserId);
+            } else {
+              newDislikes++;
+              newDislikedBy.push(currentUserId);
+              if (hasLiked) {
+                newLikes--;
+                newLikedBy = newLikedBy.filter(id => id !== currentUserId);
+              }
+            }
           }
-          return c;
+          return {
+            ...comment,
+            likes: newLikes,
+            dislikes: newDislikes,
+            likedBy: newLikedBy,
+            dislikedBy: newDislikedBy,
+          };
+        }
+  
+        if (comment.replies && comment.replies.length > 0) {
+          const updatedReplies = updateCommentRecursively(comment.replies, targetCommentId, currentUserId, action);
+          if (updatedReplies !== comment.replies) {
+              return {
+                  ...comment,
+                  replies: updatedReplies,
+              };
+          }
+        }
+  
+        return comment;
+      });
+    };
+  
+    const originalComments = [...commentsList];
+    const originalReplies = { ...replies };
+  
+    const isTopLevelComment = commentsList.some(c => c.id === commentId);
+  
+    const updateNestedState = (
+      stateToUpdate: 'commentsList' | 'repliesState',
+      recursiveUpdater: (comments: UserComment[], targetCommentId: string, currentUserId: string, action: 'like' | 'dislike') => UserComment[],
+      targetId: string,
+      userId: string,
+      actionType: 'like' | 'dislike',
+      targetParentId: string | null
+    ) => {
+      if (stateToUpdate === 'commentsList') {
+        setCommentsList(prev => recursiveUpdater(prev, targetId, userId, actionType));
+      } else if (stateToUpdate === 'repliesState' && targetParentId && replies[targetParentId]) {
+        setReplies(prev => ({
+          ...prev,
+          [targetParentId]: recursiveUpdater(prev[targetParentId] || [], targetId, userId, actionType)
         }));
+      }
+    };
+  
+    if (isTopLevelComment) {
+      updateNestedState('commentsList', updateCommentRecursively, commentId, currentUser.uid, action, null);
+    } else {
+      if (parentCommentId) {
+        updateNestedState('repliesState', updateCommentRecursively, commentId, currentUser.uid, action, parentCommentId);
+      } else {
+        console.warn("No se pudo determinar el padre de la respuesta, la actualización optimista podría no funcionar.", commentId);
+      }
+    }
+  
+    const result = await updateCommentLikes(commentId, figure!.id, currentUser.uid, action, parentCommentId);
+  
+    if (!result.success) {
+      toast({ title: 'Error', description: result.message, variant: 'destructive' });
+      setCommentsList(originalComments);
+      setReplies(originalReplies);
+    } else {
+      if (isTopLevelComment) {
+          setCommentsList(prevCommentsList =>
+              updateCommentRecursively(prevCommentsList, commentId, currentUser.uid, action)
+          );
+      } else {
+          if (parentCommentId) {
+              setReplies(prev => ({
+                  ...prev,
+                  [parentCommentId]: updateCommentRecursively(prev[parentCommentId] || [], commentId, currentUser.uid, action)
+              }));
+          }
+      }
     }
     setVotingCommentId(null);
   };
