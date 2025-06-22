@@ -11,21 +11,16 @@ const USER_COLLECTION = 'registered_users';
 
 // Helper to map Firestore document data to UserProfile interface
 const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
-  let createdAtString: string;
-  if (data.createdAt && data.createdAt instanceof Timestamp) {
-    createdAtString = data.createdAt.toDate().toISOString();
-  } else if (typeof data.createdAt === 'string') {
-    createdAtString = data.createdAt; // Already a string
-  } else {
-    createdAtString = new Date().toISOString(); // Fallback, should ideally not happen if data is well-formed
-  }
+  // Helper function to safely convert a Firestore Timestamp to an ISO string
+  const toISOString = (timestamp: any): string | undefined => {
+    if (timestamp && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate().toISOString();
+    }
+    return undefined;
+  };
 
-  let lastLoginAtString: string | undefined = undefined;
-  if (data.lastLoginAt && data.lastLoginAt instanceof Timestamp) {
-    lastLoginAtString = data.lastLoginAt.toDate().toISOString();
-  } else if (typeof data.lastLoginAt === 'string') {
-    lastLoginAtString = data.lastLoginAt;
-  }
+  // A createdAt must always exist, so we provide a fallback.
+  const createdAt = toISOString(data.createdAt) || new Date().toISOString();
 
   return {
     uid,
@@ -36,8 +31,8 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     gender: data.gender || '', 
     photoURL: data.photoURL || null,
     role: data.role || 'user',
-    createdAt: createdAtString,
-    lastLoginAt: lastLoginAtString,
+    createdAt: createdAt,
+    lastLoginAt: toISOString(data.lastLoginAt),
   };
 };
 

@@ -34,32 +34,14 @@ const defaultStarRatingCounts: Record<StarValueAsString, number> = {
 
 const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data();
-  let createdAtString: string | undefined = undefined;
 
-  if (data.createdAt) {
-    if (data.createdAt instanceof Timestamp) {
-      createdAtString = data.createdAt.toDate().toISOString();
-    } else if (typeof data.createdAt === 'string') {
-      createdAtString = data.createdAt;
-    } else if (
-      typeof data.createdAt === 'object' && data.createdAt !== null &&
-      typeof data.createdAt.seconds === 'number' && typeof data.createdAt.nanoseconds === 'number'
-    ) {
-      try {
-        const date = new Date(data.createdAt.seconds * 1000 + data.createdAt.nanoseconds / 1000000);
-        if (!isNaN(date.getTime())) {
-            createdAtString = date.toISOString();
-        } else {
-            createdAtString = undefined;
-        }
-      } catch (e) {
-        createdAtString = undefined;
-      }
-    } else {
-      createdAtString = undefined;
+  // Helper function to safely convert a Firestore Timestamp to an ISO string
+  const toISOString = (timestamp: any): string | undefined => {
+    if (timestamp && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate().toISOString();
     }
-  }
-
+    return undefined;
+  };
 
   return {
     id: docSnap.id,
@@ -89,7 +71,7 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     starRatingCounts: data.starRatingCounts || { ...defaultStarRatingCounts },
     commentCount: data.commentCount || 0,
     familyMembers: data.familyMembers || [], // Initialize as empty array if undefined
-    createdAt: createdAtString,
+    createdAt: toISOString(data.createdAt),
     status: data.status || 'approved',
     isFeatured: data.isFeatured || false, // Added isFeatured field
   };
