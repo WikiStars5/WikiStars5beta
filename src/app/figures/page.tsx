@@ -5,8 +5,8 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Explorar Figuras - StarSage",
-  description: "Explora todos los perfiles de figuras públicas en StarSage, obtenidos de Firestore.",
+  title: "Explorar Figuras - WikiStars5",
+  description: "Explora todos los perfiles de figuras públicas en WikiStars5, obtenidos de Firestore.",
 };
 
 export const revalidate = 0; 

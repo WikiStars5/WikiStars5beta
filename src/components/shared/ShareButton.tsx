@@ -65,10 +65,10 @@ export function ShareButton({ figureName, figureId }: ShareButtonProps) {
   }
 
   const encodedUrl = encodeURIComponent(currentUrl);
-  const shareTitle = `¡Mira a ${figureName} en StarSage!`;
+  const shareTitle = `¡Mira a ${figureName} en WikiStars5!`;
   const encodedTitle = encodeURIComponent(shareTitle);
-  const emailSubject = encodeURIComponent(`Perfil de ${figureName} en StarSage`);
-  const emailBody = encodeURIComponent(`Hola,\n\nEcha un vistazo al perfil de ${figureName} en StarSage:\n`);
+  const emailSubject = encodeURIComponent(`Perfil de ${figureName} en WikiStars5`);
+  const emailBody = encodeURIComponent(`Hola,\n\nEcha un vistazo al perfil de ${figureName} en WikiStars5:\n`);
 
 
   const socialOptions: SocialShareOption[] = [

@@ -29,7 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, updateDoc as updateFirestoreDoc, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, updateDoc as updateFirestoreDoc, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment } from 'firestore/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/shared/StarRating";
 import {
@@ -862,7 +862,7 @@ export default function FigurePage() {
       <ProfileHeader figure={figure} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-3 space-y-8">
           <Tabs defaultValue="attitude-poll" className="w-full">
             <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-muted"> 
               <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
@@ -1069,12 +1069,6 @@ export default function FigurePage() {
             </CardContent>
           </Card>
         </div> 
-
-        <aside className="lg:col-span-1 space-y-6">
-          <Alert><Terminal className="h-4 w-4" /><AlertTitle className="font-headline">Cómo Funciona</AlertTitle><AlertDescription className="text-sm">
-            Puedes votar y comentar como invitado. Para editar información, añadir imágenes a la galería, o tener un perfil guardado, <Link href="/signup" className="font-semibold text-primary hover:underline">crea una cuenta</Link>.
-            </AlertDescription></Alert>
-        </aside>
       </div>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

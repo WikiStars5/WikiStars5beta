@@ -1,3 +1,4 @@
+
 "use client";
 
 import { AuthFormCard } from "@/components/auth/AuthFormCard";
@@ -27,7 +28,7 @@ export default function SignupPage() {
 
       toast({
         title: "¡Cuenta Creada y Sesión Iniciada!",
-        description: `¡Bienvenido a StarSage, ${user.displayName || user.email}!`,
+        description: `¡Bienvenido a WikiStars5, ${user.displayName || user.email}!`,
       });
       router.push('/home'); 
 
@@ -68,7 +69,7 @@ export default function SignupPage() {
   return (
     <AuthFormCard
       title="Crear una Cuenta"
-      description="Únete a StarSage para calificar, discutir y personalizar tu perfil."
+      description="Únete a WikiStars5 para calificar, discutir y personalizar tu perfil."
       footerText="¿Ya tienes una cuenta?"
       footerLinkText="Iniciar Sesión"
       footerLinkHref="/login"
