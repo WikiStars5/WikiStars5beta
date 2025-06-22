@@ -773,7 +773,7 @@ export default function FigurePage() {
   );
 
   const renderComment = (comment: UserComment, level: number) => {
-    const MAX_NESTING_LEVEL = 3; // Nivel 0, 1, 2, 3 (4 niveles en total)
+    const MAX_NESTING_LEVEL = 5; // Nivel 0, 1, 2, 3, 4, 5 (6 niveles en total)
     const userHasLiked = !!currentUser && comment.likedBy.includes(currentUser.uid);
     const userHasDisliked = !!currentUser && comment.dislikedBy.includes(currentUser.uid);
     const isVoting = votingCommentId === comment.id;
