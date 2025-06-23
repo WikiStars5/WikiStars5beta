@@ -404,8 +404,8 @@ export default function FigurePage() {
         toast({ title: "Error", description: "Debes estar conectado para opinar.", variant: "destructive" });
         return;
     }
-    if (newCommentStars === null && newComment.trim() === "") {
-        toast({ title: "Opinión Vacía", description: "Por favor, selecciona una calificación o escribe un comentario.", variant: "default" });
+    if (newComment.trim() === "") {
+        toast({ title: "Comentario Requerido", description: "Por favor, escribe un comentario para enviar tu opinión. Las estrellas son opcionales.", variant: "default" });
         return;
     }
     setIsSubmittingComment(true);
@@ -1077,7 +1077,7 @@ export default function FigurePage() {
               {canCommentOrRate && figure && currentUser !== undefined ? (
                 <form onSubmit={handleSubmitComment} className="space-y-6">
                   <div className="mb-4">
-                    <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">Tu calificación (haz clic para seleccionar):</Label>
+                    <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">Tu calificación (opcional):</Label>
                     <StarRating
                         rating={newCommentStars || 0}
                         onRatingChange={(rating) => {
@@ -1088,11 +1088,11 @@ export default function FigurePage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="newComment" className="sr-only">Tu comentario (opcional)</Label>
-                    <Textarea id="newComment" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder={newCommentStars ? "Añade un comentario (opcional)..." : "Escribe tu comentario aquí (opcional)..."} rows={4} className="w-full" disabled={isSubmittingComment} />
+                    <Label htmlFor="newComment" className="sr-only">Tu comentario</Label>
+                    <Textarea id="newComment" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Escribe tu comentario aquí (obligatorio)..." rows={4} className="w-full" disabled={isSubmittingComment} />
                   </div>
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmittingComment || (!newComment.trim() && !newCommentStars)}>{isSubmittingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{isSubmittingComment ? "Enviando..." : "Enviar Opinión"}</Button>
+                    <Button type="submit" disabled={isSubmittingComment || !newComment.trim()}>{isSubmittingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{isSubmittingComment ? "Enviando..." : "Enviar Opinión"}</Button>
                   </div>
                 </form>
               ) : ( <Alert><LogIn className="h-4 w-4" /><AlertTitle>Participación</AlertTitle><AlertDescription>
