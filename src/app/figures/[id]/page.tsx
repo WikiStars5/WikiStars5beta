@@ -29,7 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, updateDoc as updateFirestoreDoc, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/shared/StarRating";
 import {
@@ -66,7 +66,6 @@ export default function FigurePage() {
   const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
-  // Edit fields for figure details
   const [editedDescription, setEditedDescription] = useState("");
   const [editedNationality, setEditedNationality] = useState("");
   const [editedOccupation, setEditedOccupation] = useState("");
@@ -95,7 +94,6 @@ export default function FigurePage() {
   const [canVoteOnComments, setCanVoteOnComments] = useState(false);
   const [canSubmitGalleryImage, setCanSubmitGalleryImage] = useState(false);
 
-  // Comment state
   const [newComment, setNewComment] = useState("");
   const [newCommentStars, setNewCommentStars] = useState<StarValue | null>(null);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
@@ -106,7 +104,6 @@ export default function FigurePage() {
   const [replyText, setReplyText] = useState("");
   const [isSubmittingReply, setIsSubmittingReply] = useState<string | null>(null);
 
-  // Replies State
   const [replies, setReplies] = useState<Record<string, UserComment[]>>({});
   const [visibleReplies, setVisibleReplies] = useState<Record<string, boolean>>({});
   const [loadingReplies, setLoadingReplies] = useState<Record<string, boolean>>({});
@@ -164,10 +161,12 @@ export default function FigurePage() {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
       setCurrentUser(user);
       const isNonAnonymous = !!user && !user.isAnonymous;
-      setCanEditFigure(isNonAnonymous); 
+      const isAdmin = user?.uid === ADMIN_UID;
+      
+      setCanEditFigure(isAdmin);
       setCanCommentOrRate(!!user); 
       setCanVoteOnComments(!!user); 
-      setCanSubmitGalleryImage(isNonAnonymous); 
+      setCanSubmitGalleryImage(isNonAnonymous);
 
       if (user && figure?.id) { 
         const userStarRatingDocRef = doc(db, 'userStarRatings', `${user.uid}_${figure.id}`);
@@ -249,7 +248,7 @@ export default function FigurePage() {
       const commentsQuery = query(
         collection(db, 'userComments'),
         where('figureId', '==', id),
-        where('parentId', '==', null), // Fetch only top-level comments
+        where('parentId', '==', null), 
         orderBy('createdAt', 'desc'),
         limit(20)
       );
@@ -334,10 +333,6 @@ export default function FigurePage() {
   }, [figure, isEditing, resetEditFields]);
 
   const handleEditToggle = () => {
-    if (!canEditFigure) {
-      toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para editar.", variant: "default" });
-      return;
-    }
     if (isEditing) {
       resetEditFields(figure);
     }
@@ -346,7 +341,7 @@ export default function FigurePage() {
 
   const handleSave = async () => {
     if (!figure || !canEditFigure) {
-      toast({ title: "Error", description: "Debes iniciar sesión con una cuenta completa para guardar.", variant: "destructive" });
+      toast({ title: "Error", description: "No tienes permiso para guardar.", variant: "destructive" });
       return;
     }
     setIsSaving(true);
@@ -405,12 +400,12 @@ export default function FigurePage() {
         return;
     }
     if (newComment.trim() === "") {
-        toast({ title: "Comentario Requerido", description: "Por favor, escribe un comentario para enviar tu opinión. Las estrellas son opcionales.", variant: "default" });
+        toast({ title: "Comentario Requerido", description: "Es necesario escribir un comentario para poder enviar una opinión.", variant: "destructive" });
         return;
     }
     setIsSubmittingComment(true);
     
-     const figureDocRef = doc(db, "figures", figure.id);
+    const figureDocRef = doc(db, "figures", figure.id);
     const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
     const currentStarsForComment = newCommentStars;
 
@@ -482,7 +477,8 @@ export default function FigurePage() {
       setNewComment("");
       fetchComments(); 
       fetchFigureData(); 
-    } catch (error: any) {
+    } catch (error: any)
+    {
       console.error("Error submitting opinion:", error);
       toast({ title: "Error al Enviar", description: `No se pudo enviar tu opinión. ${error.message}`, variant: "destructive" });
     } finally {
@@ -492,126 +488,105 @@ export default function FigurePage() {
 
   const handleLikeDislike = async (commentId: string, action: 'like' | 'dislike', parentCommentId: string | null = null) => {
     if (!currentUser) {
-      toast({ title: 'Acción Requerida', description: 'Debes estar conectado (incluso como invitado) para votar.' });
-      return;
+        toast({ title: 'Acción Requerida', description: 'Debes estar conectado (incluso como invitado) para votar.' });
+        return;
     }
     if (votingCommentId) return;
     setVotingCommentId(commentId);
-  
+
     const updateCommentRecursively = (comments: UserComment[], targetCommentId: string, currentUserId: string, action: 'like' | 'dislike'): UserComment[] => {
-      return comments.map(comment => {
-        if (comment.id === targetCommentId) {
-          let newLikes = comment.likes;
-          let newDislikes = comment.dislikes;
-          let newLikedBy = [...comment.likedBy];
-          let newDislikedBy = [...comment.dislikedBy];
-  
-          const hasLiked = newLikedBy.includes(currentUserId);
-          const hasDisliked = newDislikedBy.includes(currentUserId);
-  
-          if (action === 'like') {
-            if (hasLiked) {
-              newLikes--;
-              newLikedBy = newLikedBy.filter(id => id !== currentUserId);
-            } else {
-              newLikes++;
-              newLikedBy.push(currentUserId);
-              if (hasDisliked) {
-                newDislikes--;
-                newDislikedBy = newDislikedBy.filter(id => id !== currentUserId);
-              }
+        return comments.map(comment => {
+            if (comment.id === targetCommentId) {
+                let newLikes = comment.likes;
+                let newDislikes = comment.dislikes;
+                let newLikedBy = [...comment.likedBy];
+                let newDislikedBy = [...comment.dislikedBy];
+
+                const hasLiked = newLikedBy.includes(currentUserId);
+                const hasDisliked = newDislikedBy.includes(currentUserId);
+
+                if (action === 'like') {
+                    if (hasLiked) {
+                        newLikes--;
+                        newLikedBy = newLikedBy.filter(id => id !== currentUserId);
+                    } else {
+                        newLikes++;
+                        newLikedBy.push(currentUserId);
+                        if (hasDisliked) {
+                            newDislikes--;
+                            newDislikedBy = newDislikedBy.filter(id => id !== currentUserId);
+                        }
+                    }
+                } else {
+                    if (hasDisliked) {
+                        newDislikes--;
+                        newDislikedBy = newDislikedBy.filter(id => id !== currentUserId);
+                    } else {
+                        newDislikes++;
+                        newDislikedBy.push(currentUserId);
+                        if (hasLiked) {
+                            newLikes--;
+                            newLikedBy = newLikedBy.filter(id => id !== currentUserId);
+                        }
+                    }
+                }
+                return {
+                    ...comment,
+                    likes: newLikes,
+                    dislikes: newDislikes,
+                    likedBy: newLikedBy,
+                    dislikedBy: newDislikedBy,
+                };
             }
-          } else {
-            if (hasDisliked) {
-              newDislikes--;
-              newDislikedBy = newDislikedBy.filter(id => id !== currentUserId);
-            } else {
-              newDislikes++;
-              newDislikedBy.push(currentUserId);
-              if (hasLiked) {
-                newLikes--;
-                newLikedBy = newLikedBy.filter(id => id !== currentUserId);
-              }
+            // This part is for potential future nested replies within replies, safe to keep
+            if ((comment as any).replies && (comment as any).replies.length > 0) {
+                const updatedReplies = updateCommentRecursively((comment as any).replies, targetCommentId, currentUserId, action);
+                if (updatedReplies !== (comment as any).replies) {
+                    return {
+                        ...comment,
+                        replies: updatedReplies,
+                    };
+                }
             }
-          }
-          return {
-            ...comment,
-            likes: newLikes,
-            dislikes: newDislikes,
-            likedBy: newLikedBy,
-            dislikedBy: newDislikedBy,
-          };
-        }
-  
-        if (comment.replies && comment.replies.length > 0) {
-          const updatedReplies = updateCommentRecursively(comment.replies, targetCommentId, currentUserId, action);
-          if (updatedReplies !== comment.replies) {
-              return {
-                  ...comment,
-                  replies: updatedReplies,
-              };
-          }
-        }
-  
-        return comment;
-      });
+            return comment;
+        });
     };
-  
+    
     const originalComments = [...commentsList];
     const originalReplies = { ...replies };
-  
-    const isTopLevelComment = commentsList.some(c => c.id === commentId);
-  
-    const updateNestedState = (
-      stateToUpdate: 'commentsList' | 'repliesState',
-      recursiveUpdater: (comments: UserComment[], targetCommentId: string, currentUserId: string, action: 'like' | 'dislike') => UserComment[],
-      targetId: string,
-      userId: string,
-      actionType: 'like' | 'dislike',
-      targetParentId: string | null
-    ) => {
-      if (stateToUpdate === 'commentsList') {
-        setCommentsList(prev => recursiveUpdater(prev, targetId, userId, actionType));
-      } else if (stateToUpdate === 'repliesState' && targetParentId && replies[targetParentId]) {
-        setReplies(prev => ({
-          ...prev,
-          [targetParentId]: recursiveUpdater(prev[targetParentId] || [], targetId, userId, actionType)
-        }));
-      }
-    };
-  
-    if (isTopLevelComment) {
-      updateNestedState('commentsList', updateCommentRecursively, commentId, currentUser.uid, action, null);
+
+    if (parentCommentId && replies[parentCommentId]) {
+      // Optimistic update for a reply
+      setReplies(prevReplies => ({
+        ...prevReplies,
+        [parentCommentId]: updateCommentRecursively(prevReplies[parentCommentId], commentId, currentUser.uid, action)
+      }));
     } else {
-      if (parentCommentId) {
-        updateNestedState('repliesState', updateCommentRecursively, commentId, currentUser.uid, action, parentCommentId);
-      } else {
-        console.warn("No se pudo determinar el padre de la respuesta, la actualización optimista podría no funcionar.", commentId);
-      }
+      // Optimistic update for a top-level comment
+      setCommentsList(updateCommentRecursively(commentsList, commentId, currentUser.uid, action));
     }
-  
-    const result = await updateCommentLikes(commentId, figure!.id, currentUser.uid, action, parentCommentId);
-  
-    if (!result.success) {
-      toast({ title: 'Error', description: result.message, variant: 'destructive' });
-      setCommentsList(originalComments);
-      setReplies(originalReplies);
-    } else {
-      if (isTopLevelComment) {
-          setCommentsList(prevCommentsList =>
-              updateCommentRecursively(prevCommentsList, commentId, currentUser.uid, action)
-          );
-      } else {
-          if (parentCommentId) {
-              setReplies(prev => ({
-                  ...prev,
-                  [parentCommentId]: updateCommentRecursively(prev[parentCommentId] || [], commentId, currentUser.uid, action)
-              }));
-          }
-      }
+
+
+    try {
+        const result = await updateCommentLikes(commentId, figure!.id, currentUser.uid, action);
+
+        if (!result.success) {
+            toast({ title: 'Error', description: result.message, variant: 'destructive' });
+            // Revert optimistic update
+            setCommentsList(originalComments);
+            setReplies(originalReplies);
+        }
+        // No need for an else block, as onSnapshot will eventually catch the update.
+    } catch (error: any) {
+        console.error("Error al llamar a la acción del servidor para me gusta/no me gusta:", error);
+        toast({ title: 'Error', description: `Error inesperado al votar: ${error.message}`, variant: 'destructive' });
+        // Revert optimistic update
+        setCommentsList(originalComments);
+        setReplies(originalReplies);
+    } finally {
+        setVotingCommentId(null);
     }
-    setVotingCommentId(null);
-  };
+};
 
   const handleSubmitGalleryImage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -720,10 +695,10 @@ export default function FigurePage() {
 
   const handleReplyClick = (commentId: string) => {
     if (replyingTo === commentId) {
-      setReplyingTo(null); // Close if already open
+      setReplyingTo(null); 
     } else {
       setReplyingTo(commentId);
-      setReplyText(""); // Reset text when opening
+      setReplyText(""); 
     }
   };
 
@@ -755,20 +730,16 @@ export default function FigurePage() {
       };
 
       await runTransaction(db, async (transaction) => {
-        // 1. Increment figure's total comment count
         transaction.update(figureRef, { commentCount: increment(1) });
-        // 2. Increment parent comment's reply count
         transaction.update(parentCommentRef, { replyCount: increment(1) });
       });
 
-      // 3. Add the new reply document
       await addDoc(collection(db, 'userComments'), replyData);
 
       toast({ title: "Respuesta Enviada", description: "Tu respuesta ha sido guardada." });
       setReplyText("");
       setReplyingTo(null);
-      // Refresh replies for the parent comment
-      handleToggleReplies(parentId, true); // Force refresh
+      handleToggleReplies(parentId, true); 
     } catch (error: any) {
       console.error("Error submitting reply:", error);
       toast({ title: "Error al Responder", description: `No se pudo enviar tu respuesta. ${error.message}`, variant: "destructive" });
@@ -825,17 +796,16 @@ export default function FigurePage() {
   );
 
   const renderComment = (comment: UserComment, level: number) => {
-    const MAX_NESTING_LEVEL = 5; // Nivel 0, 1, 2, 3, 4, 5 (6 niveles en total)
+    const MAX_NESTING_LEVEL = 4; 
     const userHasLiked = !!currentUser && comment.likedBy.includes(currentUser.uid);
     const userHasDisliked = !!currentUser && comment.dislikedBy.includes(currentUser.uid);
     const isVoting = votingCommentId === comment.id;
 
     return (
       <div key={comment.id} className="relative group/comment">
-        {/* Contenido principal del comentario */}
         <div className="flex space-x-3">
           <Avatar className="h-10 w-10 flex-shrink-0">
-            <AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} data-ai-hint="user avatar" />
+            <AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} />
             <AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
@@ -843,7 +813,7 @@ export default function FigurePage() {
               <p className="text-sm font-semibold text-foreground">{comment.username}</p>
               <div className="flex items-center space-x-2">
                 <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
-                {currentUser && (currentUser.uid === comment.userId || (canEditFigure && currentUser.uid === ADMIN_UID)) && (
+                {currentUser && (currentUser.uid === comment.userId || canEditFigure) && (
                   <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/comment:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => openDeleteDialog(comment.id, comment.starRatingGiven)}>
                     <Trash2 className="h-4 w-4" />
                     <span className="sr-only">Eliminar comentario</span>
@@ -854,10 +824,10 @@ export default function FigurePage() {
             {comment.starRatingGiven && (<div className="mt-1"><StarRating rating={comment.starRatingGiven} size={14} readOnly /></div>)}
             {comment.text && comment.text.trim() !== "" && (<p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>)}
             <div className="flex items-center gap-1 mt-2">
-              <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'like')} disabled={!canVoteOnComments || isVoting}>
+              <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'like', comment.parentId)} disabled={!canVoteOnComments || isVoting}>
                 <ThumbsUp className={cn("h-4 w-4 mr-1", userHasLiked && "fill-blue-500 text-blue-500")} /> {comment.likes}
               </Button>
-              <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'dislike')} disabled={!canVoteOnComments || isVoting}>
+              <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'dislike', comment.parentId)} disabled={!canVoteOnComments || isVoting}>
                 <ThumbsDown className={cn("h-4 w-4 mr-1", userHasDisliked && "fill-red-500 text-red-500")} /> {comment.dislikes}
               </Button>
               {level < MAX_NESTING_LEVEL && (
@@ -887,10 +857,9 @@ export default function FigurePage() {
             )}
           </div>
         </div>
-        {/* Sección para renderizar las respuestas de este comentario */}
         {visibleReplies[comment.id] && replies[comment.id] && (
           <div className="mt-4 pl-12 border-l-2 border-muted-foreground/20 space-y-4">
-            {replies[comment.id].map(reply => renderComment(reply, level + 1))}
+            {replies[comment.id].map(reply => renderComment({ ...reply, replies: replies[reply.id] || [] }, level + 1))}
           </div>
         )}
       </div>
@@ -919,12 +888,12 @@ export default function FigurePage() {
                   {canEditFigure && !isEditing && (<Button variant="outline" size="sm" onClick={handleEditToggle}><Edit className="mr-2 h-4 w-4" />Editar</Button>)}
                 </CardHeader>
                 <CardContent className="space-y-6 pt-4">
-                  {!canEditFigure && !isEditing && (<Alert variant="default" className="mb-4"><LogIn className="h-4 w-4" /><AlertTitle>Edición Restringida</AlertTitle><AlertDescription><Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión con una cuenta</Link> para editar.</AlertDescription></Alert>)}
+                  {!canEditFigure && !isEditing && (<Alert variant="default" className="mb-4"><LogIn className="h-4 w-4" /><AlertTitle>Edición Restringida</AlertTitle><AlertDescription>Solo los administradores pueden editar esta información.</AlertDescription></Alert>)}
                   {isEditing && canEditFigure ? (
                     <div className="space-y-4">
                       {renderEditInput("photoUrl", "URL de Imagen Principal", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://...")}
                       <p className="text-xs text-muted-foreground mt-1">Dominios permitidos: {allowedImageDomains.join(', ')}.</p>
-                      {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center" data-ai-hint="image preview"><Image src={editedPhotoUrl} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground" data-ai-hint="placeholder abstract"><ImageOff className="h-10 w-10" /></div>}
+                      {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center"><Image src={editedPhotoUrl} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground"><ImageOff className="h-10 w-10" /></div>}
                       {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                         {renderEditInput("alias", "Alias", editedAlias, (e) => setEditedAlias(e.target.value))}
@@ -1017,7 +986,9 @@ export default function FigurePage() {
                     </form>
                   )}
                   {!canSubmitGalleryImage && (
-                     <Alert variant="default"><LogIn className="h-4 w-4" /><AlertTitle>Añadir a la Galería</AlertTitle><AlertDescription><Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión con una cuenta</Link> para añadir imágenes.</AlertDescription></Alert>
+                     <Alert variant="default"><LogIn className="h-4 w-4" /><AlertTitle>Añadir a la Galería</AlertTitle><AlertDescription>
+                       <Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión con una cuenta</Link> para añadir imágenes.
+                     </AlertDescription></Alert>
                   )}
 
                   {isLoadingGalleryImages ? (
@@ -1039,7 +1010,6 @@ export default function FigurePage() {
                             sizes="(max-width: 639px) 100vw, (max-width: 767px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, 20vw"
                             style={{ width: '100%', height: 'auto' }}
                             className="w-full h-auto object-contain rounded-md group-hover:scale-105 transition-transform"
-                            data-ai-hint="gallery image"
                           />
                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                               <ImageIconLucide className="h-10 w-10 text-white/80" />
@@ -1092,12 +1062,24 @@ export default function FigurePage() {
                     <Textarea id="newComment" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Escribe tu comentario aquí (obligatorio)..." rows={4} className="w-full" disabled={isSubmittingComment} />
                   </div>
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmittingComment || !newComment.trim()}>{isSubmittingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{isSubmittingComment ? "Enviando..." : "Enviar Opinión"}</Button>
+                    <Button type="submit" disabled={isSubmittingComment || !newComment.trim()}><Send className="mr-2 h-4 w-4" />{isSubmittingComment ? "Enviando..." : "Enviar Opinión"}</Button>
                   </div>
                 </form>
-              ) : ( <Alert><LogIn className="h-4 w-4" /><AlertTitle>Participación</AlertTitle><AlertDescription>
-                {currentUser === null ? "Cargando estado de usuario..." : "Para calificar o comentar, considera <Link href=\"/login\" class=\"font-semibold text-primary hover:underline\">iniciar sesión</Link> o <Link href=\"/signup\" class=\"font-semibold text-primary hover:underline\">registrarte</Link> para una experiencia completa, aunque puedes continuar como invitado."}
-                </AlertDescription></Alert>)}
+              ) : ( 
+                <Alert>
+                  <LogIn className="h-4 w-4" />
+                  <AlertTitle>Participación</AlertTitle>
+                  <AlertDescription>
+                    {currentUser === null ? (
+                      "Cargando estado de usuario..."
+                    ) : (
+                      <>
+                        Para calificar o comentar, considera <Link href="/login" className="font-semibold text-primary hover:underline">iniciar sesión</Link> o <Link href="/signup" className="font-semibold text-primary hover:underline">registrarte</Link> para una experiencia completa, aunque puedes continuar como invitado.
+                      </>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
               
               <div className="border-t pt-6 mt-6 space-y-6">
                 <h4 className="text-lg font-medium">Comentarios Recientes ({commentsList.length})</h4>
