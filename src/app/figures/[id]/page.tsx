@@ -47,11 +47,11 @@ import { updateCommentLikes } from "@/app/actions/commentRatingActions";
 import { cn } from "@/lib/utils";
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
-  1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.appspot.com/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
-  2: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.appspot.com/o/audio%2Fstar2.mp3?alt=media&token=58cbf607-df0b-4bbd-b28e-291cf1951c18",
-  3: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.appspot.com/o/audio%2Fstar3.mp3?alt=media&token=df67dc5b-28ab-4773-8266-60b9127a325f",
-  4: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.appspot.com/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826",
-  5: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.appspot.com/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f",
+  1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
+  2: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar2.mp3?alt=media&token=58cbf607-df0b-4bbd-b28e-291cf1951c18",
+  3: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar3.mp3?alt=media&token=df67dc5b-28ab-4773-8266-60b9127a325f",
+  4: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826",
+  5: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f",
 };
 
 const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
