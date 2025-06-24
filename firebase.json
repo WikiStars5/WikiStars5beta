@@ -1,4 +1,16 @@
+
 {
+  "hosting": {
+    "site": "wikistars5-2yctr",
+    "rewrites": [
+      {
+        "source": "**",
+        "apphosting": {
+          "backendId": "wikistars5-2yctr"
+        }
+      }
+    ]
+  },
   "emulators": {
     "auth": {
       "port": 9099
