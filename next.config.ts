@@ -30,8 +30,8 @@ const nextConfig: NextConfig = {
         protocol: 'https', 
         hostname: 'upload.wikimedia.org', 
         port: '', 
-        // Ruta específica para Wikimedia Commons para mayor seguridad.
-        pathname: '/wikipedia/commons/**', 
+        // Se ha cambiado de '/wikipedia/commons/**' a '/**' para permitir todas las imágenes de Wikimedia.
+        pathname: '/**', 
       }, 
       { 
         protocol: 'https', 
