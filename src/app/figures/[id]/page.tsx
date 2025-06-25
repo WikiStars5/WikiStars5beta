@@ -163,7 +163,7 @@ export default function FigurePage() {
       const isNonAnonymous = !!user && !user.isAnonymous;
       const isAdmin = user?.uid === ADMIN_UID;
       
-      setCanEditFigure(isAdmin);
+      setCanEditFigure(isNonAnonymous);
       setCanCommentOrRate(!!user); 
       setCanVoteOnComments(!!user); 
       setCanSubmitGalleryImage(isNonAnonymous);
@@ -888,7 +888,16 @@ export default function FigurePage() {
                   {canEditFigure && !isEditing && (<Button variant="outline" size="sm" onClick={handleEditToggle}><Edit className="mr-2 h-4 w-4" />Editar</Button>)}
                 </CardHeader>
                 <CardContent className="space-y-6 pt-4">
-                  {!canEditFigure && !isEditing && (<Alert variant="default" className="mb-4"><LogIn className="h-4 w-4" /><AlertTitle>Edición Restringida</AlertTitle><AlertDescription>Solo los administradores pueden editar esta información.</AlertDescription></Alert>)}
+                  {!canEditFigure && !isEditing && (
+                    <Alert variant="default" className="mb-4">
+                        <LogIn className="h-4 w-4" />
+                        <AlertTitle>Edición para usuarios registrados</AlertTitle>
+                        <AlertDescription>
+                          Para editar la información de esta figura, necesitas{" "}
+                          <Link href="/login" className="font-semibold text-primary hover:underline">iniciar sesión</Link> con una cuenta.
+                        </AlertDescription>
+                    </Alert>
+                  )}
                   {isEditing && canEditFigure ? (
                     <div className="space-y-4">
                       {renderEditInput("photoUrl", "URL de Imagen Principal", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://...")}

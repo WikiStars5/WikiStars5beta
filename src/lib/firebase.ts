@@ -1,3 +1,4 @@
+
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
@@ -42,13 +43,11 @@ service cloud.firestore {
       // Reemplaza esto con el UID de tu cuenta de administrador
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
-
-    // --- REGLAS DE DESARROLLO (MUY PERMISIVAS) ---
-    // ADVERTENCIA: Estas reglas son para probar la lógica de la app.
     
     match /figures/{figureId} {
       allow read: if true;
-      allow update: if request.auth != null; 
+      // Permite actualizar a cualquier usuario registrado (no anónimo).
+      allow update: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
       allow create, delete: if isAdmin();
 
       match /galleryImages/{galleryImageId} {
