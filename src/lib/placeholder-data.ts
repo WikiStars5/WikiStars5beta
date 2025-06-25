@@ -2,7 +2,7 @@
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, StarValueAsString, FamilyMember } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot } from "firebase/firestore";
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -32,12 +32,15 @@ const defaultStarRatingCounts: Record<StarValueAsString, number> = {
 };
 
 
-const mapDocToFigure = (docSnap: DocumentData): Figure => {
-  const data = docSnap.data();
+const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot): Figure => {
+  const data = docSnap.data() as DocumentData;
 
   // Explicitly handle timestamp conversion for serialization
   const rawCreatedAt = data.createdAt;
   let finalCreatedAt: string | undefined = undefined;
+  
+  // This is the crucial part. We must convert the Firestore Timestamp object
+  // to a plain string so it can be passed from Server to Client Components.
   if (rawCreatedAt && typeof rawCreatedAt.toDate === 'function') {
     finalCreatedAt = rawCreatedAt.toDate().toISOString();
   } else if (typeof rawCreatedAt === 'string') {
@@ -71,10 +74,10 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
     starRatingCounts: data.starRatingCounts || { ...defaultStarRatingCounts },
     commentCount: data.commentCount || 0,
-    familyMembers: data.familyMembers || [], // Initialize as empty array if undefined
+    familyMembers: data.familyMembers || [],
     createdAt: finalCreatedAt,
     status: data.status || 'approved',
-    isFeatured: data.isFeatured || false, // Added isFeatured field
+    isFeatured: data.isFeatured || false,
   };
 };
 
