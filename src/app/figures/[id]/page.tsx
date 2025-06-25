@@ -83,7 +83,6 @@ export default function FigurePage() {
   const [editedHairColor, setEditedHairColor] = useState("");
   const [editedEyeColor, setEditedEyeColor] = useState("");
   const [editedDistinctiveFeatures, setEditedDistinctiveFeatures] = useState("");
-  const [editedFamilyMembersJson, setEditedFamilyMembersJson] = useState("[]");
 
 
   const [isSaving, setIsSaving] = useState(false);
@@ -163,7 +162,7 @@ export default function FigurePage() {
       const isNonAnonymous = !!user && !user.isAnonymous;
       const isAdmin = user?.uid === ADMIN_UID;
       
-      setCanEditFigure(isNonAnonymous);
+      setCanEditFigure(isNonAnonymous || isAdmin);
       setCanCommentOrRate(!!user); 
       setCanVoteOnComments(!!user); 
       setCanSubmitGalleryImage(isNonAnonymous);
@@ -203,7 +202,6 @@ export default function FigurePage() {
       setEditedHairColor(currentFigure.hairColor || "");
       setEditedEyeColor(currentFigure.eyeColor || "");
       setEditedDistinctiveFeatures(currentFigure.distinctiveFeatures || "");
-      setEditedFamilyMembersJson(currentFigure.familyMembers ? JSON.stringify(currentFigure.familyMembers, null, 2) : '[]');
     }
   }, []);
 
@@ -215,8 +213,12 @@ export default function FigurePage() {
     setFigure(undefined); 
 
     try {
-      const fetchedFigure = await getFigureFromFirestore(id);
+      const [fetchedFigure, allFiguresData] = await Promise.all([
+        getFigureFromFirestore(id),
+        getAllFiguresFromFirestore(),
+      ]);
       setFigure(fetchedFigure || null); 
+      setAllFigures(allFiguresData);
       if (fetchedFigure) {
         resetEditFields(fetchedFigure);
         if (currentUser && fetchedFigure.id) {
@@ -346,16 +348,6 @@ export default function FigurePage() {
     }
     setIsSaving(true);
     try {
-      let parsedFamilyMembers: FamilyMember[] = [];
-      try {
-        parsedFamilyMembers = JSON.parse(editedFamilyMembersJson || "[]");
-        if (!Array.isArray(parsedFamilyMembers)) throw new Error("Family members JSON is not an array.");
-      } catch (jsonError: any) {
-        toast({ title: "Error de Formato", description: `JSON de miembros de familia inválido: ${jsonError.message}`, variant: "destructive" });
-        setIsSaving(false);
-        return;
-      }
-
       const updatedFigureData: Partial<Figure> & { id: string } = {
         id: figure.id,
         description: editedDescription,
@@ -375,7 +367,6 @@ export default function FigurePage() {
         hairColor: editedHairColor,
         eyeColor: editedEyeColor,
         distinctiveFeatures: editedDistinctiveFeatures,
-        familyMembers: parsedFamilyMembers,
       };
       await updateFigureInFirestore(updatedFigureData);
       toast({ title: "Éxito", description: "Información actualizada correctamente." });
@@ -921,18 +912,6 @@ export default function FigurePage() {
                         {renderEditInput("eyeColor", "Color Ojos", editedEyeColor, (e) => setEditedEyeColor(e.target.value))}
                         {renderEditTextarea("distinctiveFeatures", "Rasgos Distintivos", editedDistinctiveFeatures, (e) => setEditedDistinctiveFeatures(e.target.value), "Ej: Cicatriz...", 3)}
                       </div>
-                       <div className="mt-4 border-t pt-4">
-                        <Label htmlFor="familyMembersJson" className="font-semibold text-foreground/90">Miembros de la Familia (JSON)</Label>
-                        <Textarea 
-                          id="familyMembersJson" 
-                          value={editedFamilyMembersJson} 
-                          onChange={(e) => setEditedFamilyMembersJson(e.target.value)} 
-                          placeholder='Ej: [{"id":"fm1", "name":"Padre", "relationship":"Padre"}]'
-                          rows={5}
-                          className="mt-1 font-mono text-xs"
-                        />
-                         <p className="text-xs text-muted-foreground mt-1">Verifica el formato JSON. Campos: id, name, relationship, figureId (opc), photoUrl (opc).</p>
-                      </div>
                       <div className="flex justify-end space-x-2 pt-4">
                         <Button variant="outline" onClick={handleEditToggle} disabled={isSaving}><X className="mr-2 h-4 w-4" />Cancelar</Button>
                         <Button onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{isSaving ? "Guardando..." : "Guardar"}</Button>
@@ -1037,10 +1016,10 @@ export default function FigurePage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center text-2xl font-headline"><FamilyIcon className="mr-3 h-7 w-7 text-primary" />Árbol Genealógico de {figure.name}</CardTitle>
-                   <CardDescription>Relaciones familiares conocidas de {figure.name}.</CardDescription>
+                   <CardDescription>Relaciones familiares conocidas de {figure.name}. Edita la información directamente aquí.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {figure && allFigures && <FamilyTreeDisplay figure={figure} allFigures={allFigures} />}
+                  {figure && allFigures && <FamilyTreeDisplay figure={figure} allFigures={allFigures} canEdit={canEditFigure} />}
                 </CardContent>
               </Card>
             </TabsContent>
