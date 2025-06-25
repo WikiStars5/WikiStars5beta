@@ -1,7 +1,10 @@
-// This file is intentionally left blank to resolve a routing conflict
-// with the main signup page at /src/app/(auth)/signup/page.tsx.
-// Its presence was causing an ERR_TOO_MANY_REDIRECTS loop.
+import { redirect } from 'next/navigation';
 
-export default function BlankSignupPage() {
-  return null;
+/**
+ * This page handles the legacy or incorrect `/auth/signup` route.
+ * It permanently redirects to the correct signup page at `/signup`
+ * to consolidate routing and prevent potential errors or redirect loops.
+ */
+export default function LegacySignupRedirectPage() {
+  redirect('/signup');
 }
