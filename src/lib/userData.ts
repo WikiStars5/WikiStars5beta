@@ -9,18 +9,22 @@ import { COUNTRIES } from '@/config/countries'; // Import COUNTRIES
 
 const USER_COLLECTION = 'registered_users';
 
+// Helper to handle timestamp conversion robustly
+const convertTimestampToString = (timestamp: any): string | undefined => {
+  if (!timestamp) return undefined;
+  if (typeof timestamp.toDate === 'function') { // Firestore Timestamp
+    return timestamp.toDate().toISOString();
+  }
+  if (typeof timestamp === 'string') { // Already a string
+    return timestamp;
+  }
+  return undefined;
+};
+
 // Helper to map Firestore document data to UserProfile interface
 const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
-  // Helper function to safely convert a Firestore Timestamp to an ISO string
-  const toISOString = (timestamp: any): string | undefined => {
-    if (timestamp && typeof timestamp.toDate === 'function') {
-      return timestamp.toDate().toISOString();
-    }
-    return undefined;
-  };
-
   // A createdAt must always exist, so we provide a fallback.
-  const createdAt = toISOString(data.createdAt) || new Date().toISOString();
+  const createdAt = convertTimestampToString(data.createdAt) || new Date().toISOString();
 
   return {
     uid,
@@ -32,7 +36,7 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     photoURL: data.photoURL || null,
     role: data.role || 'user',
     createdAt: createdAt,
-    lastLoginAt: toISOString(data.lastLoginAt),
+    lastLoginAt: convertTimestampToString(data.lastLoginAt),
   };
 };
 

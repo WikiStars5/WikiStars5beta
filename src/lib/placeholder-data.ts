@@ -35,13 +35,14 @@ const defaultStarRatingCounts: Record<StarValueAsString, number> = {
 const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data();
 
-  // Helper function to safely convert a Firestore Timestamp to an ISO string
-  const toISOString = (timestamp: any): string | undefined => {
-    if (timestamp && typeof timestamp.toDate === 'function') {
-      return timestamp.toDate().toISOString();
-    }
-    return undefined;
-  };
+  // Explicitly handle timestamp conversion for serialization
+  const rawCreatedAt = data.createdAt;
+  let finalCreatedAt: string | undefined = undefined;
+  if (rawCreatedAt && typeof rawCreatedAt.toDate === 'function') {
+    finalCreatedAt = rawCreatedAt.toDate().toISOString();
+  } else if (typeof rawCreatedAt === 'string') {
+    finalCreatedAt = rawCreatedAt;
+  }
 
   return {
     id: docSnap.id,
@@ -71,7 +72,7 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     starRatingCounts: data.starRatingCounts || { ...defaultStarRatingCounts },
     commentCount: data.commentCount || 0,
     familyMembers: data.familyMembers || [], // Initialize as empty array if undefined
-    createdAt: toISOString(data.createdAt),
+    createdAt: finalCreatedAt,
     status: data.status || 'approved',
     isFeatured: data.isFeatured || false, // Added isFeatured field
   };
