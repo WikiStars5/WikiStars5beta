@@ -38,46 +38,64 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Funciones de Ayuda ---
     function isAdmin() {
       // UID del administrador. ¡REEMPLAZAR SI ES NECESARIO!
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
-
-    // Regla 1: El administrador tiene acceso TOTAL de lectura y escritura a TODA la base de datos.
-    // Esto asegura que todas las operaciones del panel de admin funcionen sin problemas.
-    match /{path=**} {
-      allow read, write: if isAdmin();
+    function isSignedIn() {
+      return request.auth != null;
     }
-    
-    // Regla 2: Reglas PÚBLICAS para usuarios no administradores.
-    // Firestore combinará estas reglas con la del admin. Si un usuario es admin, la Regla 1 le da acceso.
-    // Si no es admin, entonces se verifican estas reglas de aquí abajo.
+    function isRegisteredUser() {
+      return isSignedIn() && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+    }
 
-    // CUALQUIERA puede leer (get) una figura específica.
+    // --- Colección de Figuras ---
     match /figures/{figureId} {
+      // Cualquiera puede LEER una figura y sus datos.
       allow get: if true;
+      
+      // El Administrador puede LISTAR todas las figuras y ESCRIBIR (crear, editar, borrar).
+      allow list, write: if isAdmin();
+
+      // Subcolección de Galería
+      match /galleryImages/{imageId} {
+        // Cualquiera puede LEER imágenes de la galería.
+        allow get, list: if true;
+        
+        // Solo usuarios REGISTRADOS (no anónimos) pueden crear imágenes. El Admin también puede.
+        allow create: if isRegisteredUser() || isAdmin();
+      }
     }
 
-    // CUALQUIERA puede leer los comentarios.
-    match /userComments/{commentId} {
-      allow read: if true;
-    }
-    
-    // Usuarios autenticados (INCLUYENDO ANÓNIMOS) pueden votar y comentar.
-    match /userPerceptions/{docId} { allow write: if request.auth != null; }
-    match /userAttitudes/{docId} { allow write: if request.auth != null; }
-    match /userStarRatings/{docId} { allow write: if request.auth != null; }
-    match /userComments/{commentId} { allow write: if request.auth != null; }
-    
-    // Usuarios con CUENTA (no anónimos) pueden añadir a la galería.
-    match /figures/{figureId}/galleryImages/{galleryImageId} {
-      allow get: if true; // Permitir lectura de imágenes de galería a todos
-      allow write: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
-    }
-    
-    // Un usuario solo puede leer y actualizar su PROPIO perfil.
+    // --- Colección de Usuarios Registrados ---
     match /registered_users/{userId} {
-      allow get, update: if request.auth != null && request.auth.uid == userId;
+      // Un usuario puede LEER y ACTUALIZAR su propio perfil.
+      allow get, update: if isRegisteredUser() && request.auth.uid == userId;
+
+      // El Administrador puede LISTAR y ESCRIBIR en cualquier perfil.
+      allow list, write: if isAdmin();
+    }
+    
+    // --- Colecciones de Votos y Comentarios ---
+    match /userComments/{commentId} {
+      // Cualquiera puede LEER comentarios.
+      allow get, list: if true;
+      
+      // Usuarios autenticados (incluidos anónimos) pueden CREAR. El Admin puede borrar.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow delete: if (isSignedIn() && request.auth.uid == resource.data.userId) || isAdmin();
+    }
+    
+    match /userPerceptions/{docId} {
+      allow read, write: if isSignedIn();
+    }
+    match /userAttitudes/{docId} {
+      allow read, write: if isSignedIn();
+    }
+    match /userStarRatings/{docId} {
+      allow read, write: if isSignedIn();
     }
   }
 }
