@@ -39,41 +39,37 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAdmin() {
-      // Reemplaza esto con el UID de tu cuenta de administrador si es diferente
+      // Reemplaza esto con el UID de tu cuenta de administrador.
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
     
     match /figures/{figureId} {
-      // ANYONE can read single figures (get) and lists of figures (list).
-      allow get, list: if true;
+      // CUALQUIERA puede leer (get) y listar (list) figuras.
+      allow read: if true;
       
-      // ONLY the admin can create, update, or delete figure documents.
-      // The batch update action needs full 'write' permission.
+      // SOLO el administrador puede crear, actualizar y borrar (write).
       allow write: if isAdmin();
 
-      // Subcollection for gallery images inside a figure.
+      // Reglas para la subcolección de galería
       match /galleryImages/{galleryImageId} {
-        allow read: if true; // Anyone can see gallery images.
-        // Any non-anonymous user can add images.
+        allow read: if true;
         allow write: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
       }
     }
 
     match /registered_users/{userId} {
-      // An admin can read any user's profile and list all users.
+      // El administrador puede leer cualquier perfil y listar usuarios.
       allow get, list: if isAdmin();
-      // A user can read and write to their own profile.
-      allow get, write: if request.auth != null && request.auth.uid == userId;
+      // Un usuario puede leer y escribir su propio perfil.
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Votes and ratings can be done by ANY authenticated user, including anonymous guests.
+    // Votos, comentarios, etc., por CUALQUIER usuario autenticado (incluidos invitados).
     match /userPerceptions/{docId} { allow read, write: if request.auth != null; }
     match /userAttitudes/{docId} { allow read, write: if request.auth != null; }
     match /userStarRatings/{docId} { allow read, write: if request.auth != null; }
-
     match /userComments/{commentId} {
-      allow read: if true; // Anyone can read comments.
-      // ANY authenticated user (including guests) can create/update comments (for likes/dislikes).
+      allow read: if true;
       allow write: if request.auth != null;
     }
   }
