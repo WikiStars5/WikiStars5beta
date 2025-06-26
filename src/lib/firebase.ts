@@ -1,4 +1,3 @@
-
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
@@ -58,24 +57,33 @@ service cloud.firestore {
       // CUALQUIERA puede LEER (read incluye get y list).
       allow read: if true;
       
-      // SOLO el Administrador puede ESCRIBIR (write incluye create, update, delete).
-      allow write: if isAdmin();
+      // SOLO el Administrador puede crear o eliminar figuras.
+      allow create, delete: if isAdmin();
+      
+      // El admin puede actualizar cualquier campo.
+      // Un usuario conectado puede actualizar SOLO el supportCount (para likes).
+      allow update: if isAdmin() || isOnlyChangingSupportCount();
 
       // Subcolección de Galería (galleryImages)
       match /galleryImages/{imageId} {
         allow read: if true;
-        allow create: if isRegisteredUser() || isAdmin();
-        // Solo el usuario que la subió o un admin puede borrar/editar. (No implementado aún)
-        allow write: if (isRegisteredUser() && request.auth.uid == resource.data.userId) || isAdmin();
+        allow create: if isRegisteredUser() && request.resource.data.userId == request.auth.uid || isAdmin();
+        allow update, delete: if (isRegisteredUser() && resource.data.userId == request.auth.uid) || isAdmin();
+      }
+      
+      function isOnlyChangingSupportCount() {
+        // Esta función comprueba que el único cambio entre el documento antiguo y el nuevo
+        // es el campo supportCount, y que solo cambia en +/- 1.
+        return isSignedIn() &&
+               request.resource.data.diff(resource.data).affectedKeys().hasOnly(['supportCount']) &&
+               (request.resource.data.supportCount == resource.data.supportCount + 1 ||
+                request.resource.data.supportCount == resource.data.supportCount - 1);
       }
     }
 
     // --- Colección de Usuarios (registered_users) ---
     match /registered_users/{userId} {
-      // Un usuario puede leer y actualizar su propio perfil.
       allow get, update: if isRegisteredUser() && request.auth.uid == userId;
-
-      // El Administrador puede leer y escribir en CUALQUIER perfil.
       allow read, write: if isAdmin();
     }
     
@@ -83,22 +91,26 @@ service cloud.firestore {
     match /userComments/{commentId} {
       allow read: if true;
       allow create: if isSignedIn();
-      // Solo el dueño del comentario o un admin pueden actualizar/borrar.
-      allow update, delete: if (isSignedIn() && request.auth.uid == resource.data.userId) || isAdmin();
+      allow update, delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
     
     // --- Colecciones de Votos (Percepción, Actitud, Estrellas, Apoyo) ---
+    // El docId es una combinación: `${userId}_${figureId}`
+    function isOwner(docId) {
+      return request.auth.uid == docId.split('_')[0];
+    }
+    
     match /userPerceptions/{docId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSignedIn() && isOwner(docId);
     }
     match /userAttitudes/{docId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSignedIn() && isOwner(docId);
     }
     match /userStarRatings/{docId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSignedIn() && isOwner(docId);
     }
     match /userSupports/{docId} {
-        allow read, write: if isSignedIn();
+        allow read, write: if isSignedIn() && isOwner(docId);
     }
   }
 }
