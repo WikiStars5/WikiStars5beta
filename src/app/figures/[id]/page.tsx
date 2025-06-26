@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage, FamilyMember } from "@/lib/types";
@@ -105,6 +106,7 @@ export default function FigurePage() {
   const [replies, setReplies] = useState<Record<string, UserComment[]>>({});
   const [visibleReplies, setVisibleReplies] = useState<Record<string, boolean>>({});
   const [loadingReplies, setLoadingReplies] = useState<Record<string, boolean>>({});
+  const [commentSortOrder, setCommentSortOrder] = useState('newest');
 
   const [starAudios, setStarAudios] = useState<Partial<Record<StarValue, HTMLAudioElement>>>({});
 
@@ -251,7 +253,7 @@ export default function FigurePage() {
         where('figureId', '==', id),
         where('parentId', '==', null), 
         orderBy('createdAt', 'desc'),
-        limit(20)
+        limit(50) // Fetch a reasonable number of comments for client-side sorting
       );
       const querySnapshot = await getDocs(commentsQuery);
       const fetchedComments: UserComment[] = [];
@@ -785,6 +787,30 @@ export default function FigurePage() {
     <div><Label htmlFor={idField} className="font-semibold text-foreground/90">{label}</Label><Textarea id={idField} value={value} onChange={onChange} placeholder={placeholder || `Añade ${label.toLowerCase()}...`} rows={rows || 3} className="mt-1" /></div>
   );
 
+  const displayedComments = useMemo(() => {
+    let sortedComments = [...commentsList];
+
+    switch (commentSortOrder) {
+      case 'mostVoted':
+        // Sort by net likes (likes - dislikes)
+        sortedComments.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
+        break;
+      case 'oldest':
+        sortedComments.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+        break;
+      case 'myComment':
+        if (!currentUser || currentUser.isAnonymous) return [];
+        return commentsList.filter(comment => comment.userId === currentUser.uid);
+      case 'newest':
+      default:
+        // The default fetch is already newest, but sorting ensures consistency if data changes
+        sortedComments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+        break;
+    }
+    return sortedComments;
+  }, [commentsList, commentSortOrder, currentUser]);
+
+
   const renderComment = (comment: UserComment, level: number) => {
     const MAX_NESTING_LEVEL = 4; 
     const userHasLiked = !!currentUser && comment.likedBy.includes(currentUser.uid);
@@ -1069,11 +1095,32 @@ export default function FigurePage() {
               )}
               
               <div className="border-t pt-6 mt-6 space-y-6">
-                <h4 className="text-lg font-medium">Comentarios Recientes ({commentsList.length})</h4>
-                {isLoadingComments ? (<div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando...</p></div>
-                ) : commentsList.length > 0 ? (
-                  commentsList.map((comment) => renderComment(comment, 0))
-                ) : (<p className="text-muted-foreground text-center py-4">No hay comentarios. ¡Sé el primero!</p>)}
+                <Tabs defaultValue="newest" onValueChange={(value) => setCommentSortOrder(value)} className="w-full">
+                  <div className="flex flex-col sm:flex-row justify-between items-baseline mb-4 gap-4">
+                      <h4 className="text-lg font-medium">Comentarios ({commentsList.length})</h4>
+                      <TabsList className="grid grid-cols-2 sm:grid-cols-4 h-auto sm:h-9 w-full sm:w-auto">
+                        <TabsTrigger value="newest" className="text-xs sm:text-sm">Más Nuevos</TabsTrigger>
+                        <TabsTrigger value="oldest" className="text-xs sm:text-sm">Más Antiguos</TabsTrigger>
+                        <TabsTrigger value="mostVoted" className="text-xs sm:text-sm">Más Votados</TabsTrigger>
+                        {currentUser && !currentUser.isAnonymous && (
+                          <TabsTrigger value="myComment" className="text-xs sm:text-sm">Mi Comentario</TabsTrigger>
+                        )}
+                      </TabsList>
+                  </div>
+                  <div className="mt-4 space-y-6">
+                    {isLoadingComments ? (
+                      <div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando...</p></div>
+                    ) : displayedComments.length > 0 ? (
+                      displayedComments.map((comment) => renderComment(comment, 0))
+                    ) : (
+                      <p className="text-muted-foreground text-center py-6">
+                        {commentSortOrder === 'myComment' 
+                          ? 'No has realizado ningún comentario sobre esta figura.' 
+                          : 'No hay comentarios que coincidan con este filtro. ¡Sé el primero!'}
+                      </p>
+                    )}
+                  </div>
+                </Tabs>
               </div>
             </CardContent>
           </Card>
@@ -1111,3 +1158,4 @@ export default function FigurePage() {
     </div>
   );
 }
+
