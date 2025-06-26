@@ -1,14 +1,15 @@
 import {NextRequest, NextResponse} from 'next/server';
 
-// Internationalization has been temporarily disabled to fix a routing issue.
-// This middleware is currently inactive.
+// Internationalization has been disabled to fix routing issues.
+// This middleware is currently inactive and just passes requests through.
 export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    // Skip all internal paths (_next)
+    // This matcher is intentionally broad but skips internal Next.js paths.
+    // It's kept to make re-enabling middleware easier in the future.
     '/((?!_next|api|favicon.ico).*)',
   ],
 };
