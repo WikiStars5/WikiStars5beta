@@ -2,7 +2,7 @@
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, StarValueAsString, FamilyMember } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter as firestoreStartAfter } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore } from "firebase/firestore";
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -82,6 +82,7 @@ const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot): Figu
 };
 
 export const ADMIN_FIGURES_PER_PAGE = 50;
+export const PUBLIC_FIGURES_PER_PAGE = 50;
 
 export async function getAdminFiguresList(options: {
   startAfter?: string;
@@ -98,6 +99,56 @@ export async function getAdminFiguresList(options: {
 
   const isPrev = !!endBefore;
   const limitSize = ADMIN_FIGURES_PER_PAGE;
+  const order = isPrev ? 'desc' : 'asc';
+  const cursorId = isPrev ? endBefore : startAfter;
+
+  let q = query(figuresCollectionRef, orderBy('name', order), limit(limitSize + 1));
+
+  if (cursorId) {
+    const cursorDoc = await getDoc(doc(db, 'figures', cursorId));
+    if (cursorDoc.exists()) {
+      q = isPrev 
+        ? query(figuresCollectionRef, orderBy('name', order), firestoreStartAfter(cursorDoc), limit(limitSize + 1)) 
+        : query(figuresCollectionRef, orderBy('name', order), firestoreStartAfter(cursorDoc), limit(limitSize + 1));
+    }
+  }
+
+  const snapshot = await getDocs(q);
+  const figures = snapshot.docs.map(mapDocToFigure);
+
+  const hasMore = figures.length > limitSize;
+  if (hasMore) {
+    figures.pop();
+  }
+
+  if (isPrev) {
+    figures.reverse();
+  }
+
+  const hasPrevPage = isPrev ? hasMore : !!startAfter;
+  const hasNextPage = isPrev ? !!endBefore : hasMore;
+  
+  const startCursor = figures.length > 0 ? figures[0].id : null;
+  const endCursor = figures.length > 0 ? figures[figures.length - 1].id : null;
+
+  return { figures, hasPrevPage, hasNextPage, startCursor, endCursor };
+}
+
+export async function getPublicFiguresList(options: {
+  startAfter?: string;
+  endBefore?: string;
+}): Promise<{
+  figures: Figure[];
+  hasPrevPage: boolean;
+  hasNextPage: boolean;
+  startCursor: string | null;
+  endCursor: string | null;
+}> {
+  const { startAfter, endBefore } = options;
+  const figuresCollectionRef = collection(db, 'figures');
+
+  const isPrev = !!endBefore;
+  const limitSize = PUBLIC_FIGURES_PER_PAGE;
   const order = isPrev ? 'desc' : 'asc';
   const cursorId = isPrev ? endBefore : startAfter;
 
