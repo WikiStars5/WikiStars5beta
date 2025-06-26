@@ -1,4 +1,5 @@
 
+
 // === src/components/admin/FigureForm.tsx ===
 // Este componente ha sido modificado para incluir la lógica de subida de archivos a Firebase Storage
 // y con depuración adicional para el proceso de subida.
@@ -341,7 +342,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       </div>
 
       <div>
-        <Label htmlFor="photoUrl">URL de la Imagen (Opcional)</Label>
+        <Label htmlFor="photoUrl">URL de la Imagen Principal (Opcional)</Label>
         <Input
           id="photoUrl"
           type="url"
