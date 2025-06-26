@@ -913,7 +913,7 @@ export default function FigurePage() {
                       </div>
                       <div className="flex justify-end space-x-2 pt-4">
                         <Button variant="outline" onClick={handleEditToggle} disabled={isSaving}><X className="mr-2 h-4 w-4" />Cancelar</Button>
-                        <Button onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{isSaving ? "Guardando..." : "Guardar"}</Button>
+                        <Button onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{isSaving ? "Actualizando..." : "Actualizar Figura"}</Button>
                       </div>
                     </div>
                   ) : (
