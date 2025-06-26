@@ -30,13 +30,6 @@ export async function toggleFigureFeaturedStatus(
     });
 
     // Revalidate all relevant paths where featured figures might be displayed or listed
-    const locales = ['en', 'es', 'pt']; // Assuming these are your supported locales
-    locales.forEach(locale => {
-      revalidatePath(`/${locale}/admin/figures`, 'page');
-      revalidatePath(`/${locale}/home`, 'page');
-      revalidatePath(`/${locale}/figures`, 'page');
-    });
-    // Also revalidate non-locale specific paths if they are used (e.g. default locale without prefix)
     revalidatePath('/admin/figures', 'page');
     revalidatePath('/home', 'page');
     revalidatePath('/figures', 'page');
@@ -119,6 +112,11 @@ export async function batchUpdateFigureImageUrls(): Promise<{ success: boolean; 
 
   } catch (error: any) {
     console.error('Error in batchUpdateFigureImageUrls:', error);
-    return { success: false, message: `Error durante la actualización por lotes: ${error.message}`, updatedCount: 0 };
+    let errorMessage = `Error durante la actualización por lotes: ${error.message}`;
+    // Provide a more specific error message for permission denied
+    if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
+        errorMessage = "Error de Permiso: La operación fue bloqueada por las Reglas de Seguridad de Firestore. Asegúrate de que el administrador tenga permiso de 'list' y 'write' en la colección 'figures'. Revisa las reglas en src/lib/firebase.ts y aplícalas en tu consola de Firebase.";
+    }
+    return { success: false, message: errorMessage, updatedCount: 0 };
   }
 }

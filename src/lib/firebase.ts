@@ -44,31 +44,40 @@ service cloud.firestore {
     }
     
     match /figures/{figureId} {
-      allow read: if true;
-      // Permite actualizar a cualquier usuario registrado (no anónimo).
+      // ANYONE can read single figures (get) and lists of figures (list).
+      // This is needed for the public /figures page and figure details pages.
+      allow get, list: if true;
+      
+      // ONLY authenticated (non-anonymous) users can update figure details.
+      // The admin is also a non-anonymous user, so they can update too.
+      // The batch update action needs this permission.
       allow update: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+
+      // ONLY the admin can create or delete entire figure documents.
       allow create, delete: if isAdmin();
 
+      // Subcollection for gallery images inside a figure.
       match /galleryImages/{galleryImageId} {
-        allow read: if true;
+        allow read: if true; // Anyone can see gallery images.
         allow write: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
       }
     }
 
     match /registered_users/{userId} {
-      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // An admin can read any user's profile and list all users.
+      allow get, list: if isAdmin();
+      // A user can read and write to their own profile.
+      allow get, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Votes and ratings can be done by ANY authenticated user, including anonymous guests.
     match /userPerceptions/{docId} { allow read, write: if request.auth != null; }
     match /userAttitudes/{docId} { allow read, write: if request.auth != null; }
     match /userStarRatings/{docId} { allow read, write: if request.auth != null; }
 
-    // Colección de comentarios de usuario
     match /userComments/{commentId} {
-      allow read: if true;
-      // Permite la creación y actualización (likes/dislikes) a cualquier
-      // usuario autenticado, incluyendo invitados anónimos.
-      // La edición del texto y la eliminación del comentario se controlan en el frontend.
+      allow read: if true; // Anyone can read comments.
+      // ANY authenticated user (including guests) can create/update comments (for likes/dislikes).
       allow write: if request.auth != null;
     }
   }
