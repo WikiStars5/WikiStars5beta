@@ -458,7 +458,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
 
       <Button type="submit" className="w-full mt-6" disabled={isLoading}>
-        {isLoading ? 'Guardando...' : (initialData?.id ? 'Actualizar Figura' : 'Crear Figura')}
+        {isLoading ? 'Guardando...' : 'Actualizar Figura'}
       </Button>
     </form>
   );

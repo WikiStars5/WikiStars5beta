@@ -9,7 +9,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { Figure } from '@/lib/types';
 import { searchFiguresByName } from '@/app/actions/searchFiguresAction';
-import { cn } from '@/lib/utils';
+import { cn, correctMalformedUrl } from '@/lib/utils';
 
 // Debounce function
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
@@ -219,7 +219,7 @@ export function SearchBar({
                     <div className="flex-shrink-0 mr-2">
                       {figure.photoUrl ? (
                         <Image
-                          src={figure.photoUrl}
+                          src={correctMalformedUrl(figure.photoUrl)}
                           alt={figure.name}
                           width={32}
                           height={40}
