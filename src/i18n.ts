@@ -1,2 +1,1 @@
-// This file is intentionally left blank as internationalization has been temporarily disabled
-// to simplify the application structure and resolve routing conflicts.
+// This file is no longer needed after removing internationalization.

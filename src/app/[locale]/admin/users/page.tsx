@@ -1,10 +1,7 @@
 
-import { getAllUsersFromFirestore } from "@/lib/userData";
-import AdminUsersPageClient from "@/components/admin/AdminUsersPageClient";
+import { redirect } from 'next/navigation';
 
-export const revalidate = 0;
-
-export default async function AdminUsersPage() {
-  const users = await getAllUsersFromFirestore();
-  return <AdminUsersPageClient initialUsers={users} />;
+// This page permanently redirects to the non-i18n version of the route.
+export default function Page() {
+  redirect('/admin/users');
 }
