@@ -31,7 +31,7 @@ export { app };
 
 // === REGLAS DE SEGURIDAD DE FIRESTORE (APLICAR EN CONSOLA FIREBASE) ===
 // Ve a Firebase Console -> Firestore Database -> Rules.
-// REEMPLAZA 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' CON TU ADMIN_UID REAL SI ES DIFERENTE.
+// ¡ESTAS SON LAS REGLAS CORRECTAS Y SIMPLIFICADAS!
 /*
 rules_version = '2';
 
@@ -39,38 +39,45 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAdmin() {
-      // Reemplaza esto con el UID de tu cuenta de administrador.
+      // UID del administrador. ¡REEMPLAZAR SI ES NECESARIO!
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
+
+    // Regla 1: El administrador tiene acceso TOTAL de lectura y escritura a TODA la base de datos.
+    // Esto asegura que todas las operaciones del panel de admin funcionen sin problemas.
+    match /{path=**} {
+      allow read, write: if isAdmin();
+    }
     
+    // Regla 2: Reglas PÚBLICAS para usuarios no administradores.
+    // Firestore combinará estas reglas con la del admin. Si un usuario es admin, la Regla 1 le da acceso.
+    // Si no es admin, entonces se verifican estas reglas de aquí abajo.
+
+    // CUALQUIERA puede leer (get) una figura específica.
     match /figures/{figureId} {
-      // CUALQUIERA puede leer (get) y listar (list) figuras.
-      allow read: if true;
-      
-      // SOLO el administrador puede crear, actualizar y borrar (write).
-      allow write: if isAdmin();
-
-      // Reglas para la subcolección de galería
-      match /galleryImages/{galleryImageId} {
-        allow read: if true;
-        allow write: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
-      }
+      allow get: if true;
     }
 
-    match /registered_users/{userId} {
-      // El administrador puede leer cualquier perfil y listar usuarios.
-      allow get, list: if isAdmin();
-      // Un usuario puede leer y escribir su propio perfil.
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Votos, comentarios, etc., por CUALQUIER usuario autenticado (incluidos invitados).
-    match /userPerceptions/{docId} { allow read, write: if request.auth != null; }
-    match /userAttitudes/{docId} { allow read, write: if request.auth != null; }
-    match /userStarRatings/{docId} { allow read, write: if request.auth != null; }
+    // CUALQUIERA puede leer los comentarios.
     match /userComments/{commentId} {
       allow read: if true;
-      allow write: if request.auth != null;
+    }
+    
+    // Usuarios autenticados (INCLUYENDO ANÓNIMOS) pueden votar y comentar.
+    match /userPerceptions/{docId} { allow write: if request.auth != null; }
+    match /userAttitudes/{docId} { allow write: if request.auth != null; }
+    match /userStarRatings/{docId} { allow write: if request.auth != null; }
+    match /userComments/{commentId} { allow write: if request.auth != null; }
+    
+    // Usuarios con CUENTA (no anónimos) pueden añadir a la galería.
+    match /figures/{figureId}/galleryImages/{galleryImageId} {
+      allow get: if true; // Permitir lectura de imágenes de galería a todos
+      allow write: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+    }
+    
+    // Un usuario solo puede leer y actualizar su PROPIO perfil.
+    match /registered_users/{userId} {
+      allow get, update: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

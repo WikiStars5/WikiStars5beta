@@ -30,7 +30,15 @@ export default async function AdminDashboardPage() {
   } catch (error: any) {
     console.error("Error fetching admin dashboard data:", error);
     if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
-      fetchError = `No se pudieron obtener los datos del panel debido a permisos de Firestore faltantes o insuficientes. Por favor, revisa tus Reglas de Seguridad de Firebase en la consola de Firebase. Asegúrate de que el usuario administrador (UID: ${ADMIN_UID_FOR_MESSAGE}) tenga acceso de lectura a las colecciones 'figures' y 'registered_users'.`;
+      fetchError = `Error Crítico de Permisos: No se pudieron obtener los datos para el panel de administración. Tus Reglas de Seguridad de Firestore están bloqueando el acceso.
+
+**Acción Requerida:**
+1. Ve al archivo 'src/lib/firebase.ts'.
+2. Copia el bloque de reglas de seguridad completo que está en los comentarios.
+3. Ve a tu Consola de Firebase -> Firestore Database -> Pestaña 'Rules'.
+4. Reemplaza las reglas antiguas con las que copiaste y publica los cambios.
+
+El UID de administrador esperado es: ${ADMIN_UID_FOR_MESSAGE}.`;
     } else {
       fetchError = `Ocurrió un error inesperado al obtener los datos del panel: ${error.message || 'Error desconocido'}`;
     }
@@ -39,9 +47,9 @@ export default async function AdminDashboardPage() {
   return (
     <div className="space-y-8">
       {fetchError && (
-        <Alert variant="destructive" className="mb-6">
+        <Alert variant="destructive" className="mb-6 whitespace-pre-wrap">
           <AlertTriangle className="h-5 w-5" />
-          <AlertTitle>Error de Permiso</AlertTitle>
+          <AlertTitle>Error de Permiso de Firestore</AlertTitle>
           <AlertDescription>{fetchError}</AlertDescription>
         </Alert>
       )}
@@ -58,7 +66,7 @@ export default async function AdminDashboardPage() {
                 <Users className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{fetchError ? 'N/A' : totalFigures}</div>
+                <div className="text-2xl font-bold">{fetchError ? 'Error' : totalFigures}</div>
                 <p className="text-xs text-muted-foreground">perfiles gestionados en Firestore</p>
               </CardContent>
             </Card>
@@ -68,7 +76,7 @@ export default async function AdminDashboardPage() {
                 <Users className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{fetchError ? 'N/A' : totalUsers}</div>
+                <div className="text-2xl font-bold">{fetchError ? 'Error' : totalUsers}</div>
                 <p className="text-xs text-muted-foreground">usuarios registrados</p>
               </CardContent>
             </Card>
