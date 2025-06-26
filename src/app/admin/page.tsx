@@ -2,11 +2,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Users, ListOrdered, PlusCircle, AlertTriangle, Wrench } from "lucide-react";
+import { Users, ListOrdered, PlusCircle, AlertTriangle } from "lucide-react";
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { getAllUsersFromFirestore } from "@/lib/userData"; // Import new function
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
 
 export const revalidate = 0; 
 
@@ -108,21 +107,6 @@ El UID de administrador esperado es: ${ADMIN_UID_FOR_MESSAGE}.`;
           </Button>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center text-xl font-headline">
-            <Wrench className="mr-2 h-5 w-5" /> Herramientas de Mantenimiento
-          </CardTitle>
-          <CardDescription>
-            Acciones para corregir datos en toda la base de datos. Usar con precaución.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <BatchUpdateImagesButton />
-        </CardContent>
-      </Card>
-
     </div>
   );
 }
