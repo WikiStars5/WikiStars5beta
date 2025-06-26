@@ -1,8 +1,6 @@
 
-import type { ReactNode } from 'react';
-
-// This is a pass-through layout to fix a broken i18n routing structure.
-// It ensures that this route segment doesn't break the UI.
-export default function LocaleLayout({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+// This file is part of a deprecated feature and is no longer needed.
+// It can be safely deleted.
+export default function DeprecatedLayout() {
+  return null;
 }

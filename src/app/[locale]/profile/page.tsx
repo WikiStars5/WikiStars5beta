@@ -1,7 +1,6 @@
 
-import { redirect } from 'next/navigation';
-
-// This page permanently redirects to the non-i18n version of the route.
-export default function Page() {
-  redirect('/profile');
+// This file is part of a deprecated feature and is no longer needed.
+// It can be safely deleted.
+export default function DeprecatedPage() {
+  return null;
 }

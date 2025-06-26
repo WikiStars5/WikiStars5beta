@@ -1,3 +1,4 @@
+
 import {NextRequest, NextResponse} from 'next/server';
 
 // Internationalization has been disabled to fix routing issues.
@@ -7,9 +8,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    // This matcher is intentionally broad but skips internal Next.js paths.
-    // It's kept to make re-enabling middleware easier in the future.
-    '/((?!_next|api|favicon.ico).*)',
-  ],
+  // By removing the matcher, this middleware will not run on any path.
+  // This is the safest way to disable it and avoid any routing conflicts.
+  matcher: [],
 };
