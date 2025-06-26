@@ -39,26 +39,22 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAdmin() {
-      // Reemplaza esto con el UID de tu cuenta de administrador
+      // Reemplaza esto con el UID de tu cuenta de administrador si es diferente
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
     
     match /figures/{figureId} {
       // ANYONE can read single figures (get) and lists of figures (list).
-      // This is needed for the public /figures page and figure details pages.
       allow get, list: if true;
       
-      // ONLY authenticated (non-anonymous) users can update figure details.
-      // The admin is also a non-anonymous user, so they can update too.
-      // The batch update action needs this permission.
-      allow update: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
-
-      // ONLY the admin can create or delete entire figure documents.
-      allow create, delete: if isAdmin();
+      // ONLY the admin can create, update, or delete figure documents.
+      // The batch update action needs full 'write' permission.
+      allow write: if isAdmin();
 
       // Subcollection for gallery images inside a figure.
       match /galleryImages/{galleryImageId} {
         allow read: if true; // Anyone can see gallery images.
+        // Any non-anonymous user can add images.
         allow write: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
       }
     }
