@@ -60,8 +60,8 @@
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 48 100% 50%;   /* Vibrant Yellow - matches image */
-    --primary-foreground: 0 0% 8%; /* Dark text for on yellow primary - matches image */
+    --primary: 0 0% 98%;   /* Off-white (was yellow) */
+    --primary-foreground: 0 0% 9%; /* Dark text for on-white primary */
 
     --secondary: 0 0% 15%; /* Dark gray for secondary elements */
     --secondary-foreground: 0 0% 80%; 
@@ -69,25 +69,31 @@
     --muted: 0 0% 12%;     /* Search bar input field background - matches image */
     --muted-foreground: 0 0% 50%; /* Placeholder text color in search - matches image */
 
-    --accent: 48 100% 50%;    /* Vibrant Yellow (same as primary) */
-    --accent-foreground: 0 0% 8%; 
+    --accent: 0 0% 20%;    /* Subtle grey for hovers (was yellow) */
+    --accent-foreground: 0 0% 98%; /* White text on accent */
 
-    --destructive: 0 70% 50%; /* Adjusted red for dark mode */
+    --destructive: 0 62.8% 30.6%; /* Darker red for dark mode */
     --destructive-foreground: 0 0% 98%;
 
     --border: 0 0% 20%; /* Subtle borders */
     --input: 0 0% 12%;  /* Search bar input bg - matches image */
-    --ring: 48 100% 50%; /* Yellow for rings */
+    --ring: 0 0% 98%; /* Off-white for rings */
     
+    --chart-1: 0 0% 70%;
+    --chart-2: 0 0% 60%;
+    --chart-3: 0 0% 50%;
+    --chart-4: 0 0% 40%;
+    --chart-5: 0 0% 30%;
+
     /* Sidebar variables - Dark Theme */
     --sidebar-background: 0 0% 5%; 
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 48 100% 50%;
-    --sidebar-primary-foreground: 0 0% 8%;
-    --sidebar-accent: 48 100% 50%;
-    --sidebar-accent-foreground: 0 0% 8%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 0 0% 9%;
+    --sidebar-accent: 0 0% 20%;
+    --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 48 100% 50%;
+    --sidebar-ring: 0 0% 98%;
   }
 }
 
