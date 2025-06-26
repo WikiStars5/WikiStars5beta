@@ -1,4 +1,3 @@
-
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -76,12 +75,8 @@ export async function updateCommentLikes(
         newDislikes = finalCommentDoc.data().dislikes;
     }
     
-    // Revalidate paths for both non-locale and locale-based routing
+    // Path revalidation for a non-i18n setup
     revalidatePath(`/figures/${figureId}`);
-    revalidatePath(`/es/figures/${figureId}`);
-    revalidatePath(`/en/figures/${figureId}`);
-    revalidatePath(`/pt/figures/${figureId}`);
-
 
     return { success: true, message: 'Voto actualizado.', newLikes, newDislikes };
   } catch (error: any) {
