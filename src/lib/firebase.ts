@@ -30,8 +30,8 @@ export const auth: Auth = getAuth(app);
 export { app };
 
 // === REGLAS DE SEGURIDAD DE FIRESTORE (APLICAR EN CONSOLA FIREBASE) ===
-// Ve a Firebase Console -> Firestore Database -> Rules.
 // ¡ESTAS SON LAS REGLAS CORRECTAS Y SIMPLIFICADAS!
+// Ve a Firebase Console -> Firestore Database -> Rules.
 /*
 rules_version = '2';
 
@@ -52,11 +52,11 @@ service cloud.firestore {
 
     // --- Colección de Figuras ---
     match /figures/{figureId} {
-      // Cualquiera puede LEER una figura y sus datos.
-      allow get: if true;
+      // CUALQUIERA puede LEER una figura individual (get) y LISTAR la colección.
+      allow get, list: if true;
       
-      // El Administrador puede LISTAR todas las figuras y ESCRIBIR (crear, editar, borrar).
-      allow list, write: if isAdmin();
+      // SOLO el Administrador puede ESCRIBIR (crear, editar, borrar).
+      allow write: if isAdmin();
 
       // Subcolección de Galería
       match /galleryImages/{imageId} {
@@ -82,12 +82,15 @@ service cloud.firestore {
       // Cualquiera puede LEER comentarios.
       allow get, list: if true;
       
-      // Usuarios autenticados (incluidos anónimos) pueden CREAR. El Admin puede borrar.
+      // Usuarios autenticados (incluidos anónimos) pueden CREAR.
       allow create: if isSignedIn();
+
+      // Un usuario puede ACTUALIZAR o BORRAR su propio comentario. El Admin puede BORRAR cualquiera.
       allow update: if isSignedIn() && request.auth.uid == resource.data.userId;
       allow delete: if (isSignedIn() && request.auth.uid == resource.data.userId) || isAdmin();
     }
     
+    // Votos de Percepción, Actitud y Estrellas
     match /userPerceptions/{docId} {
       allow read, write: if isSignedIn();
     }
