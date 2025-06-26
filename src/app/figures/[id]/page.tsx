@@ -130,6 +130,29 @@ export default function FigurePage() {
     ];
   }, []);
 
+  const displayedComments = useMemo(() => {
+    let sortedComments = [...commentsList];
+
+    switch (commentSortOrder) {
+      case 'mostVoted':
+        // Sort by net likes (likes - dislikes)
+        sortedComments.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
+        break;
+      case 'oldest':
+        sortedComments.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+        break;
+      case 'myComment':
+        if (!currentUser || currentUser.isAnonymous) return [];
+        return commentsList.filter(comment => comment.userId === currentUser.uid);
+      case 'newest':
+      default:
+        // The default fetch is already newest, but sorting ensures consistency if data changes
+        sortedComments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+        break;
+    }
+    return sortedComments;
+  }, [commentsList, commentSortOrder, currentUser]);
+
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -671,7 +694,7 @@ export default function FigurePage() {
 
 
   if (!id && figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="ml-2">Cargando ID...</p></div>;
-  if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+  if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (figure === null) return <div className="text-center py-10"><h1 className="text-2xl font-bold">Figura No Encontrada</h1><p className="text-muted-foreground">ID: {id || "desconocido"}</p><Button asChild className="mt-4"><Link href="/">Ir al Inicio</Link></Button></div>;
 
   const isValidUrl = (url: string, domains: string[]): boolean => {
@@ -786,30 +809,6 @@ export default function FigurePage() {
   const renderEditTextarea = (idField: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, placeholder?: string, rows?: number) => (
     <div><Label htmlFor={idField} className="font-semibold text-foreground/90">{label}</Label><Textarea id={idField} value={value} onChange={onChange} placeholder={placeholder || `Añade ${label.toLowerCase()}...`} rows={rows || 3} className="mt-1" /></div>
   );
-
-  const displayedComments = useMemo(() => {
-    let sortedComments = [...commentsList];
-
-    switch (commentSortOrder) {
-      case 'mostVoted':
-        // Sort by net likes (likes - dislikes)
-        sortedComments.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
-        break;
-      case 'oldest':
-        sortedComments.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
-        break;
-      case 'myComment':
-        if (!currentUser || currentUser.isAnonymous) return [];
-        return commentsList.filter(comment => comment.userId === currentUser.uid);
-      case 'newest':
-      default:
-        // The default fetch is already newest, but sorting ensures consistency if data changes
-        sortedComments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-        break;
-    }
-    return sortedComments;
-  }, [commentsList, commentSortOrder, currentUser]);
-
 
   const renderComment = (comment: UserComment, level: number) => {
     const MAX_NESTING_LEVEL = 4; 
@@ -1159,3 +1158,4 @@ export default function FigurePage() {
   );
 }
 
+    
