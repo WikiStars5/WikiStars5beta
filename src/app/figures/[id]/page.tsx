@@ -8,7 +8,7 @@ import {
   Terminal, Info, UserCircle, Globe, Briefcase, Users2 as FamilyIcon, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   ImageOff, BarChartHorizontal, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
-  MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight
+  MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Heart
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { submitGalleryImageAction } from "@/app/actions/figureGalleryActions";
 import { updateCommentLikes } from "@/app/actions/commentRatingActions";
+import { toggleFigureSupport } from "@/app/actions/supportAction";
 import { cn, correctMalformedUrl } from "@/lib/utils";
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
@@ -84,7 +85,6 @@ export default function FigurePage() {
   const [editedEyeColor, setEditedEyeColor] = useState("");
   const [editedDistinctiveFeatures, setEditedDistinctiveFeatures] = useState("");
 
-
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
@@ -92,6 +92,10 @@ export default function FigurePage() {
   const [canCommentOrRate, setCanCommentOrRate] = useState(false);
   const [canVoteOnComments, setCanVoteOnComments] = useState(false);
   const [canSubmitGalleryImage, setCanSubmitGalleryImage] = useState(false);
+  
+  const [isSupported, setIsSupported] = useState(false);
+  const [supportCount, setSupportCount] = useState(0);
+  const [isLoadingSupport, setIsLoadingSupport] = useState(true);
 
   const [newComment, setNewComment] = useState("");
   const [newCommentStars, setNewCommentStars] = useState<StarValue | null>(null);
@@ -129,13 +133,11 @@ export default function FigurePage() {
     ];
   }, []);
 
-  // Moved this hook to the top with other hooks to fix the "change in order of hooks" error.
   const displayedComments = useMemo(() => {
     let sortedComments = [...commentsList];
 
     switch (commentSortOrder) {
       case 'mostVoted':
-        // Sort by net likes (likes - dislikes)
         sortedComments.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
         break;
       case 'oldest':
@@ -146,7 +148,6 @@ export default function FigurePage() {
         return commentsList.filter(comment => comment.userId === currentUser.uid);
       case 'newest':
       default:
-        // The default fetch is already newest, but sorting ensures consistency if data changes
         sortedComments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
         break;
     }
@@ -206,6 +207,27 @@ export default function FigurePage() {
     });
     return () => unsubscribe();
   }, [figure?.id]); 
+
+  useEffect(() => {
+    if (currentUser && figure) {
+      setIsLoadingSupport(true);
+      const supportDocRef = doc(db, 'userSupports', `${currentUser.uid}_${figure.id}`);
+      getDoc(supportDocRef).then(docSnap => {
+        setIsSupported(docSnap.exists());
+        setSupportCount(figure.supportCount || 0);
+        setIsLoadingSupport(false);
+      }).catch(err => {
+        console.error("Error fetching support status:", err);
+        setIsLoadingSupport(false);
+      });
+    } else {
+      if (figure) {
+        setSupportCount(figure.supportCount || 0);
+      }
+      setIsSupported(false);
+      setIsLoadingSupport(false);
+    }
+  }, [currentUser, figure]);
 
   const resetEditFields = useCallback((currentFigure: Figure | null) => {
     if (currentFigure) {
@@ -276,7 +298,7 @@ export default function FigurePage() {
         where('figureId', '==', id),
         where('parentId', '==', null), 
         orderBy('createdAt', 'desc'),
-        limit(50) // Fetch a reasonable number of comments for client-side sorting
+        limit(50) 
       );
       const querySnapshot = await getDocs(commentsQuery);
       const fetchedComments: UserComment[] = [];
@@ -553,7 +575,6 @@ export default function FigurePage() {
                     dislikedBy: newDislikedBy,
                 };
             }
-            // This part is for potential future nested replies within replies, safe to keep
             if ((comment as any).replies && (comment as any).replies.length > 0) {
                 const updatedReplies = updateCommentRecursively((comment as any).replies, targetCommentId, currentUserId, action);
                 if (updatedReplies !== (comment as any).replies) {
@@ -571,13 +592,11 @@ export default function FigurePage() {
     const originalReplies = { ...replies };
 
     if (parentCommentId && replies[parentCommentId]) {
-      // Optimistic update for a reply
       setReplies(prevReplies => ({
         ...prevReplies,
         [parentCommentId]: updateCommentRecursively(prevReplies[parentCommentId], commentId, currentUser.uid, action)
       }));
     } else {
-      // Optimistic update for a top-level comment
       setCommentsList(updateCommentRecursively(commentsList, commentId, currentUser.uid, action));
     }
 
@@ -587,15 +606,12 @@ export default function FigurePage() {
 
         if (!result.success) {
             toast({ title: 'Error', description: result.message, variant: 'destructive' });
-            // Revert optimistic update
             setCommentsList(originalComments);
             setReplies(originalReplies);
         }
-        // No need for an else block, as onSnapshot will eventually catch the update.
     } catch (error: any) {
         console.error("Error al llamar a la acción del servidor para me gusta/no me gusta:", error);
         toast({ title: 'Error', description: `Error inesperado al votar: ${error.message}`, variant: 'destructive' });
-        // Revert optimistic update
         setCommentsList(originalComments);
         setReplies(originalReplies);
     } finally {
@@ -690,6 +706,29 @@ export default function FigurePage() {
   const handleOpenImageViewer = (index: number) => {
     setSelectedImageIndex(index);
     setIsViewerOpen(true);
+  };
+
+  const handleSupportToggle = async () => {
+    if (!currentUser || currentUser.isAnonymous) {
+      toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para poder mostrar tu apoyo.", variant: "default"});
+      return;
+    }
+    if (isLoadingSupport) return;
+    
+    setIsSupported(prev => !prev);
+    setSupportCount(prev => isSupported ? prev - 1 : prev + 1);
+
+    const result = await toggleFigureSupport(figure!.id, currentUser.uid);
+
+    if (!result.success) {
+      setIsSupported(prev => !prev);
+      setSupportCount(prev => isSupported ? prev + 1 : prev - 1);
+      toast({
+        title: "Error",
+        description: result.message,
+        variant: "destructive",
+      });
+    }
   };
 
 
@@ -883,7 +922,14 @@ export default function FigurePage() {
 
   return (
     <div className="space-y-8 lg:space-y-12">
-      <ProfileHeader figure={figure} />
+      <ProfileHeader 
+        figure={figure} 
+        supportCount={supportCount}
+        isSupported={isSupported}
+        isLoadingSupport={isLoadingSupport}
+        onSupportToggle={handleSupportToggle}
+        canSupport={!!currentUser && !currentUser.isAnonymous}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-3 space-y-8">
@@ -1157,7 +1203,3 @@ export default function FigurePage() {
     </div>
   );
 }
-
-    
-
-    

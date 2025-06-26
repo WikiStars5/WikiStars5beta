@@ -1,3 +1,4 @@
+
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
@@ -86,7 +87,7 @@ service cloud.firestore {
       allow update, delete: if (isSignedIn() && request.auth.uid == resource.data.userId) || isAdmin();
     }
     
-    // --- Colecciones de Votos (Percepción, Actitud, Estrellas) ---
+    // --- Colecciones de Votos (Percepción, Actitud, Estrellas, Apoyo) ---
     match /userPerceptions/{docId} {
       allow read, write: if isSignedIn();
     }
@@ -95,6 +96,9 @@ service cloud.firestore {
     }
     match /userStarRatings/{docId} {
       allow read, write: if isSignedIn();
+    }
+    match /userSupports/{docId} {
+        allow read, write: if isSignedIn();
     }
   }
 }

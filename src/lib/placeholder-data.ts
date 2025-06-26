@@ -78,6 +78,7 @@ const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot): Figu
     createdAt: finalCreatedAt,
     status: data.status || 'approved',
     isFeatured: data.isFeatured || false,
+    supportCount: data.supportCount || 0,
   };
 };
 
@@ -194,6 +195,7 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       commentCount: figure.commentCount || 0,
       familyMembers: figure.familyMembers || [], // Ensure familyMembers is an array
       isFeatured: figure.isFeatured || false, // Ensure isFeatured is set
+      supportCount: figure.supportCount || 0,
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
@@ -209,10 +211,10 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
   try {
     const figureRef = doc(db, "figures", figure.id);
     const { 
-        id, createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts, commentCount, familyMembers,
+        id, createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts, commentCount, familyMembers, supportCount,
         name, photoUrl, description, nationality, occupation, gender, alias, species,
         firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
-        height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured, // Added isFeatured
+        height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured, 
         ...rest
     } = figure;
 
@@ -240,7 +242,8 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
     if (nameLower !== undefined) updatePayload.nameLower = nameLower;
     if (commentCount !== undefined) updatePayload.commentCount = commentCount; 
     if (familyMembers !== undefined) updatePayload.familyMembers = familyMembers;
-    if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured; // Add isFeatured to update payload
+    if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured;
+    if (supportCount !== undefined) updatePayload.supportCount = supportCount;
 
     if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
     if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
