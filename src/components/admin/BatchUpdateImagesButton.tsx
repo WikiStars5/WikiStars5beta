@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ImageUp, Loader2 } from 'lucide-react';
-import { batchUpdateFigureImageUrls } from '@/app/actions/adminActions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,32 +16,74 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { correctMalformedUrl } from '@/lib/utils';
+import type { Figure } from '@/lib/types';
+import { useRouter } from 'next/navigation';
 
 export function BatchUpdateImagesButton() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleUpdate = async () => {
     setIsLoading(true);
     try {
-      const result = await batchUpdateFigureImageUrls();
-      if (result.success) {
+      const figuresCollectionRef = collection(db, 'figures');
+      const querySnapshot = await getDocs(figuresCollectionRef);
+      
+      if (querySnapshot.empty) {
+        toast({ title: "Proceso Exitoso", description: "No se encontraron figuras para procesar." });
+        setIsLoading(false);
+        return;
+      }
+
+      const batch = writeBatch(db);
+      let updatedCount = 0;
+
+      querySnapshot.forEach(docSnap => {
+        const figureData = docSnap.data() as Figure;
+        const originalUrl = figureData.photoUrl;
+        
+        if (!originalUrl) {
+            return;
+        }
+
+        const correctedUrl = correctMalformedUrl(originalUrl);
+
+        if (originalUrl !== correctedUrl) {
+          const figureRef = doc(db, 'figures', docSnap.id);
+          batch.update(figureRef, { photoUrl: correctedUrl });
+          updatedCount++;
+        }
+      });
+
+      if (updatedCount > 0) {
+        await batch.commit();
         toast({
-          title: "Proceso Exitoso",
-          description: result.message,
+          title: "Proceso Completado",
+          description: `Se actualizaron ${updatedCount} URLs de imágenes.`,
         });
+        // Revalidate paths by refreshing the page to show corrected data if any were visible
+        router.refresh(); 
       } else {
         toast({
-          title: "Error en el Proceso",
-          description: result.message,
-          variant: "destructive",
+          title: "Proceso Exitoso",
+          description: "No se encontraron URLs de imágenes mal formadas. ¡Todo está en orden!",
         });
       }
     } catch (error: any) {
-      console.error("Failed to run batch update:", error);
+      console.error("Failed to run batch update from client:", error);
+      let errorMessage = "No se pudo completar la operación.";
+      if (error.code === 'permission-denied') {
+        errorMessage = "Error de permisos. Asegúrate de que las reglas de Firestore permiten escribir al administrador.";
+      } else {
+        errorMessage = `Error: ${error.message}`;
+      }
       toast({
         title: "Error Inesperado",
-        description: "No se pudo completar la operación. Revisa la consola para más detalles.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
