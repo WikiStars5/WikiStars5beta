@@ -29,9 +29,10 @@ export const db: Firestore = getFirestore(app);
 export const auth: Auth = getAuth(app);
 export { app };
 
-// === REGLAS DE SEGURIDAD DE FIRESTORE (APLICAR EN CONSOLA FIREBASE) ===
-// ¡ESTAS SON LAS REGLAS CORRECTAS Y SIMPLIFICADAS!
-// Ve a Firebase Console -> Firestore Database -> Rules.
+// ======================================================================
+// ===          ¡IMPORTANTE! REGLAS DE SEGURIDAD DE FIRESTORE         ===
+// === COPIA Y PEGA ESTO EN TU CONSOLA DE FIREBASE -> Firestore Rules ===
+// ======================================================================
 /*
 rules_version = '2';
 
@@ -47,50 +48,45 @@ service cloud.firestore {
       return request.auth != null;
     }
     function isRegisteredUser() {
-      return isSignedIn() && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+      // Un usuario registrado no es anónimo.
+      return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
 
-    // --- Colección de Figuras ---
+    // --- Colección de Figuras (figures) ---
     match /figures/{figureId} {
-      // CUALQUIERA puede LEER una figura individual (get) y LISTAR la colección.
-      allow get, list: if true;
+      // CUALQUIERA puede LEER (read incluye get y list).
+      allow read: if true;
       
-      // SOLO el Administrador puede ESCRIBIR (crear, editar, borrar).
+      // SOLO el Administrador puede ESCRIBIR (write incluye create, update, delete).
       allow write: if isAdmin();
 
-      // Subcolección de Galería
+      // Subcolección de Galería (galleryImages)
       match /galleryImages/{imageId} {
-        // Cualquiera puede LEER imágenes de la galería.
-        allow get, list: if true;
-        
-        // Solo usuarios REGISTRADOS (no anónimos) pueden crear imágenes. El Admin también puede.
+        allow read: if true;
         allow create: if isRegisteredUser() || isAdmin();
+        // Solo el usuario que la subió o un admin puede borrar/editar. (No implementado aún)
+        allow write: if (isRegisteredUser() && request.auth.uid == resource.data.userId) || isAdmin();
       }
     }
 
-    // --- Colección de Usuarios Registrados ---
+    // --- Colección de Usuarios (registered_users) ---
     match /registered_users/{userId} {
-      // Un usuario puede LEER y ACTUALIZAR su propio perfil.
+      // Un usuario puede leer y actualizar su propio perfil.
       allow get, update: if isRegisteredUser() && request.auth.uid == userId;
 
-      // El Administrador puede LISTAR y ESCRIBIR en cualquier perfil.
-      allow list, write: if isAdmin();
+      // El Administrador puede leer y escribir en CUALQUIER perfil.
+      allow read, write: if isAdmin();
     }
     
-    // --- Colecciones de Votos y Comentarios ---
+    // --- Colección de Comentarios (userComments) ---
     match /userComments/{commentId} {
-      // Cualquiera puede LEER comentarios.
-      allow get, list: if true;
-      
-      // Usuarios autenticados (incluidos anónimos) pueden CREAR.
+      allow read: if true;
       allow create: if isSignedIn();
-
-      // Un usuario puede ACTUALIZAR o BORRAR su propio comentario. El Admin puede BORRAR cualquiera.
-      allow update: if isSignedIn() && request.auth.uid == resource.data.userId;
-      allow delete: if (isSignedIn() && request.auth.uid == resource.data.userId) || isAdmin();
+      // Solo el dueño del comentario o un admin pueden actualizar/borrar.
+      allow update, delete: if (isSignedIn() && request.auth.uid == resource.data.userId) || isAdmin();
     }
     
-    // Votos de Percepción, Actitud y Estrellas
+    // --- Colecciones de Votos (Percepción, Actitud, Estrellas) ---
     match /userPerceptions/{docId} {
       allow read, write: if isSignedIn();
     }
@@ -117,9 +113,9 @@ service firebase.storage {
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
     }
 
+    // Cualquiera puede leer las imágenes de las figuras, emociones, audios y logos.
     match /figures/{allPaths=**} {
       allow read: if true;
-      allow write: if isAdmin();
     }
     match /emociones/{allPaths=**} {
       allow read: if true;
@@ -129,6 +125,11 @@ service firebase.storage {
     }
     match /logo/{logoFilename} {
       allow read: if true;
+    }
+
+    // Solo un admin puede escribir (subir/borrar) imágenes en la carpeta de figuras.
+    match /figures/{allPaths=**} {
+       allow write: if isAdmin();
     }
   }
 }
