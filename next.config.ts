@@ -28,9 +28,8 @@ const nextConfig: NextConfig = {
       }, 
       { 
         protocol: 'https', 
-        hostname: 'upload.wikimedia.org', 
+        hostname: '**.wikimedia.org', // Permitir CUALQUIER subdominio de wikimedia.org
         port: '', 
-        // Se ha cambiado de '/wikipedia/commons/**' a '/**' para permitir todas las imágenes de Wikimedia.
         pathname: '/**', 
       }, 
       { 
