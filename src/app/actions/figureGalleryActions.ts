@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { GalleryImage } from '@/lib/types';
+import { correctMalformedUrl } from '@/lib/utils'; // Import the helper function
 
 // Nota: Debes obtener estos dominios de tu next.config.ts o mantener una lista sincronizada.
 const ALLOWED_IMAGE_DOMAINS = [
@@ -38,18 +39,21 @@ export async function submitGalleryImageAction(
 ): Promise<{ success: boolean; message: string }> {
   console.log('[submitGalleryImageAction] Received data:', { figureId, imageUrl, userId, username });
 
-  if (!figureId || !imageUrl || !userId) {
+  // Correct the URL before validation and saving
+  const correctedImageUrl = correctMalformedUrl(imageUrl);
+
+  if (!figureId || !correctedImageUrl || !userId) {
     const missingFields = [];
     if (!figureId) missingFields.push('figureId');
-    if (!imageUrl) missingFields.push('imageUrl');
+    if (!correctedImageUrl) missingFields.push('imageUrl');
     if (!userId) missingFields.push('userId');
     const errorMessage = `Faltan datos necesarios: ${missingFields.join(', ')}.`;
     console.error('[submitGalleryImageAction] Validation Error:', errorMessage);
     return { success: false, message: errorMessage };
   }
 
-  if (!isValidImageUrl(imageUrl)) {
-    const errorMessage = `La URL de la imagen no es válida o no pertenece a un dominio permitido. Dominios permitidos: ${ALLOWED_IMAGE_DOMAINS.join(', ')}. URL proporcionada: ${imageUrl}`;
+  if (!isValidImageUrl(correctedImageUrl)) {
+    const errorMessage = `La URL de la imagen no es válida o no pertenece a un dominio permitido. Dominios permitidos: ${ALLOWED_IMAGE_DOMAINS.join(', ')}. URL proporcionada: ${correctedImageUrl}`;
     console.error('[submitGalleryImageAction] URL Validation Error:', errorMessage);
     return { 
       success: false, 
@@ -63,7 +67,7 @@ export async function submitGalleryImageAction(
     const galleryImagesCollectionRef = collection(db, subCollectionPath);
     
     const newImageData: Omit<GalleryImage, 'id'> = {
-      imageUrl,
+      imageUrl: correctedImageUrl, // Save the corrected URL
       userId,
       username: username || 'Usuario Anónimo',
       createdAt: serverTimestamp() as any, 
@@ -83,4 +87,3 @@ export async function submitGalleryImageAction(
     return { success: false, message: `No se pudo añadir la imagen a la galería. Error de Firestore: ${error.message} (Código: ${error.code})` };
   }
 }
-

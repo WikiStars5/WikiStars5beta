@@ -8,6 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { ImageOff, Star } from "lucide-react"; // Import Star icon
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/shared/StarRating"; // Import StarRating component
+import { correctMalformedUrl } from "@/lib/utils";
 
 interface FigureListItemProps {
   figure: Figure;
@@ -24,14 +25,15 @@ export function FigureListItem({ figure }: FigureListItemProps) {
   }
   
   const averageRating = totalVotes > 0 ? parseFloat((weightedSum / totalVotes).toFixed(1)) : 0;
+  const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
 
   return (
     <Link href={`/figures/${figure.id}`} className="block group">
       <Card className="overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out group-hover:shadow-xl group-hover:border-primary/50">
         <CardHeader className="p-0 relative w-full aspect-[3/4]">
-          {figure.photoUrl ? (
+          {correctedPhotoUrl ? (
             <Image
-              src={figure.photoUrl}
+              src={correctedPhotoUrl}
               alt={figure.name}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"

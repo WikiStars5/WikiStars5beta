@@ -6,12 +6,15 @@ import Image from "next/image";
 import { Card, CardTitle } from "@/components/ui/card"; // CardHeader removed as it's not strictly needed for this layout
 import { ShareButton } from "@/components/shared/ShareButton";
 import { ImageOff } from "lucide-react";
+import { correctMalformedUrl } from "@/lib/utils";
 
 interface ProfileHeaderProps {
   figure: Figure;
 }
 
 export function ProfileHeader({ figure }: ProfileHeaderProps) {
+  const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
+
   return (
     <Card className="overflow-hidden shadow-lg p-4 md:p-6">
       {/* Flex container to center the content column. */}
@@ -43,9 +46,9 @@ export function ProfileHeader({ figure }: ProfileHeaderProps) {
               - `md:self-start` ensures it aligns to the start of the column on medium screens, matching the text block.
            */}
           <div className="relative w-4/5 sm:w-full aspect-[3/4] bg-muted rounded-lg overflow-hidden shadow-md md:self-start">
-            {figure.photoUrl ? (
+            {correctedPhotoUrl ? (
               <Image
-                src={figure.photoUrl}
+                src={correctedPhotoUrl}
                 alt={figure.name}
                 fill
                 sizes="(max-width: 639px) 80vw, (max-width: 1023px) 100vw, 672px" // max-w-xl is 672px

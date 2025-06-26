@@ -21,6 +21,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Figure, EmotionKey, AttitudeKey, StarValueAsString, FamilyMember } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox'; // Import Checkbox
+import { correctMalformedUrl } from '@/lib/utils'; // Import URL correction helper
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -218,6 +219,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         finalPhotoUrlToSave = 'https://placehold.co/400x600.png';
       }
 
+      // Correct the URL just before saving
+      finalPhotoUrlToSave = correctMalformedUrl(finalPhotoUrlToSave);
+
       let parsedFamilyMembers: FamilyMember[] = [];
       try {
         parsedFamilyMembers = JSON.parse(familyMembersJson || "[]");
@@ -288,7 +292,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     }
   };
 
-  const urlToPreview = previewFileUrl || (photoUrl.trim() ? photoUrl.trim() : initialData?.photoUrl || null);
+  const urlToPreview = correctMalformedUrl(previewFileUrl || (photoUrl.trim() ? photoUrl.trim() : initialData?.photoUrl || null));
   const canPreviewUrl = urlToPreview && (
       urlToPreview.startsWith('http://') ||
       urlToPreview.startsWith('https://') ||
@@ -460,4 +464,3 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 };
 
 export default FigureForm;
-

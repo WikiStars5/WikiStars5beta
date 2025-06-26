@@ -4,6 +4,7 @@
 import Image from "next/image"; // Using next/image
 import { ImageOff } from "lucide-react";
 import type { Figure } from "@/lib/types";
+import { correctMalformedUrl } from "@/lib/utils";
 
 interface AdminFigureImageProps {
   figure: Pick<Figure, "photoUrl" | "name">;
@@ -12,11 +13,13 @@ interface AdminFigureImageProps {
 }
 
 export function AdminFigureImage({ figure, width = 50, height = 70 }: AdminFigureImageProps) {
+  const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
+
   return (
     <>
-      {figure.photoUrl ? (
+      {correctedPhotoUrl ? (
         <Image
-          src={figure.photoUrl}
+          src={correctedPhotoUrl}
           alt={figure.name}
           width={width}
           height={height}

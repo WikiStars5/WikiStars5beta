@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { submitGalleryImageAction } from "@/app/actions/figureGalleryActions";
 import { updateCommentLikes } from "@/app/actions/commentRatingActions";
-import { cn } from "@/lib/utils";
+import { cn, correctMalformedUrl } from "@/lib/utils";
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
   1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
@@ -354,7 +354,7 @@ export default function FigurePage() {
         nationality: editedNationality,
         occupation: editedOccupation,
         gender: editedGender,
-        photoUrl: editedPhotoUrl.trim() || 'https://placehold.co/400x600.png',
+        photoUrl: correctMalformedUrl(editedPhotoUrl.trim() || 'https://placehold.co/400x600.png'),
         alias: editedAlias,
         species: editedSpecies,
         firstAppearance: editedFirstAppearance,
@@ -682,7 +682,7 @@ export default function FigurePage() {
       return false;
     }
   };
-  const isValidEditedPhotoUrl = isValidUrl(editedPhotoUrl, allowedImageDomains);
+  const isValidEditedPhotoUrl = isValidUrl(correctMalformedUrl(editedPhotoUrl), allowedImageDomains);
 
   const handleReplyClick = (commentId: string) => {
     if (replyingTo === commentId) {
@@ -893,7 +893,7 @@ export default function FigurePage() {
                     <div className="space-y-4">
                       {renderEditInput("photoUrl", "URL de Imagen Principal", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://...")}
                       <p className="text-xs text-muted-foreground mt-1">Dominios permitidos: {allowedImageDomains.join(', ')}.</p>
-                      {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center"><Image src={editedPhotoUrl} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground"><ImageOff className="h-10 w-10" /></div>}
+                      {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center"><Image src={correctMalformedUrl(editedPhotoUrl)} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground"><ImageOff className="h-10 w-10" /></div>}
                       {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                         {renderEditInput("alias", "Alias", editedAlias, (e) => setEditedAlias(e.target.value))}
@@ -991,7 +991,7 @@ export default function FigurePage() {
                           aria-label={`Ver imagen ${index + 1} de ${figure.name}`}
                         >
                           <Image 
-                            src={img.imageUrl} 
+                            src={correctMalformedUrl(img.imageUrl)} 
                             alt={`Imagen de galería para ${figure.name} - ${index + 1}`} 
                             width={0}
                             height={0}
@@ -1103,7 +1103,7 @@ export default function FigurePage() {
 
       {isViewerOpen && galleryImages.length > 0 && (
         <ImageGalleryViewer
-          images={galleryImages}
+          images={galleryImages.map(img => ({...img, imageUrl: correctMalformedUrl(img.imageUrl)}))}
           initialIndex={selectedImageIndex}
           isOpen={isViewerOpen}
           onClose={() => setIsViewerOpen(false)}
