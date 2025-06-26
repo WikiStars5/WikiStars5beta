@@ -10,7 +10,7 @@ import type { GalleryImage } from '@/lib/types';
 const ALLOWED_IMAGE_DOMAINS = [
   'placehold.co', 
   'firebasestorage.googleapis.com', 
-  'upload.wikimedia.org', 
+  'wikimedia.org', // Permitir el dominio base para cubrir subdominios como upload, commons, etc.
   'static.wikia.nocookie.net', 
   'i.pinimg.com',
   'encrypted-tbn0.gstatic.com',

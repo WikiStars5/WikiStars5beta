@@ -124,7 +124,7 @@ export default function FigurePage() {
 
   const allowedImageDomains = useMemo(() => {
     return [
-      'placehold.co', 'firebasestorage.googleapis.com', 'upload.wikimedia.org', 
+      'placehold.co', 'firebasestorage.googleapis.com', 'wikimedia.org', 
       'static.wikia.nocookie.net', 'i.pinimg.com', 'encrypted-tbn0.gstatic.com', 'm.media-amazon.com'
     ];
   }, []);

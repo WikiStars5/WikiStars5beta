@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
       }, 
       { 
         protocol: 'https', 
-        hostname: '**.wikimedia.org', // Permitir CUALQUIER subdominio de wikimedia.org
+        hostname: '*.wikimedia.org', // Corregido: comodín para CUALQUIER subdominio de wikimedia.org
         port: '', 
         pathname: '/**', 
       }, 
