@@ -2,7 +2,7 @@
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, StarValueAsString, FamilyMember } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter as firestoreStartAfter } from "firebase/firestore";
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -106,7 +106,7 @@ export async function getAdminFiguresList(options: {
   if (cursorId) {
     const cursorDoc = await getDoc(doc(db, 'figures', cursorId));
     if (cursorDoc.exists()) {
-      q = query(figuresCollectionRef, orderBy('name', order), startAfter(cursorDoc), limit(limitSize + 1));
+      q = query(figuresCollectionRef, orderBy('name', order), firestoreStartAfter(cursorDoc), limit(limitSize + 1));
     }
   }
 
