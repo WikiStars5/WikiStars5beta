@@ -15,12 +15,13 @@ export function correctMalformedUrl(url: string | null | undefined): string {
   if (!url) {
     return "";
   }
-  let correctedUrl = url;
+  let correctedUrl = url.trim();
+  
   if (correctedUrl.startsWith('http:/') && !correctedUrl.startsWith('http://')) {
-    correctedUrl = correctedUrl.replace('http:/', 'http://');
+    correctedUrl = 'http://' + correctedUrl.substring(6);
+  } else if (correctedUrl.startsWith('https:/') && !correctedUrl.startsWith('https://')) {
+    correctedUrl = 'https://' + correctedUrl.substring(7);
   }
-  if (correctedUrl.startsWith('https:/') && !correctedUrl.startsWith('https://')) {
-    correctedUrl = correctedUrl.replace('https:/', 'https://');
-  }
+  
   return correctedUrl;
 }
