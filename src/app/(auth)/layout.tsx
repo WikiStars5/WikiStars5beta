@@ -1,12 +1,6 @@
-
-export default function AuthLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-primary/5 to-accent/5 p-4">
-      {children}
-    </div>
-  );
+// This file is no longer used and will be ignored by the router.
+// The new layout is at src/app/[locale]/(auth)/layout.tsx.
+// You can safely delete this file.
+export default function DeprecatedAuthLayout({children}: {children: React.ReactNode;}) {
+  return <>{children}</>;
 }

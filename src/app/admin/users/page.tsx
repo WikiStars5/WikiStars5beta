@@ -1,10 +1,6 @@
-
-import { getAllUsersFromFirestore } from "@/lib/userData";
-import AdminUsersPageClient from "@/components/admin/AdminUsersPageClient";
-
-export const revalidate = 0;
-
-export default async function AdminUsersPage() {
-  const users = await getAllUsersFromFirestore();
-  return <AdminUsersPageClient initialUsers={users} />;
+// This file is no longer used and will be ignored by the router.
+// The new page is at src/app/[locale]/admin/users/page.tsx.
+// You can safely delete this file.
+export default function DeprecatedAdminUsersPage() {
+  return null;
 }
