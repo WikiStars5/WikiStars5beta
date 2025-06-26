@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search as SearchIcon, User } from "lucide-react";
 import type { UserProfile } from "@/lib/types";
 import { GENDER_OPTIONS } from "@/config/genderOptions";
+import { correctMalformedUrl } from '@/lib/utils';
 
 interface AdminUsersPageClientProps {
   initialUsers: UserProfile[];
@@ -93,7 +94,7 @@ export default function AdminUsersPageClient({ initialUsers }: AdminUsersPageCli
                   <TableRow key={user.uid}>
                     <TableCell className="p-2">
                       <Avatar className="h-9 w-9">
-                        <AvatarImage src={user.photoURL || undefined} alt={user.username} data-ai-hint="user avatar" />
+                        <AvatarImage src={correctMalformedUrl(user.photoURL) || undefined} alt={user.username} data-ai-hint="user avatar" />
                         <AvatarFallback>
                           {user.username ? user.username.charAt(0).toUpperCase() : <User />}
                         </AvatarFallback>

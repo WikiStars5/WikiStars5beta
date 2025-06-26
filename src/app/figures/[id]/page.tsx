@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage, FamilyMember } from "@/lib/types";
@@ -796,7 +795,7 @@ export default function FigurePage() {
       <div key={comment.id} className="relative group/comment">
         <div className="flex space-x-3">
           <Avatar className="h-10 w-10 flex-shrink-0">
-            <AvatarImage src={comment.userPhotoURL || undefined} alt={comment.username} />
+            <AvatarImage src={correctMalformedUrl(comment.userPhotoURL) || undefined} alt={comment.username} />
             <AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1">

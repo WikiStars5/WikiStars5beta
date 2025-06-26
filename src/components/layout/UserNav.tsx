@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation'; 
+import { correctMalformedUrl } from '@/lib/utils';
 
 const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
 
@@ -78,7 +79,7 @@ export function UserNav() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-9 w-9 rounded-full">
             <Avatar className="h-9 w-9">
-              <AvatarImage src={photoURL || undefined} alt={displayName} />
+              <AvatarImage src={correctMalformedUrl(photoURL) || undefined} alt={displayName} />
               <AvatarFallback>
                 {displayName ? displayName.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
               </AvatarFallback>
