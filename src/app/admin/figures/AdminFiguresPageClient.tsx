@@ -3,12 +3,12 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { Figure } from "@/lib/types";
-import { PlusCircle, Edit3, MessageSquare, Star, Search as SearchIcon } from "lucide-react";
+import { PlusCircle, Edit3, MessageSquare, Star, Search as SearchIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { AdminFigureImage } from "@/components/admin/AdminFigureImage";
 import { AdminDeleteFigureButton } from "@/components/admin/AdminDeleteFigureButton";
@@ -18,9 +18,19 @@ import { toggleFigureFeaturedStatus } from "@/app/actions/adminActions";
 
 interface AdminFiguresPageClientProps {
   initialFigures: Figure[];
+  hasPrevPage: boolean;
+  hasNextPage: boolean;
+  startCursor: string | null;
+  endCursor: string | null;
 }
 
-export default function AdminFiguresPageClient({ initialFigures }: AdminFiguresPageClientProps) {
+export default function AdminFiguresPageClient({
+  initialFigures,
+  hasPrevPage,
+  hasNextPage,
+  startCursor,
+  endCursor
+}: AdminFiguresPageClientProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [figures, setFigures] = useState<Figure[]>(initialFigures);
   const router = useRouter();
@@ -54,7 +64,8 @@ export default function AdminFiguresPageClient({ initialFigures }: AdminFiguresP
         title: "Estado Actualizado",
         description: result.message,
       });
-      router.refresh(); // Refresh server-side data
+      // Do not refresh the whole page to keep pagination state
+      // The local state update is sufficient for the UI change
     } else {
       setFigures(originalFigures); // Revert optimistic update
       toast({
@@ -73,7 +84,6 @@ export default function AdminFiguresPageClient({ initialFigures }: AdminFiguresP
           <CardDescription>Crea, edita o elimina perfiles de figuras públicas de Firestore.</CardDescription>
         </div>
         <Button asChild>
-          {/* Estos enlaces son absolutos y funcionarán bien en un contexto no localizado */}
           <Link href="/admin/figures/new">
             <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nueva Figura
           </Link>
@@ -161,6 +171,22 @@ export default function AdminFiguresPageClient({ initialFigures }: AdminFiguresP
           </p>
         )}
       </CardContent>
+      <CardFooter className="flex justify-end pt-6 border-t">
+        <div className="flex items-center gap-2">
+            <Button asChild variant="outline" disabled={!hasPrevPage}>
+                <Link href={`/admin/figures?endBefore=${startCursor}`}>
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                    Anterior
+                </Link>
+            </Button>
+            <Button asChild variant="outline" disabled={!hasNextPage}>
+                <Link href={`/admin/figures?startAfter=${endCursor}`}>
+                    Siguiente
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                </Link>
+            </Button>
+        </div>
+      </CardFooter>
     </Card>
   );
 }
