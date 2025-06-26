@@ -62,7 +62,7 @@ export function BatchUpdateImagesButton() {
         <AlertDialogHeader>
           <AlertDialogTitle>¿Confirmar Actualización Masiva?</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta acción escaneará todas las figuras en la base de datos y corregirá automáticamente cualquier URL de imagen que esté mal formada (por ejemplo, con `http:/` en lugar de `http://`).
+            Esta acción escaneará todas las figuras en la base de datos y corregirá permanentemente cualquier URL de imagen que esté mal formada (por ejemplo, con `http:/` en lugar de `http://`).
             <br/><br/>
             Esta operación puede tardar unos segundos y no se puede deshacer. ¿Deseas continuar?
           </AlertDialogDescription>
