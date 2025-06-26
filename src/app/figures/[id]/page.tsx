@@ -122,7 +122,6 @@ export default function FigurePage() {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
-
   const allowedImageDomains = useMemo(() => {
     return [
       'placehold.co', 'firebasestorage.googleapis.com', 'wikimedia.org', 
@@ -130,6 +129,7 @@ export default function FigurePage() {
     ];
   }, []);
 
+  // Moved this hook to the top with other hooks to fix the "change in order of hooks" error.
   const displayedComments = useMemo(() => {
     let sortedComments = [...commentsList];
 
@@ -1095,9 +1095,9 @@ export default function FigurePage() {
               
               <div className="border-t pt-6 mt-6 space-y-6">
                 <Tabs defaultValue="newest" onValueChange={(value) => setCommentSortOrder(value)} className="w-full">
-                  <div className="flex flex-col sm:flex-row justify-between items-baseline mb-4 gap-4">
-                      <h4 className="text-lg font-medium">Comentarios ({commentsList.length})</h4>
-                      <TabsList className="grid grid-cols-2 sm:grid-cols-4 h-auto sm:h-9 w-full sm:w-auto">
+                  <div className="flex flex-col items-start sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
+                      <h4 className="text-lg font-medium">Comentarios ({displayedComments.length})</h4>
+                      <TabsList className="flex h-auto w-full flex-wrap justify-center gap-1 sm:w-auto">
                         <TabsTrigger value="newest" className="text-xs sm:text-sm">Más Nuevos</TabsTrigger>
                         <TabsTrigger value="oldest" className="text-xs sm:text-sm">Más Antiguos</TabsTrigger>
                         <TabsTrigger value="mostVoted" className="text-xs sm:text-sm">Más Votados</TabsTrigger>
@@ -1157,5 +1157,7 @@ export default function FigurePage() {
     </div>
   );
 }
+
+    
 
     
