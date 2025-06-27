@@ -18,6 +18,7 @@ export default function MyActivityPage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [figures, setFigures] = useState<Figure[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -25,23 +26,22 @@ export default function MyActivityPage() {
         setCurrentUser(user);
         try {
           const profile = await getUserProfile(user.uid);
-          setUserProfile(profile);
-
           if (profile) {
+            setUserProfile(profile);
             const figureIds = new Set([
               ...Object.keys(profile.attitudes || {}),
-              // ...Object.keys(profile.emotions || {}), // Uncomment when emotions are implemented
-              // ...Object.keys(profile.ratings || {}),  // Uncomment when ratings are implemented
             ]);
             
             if (figureIds.size > 0) {
               const fetchedFigures = await getFiguresByIds(Array.from(figureIds));
               setFigures(fetchedFigures);
             }
+          } else {
+             setError("No se pudo cargar tu perfil. Es posible que no se haya creado correctamente.");
           }
-
-        } catch (error) {
-          console.error("Error fetching activity data:", error);
+        } catch (err: any) {
+          console.error("Error fetching activity data:", err);
+          setError(err.message || "Ocurrió un error inesperado al cargar tu actividad.");
         }
       } else {
         setCurrentUser(null);
@@ -78,11 +78,18 @@ export default function MyActivityPage() {
     );
   }
 
-  if (!userProfile) {
+  if (error || !userProfile) {
      return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Cargando datos de actividad...</p>
+      <div className="container max-w-md mx-auto py-10 text-center">
+        <Alert variant="destructive">
+            <AlertTitle>Error al Cargar Actividad</AlertTitle>
+            <AlertDescription>
+                {error || "No se pudieron cargar los datos de tu perfil."}
+            </AlertDescription>
+        </Alert>
+        <Button asChild className="mt-6">
+            <Link href="/home">Volver al Inicio</Link>
+        </Button>
       </div>
     );
   }

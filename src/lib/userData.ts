@@ -45,7 +45,7 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
 
 /**
  * Fetches a user's profile from Firestore.
- * Returns null if the profile does not exist.
+ * Returns null if the profile does not exist or if an error occurs.
  */
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   if (!uid) {
@@ -64,7 +64,9 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     }
   } catch (error) {
     console.error(`Error fetching user profile for UID ${uid}:`, error);
-    throw new Error('Failed to fetch user profile.');
+    // Instead of throwing an error that crashes the page, return null.
+    // The calling component will handle the null case as an error state.
+    return null;
   }
 }
 
