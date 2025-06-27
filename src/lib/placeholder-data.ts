@@ -63,7 +63,7 @@ const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot): Figu
     starRatingCounts: rest.starRatingCounts || { ...defaultStarRatingCounts },
     commentCount: rest.commentCount || 0,
     familyMembers: rest.familyMembers || [],
-    createdAt: createdAt?.toDate?.().toISOString() || (typeof createdAt === 'string' ? createdAt : undefined),
+    createdAt: createdAt && createdAt.toDate ? createdAt.toDate().toISOString() : undefined,
     status: rest.status || 'approved',
     isFeatured: rest.isFeatured || false,
   };
