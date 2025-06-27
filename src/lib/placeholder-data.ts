@@ -33,50 +33,39 @@ const defaultStarRatingCounts: Record<StarValueAsString, number> = {
 
 const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot): Figure => {
   const data = docSnap.data() as DocumentData;
-
-  // Explicitly handle timestamp conversion for serialization
-  const rawCreatedAt = data.createdAt;
-  let finalCreatedAt: string | undefined = undefined;
-  
-  // This is the crucial part. We must convert the Firestore Timestamp object
-  // to a plain string so it can be passed from Server to Client Components.
-  if (rawCreatedAt && typeof rawCreatedAt.toDate === 'function') {
-    finalCreatedAt = rawCreatedAt.toDate().toISOString();
-  } else if (typeof rawCreatedAt === 'string') {
-    finalCreatedAt = rawCreatedAt;
-  }
+  const { createdAt, ...rest } = data;
 
   return {
     id: docSnap.id,
-    name: data.name || "",
-    nameLower: data.nameLower || (data.name ? data.name.toLowerCase() : ""),
-    photoUrl: data.photoUrl || "",
-    description: data.description || "",
-    nationality: data.nationality || "",
-    occupation: data.occupation || "",
-    gender: data.gender || "",
+    name: rest.name || "",
+    nameLower: rest.nameLower || (rest.name ? rest.name.toLowerCase() : ""),
+    photoUrl: rest.photoUrl || "",
+    description: rest.description || "",
+    nationality: rest.nationality || "",
+    occupation: rest.occupation || "",
+    gender: rest.gender || "",
     
-    alias: data.alias || "",
-    species: data.species || "",
-    firstAppearance: data.firstAppearance || "",
-    birthDateOrAge: data.birthDateOrAge || "",
-    birthPlace: data.birthPlace || "",
-    statusLiveOrDead: data.statusLiveOrDead || "",
-    maritalStatus: data.maritalStatus || "",
-    height: data.height || "",
-    weight: data.weight || "",
-    hairColor: data.hairColor || "",
-    eyeColor: data.eyeColor || "",
-    distinctiveFeatures: data.distinctiveFeatures || "",
+    alias: rest.alias || "",
+    species: rest.species || "",
+    firstAppearance: rest.firstAppearance || "",
+    birthDateOrAge: rest.birthDateOrAge || "",
+    birthPlace: rest.birthPlace || "",
+    statusLiveOrDead: rest.statusLiveOrDead || "",
+    maritalStatus: rest.maritalStatus || "",
+    height: rest.height || "",
+    weight: rest.weight || "",
+    hairColor: rest.hairColor || "",
+    eyeColor: rest.eyeColor || "",
+    distinctiveFeatures: rest.distinctiveFeatures || "",
 
-    perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
-    attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
-    starRatingCounts: data.starRatingCounts || { ...defaultStarRatingCounts },
-    commentCount: data.commentCount || 0,
-    familyMembers: data.familyMembers || [],
-    createdAt: finalCreatedAt,
-    status: data.status || 'approved',
-    isFeatured: data.isFeatured || false,
+    perceptionCounts: rest.perceptionCounts || { ...defaultPerceptionCounts },
+    attitudeCounts: rest.attitudeCounts || { ...defaultAttitudeCounts },
+    starRatingCounts: rest.starRatingCounts || { ...defaultStarRatingCounts },
+    commentCount: rest.commentCount || 0,
+    familyMembers: rest.familyMembers || [],
+    createdAt: createdAt?.toDate?.().toISOString() || (typeof createdAt === 'string' ? createdAt : undefined),
+    status: rest.status || 'approved',
+    isFeatured: rest.isFeatured || false,
   };
 };
 
