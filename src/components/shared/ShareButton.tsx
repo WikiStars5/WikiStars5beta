@@ -62,7 +62,7 @@ export function ShareButton({ figureName, figureId, showText = false }: ShareBut
     return (
       <Button variant="outline" size={buttonSize} aria-label="Cargando opciones para compartir" disabled>
         <Share2 className="h-5 w-5" />
-        {showText && <span>Compartir</span>}
+        {showText && <span>Compartir perfil</span>}
       </Button>
     );
   }
@@ -136,7 +136,7 @@ export function ShareButton({ figureName, figureId, showText = false }: ShareBut
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size={buttonSize} aria-label={`Compartir perfil de ${figureName}`}>
           <Share2 className="h-5 w-5" />
-          {showText && <span>Compartir</span>}
+          {showText && <span>Compartir perfil</span>}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
