@@ -85,34 +85,33 @@ service cloud.firestore {
     }
     
     // --- Reglas para Votos (Actitud, Percepción, Calificaciones) ---
-    // Este es el patrón correcto para datos propiedad del usuario.
     function isOwnerOfDoc() {
+      // Para lecturas (get) y escrituras (update, delete), 'resource' es el documento existente.
       return request.auth.uid == resource.data.userId;
     }
     
     function isCreatingOwnDoc() {
+      // Para creaciones (create), 'request.resource' es el nuevo documento.
       return request.auth.uid == request.resource.data.userId;
     }
 
     match /userAttitudes/{docId} {
-      // Un usuario puede LEER (get) o BORRAR su propio voto.
-      allow get, delete: if isSignedIn() && isOwnerOfDoc();
-      // Un usuario puede CREAR un voto para sí mismo.
+      // Un usuario puede leer sus propios votos (get y list) y borrarlos.
+      // La regla 'read' funciona para 'list' porque la consulta del cliente
+      // está restringida por `where('userId', '==', auth.uid)`.
+      allow read, delete: if isSignedIn() && isOwnerOfDoc();
+      // Un usuario solo puede crear votos para sí mismo.
       allow create: if isSignedIn() && isCreatingOwnDoc();
-      // Un usuario puede LISTAR (query) solo sus propios votos.
-      allow list: if isSignedIn() && request.query.userId == request.auth.uid;
     }
     
     match /userPerceptions/{docId} {
-       allow get, delete: if isSignedIn() && isOwnerOfDoc();
+       allow read, delete: if isSignedIn() && isOwnerOfDoc();
        allow create: if isSignedIn() && isCreatingOwnDoc();
-       allow list: if isSignedIn() && request.query.userId == request.auth.uid;
     }
     
     match /userStarRatings/{docId} {
-       allow get, delete: if isSignedIn() && isOwnerOfDoc();
+       allow read, delete: if isSignedIn() && isOwnerOfDoc();
        allow create: if isSignedIn() && isCreatingOwnDoc();
-       allow list: if isSignedIn() && request.query.userId == request.auth.uid;
     }
   }
 }
