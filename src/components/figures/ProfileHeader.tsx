@@ -5,7 +5,6 @@ import type { Figure, UserProfile } from "@/lib/types";
 import Image from "next/image";
 import { Card, CardTitle } from "@/components/ui/card";
 import { ShareButton } from "@/components/shared/ShareButton";
-import FavoriteButton from "@/components/user/FavoriteButton"; 
 import { ImageOff } from "lucide-react";
 import { correctMalformedUrl } from "@/lib/utils";
 import type { User } from 'firebase/auth';
@@ -22,7 +21,6 @@ export function ProfileHeader({
   userProfile
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
-  const initialIsFavorited = userProfile?.favoriteFigures?.includes(figure.id) || false;
 
   return (
     <Card className="overflow-hidden shadow-lg p-4 md:p-6">
@@ -53,7 +51,6 @@ export function ProfileHeader({
 
           <div className="flex items-center justify-center gap-4 pt-2 w-full">
             <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
-            <FavoriteButton figureId={figure.id} currentUser={currentUser} initialIsFavorited={initialIsFavorited} />
           </div>
 
         </div>

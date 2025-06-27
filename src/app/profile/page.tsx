@@ -13,9 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import FavoriteFiguresList from '@/components/user/FavoriteFiguresList';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -123,21 +121,10 @@ export default function ProfilePage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-3xl font-headline">Tu Perfil</CardTitle>
-            <CardDescription>Gestiona tu información personal y tus figuras favoritas.</CardDescription>
+            <CardDescription>Gestiona tu información personal. Tus preferencias se guardan aquí.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="edit-profile" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="edit-profile"><User className="mr-2 h-4 w-4"/>Editar Perfil</TabsTrigger>
-                <TabsTrigger value="favorites"><Heart className="mr-2 h-4 w-4"/>Mis Favoritos</TabsTrigger>
-              </TabsList>
-              <TabsContent value="edit-profile" className="pt-6">
-                <UserProfileForm initialProfile={profile} />
-              </TabsContent>
-              <TabsContent value="favorites" className="pt-6">
-                 <FavoriteFiguresList userProfile={profile} />
-              </TabsContent>
-            </Tabs>
+            <UserProfileForm initialProfile={profile} />
           </CardContent>
         </Card>
       </div>
