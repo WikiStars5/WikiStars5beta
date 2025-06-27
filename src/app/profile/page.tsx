@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -8,74 +7,43 @@ import { auth } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
 import { ensureUserProfileExists } from '@/lib/userData';
 import UserProfileForm from '@/components/user/UserProfileForm';
-import UserActivity from '@/components/user/UserActivity'; // Import new component
+import UserActivity from '@/components/user/UserActivity';
 import { Loader2, Edit, Activity } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import { CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [authUser, setAuthUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [profileLoadAttempted, setProfileLoadAttempted] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setAuthUser(user);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []); 
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        if (user.isAnonymous) {
+          toast({
+            title: "Acceso Restringido",
+            description: "Debes iniciar sesión con una cuenta para ver y editar tu perfil.",
+            variant: "destructive"
+          });
+          router.replace('/login?redirect=/profile');
+          setIsLoading(false);
+          return;
+        }
 
-  useEffect(() => {
-    if (authLoading) {
-      return; 
-    }
-
-    if (!authUser) {
-      toast({
-        title: "Acceso Requerido",
-        description: "Por favor, inicia sesión para ver tu perfil.",
-        variant: "default"
-      });
-      router.replace('/login?redirect=/profile');
-      setProfile(null); 
-      setProfileLoading(false);
-      return;
-    }
-
-    if (authUser.isAnonymous) {
-      toast({
-        title: "Acceso Restringido",
-        description: "Debes iniciar sesión con una cuenta para ver y editar tu perfil.",
-        variant: "destructive"
-      });
-      router.replace('/login?redirect=/profile');
-      setProfile(null); 
-      setProfileLoading(false);
-      return;
-    }
-
-    if (!profileLoadAttempted) {
-      setProfileLoading(true);
-      setError(null); 
-      setProfileLoadAttempted(true); 
-
-      ensureUserProfileExists(authUser)
-        .then((userProfile) => {
+        // We have a registered user.
+        setError(null);
+        try {
+          const userProfile = await ensureUserProfileExists(user);
           setProfile(userProfile);
-          setError(null);
-        })
-        .catch((err: any) => {
+        } catch (err: any) {
           console.error("Error loading/ensuring profile:", err);
           const errorMessage = `No se pudo cargar o crear tu perfil. Detalles: ${err.message}`;
           setError(errorMessage);
@@ -85,25 +53,35 @@ export default function ProfilePage() {
             variant: "destructive"
           });
           setProfile(null);
-        })
-        .finally(() => {
-          setProfileLoading(false);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        // No user at all.
+        toast({
+          title: "Acceso Requerido",
+          description: "Por favor, inicia sesión para ver tu perfil.",
+          variant: "default"
         });
-    }
-  }, [authUser, authLoading, profileLoadAttempted, router, toast]);
+        router.replace('/login?redirect=/profile');
+        setProfile(null);
+        setIsLoading(false);
+      }
+    });
 
-  if (authLoading || (profileLoading && !profile && !error) ) {
+    return () => unsubscribe();
+  }, [router, toast]);
+
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">
-          {authLoading ? "Verificando autenticación..." : "Cargando perfil..."}
-        </p>
+        <p className="mt-4 text-muted-foreground">Cargando perfil...</p>
       </div>
     );
   }
 
-  if (error && !profile) {
+  if (error) {
     return (
       <div className="container max-w-md mx-auto py-10 text-center">
         <Alert variant="destructive">
@@ -140,9 +118,13 @@ export default function ProfilePage() {
     );
   }
 
+  // Fallback for when the user is being redirected or in an unexpected state
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
-      <p className="text-muted-foreground">Estado inesperado. Por favor, recarga la página.</p>
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <p className="mt-4 text-muted-foreground">
+        Verificando estado...
+      </p>
     </div>
   );
 }
