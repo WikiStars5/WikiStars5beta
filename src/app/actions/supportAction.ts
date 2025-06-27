@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { doc, runTransaction, serverTimestamp, increment } from 'firebase/firestore';
+import { doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 export async function toggleFigureSupport(
@@ -19,17 +19,26 @@ export async function toggleFigureSupport(
   try {
     let newStatus = false;
     await runTransaction(db, async (transaction) => {
+      // Primero, obtenemos el documento de la figura para leer el contador actual.
+      const figureDoc = await transaction.get(figureRef);
+      if (!figureDoc.exists()) {
+        throw new Error("La figura no existe.");
+      }
+      const currentSupportCount = figureDoc.data().supportCount || 0;
+      
       const supportDoc = await transaction.get(supportRef);
       
       if (supportDoc.exists()) {
-        // User is un-supporting
+        // El usuario está quitando su apoyo
         transaction.delete(supportRef);
-        transaction.update(figureRef, { supportCount: increment(-1) });
+        // Calculamos manualmente el nuevo contador y lo actualizamos.
+        transaction.update(figureRef, { supportCount: Math.max(0, currentSupportCount - 1) });
         newStatus = false;
       } else {
-        // User is supporting
+        // El usuario está dando su apoyo
         transaction.set(supportRef, { userId, figureId, timestamp: serverTimestamp() });
-        transaction.update(figureRef, { supportCount: increment(1) });
+        // Calculamos manualmente el nuevo contador y lo actualizamos.
+        transaction.update(figureRef, { supportCount: currentSupportCount + 1 });
         newStatus = true;
       }
     });

@@ -61,7 +61,7 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
       
       // El admin puede actualizar cualquier campo.
-      // Un usuario conectado puede actualizar SOLO el supportCount (para likes).
+      // Un usuario registrado puede actualizar SOLO el supportCount (para likes).
       allow update: if isAdmin() || isOnlyChangingSupportCount();
 
       // Subcolección de Galería (galleryImages)
@@ -74,7 +74,7 @@ service cloud.firestore {
       function isOnlyChangingSupportCount() {
         // Esta función comprueba que el único cambio entre el documento antiguo y el nuevo
         // es el campo supportCount, y que solo cambia en +/- 1.
-        return isSignedIn() &&
+        return isRegisteredUser() &&
                request.resource.data.diff(resource.data).affectedKeys().hasOnly(['supportCount']) &&
                (request.resource.data.supportCount == resource.data.supportCount + 1 ||
                 request.resource.data.supportCount == resource.data.supportCount - 1);
@@ -91,7 +91,7 @@ service cloud.firestore {
     match /userComments/{commentId} {
       allow read: if true;
       allow create: if isSignedIn();
-      allow update, delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow update, delete: if (isRegisteredUser() && resource.data.userId == request.auth.uid) || isAdmin();
     }
     
     // --- Colecciones de Votos (Percepción, Actitud, Estrellas, Apoyo) ---
@@ -110,7 +110,7 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && isOwner(docId);
     }
     match /userSupports/{docId} {
-        allow read, write: if isSignedIn() && isOwner(docId);
+        allow read, write: if isRegisteredUser() && isOwner(docId);
     }
   }
 }
