@@ -10,37 +10,32 @@ import { CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import type { UserProfile, Figure } from '@/lib/types';
-import { ensureUserProfileExists } from '@/lib/userData';
+import type { Figure, AttitudeKey } from '@/lib/types';
+import { getAllUserAttitudes } from '@/lib/userData';
 import { getFiguresByIds } from '@/lib/placeholder-data';
 
 export default function MyActivityPage() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [attitudes, setAttitudes] = useState<Record<string, AttitudeKey>>({});
   const [figures, setFigures] = useState<Figure[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && !user.isAnonymous) {
+      if (user) {
         setCurrentUser(user);
         try {
-          // This now ensures the profile exists, creating it if necessary.
-          const profile = await ensureUserProfileExists(user);
-          if (profile) {
-            setUserProfile(profile);
-            const figureIds = new Set([
-              ...Object.keys(profile.attitudes || {}),
-            ]);
-            
-            if (figureIds.size > 0) {
-              const fetchedFigures = await getFiguresByIds(Array.from(figureIds));
-              setFigures(fetchedFigures);
-            }
+          const userAttitudes = await getAllUserAttitudes(user.uid);
+          setAttitudes(userAttitudes);
+          
+          const figureIds = Object.keys(userAttitudes);
+          
+          if (figureIds.length > 0) {
+            const fetchedFigures = await getFiguresByIds(figureIds);
+            setFigures(fetchedFigures);
           } else {
-             // This case should be rare now, but is kept as a fallback.
-             setError("No se pudo cargar tu perfil. Es posible que no se haya creado correctamente.");
+            setFigures([]);
           }
         } catch (err: any) {
           console.error("Error fetching activity data:", err);
@@ -48,7 +43,8 @@ export default function MyActivityPage() {
         }
       } else {
         setCurrentUser(null);
-        setUserProfile(null);
+        setAttitudes({});
+        setFigures([]);
       }
       setIsLoading(false);
     });
@@ -59,7 +55,7 @@ export default function MyActivityPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Verificando usuario...</p>
+        <p className="mt-4 text-muted-foreground">Cargando actividad...</p>
       </div>
     );
   }
@@ -71,7 +67,7 @@ export default function MyActivityPage() {
                 <LogIn className="h-4 w-4" />
                 <AlertTitle>Acceso Requerido</AlertTitle>
                 <AlertDescription>
-                    Debes iniciar sesión con una cuenta para ver tu actividad.
+                    Debes iniciar sesión para ver tu actividad. Los votos de invitado no se guardan aquí.
                 </AlertDescription>
             </Alert>
             <Button asChild className="mt-6">
@@ -81,13 +77,13 @@ export default function MyActivityPage() {
     );
   }
 
-  if (error || !userProfile) {
+  if (error) {
      return (
       <div className="container max-w-md mx-auto py-10 text-center">
         <Alert variant="destructive">
             <AlertTitle>Error al Cargar Actividad</AlertTitle>
             <AlertDescription>
-                {error || "No se pudieron cargar los datos de tu perfil."}
+                {error || "No se pudieron cargar tus datos de actividad."}
             </AlertDescription>
         </Alert>
         <Button asChild className="mt-6">
@@ -103,7 +99,7 @@ export default function MyActivityPage() {
             <CardTitle className="text-3xl font-headline">Mi Actividad</CardTitle>
             <CardDescription>Aquí puedes ver todas las figuras con las que has interactuado en la plataforma.</CardDescription>
         </CardHeader>
-        <UserActivity userProfile={userProfile} figures={figures} />
+        <UserActivity attitudes={attitudes} figures={figures} />
     </div>
   );
 }

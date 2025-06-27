@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Figure, UserAttitude, AttitudeKey, UserProfile } from '@/lib/types';
+import type { Figure, UserAttitude, AttitudeKey } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, serverTimestamp, type Unsubscribe, getDoc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
@@ -39,7 +39,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   const [isComponentLoading, setIsComponentLoading] = useState(true);
   const { toast } = useToast();
 
-  const canUserVote = !!currentUser; // Allow anonymous users to vote
+  const canUserVote = !!currentUser;
 
   useEffect(() => {
     if (!figureId) {
@@ -58,27 +58,26 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       } else {
         setFigureAttitudeCounts(defaultAttitudeCountsData);
         setTotalVotes(0);
-        console.warn(`Figure document with ID ${figureId} does not exist.`);
       }
     }, (error) => {
       console.error("Error fetching figure attitude counts:", error);
       toast({ title: "Error", description: "No se pudieron cargar los conteos de actitudes.", variant: "destructive" });
     });
 
-    let unsubscribeUserProfile: Unsubscribe | undefined;
+    let unsubscribeUserAttitude: Unsubscribe | undefined;
     if (currentUser && figureId) { 
-        const userProfileRef = doc(db, "registered_users", currentUser.uid);
-        unsubscribeUserProfile = onSnapshot(userProfileRef, (docSnap) => {
+        const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
+        const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
+        unsubscribeUserAttitude = onSnapshot(userAttitudeDocRef, (docSnap) => {
             if (docSnap.exists()) {
-                const userProfile = docSnap.data() as UserProfile;
-                const attitudeForThisFigure = userProfile.attitudes?.[figureId];
-                setSelectedAttitude(attitudeForThisFigure || null);
+                const userAttitudeData = docSnap.data() as UserAttitude;
+                setSelectedAttitude(userAttitudeData.attitude);
             } else {
                 setSelectedAttitude(null);
             }
             setIsComponentLoading(false);
         }, (error) => {
-            console.error("Error fetching user profile for attitude:", error);
+            console.error("Error fetching user attitude:", error);
             setSelectedAttitude(null);
             setIsComponentLoading(false);
         });
@@ -89,7 +88,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     
     return () => {
       unsubscribeFigure();
-      if (unsubscribeUserProfile) unsubscribeUserProfile();
+      if (unsubscribeUserAttitude) unsubscribeUserAttitude();
     };
   }, [figureId, currentUser, toast]);
 
@@ -108,19 +107,14 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     const newAttitudeToSet = previousSelectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
 
     const figureDocRef = doc(db, "figures", figureId);
-    const userProfileRef = doc(db, "registered_users", currentUser.uid);
+    const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
+    const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
 
     try {
       await runTransaction(db, async (transaction) => {
-        const [figureDoc, userProfileDoc] = await Promise.all([
-            transaction.get(figureDocRef),
-            transaction.get(userProfileRef)
-        ]);
-
+        const figureDoc = await transaction.get(figureDocRef);
         if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
-        if (!userProfileDoc.exists()) throw new Error("Perfil de usuario no encontrado. No se puede votar.");
 
-        // Update Figure's aggregate counts
         const currentServerCounts = (figureDoc.data()?.attitudeCounts || { ...defaultAttitudeCountsData });
         const finalServerCounts = { ...currentServerCounts };
         if (previousSelectedAttitude) {
@@ -130,20 +124,18 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           finalServerCounts[newAttitudeToSet] = (finalServerCounts[newAttitudeToSet] || 0) + 1;
         }
         transaction.update(figureDocRef, { attitudeCounts: finalServerCounts });
-
-        // Update User's personal attitude map
-        const userAttitudes = userProfileDoc.data()?.attitudes || {};
-        if (newAttitudeToSet) {
-            userAttitudes[figureId] = newAttitudeToSet;
-        } else {
-            delete userAttitudes[figureId];
-        }
-        transaction.update(userProfileRef, { attitudes: userAttitudes });
       });
 
       if (newAttitudeToSet) {
+        await setDoc(userAttitudeDocRef, {
+            userId: currentUser.uid,
+            figureId: figureId,
+            attitude: newAttitudeToSet,
+            timestamp: serverTimestamp(),
+        });
         toast({ title: "Voto Registrado", description: `Tu actitud como "${ATTITUDE_OPTIONS_CONFIG.find(e => e.key === newAttitudeToSet)?.label}" ha sido guardada.` });
       } else {
+        await deleteDoc(userAttitudeDocRef);
         toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
       }
     } catch (error: any) {
@@ -179,13 +171,13 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       <CardHeader>
         <CardTitle>¿Qué te consideras con respecto a {figureName}?</CardTitle>
         <CardDescription>
-          {currentUser // If a user (anonymous or not) exists
+          {currentUser
             ? "Selecciona una opción para compartir tu postura."
             : "Inicia sesión o continúa como invitado para poder participar."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {!currentUser && ( // Show if no user at all (e.g., anonymous sign-in failed)
+        {!currentUser && (
           <Alert variant="default" className="mb-4">
             <LogIn className="h-4 w-4" />
             <AlertTitle>Participación</AlertTitle>
@@ -212,7 +204,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                 ${!canUserVote ? 'cursor-not-allowed opacity-60' : ''}
               `}
               onClick={() => handleAttitudeClick(key)}
-              disabled={!canUserVote || !!isLoadingAttitudeAction} // Disabled if no user or loading
+              disabled={!canUserVote || !!isLoadingAttitudeAction}
               style={{ minHeight: '100px' }}
             >
               <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>

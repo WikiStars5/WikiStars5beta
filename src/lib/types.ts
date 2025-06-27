@@ -114,9 +114,6 @@ export interface UserProfile {
   role: 'user' | 'admin';
   createdAt: string; 
   lastLoginAt?: string;
-  attitudes?: Record<string, AttitudeKey>;
-  emotions?: Record<string, EmotionKey>;
-  ratings?: Record<string, StarValue>;
 }
 
 export interface GalleryImage {

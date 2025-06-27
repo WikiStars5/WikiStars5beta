@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Figure, UserProfile } from '@/lib/types';
+import type { Figure, AttitudeKey } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FigureListItem } from '@/components/figures/FigureListItem';
 import { Card } from '@/components/ui/card';
@@ -49,32 +49,28 @@ const ActivityGrid = ({ figures }: { figures: Figure[] }) => {
 };
 
 interface UserActivityProps {
-  userProfile: UserProfile;
+  attitudes: Record<string, AttitudeKey>;
   figures: Figure[];
 }
 
-export default function UserActivity({ userProfile, figures }: UserActivityProps) {
+export default function UserActivity({ attitudes, figures }: UserActivityProps) {
     const figuresMap = new Map(figures.map(f => [f.id, f]));
 
     const getFiguresForAttitude = (attitude: string) => {
-        const figureIds = Object.keys(userProfile.attitudes || {}).filter(
-            figureId => userProfile.attitudes?.[figureId] === attitude
+        const figureIds = Object.keys(attitudes || {}).filter(
+            figureId => (attitudes || {})[figureId] === attitude
         );
         return figureIds.map(id => figuresMap.get(id)).filter((f): f is Figure => !!f);
     };
 
     const getFiguresForEmotion = (emotion: string) => {
-        const figureIds = Object.keys(userProfile.emotions || {}).filter(
-            figureId => userProfile.emotions?.[figureId] === emotion
-        );
-        return figureIds.map(id => figuresMap.get(id)).filter((f): f is Figure => !!f);
+        // This is now disabled, returning empty array.
+        return [];
     };
 
     const getFiguresForRating = (rating: number) => {
-        const figureIds = Object.keys(userProfile.ratings || {}).filter(
-            figureId => userProfile.ratings?.[figureId] === rating
-        );
-        return figureIds.map(id => figuresMap.get(id)).filter((f): f is Figure => !!f);
+        // This is now disabled, returning empty array.
+        return [];
     };
     
     return (

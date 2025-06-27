@@ -2,8 +2,8 @@
 "use server";
 
 import { db } from '@/lib/firebase';
-import type { UserProfile, UserAttitude, UserPerception, UserStarRating } from '@/lib/types';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData, Timestamp, collection, query, getDocs, orderBy, where } from 'firebase/firestore';
+import type { UserProfile, UserAttitude, AttitudeKey } from '@/lib/types';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData, Timestamp, collection, query, getDocs, orderBy, where, deleteDoc } from 'firebase/firestore';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { COUNTRIES } from '@/config/countries'; // Import COUNTRIES
 
@@ -37,9 +37,6 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     role: data.role || 'user',
     createdAt: createdAt,
     lastLoginAt: convertTimestampToString(data.lastLoginAt),
-    attitudes: data.attitudes || {},
-    emotions: data.emotions || {},
-    ratings: data.ratings || {},
   };
 };
 
@@ -64,11 +61,33 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     }
   } catch (error) {
     console.error(`Error fetching user profile for UID ${uid}:`, error);
-    // Instead of throwing an error that crashes the page, return null.
-    // The calling component will handle the null case as an error state.
     return null;
   }
 }
+
+
+export async function getAllUserAttitudes(userId: string): Promise<Record<string, AttitudeKey>> {
+    if (!userId) return {};
+    try {
+        const attitudes: Record<string, AttitudeKey> = {};
+        const attitudesCollectionRef = collection(db, 'userAttitudes');
+        const q = query(attitudesCollectionRef, where("userId", "==", userId));
+        const querySnapshot = await getDocs(q);
+        
+        querySnapshot.forEach((doc) => {
+            const data = doc.data() as UserAttitude;
+            attitudes[data.figureId] = data.attitude;
+        });
+        return attitudes;
+    } catch (error: any) {
+        console.error("Error fetching all user attitudes: ", error);
+        if (String(error.message).toLowerCase().includes("index")) {
+            console.error("ACTION: The query on 'userAttitudes' requires an index. Check the browser console (F12) for a link to create it.");
+        }
+        return {};
+    }
+}
+
 
 /**
  * Ensures a user profile document exists in Firestore.
@@ -83,7 +102,6 @@ export async function ensureUserProfileExists(
     console.error("ensureUserProfileExists: Valid Firebase user object is required.");
     throw new Error("ensureUserProfileExists: Valid Firebase user object is required.");
   }
-  console.log(`[ensureUserProfileExists] Called for user UID: ${user.uid}, Email: ${user.email}, DisplayName: ${user.displayName}`);
 
   const userDocRef = doc(db, USER_COLLECTION, user.uid);
   let userProfileDataForMapping: DocumentData;
@@ -92,20 +110,8 @@ export async function ensureUserProfileExists(
     const userDocSnap = await getDoc(userDocRef);
 
     if (userDocSnap.exists()) {
-      console.log(`[ensureUserProfileExists] Profile found for UID: ${user.uid}. Updating...`);
       const existingProfileData = userDocSnap.data();
-      const updates: { 
-        lastLoginAt: any; 
-        photoURL?: string | null; 
-        email?: string | null; 
-        username?: string;
-        country?: string;
-        countryCode?: string;
-        gender?: string;
-        attitudes?: any;
-        emotions?: any;
-        ratings?: any;
-      } = {
+      const updates: { lastLoginAt: any; photoURL?: string | null; email?: string | null; username?: string; } = {
         lastLoginAt: serverTimestamp(),
       };
 
@@ -115,37 +121,18 @@ export async function ensureUserProfileExists(
       if (user.email !== undefined && user.email !== existingProfileData.email) {
         updates.email = user.email;
       }
-
       const currentUsername = existingProfileData.username;
       const authDisplayName = user.displayName;
       const isDefaultUsername = !currentUsername || currentUsername === (existingProfileData.email?.split('@')[0]) || currentUsername.startsWith('user_');
-
       if (authDisplayName && (authDisplayName !== currentUsername || isDefaultUsername)) {
         updates.username = authDisplayName;
       }
-
-      if (additionalData?.countryCode && !existingProfileData.countryCode) {
-        const selectedCountry = COUNTRIES.find(c => c.code === additionalData.countryCode);
-        updates.countryCode = additionalData.countryCode;
-        updates.country = selectedCountry ? selectedCountry.name : '';
-      }
-      if (additionalData?.gender && !existingProfileData.gender) {
-        updates.gender = additionalData.gender;
-      }
-      
-      // Initialize activity maps if they don't exist
-      if (!existingProfileData.attitudes) updates.attitudes = {};
-      if (!existingProfileData.emotions) updates.emotions = {};
-      if (!existingProfileData.ratings) updates.ratings = {};
-
 
       await updateDoc(userDocRef, updates);
       
       const updatedDocSnap = await getDoc(userDocRef); 
       userProfileDataForMapping = updatedDocSnap.data()!;
-      console.log(`[ensureUserProfileExists] Successfully updated existing user profile for UID: ${user.uid}`);
     } else {
-      console.log(`[ensureUserProfileExists] Profile NOT found for UID: ${user.uid}. Creating new profile...`);
       const selectedCountry = additionalData?.countryCode ? COUNTRIES.find(c => c.code === additionalData.countryCode) : null;
       
       const newProfileData: Omit<UserProfile, 'createdAt' | 'lastLoginAt'> & { createdAt: any; lastLoginAt: any } = {
@@ -159,15 +146,11 @@ export async function ensureUserProfileExists(
         role: 'user',
         createdAt: serverTimestamp(),
         lastLoginAt: serverTimestamp(),
-        attitudes: {},
-        emotions: {},
-        ratings: {},
       };
       await setDoc(userDocRef, newProfileData);
       
       const createdDocSnap = await getDoc(userDocRef); 
       userProfileDataForMapping = createdDocSnap.data()!;
-      console.log(`[ensureUserProfileExists] Successfully created new user profile for UID: ${user.uid}`);
     }
     return mapDocToUserProfile(user.uid, userProfileDataForMapping);
 
@@ -198,23 +181,20 @@ export async function updateUserProfile(
 
   try {
     const userDocRef = doc(db, USER_COLLECTION, uid);
-    const updateData: any = { ...data, lastLoginAt: serverTimestamp() }; // Ensure lastLoginAt is updated
+    const updateData: any = { ...data, lastLoginAt: serverTimestamp() };
 
     if (data.hasOwnProperty('countryCode')) { 
-      if (data.countryCode === '') { // If countryCode is explicitly set to empty (e.g. 'No especificado')
+      if (data.countryCode === '') {
         updateData.country = ''; 
       } else {
         const selectedCountry = COUNTRIES.find(c => c.code === data.countryCode);
         updateData.country = selectedCountry ? selectedCountry.name : '';
       }
     } else if (data.hasOwnProperty('country') && data.country === '') {
-        // If only country is being cleared, ensure countryCode is also cleared
         updateData.countryCode = ''; 
     }
     
-    console.log("[updateUserProfile] Data for updateDoc:", updateData);
     await updateDoc(userDocRef, updateData);
-    console.log(`[updateUserProfile] User profile successfully updated for UID: ${uid}`);
   } catch (error: any) {
     console.error(`[updateUserProfile] Error updating profile for UID ${uid}:`, error);
     throw new Error(`Failed to update user profile. Firebase error: ${error.message}`);
@@ -225,7 +205,6 @@ export async function updateUserProfile(
 export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
   try {
     const usersCollectionRef = collection(db, USER_COLLECTION);
-    // REMOVED: orderBy('username', 'asc') to avoid index dependency
     const q = query(usersCollectionRef); 
     const querySnapshot = await getDocs(q);
 
@@ -237,7 +216,6 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
         users.push(mapDocToUserProfile(docSnap.id, docSnap.data()));
       });
     }
-    // Sort client-side instead of in the query
     users.sort((a, b) => a.username.localeCompare(b.username));
     return users;
   } catch (error: any) {
