@@ -2,8 +2,8 @@
 "use server";
 
 import { db } from '@/lib/firebase';
-import type { UserProfile } from '@/lib/types';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData, Timestamp, collection, query, getDocs, orderBy } from 'firebase/firestore';
+import type { UserProfile, UserAttitude, UserPerception, UserStarRating } from '@/lib/types';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData, Timestamp, collection, query, getDocs, orderBy, where } from 'firebase/firestore';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { COUNTRIES } from '@/config/countries'; // Import COUNTRIES
 
@@ -231,5 +231,37 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
       console.error("Firestore index error: An index is required for the query. Check the browser console for a link to create it.");
     }
     return [];
+  }
+}
+
+export async function getUserInteractions(userId: string): Promise<{
+  attitudes: (UserAttitude & { id: string })[];
+  perceptions: (UserPerception & { id: string })[];
+  starRatings: (UserStarRating & { id: string })[];
+}> {
+  if (!userId) {
+    return { attitudes: [], perceptions: [], starRatings: [] };
+  }
+
+  try {
+    const attitudesQuery = query(collection(db, 'userAttitudes'), where('userId', '==', userId));
+    const perceptionsQuery = query(collection(db, 'userPerceptions'), where('userId', '==', userId));
+    const starRatingsQuery = query(collection(db, 'userStarRatings'), where('userId', '==', userId));
+
+    const [attitudesSnapshot, perceptionsSnapshot, starRatingsSnapshot] = await Promise.all([
+      getDocs(attitudesQuery),
+      getDocs(perceptionsQuery),
+      getDocs(starRatingsQuery),
+    ]);
+
+    const attitudes = attitudesSnapshot.docs.map(doc => ({ ...(doc.data() as UserAttitude), id: doc.id }));
+    const perceptions = perceptionsSnapshot.docs.map(doc => ({ ...(doc.data() as UserPerception), id: doc.id }));
+    const starRatings = starRatingsSnapshot.docs.map(doc => ({ ...(doc.data() as UserStarRating), id: doc.id }));
+    
+    return { attitudes, perceptions, starRatings };
+
+  } catch (error) {
+    console.error(`Error fetching user interactions for UID ${userId}:`, error);
+    return { attitudes: [], perceptions: [], starRatings: [] };
   }
 }

@@ -8,12 +8,14 @@ import { auth } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
 import { ensureUserProfileExists } from '@/lib/userData';
 import UserProfileForm from '@/components/user/UserProfileForm';
-import { Loader2, User, Heart } from 'lucide-react';
+import UserActivity from '@/components/user/UserActivity'; // Import new component
+import { Loader2, Edit, Activity } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -117,16 +119,23 @@ export default function ProfilePage() {
   
   if (profile) {
     return (
-      <div className="container py-8">
-        <Card>
-          <CardHeader>
+      <div className="container py-8 space-y-8">
+        <CardHeader className="px-0">
             <CardTitle className="text-3xl font-headline">Tu Perfil</CardTitle>
-            <CardDescription>Gestiona tu información personal. Tus preferencias se guardan aquí.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <UserProfileForm initialProfile={profile} />
-          </CardContent>
-        </Card>
+            <CardDescription>Gestiona tu información personal y visualiza tu actividad en la plataforma.</CardDescription>
+        </CardHeader>
+        <Tabs defaultValue="activity" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="activity"><Activity className="mr-2 h-4 w-4" />Mi Actividad</TabsTrigger>
+                <TabsTrigger value="edit-profile"><Edit className="mr-2 h-4 w-4" />Editar Información</TabsTrigger>
+            </TabsList>
+            <TabsContent value="activity" className="mt-6">
+                <UserActivity userId={profile.uid} />
+            </TabsContent>
+            <TabsContent value="edit-profile" className="mt-6">
+                <UserProfileForm initialProfile={profile} />
+            </TabsContent>
+        </Tabs>
       </div>
     );
   }
