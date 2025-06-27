@@ -56,6 +56,7 @@ export function ProfileHeader({
           </div>
 
           <div className="flex items-center justify-center gap-4 pt-2 w-full">
+            <ShareButton figureName={figure.name} figureId={figure.id} />
             <div className="flex items-center gap-1.5" title={canSupport ? `${supportCount.toLocaleString()} apoyos` : "Inicia sesión para ver y dar apoyo"}>
               <Button 
                 variant={isSupported ? "destructive" : "outline"} 
@@ -68,7 +69,6 @@ export function ProfileHeader({
               </Button>
               <span className="text-sm font-semibold text-foreground">{supportCount.toLocaleString()}</span>
             </div>
-            <ShareButton figureName={figure.name} figureId={figure.id} />
           </div>
 
         </div>
