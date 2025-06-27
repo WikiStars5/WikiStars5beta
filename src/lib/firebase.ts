@@ -52,10 +52,6 @@ service cloud.firestore {
       // Un usuario registrado no es anónimo.
       return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
-    function isOwner(userId) {
-      // Comprueba si el UID de la solicitud coincide con el ID de usuario proporcionado.
-      return request.auth.uid == userId;
-    }
     
     // --- Reglas de Figuras (figures) ---
     match /figures/{figureId} {
@@ -72,7 +68,7 @@ service cloud.firestore {
 
     // --- Reglas de Usuarios (registered_users) ---
     match /registered_users/{userId} {
-      allow get, update: if isRegisteredUser() && isOwner(userId);
+      allow get, update: if isRegisteredUser() && request.auth.uid == userId;
       allow list, create, delete: if isAdmin();
     }
     
@@ -84,34 +80,23 @@ service cloud.firestore {
       allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
     
-    // --- Reglas para Votos (Actitud, Percepción, Calificaciones) ---
-    function isOwnerOfDoc() {
-      // Para lecturas (get) y escrituras (update, delete), 'resource' es el documento existente.
-      return request.auth.uid == resource.data.userId;
-    }
+    // --- Reglas para Votos y Actividad del Usuario (CORREGIDO) ---
+    // La clave aquí es que la consulta `where('userId', '==', request.auth.uid)` del cliente
+    // restringe los resultados a los documentos que la regla `read` permite.
     
-    function isCreatingOwnDoc() {
-      // Para creaciones (create), 'request.resource' es el nuevo documento.
-      return request.auth.uid == request.resource.data.userId;
-    }
-
     match /userAttitudes/{docId} {
-      // Un usuario puede leer sus propios votos (get y list) y borrarlos.
-      // La regla 'read' funciona para 'list' porque la consulta del cliente
-      // está restringida por `where('userId', '==', auth.uid)`.
-      allow read, delete: if isSignedIn() && isOwnerOfDoc();
-      // Un usuario solo puede crear votos para sí mismo.
-      allow create: if isSignedIn() && isCreatingOwnDoc();
+      allow read, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
     }
     
     match /userPerceptions/{docId} {
-       allow read, delete: if isSignedIn() && isOwnerOfDoc();
-       allow create: if isSignedIn() && isCreatingOwnDoc();
+       allow read, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+       allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
     }
     
     match /userStarRatings/{docId} {
-       allow read, delete: if isSignedIn() && isOwnerOfDoc();
-       allow create: if isSignedIn() && isCreatingOwnDoc();
+       allow read, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+       allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
     }
   }
 }

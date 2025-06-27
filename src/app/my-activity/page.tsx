@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import UserActivity from '@/components/user/UserActivity';
 import { Loader2, LogIn, AlertTriangle } from 'lucide-react';
 import { CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import type { Figure, AttitudeKey } from '@/lib/types';
 import { getAllUserAttitudes } from '@/lib/userData';
 import { getFiguresByIds } from '@/lib/placeholder-data';
+import { ensureUserProfileExists } from '@/lib/userData';
 
 export default function MyActivityPage() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
@@ -24,7 +25,19 @@ export default function MyActivityPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        // Ensure profile exists before fetching activity.
+        // This prevents race conditions where activity is fetched for a non-existent profile.
+        try {
+          await ensureUserProfileExists(user);
+        } catch (profileError: any) {
+           setError(`No se pudo verificar o crear tu perfil de usuario. Error: ${profileError.message}`);
+           setIsLoading(false);
+           return;
+        }
+
         setCurrentUser(user);
+        
+        // Now fetch activity data
         try {
           const userAttitudes = await getAllUserAttitudes(user.uid);
           setAttitudes(userAttitudes);
@@ -41,7 +54,15 @@ export default function MyActivityPage() {
           console.error("Error fetching activity data:", err);
           let errorMessage = "Ocurrió un error inesperado al cargar tu actividad.";
           if (err.message && (err.message.includes('permission-denied') || err.message.includes('missing-permission'))) {
-              errorMessage = "Error de permisos. Es posible que falte un índice en tu base de datos Firestore. Revisa la consola del navegador (F12) para ver si hay un enlace para crearlo automáticamente.";
+              errorMessage = `Error Crítico de Permisos de Firestore. Esto significa que las Reglas de Seguridad están bloqueando la consulta.
+
+**ACCIÓN REQUERIDA:**
+1. Ve al archivo \`src/lib/firebase.ts\`.
+2. Copia el bloque de reglas de seguridad completo que está en los comentarios.
+3. Ve a tu Consola de Firebase -> Firestore Database -> Pestaña 'Rules'.
+4. Reemplaza las reglas antiguas con las que copiaste y publica los cambios.
+
+Si el error persiste después de actualizar las reglas, revisa la consola del navegador (F12) para ver si hay un enlace para crear un índice de Firestore automáticamente.`;
           } else if(err.message) {
               errorMessage = err.message;
           }
@@ -66,7 +87,7 @@ export default function MyActivityPage() {
     );
   }
 
-  if (!currentUser) {
+  if (!currentUser || currentUser.isAnonymous) {
     return (
         <div className="container max-w-md mx-auto py-10 text-center">
             <Alert>
@@ -85,15 +106,12 @@ export default function MyActivityPage() {
 
   if (error) {
      return (
-      <div className="container max-w-lg mx-auto py-10 text-center">
-        <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4"/>
+      <div className="container max-w-lg mx-auto py-10">
+        <Alert variant="destructive" className="whitespace-pre-wrap">
+            <AlertTriangle className="h-5 w-5"/>
             <AlertTitle>Error al Cargar Actividad</AlertTitle>
             <AlertDescription>
-                <p className="mb-2">{error}</p>
-                <p className="text-xs">
-                    <strong>Nota para desarrolladores:</strong> Este error suele indicar que las Reglas de Seguridad de Firestore no permiten la consulta o que falta un índice compuesto. Asegúrate de haber desplegado las reglas más recientes de `src/lib/firebase.ts` y revisa la consola del navegador en busca de errores de Firestore para obtener un enlace para crear el índice si es necesario.
-                </p>
+                {error}
             </AlertDescription>
         </Alert>
         <Button asChild className="mt-6">
