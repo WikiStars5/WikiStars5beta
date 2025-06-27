@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User as FirebaseUser, onAuthStateChanged, signOut as firebaseSignOut, signInAnonymously } from 'firebase/auth';
-import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, Loader2, UserCircle, Ghost } from 'lucide-react';
+import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, Loader2, UserCircle, Ghost, Activity } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -97,16 +97,18 @@ export function UserNav() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <Link href="/profile">
+          <Link href="/my-activity">
             <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              <span>Mi Perfil</span>
+              <Activity className="mr-2 h-4 w-4" />
+              <span>Mi Actividad</span>
             </DropdownMenuItem>
           </Link>
-          <DropdownMenuItem disabled>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Configuración</span>
-          </DropdownMenuItem>
+          <Link href="/profile">
+             <DropdownMenuItem>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Editar Perfil</span>
+            </DropdownMenuItem>
+          </Link>
           {isAdmin && (
             <Link href="/admin">
               <DropdownMenuItem>
