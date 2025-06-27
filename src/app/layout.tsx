@@ -6,6 +6,8 @@ import { Footer } from '@/components/layout/Footer';
 import { Toaster } from "@/components/ui/toaster";
 import { useState, useEffect, type ReactNode } from 'react';
 
+const logoUrl = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194";
+
 export default function RootLayout({
   children,
 }: {
@@ -41,8 +43,9 @@ export default function RootLayout({
       <head>
         <title>WikiStars5 - Percepción de Figuras Públicas</title>
         <meta name="description" content="Califica y discute sobre figuras públicas en WikiStars5." />
-        <link rel="icon" href="https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194" type="image/png" />
-        <link rel="shortcut icon" href="https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194" type="image/png" />
+        {/* Updated favicon links for better compatibility */}
+        <link rel="icon" href={logoUrl} type="image/png" sizes="any" />
+        <link rel="apple-touch-icon" href={logoUrl} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
