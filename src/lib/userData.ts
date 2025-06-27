@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import type { UserProfile, UserAttitude, AttitudeKey } from '@/lib/types';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData, Timestamp, collection, query, getDocs, orderBy, where, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData, Timestamp, collection, query, getDocs, orderBy, where, deleteDoc, startAt, endAt } from 'firebase/firestore';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { COUNTRIES } from '@/config/countries'; // Import COUNTRIES
 
@@ -57,10 +57,12 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
       return mapDocToUserProfile(uid, userDocSnap.data());
     } else {
       console.log(`User profile not found for UID: ${uid}`);
+      // Return null instead of creating a profile here. Let ensureUserProfileExists handle creation.
       return null;
     }
   } catch (error) {
     console.error(`Error fetching user profile for UID ${uid}:`, error);
+    // Return null to allow the UI to handle the "not found" or error case gracefully.
     return null;
   }
 }
@@ -71,20 +73,30 @@ export async function getAllUserAttitudes(userId: string): Promise<Record<string
     try {
         const attitudes: Record<string, AttitudeKey> = {};
         const attitudesCollectionRef = collection(db, 'userAttitudes');
-        const q = query(attitudesCollectionRef, where("userId", "==", userId));
+        
+        // Query by document ID range instead of a 'where' clause on a field.
+        // This is more robust as it doesn't require a custom Firestore index.
+        const q = query(
+            attitudesCollectionRef, 
+            orderBy('__name__'), // This is the document ID
+            startAt(userId + '_'), // Start with docs that have this user's ID as a prefix
+            endAt(userId + '_\uf8ff') // End at the last possible character combination after the prefix
+        );
+
         const querySnapshot = await getDocs(q);
         
         querySnapshot.forEach((doc) => {
             const data = doc.data() as UserAttitude;
-            attitudes[data.figureId] = data.attitude;
+            if (data.figureId) {
+                attitudes[data.figureId] = data.attitude;
+            }
         });
         return attitudes;
     } catch (error: any) {
         console.error("Error fetching all user attitudes: ", error);
-        if (String(error.message).toLowerCase().includes("index")) {
-            console.error("ACTION: The query on 'userAttitudes' requires an index. Check the browser console (F12) for a link to create it.");
-        }
-        return {};
+        // Re-throw the error so the calling page can handle it and show a message
+        // in case of permission errors or other unexpected issues.
+        throw error;
     }
 }
 
