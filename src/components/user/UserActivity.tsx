@@ -2,12 +2,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Figure, UserAttitude, UserPerception, UserStarRating } from '@/lib/types';
-import { getUserInteractions } from '@/lib/userData';
-import { getFiguresByIds } from '@/lib/placeholder-data';
+import type { Figure, UserProfile } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FigureListItem } from '@/components/figures/FigureListItem';
-import { Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 // Configuración para las sub-pestañas
@@ -52,64 +49,40 @@ const ActivityGrid = ({ figures }: { figures: Figure[] }) => {
 };
 
 interface UserActivityProps {
-  userId: string;
+  userProfile: UserProfile;
+  figures: Figure[];
 }
 
-export default function UserActivity({ userId }: UserActivityProps) {
-    const [attitudes, setAttitudes] = useState<(UserAttitude & { id: string })[]>([]);
-    const [perceptions, setPerceptions] = useState<(UserPerception & { id: string })[]>([]);
-    const [starRatings, setStarRatings] = useState<(UserStarRating & { id: string })[]>([]);
-    const [figuresMap, setFiguresMap] = useState<Map<string, Figure>>(new Map());
-    const [isLoading, setIsLoading] = useState(true);
+export default function UserActivity({ userProfile, figures }: UserActivityProps) {
+    const figuresMap = new Map(figures.map(f => [f.id, f]));
 
-    useEffect(() => {
-        const fetchActivity = async () => {
-            setIsLoading(true);
-            const interactions = await getUserInteractions(userId);
-            
-            setAttitudes(interactions.attitudes);
-            setPerceptions(interactions.perceptions);
-            setStarRatings(interactions.starRatings);
-
-            const figureIds = new Set([
-                ...interactions.attitudes.map(a => a.figureId),
-                ...interactions.perceptions.map(p => p.figureId),
-                ...interactions.starRatings.map(r => r.figureId),
-            ]);
-
-            if (figureIds.size > 0) {
-                const figures = await getFiguresByIds(Array.from(figureIds));
-                setFiguresMap(new Map(figures.map(f => [f.id, f])));
-            }
-            
-            setIsLoading(false);
-        };
-
-        fetchActivity();
-    }, [userId]);
-
-    const getFiguresFor = (items: any[], key: string, value: any) => {
-        return items
-            .filter(item => item[key] === value)
-            .map(item => figuresMap.get(item.figureId))
-            .filter((f): f is Figure => !!f);
+    const getFiguresForAttitude = (attitude: string) => {
+        const figureIds = Object.keys(userProfile.attitudes || {}).filter(
+            figureId => userProfile.attitudes?.[figureId] === attitude
+        );
+        return figureIds.map(id => figuresMap.get(id)).filter((f): f is Figure => !!f);
     };
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-2 text-muted-foreground">Cargando tu actividad...</p>
-            </div>
+    const getFiguresForEmotion = (emotion: string) => {
+        const figureIds = Object.keys(userProfile.emotions || {}).filter(
+            figureId => userProfile.emotions?.[figureId] === emotion
         );
-    }
+        return figureIds.map(id => figuresMap.get(id)).filter((f): f is Figure => !!f);
+    };
+
+    const getFiguresForRating = (rating: number) => {
+        const figureIds = Object.keys(userProfile.ratings || {}).filter(
+            figureId => userProfile.ratings?.[figureId] === rating
+        );
+        return figureIds.map(id => figuresMap.get(id)).filter((f): f is Figure => !!f);
+    };
     
     return (
         <Tabs defaultValue="attitudes" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="attitudes">Actitudes</TabsTrigger>
-                <TabsTrigger value="emotions">Emociones</TabsTrigger>
-                <TabsTrigger value="ratings">Calificaciones</TabsTrigger>
+                <TabsTrigger value="emotions" disabled>Emociones</TabsTrigger>
+                <TabsTrigger value="ratings" disabled>Calificaciones</TabsTrigger>
             </TabsList>
 
             <TabsContent value="attitudes" className="mt-4">
@@ -122,7 +95,7 @@ export default function UserActivity({ userId }: UserActivityProps) {
                         </TabsList>
                         {ATTITUDE_TABS.map(tab => (
                             <TabsContent key={tab.key} value={tab.key}>
-                                <ActivityGrid figures={getFiguresFor(attitudes, 'attitude', tab.key)} />
+                                <ActivityGrid figures={getFiguresForAttitude(tab.key)} />
                             </TabsContent>
                         ))}
                     </Tabs>
@@ -139,7 +112,7 @@ export default function UserActivity({ userId }: UserActivityProps) {
                         </TabsList>
                         {EMOTION_TABS.map(tab => (
                             <TabsContent key={tab.key} value={tab.key}>
-                                <ActivityGrid figures={getFiguresFor(perceptions, 'emotion', tab.key)} />
+                                <ActivityGrid figures={getFiguresForEmotion(tab.key)} />
                             </TabsContent>
                         ))}
                     </Tabs>
@@ -156,7 +129,7 @@ export default function UserActivity({ userId }: UserActivityProps) {
                         </TabsList>
                         {RATING_TABS.map(tab => (
                             <TabsContent key={tab.key} value={tab.key.toString()}>
-                                <ActivityGrid figures={getFiguresFor(starRatings, 'starValue', tab.key)} />
+                                <ActivityGrid figures={getFiguresForRating(tab.key)} />
                             </TabsContent>
                         ))}
                     </Tabs>

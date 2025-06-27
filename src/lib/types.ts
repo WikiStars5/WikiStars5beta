@@ -1,4 +1,3 @@
-
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -114,7 +113,10 @@ export interface UserProfile {
   photoURL?: string | null;
   role: 'user' | 'admin';
   createdAt: string; 
-  lastLoginAt?: string; 
+  lastLoginAt?: string;
+  attitudes?: Record<string, AttitudeKey>;
+  emotions?: Record<string, EmotionKey>;
+  ratings?: Record<string, StarValue>;
 }
 
 export interface GalleryImage {

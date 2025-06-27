@@ -2,9 +2,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Figure, UserAttitude, AttitudeKey } from '@/lib/types';
+import type { Figure, UserAttitude, AttitudeKey, UserProfile } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, serverTimestamp, type Unsubscribe } from 'firebase/firestore';
+import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, serverTimestamp, type Unsubscribe, getDoc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,37 +63,33 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     }, (error) => {
       console.error("Error fetching figure attitude counts:", error);
       toast({ title: "Error", description: "No se pudieron cargar los conteos de actitudes.", variant: "destructive" });
-      setFigureAttitudeCounts(defaultAttitudeCountsData); 
-      setTotalVotes(0);
-      setIsComponentLoading(false); 
     });
 
-    let unsubscribeUserAttitude: Unsubscribe | undefined;
-    if (currentUser && figureId) { // currentUser can be anonymous
-      const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
-      const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
-      
-      unsubscribeUserAttitude = onSnapshot(userAttitudeDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const userAttitudeData = docSnap.data() as UserAttitude;
-          setSelectedAttitude(userAttitudeData.attitude);
-        } else {
-          setSelectedAttitude(null);
-        }
-        setIsComponentLoading(false); 
-      }, (error) => {
-        console.error("Error fetching user's attitude:", error);
-        setSelectedAttitude(null); 
-        setIsComponentLoading(false); 
-      });
+    let unsubscribeUserProfile: Unsubscribe | undefined;
+    if (currentUser && figureId) { 
+        const userProfileRef = doc(db, "registered_users", currentUser.uid);
+        unsubscribeUserProfile = onSnapshot(userProfileRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const userProfile = docSnap.data() as UserProfile;
+                const attitudeForThisFigure = userProfile.attitudes?.[figureId];
+                setSelectedAttitude(attitudeForThisFigure || null);
+            } else {
+                setSelectedAttitude(null);
+            }
+            setIsComponentLoading(false);
+        }, (error) => {
+            console.error("Error fetching user profile for attitude:", error);
+            setSelectedAttitude(null);
+            setIsComponentLoading(false);
+        });
     } else {
-      setSelectedAttitude(null);
-      setIsComponentLoading(false); 
+        setSelectedAttitude(null);
+        setIsComponentLoading(false);
     }
     
     return () => {
       unsubscribeFigure();
-      if (unsubscribeUserAttitude) unsubscribeUserAttitude();
+      if (unsubscribeUserProfile) unsubscribeUserProfile();
     };
   }, [figureId, currentUser, toast]);
 
@@ -111,39 +107,20 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     const previousSelectedAttitude = selectedAttitude;
     const newAttitudeToSet = previousSelectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
 
-    // --- Optimistic UI Update ---
-    const originalCounts = { ...figureAttitudeCounts };
-    const originalTotalVotes = totalVotes;
-    
-    const newOptimisticCounts = { ...originalCounts };
-    let newOptimisticTotalVotes = originalTotalVotes;
-
-    // Decrement the old value if there was one
-    if (previousSelectedAttitude) {
-        newOptimisticCounts[previousSelectedAttitude] = Math.max(0, (newOptimisticCounts[previousSelectedAttitude] || 0) - 1);
-        newOptimisticTotalVotes--;
-    }
-    // Increment the new value if a new one is set
-    if (newAttitudeToSet) {
-        newOptimisticCounts[newAttitudeToSet] = (newOptimisticCounts[newAttitudeToSet] || 0) + 1;
-        newOptimisticTotalVotes++;
-    }
-
-    // Apply the optimistic update to the UI immediately
-    setSelectedAttitude(newAttitudeToSet);
-    setFigureAttitudeCounts(newOptimisticCounts);
-    setTotalVotes(newOptimisticTotalVotes);
-
-    // --- Server-side Action ---
     const figureDocRef = doc(db, "figures", figureId);
-    const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
-    const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
+    const userProfileRef = doc(db, "registered_users", currentUser.uid);
 
     try {
       await runTransaction(db, async (transaction) => {
-        const figureDoc = await transaction.get(figureDocRef);
+        const [figureDoc, userProfileDoc] = await Promise.all([
+            transaction.get(figureDocRef),
+            transaction.get(userProfileRef)
+        ]);
+
         if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
-        
+        if (!userProfileDoc.exists()) throw new Error("Perfil de usuario no encontrado. No se puede votar.");
+
+        // Update Figure's aggregate counts
         const currentServerCounts = (figureDoc.data()?.attitudeCounts || { ...defaultAttitudeCountsData });
         const finalServerCounts = { ...currentServerCounts };
         if (previousSelectedAttitude) {
@@ -153,31 +130,28 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           finalServerCounts[newAttitudeToSet] = (finalServerCounts[newAttitudeToSet] || 0) + 1;
         }
         transaction.update(figureDocRef, { attitudeCounts: finalServerCounts });
+
+        // Update User's personal attitude map
+        const userAttitudes = userProfileDoc.data()?.attitudes || {};
+        if (newAttitudeToSet) {
+            userAttitudes[figureId] = newAttitudeToSet;
+        } else {
+            delete userAttitudes[figureId];
+        }
+        transaction.update(userProfileRef, { attitudes: userAttitudes });
       });
 
       if (newAttitudeToSet) {
-        await setDoc(userAttitudeDocRef, {
-          userId: currentUser.uid,
-          figureId: figureId,
-          attitude: newAttitudeToSet,
-          timestamp: serverTimestamp(),
-        });
         toast({ title: "Voto Registrado", description: `Tu actitud como "${ATTITUDE_OPTIONS_CONFIG.find(e => e.key === newAttitudeToSet)?.label}" ha sido guardada.` });
       } else {
-        await deleteDoc(userAttitudeDocRef);
         toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
       }
     } catch (error: any) {
-      // --- Revert UI on error ---
-      setSelectedAttitude(previousSelectedAttitude);
-      setFigureAttitudeCounts(originalCounts);
-      setTotalVotes(originalTotalVotes);
-
       console.error("Error voting on attitude:", error);
       let errorMessage = "No se pudo registrar tu voto.";
       if (error.message?.includes("Missing or insufficient permissions")) {
         errorMessage = "Error de permisos. Verifica las reglas de Firestore.";
-      } else if (error.message) {
+      } else {
         errorMessage = error.message;
       }
       toast({ title: "Error al Votar", description: errorMessage, variant: "destructive" });

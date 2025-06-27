@@ -37,6 +37,9 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     role: data.role || 'user',
     createdAt: createdAt,
     lastLoginAt: convertTimestampToString(data.lastLoginAt),
+    attitudes: data.attitudes || {},
+    emotions: data.emotions || {},
+    ratings: data.ratings || {},
   };
 };
 
@@ -97,6 +100,9 @@ export async function ensureUserProfileExists(
         country?: string;
         countryCode?: string;
         gender?: string;
+        attitudes?: any;
+        emotions?: any;
+        ratings?: any;
       } = {
         lastLoginAt: serverTimestamp(),
       };
@@ -125,6 +131,12 @@ export async function ensureUserProfileExists(
         updates.gender = additionalData.gender;
       }
       
+      // Initialize activity maps if they don't exist
+      if (!existingProfileData.attitudes) updates.attitudes = {};
+      if (!existingProfileData.emotions) updates.emotions = {};
+      if (!existingProfileData.ratings) updates.ratings = {};
+
+
       await updateDoc(userDocRef, updates);
       
       const updatedDocSnap = await getDoc(userDocRef); 
@@ -145,6 +157,9 @@ export async function ensureUserProfileExists(
         role: 'user',
         createdAt: serverTimestamp(),
         lastLoginAt: serverTimestamp(),
+        attitudes: {},
+        emotions: {},
+        ratings: {},
       };
       await setDoc(userDocRef, newProfileData);
       
@@ -231,37 +246,5 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
       console.error("Firestore index error: An index is required for the query. Check the browser console for a link to create it.");
     }
     return [];
-  }
-}
-
-export async function getUserInteractions(userId: string): Promise<{
-  attitudes: (UserAttitude & { id: string })[];
-  perceptions: (UserPerception & { id: string })[];
-  starRatings: (UserStarRating & { id: string })[];
-}> {
-  if (!userId) {
-    return { attitudes: [], perceptions: [], starRatings: [] };
-  }
-
-  try {
-    const attitudesQuery = query(collection(db, 'userAttitudes'), where('userId', '==', userId));
-    const perceptionsQuery = query(collection(db, 'userPerceptions'), where('userId', '==', userId));
-    const starRatingsQuery = query(collection(db, 'userStarRatings'), where('userId', '==', userId));
-
-    const [attitudesSnapshot, perceptionsSnapshot, starRatingsSnapshot] = await Promise.all([
-      getDocs(attitudesQuery),
-      getDocs(perceptionsQuery),
-      getDocs(starRatingsQuery),
-    ]);
-
-    const attitudes = attitudesSnapshot.docs.map(doc => ({ ...(doc.data() as UserAttitude), id: doc.id }));
-    const perceptions = perceptionsSnapshot.docs.map(doc => ({ ...(doc.data() as UserPerception), id: doc.id }));
-    const starRatings = starRatingsSnapshot.docs.map(doc => ({ ...(doc.data() as UserStarRating), id: doc.id }));
-    
-    return { attitudes, perceptions, starRatings };
-
-  } catch (error) {
-    console.error(`Error fetching user interactions for UID ${userId}:`, error);
-    return { attitudes: [], perceptions: [], starRatings: [] };
   }
 }
