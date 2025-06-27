@@ -87,23 +87,6 @@ Si el error persiste después de actualizar las reglas, revisa la consola del na
     );
   }
 
-  if (!currentUser || currentUser.isAnonymous) {
-    return (
-        <div className="container max-w-md mx-auto py-10 text-center">
-            <Alert>
-                <LogIn className="h-4 w-4" />
-                <AlertTitle>Acceso Requerido</AlertTitle>
-                <AlertDescription>
-                    Debes iniciar sesión para ver tu actividad. Los votos de invitado no se guardan aquí.
-                </AlertDescription>
-            </Alert>
-            <Button asChild className="mt-6">
-                <Link href="/login?redirect=/my-activity">Iniciar Sesión</Link>
-            </Button>
-      </div>
-    );
-  }
-
   if (error) {
      return (
       <div className="container max-w-lg mx-auto py-10">
@@ -117,6 +100,23 @@ Si el error persiste después de actualizar las reglas, revisa la consola del na
         <Button asChild className="mt-6">
             <Link href="/home">Volver al Inicio</Link>
         </Button>
+      </div>
+    );
+  }
+
+  if (!currentUser || currentUser.isAnonymous) {
+    return (
+        <div className="container max-w-md mx-auto py-10 text-center">
+            <Alert>
+                <LogIn className="h-4 w-4" />
+                <AlertTitle>Acceso Requerido</AlertTitle>
+                <AlertDescription>
+                    Debes iniciar sesión para ver tu actividad. Los votos de invitado no se guardan aquí.
+                </AlertDescription>
+            </Alert>
+            <Button asChild className="mt-6">
+                <Link href="/login?redirect=/my-activity">Iniciar Sesión</Link>
+            </Button>
       </div>
     );
   }

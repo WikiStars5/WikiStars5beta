@@ -68,8 +68,10 @@ service cloud.firestore {
 
     // --- Reglas de Usuarios (registered_users) ---
     match /registered_users/{userId} {
-      allow get, update: if isRegisteredUser() && request.auth.uid == userId;
-      allow list, create, delete: if isAdmin();
+      // Un usuario puede crear su propio perfil, y leerlo/actualizarlo.
+      allow create, get, update: if isRegisteredUser() && request.auth.uid == userId;
+      // Solo el administrador puede listar o eliminar usuarios.
+      allow list, delete: if isAdmin();
     }
     
     // --- Reglas de Comentarios (userComments) ---
