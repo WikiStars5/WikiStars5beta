@@ -4,6 +4,7 @@
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure } from '@/lib/types';
+import { mapDocToFigure } from '@/lib/placeholder-data';
 
 export async function searchFiguresByName(searchTerm: string): Promise<Figure[]> {
   const trimmedSearchTerm = searchTerm.trim();
@@ -29,10 +30,7 @@ export async function searchFiguresByName(searchTerm: string): Promise<Figure[]>
     );
 
     const querySnapshot = await getDocs(q);
-    const figures: Figure[] = [];
-    querySnapshot.forEach((doc) => {
-      figures.push({ id: doc.id, ...doc.data() } as Figure);
-    });
+    const figures: Figure[] = querySnapshot.docs.map(mapDocToFigure);
     
     return figures;
   } catch (error) {

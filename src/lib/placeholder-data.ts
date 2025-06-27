@@ -31,7 +31,7 @@ const defaultStarRatingCounts: Record<StarValueAsString, number> = {
 };
 
 
-const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot): Figure => {
+export const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot): Figure => {
   const data = docSnap.data() as DocumentData;
   const createdAtTimestamp = data.createdAt;
   
