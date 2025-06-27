@@ -228,20 +228,21 @@ export default function FigurePage() {
 
   const fetchFigureData = useCallback(async () => {
     if (!id) {
-      setFigure(undefined); 
+      setFigure(undefined);
       return;
     }
-    setFigure(undefined); 
+    setFigure(undefined);
+    setAllFigures([]); // Reset related state
 
     try {
-      const [fetchedFigure, allFiguresData] = await Promise.all([
-        getFigureFromFirestore(id),
-        getAllFiguresFromFirestore(),
-      ]);
-      setFigure(fetchedFigure || null); 
-      setAllFigures(allFiguresData);
+      // Fetch the main figure first. This is the critical data.
+      const fetchedFigure = await getFigureFromFirestore(id);
+
       if (fetchedFigure) {
+        setFigure(fetchedFigure);
         resetEditFields(fetchedFigure);
+
+        // Fetch user-specific rating for this figure
         if (currentUser && fetchedFigure.id) {
           const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${fetchedFigure.id}`);
           const docSnap = await getDoc(userStarRatingDocRef);
@@ -251,11 +252,25 @@ export default function FigurePage() {
             setNewCommentStars(null);
           }
         }
+
+        // Now, fetch all other figures for the family tree component.
+        // This is non-critical and won't block the page from rendering if it fails.
+        getAllFiguresFromFirestore().then(allFiguresData => {
+            setAllFigures(allFiguresData);
+        }).catch(err => {
+            console.error("Could not load all figures for family tree; linking will be disabled.", err);
+            // Silently fail, or maybe a subtle console warning. The UI will just not have linkable figures.
+        });
+
+      } else {
+        // Figure was not found in the database
+        setFigure(null);
       }
     } catch (error) {
-      console.error("Error fetching figure details:", error);
+      // This catch block now only handles errors from the *critical* data fetch.
+      console.error("Error fetching main figure details:", error);
       toast({ title: "Error al Cargar Figura", description: "No se pudo cargar la información de la figura.", variant: "destructive"});
-      setFigure(null); 
+      setFigure(null);
     }
   }, [id, resetEditFields, toast, currentUser]);
 
