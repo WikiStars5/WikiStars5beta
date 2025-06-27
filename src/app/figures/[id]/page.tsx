@@ -44,7 +44,7 @@ import {
 import { submitGalleryImageAction } from "@/app/actions/figureGalleryActions";
 import { updateCommentLikes } from "@/app/actions/commentRatingActions";
 import { cn, correctMalformedUrl } from "@/lib/utils";
-import { countryCodeToNameMap, getCountryEmojiByCode } from "@/config/countries";
+import { countryCodeToNameMap } from "@/config/countries";
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
   1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
@@ -851,8 +851,6 @@ export default function FigurePage() {
     const userHasLiked = !!currentUser && comment.likedBy.includes(currentUser.uid);
     const userHasDisliked = !!currentUser && comment.dislikedBy.includes(currentUser.uid);
     const isVoting = votingCommentId === comment.id;
-
-    const countryEmoji = comment.userCountryCode ? getCountryEmojiByCode(comment.userCountryCode) : null;
     const countryName = comment.userCountryCode ? countryCodeToNameMap.get(comment.userCountryCode) : null;
 
     return (
@@ -866,8 +864,15 @@ export default function FigurePage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-foreground">{comment.username}</p>
-                {comment.username === 'Invitado' && countryEmoji && (
-                  <span title={countryName || comment.userCountryCode || ''}>{countryEmoji}</span>
+                {comment.username === 'Invitado' && comment.userCountryCode && (
+                  <Image
+                    src={`https://flagcdn.com/w20/${comment.userCountryCode.toLowerCase()}.png`}
+                    alt={countryName || comment.userCountryCode}
+                    title={countryName || comment.userCountryCode || ''}
+                    width={20}
+                    height={15}
+                    className="rounded-sm"
+                  />
                 )}
               </div>
               <div className="flex items-center space-x-2">
