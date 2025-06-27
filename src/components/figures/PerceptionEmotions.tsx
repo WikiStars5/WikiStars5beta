@@ -98,7 +98,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
 
   const handleEmotionClick = async (emotionKey: EmotionKey) => {
-    if (!canUserVote) { // This check might be redundant if anonymous sign-in is robust
+    if (!canUserVote) {
       toast({ title: "Acción Requerida", description: "Inicia sesión o continúa como invitado para votar.", variant: "default" });
       return;
     }
@@ -107,33 +107,49 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
     setIsLoadingEmotionAction(emotionKey);
 
+    const previousSelectedEmotion = selectedEmotion;
+    const newEmotionToSet = previousSelectedEmotion === emotionKey ? null : emotionKey;
+
+    // --- Optimistic UI Update ---
+    const originalCounts = { ...figurePerceptionCounts };
+    const originalTotalVotes = totalVotes;
+    
+    const newOptimisticCounts = { ...originalCounts };
+    let newOptimisticTotalVotes = originalTotalVotes;
+
+    if (previousSelectedEmotion) {
+        newOptimisticCounts[previousSelectedEmotion] = Math.max(0, (newOptimisticCounts[previousSelectedEmotion] || 0) - 1);
+        newOptimisticTotalVotes--;
+    }
+    if (newEmotionToSet) {
+        newOptimisticCounts[newEmotionToSet] = (newOptimisticCounts[newEmotionToSet] || 0) + 1;
+        newOptimisticTotalVotes++;
+    }
+
+    // Apply optimistic update
+    setSelectedEmotion(newEmotionToSet);
+    setFigurePerceptionCounts(newOptimisticCounts);
+    setTotalVotes(newOptimisticTotalVotes);
+
+    // --- Server-side Action ---
     const figureDocRef = doc(db, "figures", figureId);
     const userPerceptionDocId = `${currentUser.uid}_${figureId}`; 
     const userPerceptionDocRef = doc(db, "userPerceptions", userPerceptionDocId);
 
-    const newEmotionToSet = selectedEmotion === emotionKey ? null : emotionKey;
-
     try {
       await runTransaction(db, async (transaction) => {
         const figureDoc = await transaction.get(figureDocRef);
-        if (!figureDoc.exists()) {
-          throw new Error("Documento de figura no existe!");
-        }
+        if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
 
-        const currentCounts = (figureDoc.data()?.perceptionCounts || { ...defaultPerceptionCountsData }) as Record<EmotionKey, number>;
-        const newCounts = { ...currentCounts };
-
-        if (selectedEmotion && selectedEmotion !== emotionKey) { // User is changing their vote
-          newCounts[selectedEmotion] = Math.max(0, (newCounts[selectedEmotion] || 0) - 1);
+        const currentServerCounts = (figureDoc.data()?.perceptionCounts || { ...defaultPerceptionCountsData });
+        const finalServerCounts = { ...currentServerCounts };
+        if (previousSelectedEmotion) {
+          finalServerCounts[previousSelectedEmotion] = Math.max(0, (finalServerCounts[previousSelectedEmotion] || 0) - 1);
         }
-        if (selectedEmotion === emotionKey) { // User is deselecting the current emotion
-            newCounts[emotionKey] = Math.max(0, (newCounts[emotionKey] || 0) - 1);
+        if (newEmotionToSet) {
+          finalServerCounts[newEmotionToSet] = (finalServerCounts[newEmotionToSet] || 0) + 1;
         }
-        if (newEmotionToSet && newEmotionToSet !== selectedEmotion) { // User is selecting a new emotion (or the first one)
-          newCounts[newEmotionToSet] = (newCounts[newEmotionToSet] || 0) + 1;
-        }
-        
-        transaction.update(figureDocRef, { perceptionCounts: newCounts });
+        transaction.update(figureDocRef, { perceptionCounts: finalServerCounts });
       });
 
       if (newEmotionToSet) {
@@ -143,15 +159,17 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
           emotion: newEmotionToSet,
           timestamp: serverTimestamp(),
         });
-        setSelectedEmotion(newEmotionToSet);
         toast({ title: "Voto Registrado", description: `Tu percepción como "${EMOTIONS_CONFIG.find(e => e.key === newEmotionToSet)?.label}" ha sido guardada.` });
       } else { 
         await deleteDoc(userPerceptionDocRef);
-        setSelectedEmotion(null);
         toast({ title: "Voto Eliminado", description: "Tu percepción ha sido eliminada." });
       }
-
     } catch (error: any) {
+      // --- Revert UI on error ---
+      setSelectedEmotion(previousSelectedEmotion);
+      setFigurePerceptionCounts(originalCounts);
+      setTotalVotes(originalTotalVotes);
+      
       console.error("Error voting:", error);
       toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
     } finally {

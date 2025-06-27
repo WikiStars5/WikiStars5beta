@@ -99,41 +99,60 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
 
   const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
-    if (!canUserVote) { // This check might be redundant if anonymous sign-in is robust
+    if (!canUserVote) {
       toast({ title: "Acción Requerida", description: "Inicia sesión o continúa como invitado para votar.", variant: "default" });
       return;
     }
     if (isLoadingAttitudeAction) return;
-    if (!currentUser) return; 
+    if (!currentUser) return;
 
     setIsLoadingAttitudeAction(attitudeKeyClicked);
 
+    const previousSelectedAttitude = selectedAttitude;
+    const newAttitudeToSet = previousSelectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
+
+    // --- Optimistic UI Update ---
+    const originalCounts = { ...figureAttitudeCounts };
+    const originalTotalVotes = totalVotes;
+    
+    const newOptimisticCounts = { ...originalCounts };
+    let newOptimisticTotalVotes = originalTotalVotes;
+
+    // Decrement the old value if there was one
+    if (previousSelectedAttitude) {
+        newOptimisticCounts[previousSelectedAttitude] = Math.max(0, (newOptimisticCounts[previousSelectedAttitude] || 0) - 1);
+        newOptimisticTotalVotes--;
+    }
+    // Increment the new value if a new one is set
+    if (newAttitudeToSet) {
+        newOptimisticCounts[newAttitudeToSet] = (newOptimisticCounts[newAttitudeToSet] || 0) + 1;
+        newOptimisticTotalVotes++;
+    }
+
+    // Apply the optimistic update to the UI immediately
+    setSelectedAttitude(newAttitudeToSet);
+    setFigureAttitudeCounts(newOptimisticCounts);
+    setTotalVotes(newOptimisticTotalVotes);
+
+    // --- Server-side Action ---
     const figureDocRef = doc(db, "figures", figureId);
     const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
     const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
 
-    const previousSelectedAttitude = selectedAttitude; 
-    const newAttitudeToSet = previousSelectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
-
     try {
       await runTransaction(db, async (transaction) => {
         const figureDoc = await transaction.get(figureDocRef);
-        if (!figureDoc.exists()) {
-          throw new Error("Documento de figura no existe!");
-        }
-
-        const currentFigureData = figureDoc.data();
-        const currentCounts = (currentFigureData?.attitudeCounts || { ...defaultAttitudeCountsData }) as Record<AttitudeKey, number>;
-        const newCounts = { ...currentCounts };
-
+        if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
+        
+        const currentServerCounts = (figureDoc.data()?.attitudeCounts || { ...defaultAttitudeCountsData });
+        const finalServerCounts = { ...currentServerCounts };
         if (previousSelectedAttitude) {
-          newCounts[previousSelectedAttitude] = Math.max(0, (newCounts[previousSelectedAttitude] || 0) - 1);
+          finalServerCounts[previousSelectedAttitude] = Math.max(0, (finalServerCounts[previousSelectedAttitude] || 0) - 1);
         }
         if (newAttitudeToSet) {
-          newCounts[newAttitudeToSet] = (newCounts[newAttitudeToSet] || 0) + 1;
+          finalServerCounts[newAttitudeToSet] = (finalServerCounts[newAttitudeToSet] || 0) + 1;
         }
-        
-        transaction.update(figureDocRef, { attitudeCounts: newCounts });
+        transaction.update(figureDocRef, { attitudeCounts: finalServerCounts });
       });
 
       if (newAttitudeToSet) {
@@ -143,18 +162,20 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           attitude: newAttitudeToSet,
           timestamp: serverTimestamp(),
         });
-        setSelectedAttitude(newAttitudeToSet);
         toast({ title: "Voto Registrado", description: `Tu actitud como "${ATTITUDE_OPTIONS_CONFIG.find(e => e.key === newAttitudeToSet)?.label}" ha sido guardada.` });
-      } else { 
+      } else {
         await deleteDoc(userAttitudeDocRef);
-        setSelectedAttitude(null);
         toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
       }
-
     } catch (error: any) {
+      // --- Revert UI on error ---
+      setSelectedAttitude(previousSelectedAttitude);
+      setFigureAttitudeCounts(originalCounts);
+      setTotalVotes(originalTotalVotes);
+
       console.error("Error voting on attitude:", error);
       let errorMessage = "No se pudo registrar tu voto.";
-      if (error.message && error.message.includes("Missing or insufficient permissions")) {
+      if (error.message?.includes("Missing or insufficient permissions")) {
         errorMessage = "Error de permisos. Verifica las reglas de Firestore.";
       } else if (error.message) {
         errorMessage = error.message;
