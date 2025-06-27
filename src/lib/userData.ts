@@ -41,75 +41,17 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
 };
 
 /**
- * Fetches a user's profile from Firestore.
- * Returns null if the profile does not exist or if an error occurs.
- */
-export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  if (!uid) {
-    console.error("getUserProfile: UID is required.");
-    return null;
-  }
-  try {
-    const userDocRef = doc(db, USER_COLLECTION, uid);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (userDocSnap.exists()) {
-      return mapDocToUserProfile(uid, userDocSnap.data());
-    } else {
-      console.log(`User profile not found for UID: ${uid}`);
-      return null;
-    }
-  } catch (error) {
-    console.error(`Error fetching user profile for UID ${uid}:`, error);
-    return null;
-  }
-}
-
-
-export async function getAllUserAttitudes(userId: string): Promise<Record<string, AttitudeKey>> {
-    if (!userId) return {};
-    try {
-        const attitudes: Record<string, AttitudeKey> = {};
-        const attitudesCollectionRef = collection(db, 'userAttitudes');
-        
-        // This is the standard, secure way to query user-owned data.
-        // It requires a Firestore index on the 'userId' field for the 'userAttitudes' collection.
-        // Firestore will provide a link to create this index in the browser's console error if it's missing.
-        const q = query(
-            attitudesCollectionRef, 
-            where('userId', '==', userId)
-        );
-
-        const querySnapshot = await getDocs(q);
-        
-        querySnapshot.forEach((doc) => {
-            const data = doc.data() as UserAttitude;
-            if (data.figureId) {
-                attitudes[data.figureId] = data.attitude;
-            }
-        });
-        return attitudes;
-    } catch (error: any) {
-        console.error("Error fetching all user attitudes: ", error);
-        // Re-throw the error so the calling page can handle it.
-        // The page will now display a helpful message about permissions/indexes.
-        throw error;
-    }
-}
-
-
-/**
  * Ensures a user profile document exists in Firestore.
  * If it doesn't exist, it creates one with default values and additional data from signup.
  * If it exists, it updates the lastLoginAt timestamp and potentially other auth-related fields.
+ * This is primarily used now to populate the user list for the admin panel.
  */
 export async function ensureUserProfileExists(
   user: FirebaseUser, 
   additionalData?: { countryCode?: string; gender?: string }
 ): Promise<UserProfile> {
   if (!user || !user.uid) {
-    console.error("ensureUserProfileExists: Valid Firebase user object is required.");
-    throw new Error("ensureUserProfileExists: Valid Firebase user object is required.");
+    throw new Error("Valid Firebase user object is required.");
   }
 
   const userDocRef = doc(db, USER_COLLECTION, user.uid);
@@ -165,52 +107,14 @@ export async function ensureUserProfileExists(
 
   } catch (error: any) {
     console.error(`[ensureUserProfileExists] Firestore error for UID ${user.uid}: Message: ${error.message}, Code: ${error.code}`, error);
-    throw new Error(`Firestore_Profile_Error: Failed to create/update user profile. Firebase error: ${error.message} (Code: ${error.code})`);
+    // Throw a more generic error to the client to avoid exposing too much detail.
+    throw new Error(`Failed to create or update the user profile due to a server error.`);
   }
 }
-
 
 /**
- * Updates an existing user's profile in Firestore.
- * Only updates specified fields by the user from their profile form.
+ * Fetches all user profiles from Firestore, intended for use in the admin panel.
  */
-export async function updateUserProfile(
-  uid: string,
-  data: Partial<Pick<UserProfile, 'username' | 'country' | 'countryCode' | 'gender'>>
-): Promise<void> {
-  if (!uid) {
-    console.error("updateUserProfile: UID is required.");
-    return;
-  }
-  if (!data || Object.keys(data).length === 0) {
-    console.warn("updateUserProfile: No data provided for update.");
-    return;
-  }
-  console.log(`[updateUserProfile] Updating profile for UID: ${uid} with data:`, data);
-
-  try {
-    const userDocRef = doc(db, USER_COLLECTION, uid);
-    const updateData: any = { ...data, lastLoginAt: serverTimestamp() };
-
-    if (data.hasOwnProperty('countryCode')) { 
-      if (data.countryCode === '') {
-        updateData.country = ''; 
-      } else {
-        const selectedCountry = COUNTRIES.find(c => c.code === data.countryCode);
-        updateData.country = selectedCountry ? selectedCountry.name : '';
-      }
-    } else if (data.hasOwnProperty('country') && data.country === '') {
-        updateData.countryCode = ''; 
-    }
-    
-    await updateDoc(userDocRef, updateData);
-  } catch (error: any) {
-    console.error(`[updateUserProfile] Error updating profile for UID ${uid}:`, error);
-    throw new Error(`Failed to update user profile. Firebase error: ${error.message}`);
-  }
-}
-
-
 export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
   try {
     const usersCollectionRef = collection(db, USER_COLLECTION);
