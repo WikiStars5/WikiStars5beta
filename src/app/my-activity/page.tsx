@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -10,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import type { UserProfile, Figure } from '@/lib/types';
-import { getUserProfile } from '@/lib/userData';
+import { ensureUserProfileExists } from '@/lib/userData';
 import { getFiguresByIds } from '@/lib/placeholder-data';
 
 export default function MyActivityPage() {
@@ -25,7 +26,8 @@ export default function MyActivityPage() {
       if (user && !user.isAnonymous) {
         setCurrentUser(user);
         try {
-          const profile = await getUserProfile(user.uid);
+          // This now ensures the profile exists, creating it if necessary.
+          const profile = await ensureUserProfileExists(user);
           if (profile) {
             setUserProfile(profile);
             const figureIds = new Set([
@@ -37,6 +39,7 @@ export default function MyActivityPage() {
               setFigures(fetchedFigures);
             }
           } else {
+             // This case should be rare now, but is kept as a fallback.
              setError("No se pudo cargar tu perfil. Es posible que no se haya creado correctamente.");
           }
         } catch (err: any) {
