@@ -51,55 +51,55 @@ service cloud.firestore {
       // Un usuario registrado no es anónimo.
       return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
-
-    // --- Colección de Figuras (figures) ---
+    function isOwner(docId) {
+      // El docId es una combinación: `${userId}_${figureId}`
+      return request.auth.uid == docId.split('_')[0];
+    }
+    
+    // --- Reglas de Figuras (figures) ---
     match /figures/{figureId} {
-      // CUALQUIERA puede LEER (read incluye get y list).
       allow read: if true;
-      
-      // SOLO el Administrador puede crear o eliminar figuras.
       allow create, delete: if isAdmin();
       
-      // El admin puede actualizar cualquier campo.
-      // Un usuario registrado puede actualizar SOLO el supportCount (para likes).
+      // La actualización es permitida si eres admin O si solo estás cambiando el supportCount
       allow update: if isAdmin() || isOnlyChangingSupportCount();
 
       // Subcolección de Galería (galleryImages)
       match /galleryImages/{imageId} {
         allow read: if true;
-        allow create: if isRegisteredUser() && request.resource.data.userId == request.auth.uid || isAdmin();
+        allow create: if isRegisteredUser() && request.resource.data.userId == request.auth.uid;
         allow update, delete: if (isRegisteredUser() && resource.data.userId == request.auth.uid) || isAdmin();
       }
       
+      // Función MEJORADA para verificar el cambio de supportCount
       function isOnlyChangingSupportCount() {
-        // Esta función comprueba que el único cambio entre el documento antiguo y el nuevo
-        // es el campo supportCount, y que solo cambia en +/- 1.
+        // Obtenemos el valor anterior de supportCount, si no existe, es 0
+        let old_count = resource.data.get('supportCount', 0);
+        let new_count = request.resource.data.supportCount;
+        
         return isRegisteredUser() &&
                request.resource.data.diff(resource.data).affectedKeys().hasOnly(['supportCount']) &&
-               (request.resource.data.supportCount == resource.data.supportCount + 1 ||
-                request.resource.data.supportCount == resource.data.supportCount - 1);
+               (new_count == old_count + 1 || new_count == old_count - 1);
       }
     }
 
-    // --- Colección de Usuarios (registered_users) ---
+    // --- Reglas de Usuarios (registered_users) ---
     match /registered_users/{userId} {
-      allow get, update: if isRegisteredUser() && request.auth.uid == userId;
-      allow read, write: if isAdmin();
+      allow get: if isRegisteredUser() && request.auth.uid == userId;
+      allow update: if isRegisteredUser() && request.auth.uid == userId;
+      allow list, create, delete: if isAdmin();
     }
     
-    // --- Colección de Comentarios (userComments) ---
+    // --- Reglas de Comentarios (userComments) ---
     match /userComments/{commentId} {
       allow read: if true;
       allow create: if isSignedIn();
-      allow update, delete: if (isRegisteredUser() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
     
-    // --- Colecciones de Votos (Percepción, Actitud, Estrellas, Apoyo) ---
-    // El docId es una combinación: `${userId}_${figureId}`
-    function isOwner(docId) {
-      return request.auth.uid == docId.split('_')[0];
-    }
-    
+    // --- Reglas para Votos y Apoyos ---
+    // (Percepción, Actitud, Estrellas, Apoyo)
     match /userPerceptions/{docId} {
       allow read, write: if isSignedIn() && isOwner(docId);
     }
