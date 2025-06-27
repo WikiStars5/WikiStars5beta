@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -35,6 +34,7 @@ const RedditIcon = (props: React.SVGProps<SVGSVGElement>) => (
 interface ShareButtonProps {
   figureName: string;
   figureId: string;
+  showText?: boolean;
 }
 
 interface SocialShareOption {
@@ -44,7 +44,7 @@ interface SocialShareOption {
   isMailto?: boolean;
 }
 
-export function ShareButton({ figureName, figureId }: ShareButtonProps) {
+export function ShareButton({ figureName, figureId, showText = false }: ShareButtonProps) {
   const { toast } = useToast();
   const [currentUrl, setCurrentUrl] = useState('');
 
@@ -55,11 +55,14 @@ export function ShareButton({ figureName, figureId }: ShareButtonProps) {
     }
   }, [figureId]);
 
+  const buttonSize = showText ? "default" : "icon";
+
   if (!currentUrl) {
     // Return a disabled button or a placeholder while URL is not available
     return (
-      <Button variant="outline" size="icon" aria-label="Cargando opciones para compartir" disabled>
+      <Button variant="outline" size={buttonSize} aria-label="Cargando opciones para compartir" disabled>
         <Share2 className="h-5 w-5" />
+        {showText && <span>Compartir</span>}
       </Button>
     );
   }
@@ -131,8 +134,9 @@ export function ShareButton({ figureName, figureId }: ShareButtonProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" aria-label={`Compartir perfil de ${figureName}`}>
+        <Button variant="outline" size={buttonSize} aria-label={`Compartir perfil de ${figureName}`}>
           <Share2 className="h-5 w-5" />
+          {showText && <span>Compartir</span>}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

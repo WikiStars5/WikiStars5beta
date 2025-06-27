@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Figure } from "@/lib/types";
@@ -56,7 +55,7 @@ export function ProfileHeader({
           </div>
 
           <div className="flex items-center justify-center gap-4 pt-2 w-full">
-            <ShareButton figureName={figure.name} figureId={figure.id} />
+            <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
             <div className="flex items-center gap-1.5" title={canSupport ? `${supportCount.toLocaleString()} apoyos` : "Inicia sesión para ver y dar apoyo"}>
               <Button 
                 variant={isSupported ? "destructive" : "outline"} 
