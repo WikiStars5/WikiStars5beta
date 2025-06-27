@@ -45,6 +45,7 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
     function isSignedIn() {
+      // Verdadero para usuarios registrados y anónimos.
       return request.auth != null;
     }
     function isRegisteredUser() {
@@ -71,13 +72,15 @@ service cloud.firestore {
         allow update, delete: if (isRegisteredUser() && resource.data.userId == request.auth.uid) || isAdmin();
       }
       
-      // Función MEJORADA para verificar el cambio de supportCount
+      // Función para verificar el cambio de supportCount
       function isOnlyChangingSupportCount() {
         // Obtenemos el valor anterior de supportCount, si no existe, es 0
         let old_count = resource.data.get('supportCount', 0);
         let new_count = request.resource.data.supportCount;
         
-        return isRegisteredUser() &&
+        // Permite la acción si está logueado (incluye anónimos)
+        // y si solo se está modificando el campo supportCount en +1 o -1
+        return isSignedIn() &&
                request.resource.data.diff(resource.data).affectedKeys().hasOnly(['supportCount']) &&
                (new_count == old_count + 1 || new_count == old_count - 1);
       }
@@ -93,9 +96,9 @@ service cloud.firestore {
     // --- Reglas de Comentarios (userComments) ---
     match /userComments/{commentId} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn(); // Anónimos y registrados pueden crear
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid; // Solo dueño
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin(); // Dueño o Admin
     }
     
     // --- Reglas para Votos y Apoyos ---
@@ -109,8 +112,9 @@ service cloud.firestore {
     match /userStarRatings/{docId} {
       allow read, write: if isSignedIn() && isOwner(docId);
     }
+    // Permite que cualquier usuario conectado (anónimo o registrado) dé o quite su apoyo.
     match /userSupports/{docId} {
-        allow read, write: if isRegisteredUser() && isOwner(docId);
+        allow read, write: if isSignedIn() && isOwner(docId);
     }
   }
 }

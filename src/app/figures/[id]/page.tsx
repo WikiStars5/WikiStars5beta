@@ -709,8 +709,8 @@ export default function FigurePage() {
   };
 
   const handleSupportToggle = async () => {
-    if (!currentUser || currentUser.isAnonymous) {
-      toast({ title: "Acción Requerida", description: "Debes iniciar sesión con una cuenta para poder mostrar tu apoyo.", variant: "default"});
+    if (!currentUser) {
+      toast({ title: "Acción Requerida", description: "Debes estar conectado para mostrar tu apoyo.", variant: "default"});
       return;
     }
     if (isLoadingSupport) return;
@@ -928,7 +928,7 @@ export default function FigurePage() {
         isSupported={isSupported}
         isLoadingSupport={isLoadingSupport}
         onSupportToggle={handleSupportToggle}
-        canSupport={!!currentUser && !currentUser.isAnonymous}
+        canSupport={!!currentUser}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
