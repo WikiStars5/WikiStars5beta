@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage, FamilyMember } from "@/lib/types";
+import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage, FamilyMember, UserProfile } from "@/lib/types";
 import { getFigureFromFirestore, getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
@@ -45,6 +45,7 @@ import {
 import { submitGalleryImageAction } from "@/app/actions/figureGalleryActions";
 import { updateCommentLikes } from "@/app/actions/commentRatingActions";
 import { cn, correctMalformedUrl } from "@/lib/utils";
+import { getUserProfile } from "@/lib/userData";
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
   1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
@@ -86,6 +87,7 @@ export default function FigurePage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   
   const [canEditFigure, setCanEditFigure] = useState(false);
   const [canCommentOrRate, setCanCommentOrRate] = useState(false);
@@ -178,7 +180,7 @@ export default function FigurePage() {
 
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
       setCurrentUser(user);
       const isNonAnonymous = !!user && !user.isAnonymous;
       const isAdmin = user?.uid === ADMIN_UID;
@@ -187,6 +189,18 @@ export default function FigurePage() {
       setCanCommentOrRate(!!user); 
       setCanVoteOnComments(!!user); 
       setCanSubmitGalleryImage(isNonAnonymous);
+
+      if (user && !user.isAnonymous) {
+        try {
+          const profile = await getUserProfile(user.uid);
+          setUserProfile(profile);
+        } catch (e) {
+          console.error("Failed to fetch user profile", e);
+          setUserProfile(null);
+        }
+      } else {
+        setUserProfile(null);
+      }
 
       if (user && figure?.id) { 
         const userStarRatingDocRef = doc(db, 'userStarRatings', `${user.uid}_${figure.id}`);
@@ -875,6 +889,8 @@ export default function FigurePage() {
     <div className="space-y-8 lg:space-y-12">
       <ProfileHeader 
         figure={figure} 
+        currentUser={currentUser}
+        userProfile={userProfile}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">

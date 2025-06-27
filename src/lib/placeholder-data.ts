@@ -354,3 +354,43 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
     return [];
   }
 }
+
+
+export const getFiguresByIds = async (ids: string[]): Promise<Figure[]> => {
+  if (!ids || ids.length === 0) {
+    return [];
+  }
+  
+  // Firestore 'in' queries are limited to 30 items per query.
+  // We need to batch the requests if there are more than 30 IDs.
+  const figures: Figure[] = [];
+  const batches: string[][] = [];
+  
+  for (let i = 0; i < ids.length; i += 30) {
+    batches.push(ids.slice(i, i + 30));
+  }
+
+  try {
+    for (const batch of batches) {
+      if (batch.length > 0) {
+        const figuresCollectionRef = collection(db, "figures");
+        const q = query(figuresCollectionRef, where('__name__', 'in', batch));
+        const querySnapshot = await getDocs(q);
+        
+        querySnapshot.forEach((docSnap) => {
+          figures.push(mapDocToFigure(docSnap));
+        });
+      }
+    }
+    
+    // The order from Firestore 'in' query is not guaranteed, so we sort it
+    // based on the original `ids` array order.
+    const figureMap = new Map(figures.map(f => [f.id, f]));
+    const sortedFigures = ids.map(id => figureMap.get(id)).filter((f): f is Figure => !!f);
+
+    return sortedFigures;
+  } catch (error) {
+    console.error("Error fetching figures by IDs from Firestore: ", error);
+    return []; // Return empty on error
+  }
+};

@@ -115,6 +115,7 @@ export interface UserProfile {
   role: 'user' | 'admin';
   createdAt: string; 
   lastLoginAt?: string; 
+  favoriteFigures?: string[];
 }
 
 export interface GalleryImage {

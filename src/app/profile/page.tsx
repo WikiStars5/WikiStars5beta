@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -7,11 +8,14 @@ import { auth } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
 import { ensureUserProfileExists } from '@/lib/userData';
 import UserProfileForm from '@/components/user/UserProfileForm';
-import { Loader2 } from 'lucide-react';
+import { Loader2, User, Heart } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import FavoriteFiguresList from '@/components/user/FavoriteFiguresList';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -112,32 +116,30 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  if (profileLoadAttempted && !profile && !error && authUser && !authUser.isAnonymous) {
-     return (
-      <div className="container max-w-md mx-auto py-10 text-center">
-        <Alert variant="default">
-          <AlertTitle>Perfil No Disponible</AlertTitle>
-          <AlertDescription>
-            No pudimos cargar la información de tu perfil en este momento. Intenta recargar la página o contacta a soporte si el problema persiste.
-          </AlertDescription>
-           <Button className="mt-6" onClick={() => {
-             setProfileLoadAttempted(false); 
-           }}>
-            Reintentar Carga
-          </Button>
-           <Button asChild className="mt-6 ml-2">
-            <Link href="/">Volver al Inicio</Link>
-          </Button>
-        </Alert>
-      </div>
-    );
-  }
-
-  if (profile && authUser && !authUser.isAnonymous) {
+  
+  if (profile) {
     return (
       <div className="container py-8">
-        <UserProfileForm initialProfile={profile} />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-3xl font-headline">Tu Perfil</CardTitle>
+            <CardDescription>Gestiona tu información personal y tus figuras favoritas.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="edit-profile" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="edit-profile"><User className="mr-2 h-4 w-4"/>Editar Perfil</TabsTrigger>
+                <TabsTrigger value="favorites"><Heart className="mr-2 h-4 w-4"/>Mis Favoritos</TabsTrigger>
+              </TabsList>
+              <TabsContent value="edit-profile" className="pt-6">
+                <UserProfileForm initialProfile={profile} />
+              </TabsContent>
+              <TabsContent value="favorites" className="pt-6">
+                 <FavoriteFiguresList userProfile={profile} />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
       </div>
     );
   }
