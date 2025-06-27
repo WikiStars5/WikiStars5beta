@@ -246,7 +246,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
               <span className="text-sm font-bold">
                 {figureAttitudeCounts[key] || 0}
               </span>
-              {isLoadingAttitudeAction === key && <Loader2 className="absolute h-5 w-5 animate-spin" />}
             </Button>
           ))}
         </div>

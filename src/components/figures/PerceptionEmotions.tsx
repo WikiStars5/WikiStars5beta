@@ -246,7 +246,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
               <span className="text-sm font-bold">
                 {figurePerceptionCounts[key] || 0}
               </span>
-              {isLoadingEmotionAction === key && <Loader2 className="absolute h-5 w-5 animate-spin" />}
             </Button>
           ))}
         </div>
