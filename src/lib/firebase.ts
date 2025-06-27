@@ -62,27 +62,14 @@ service cloud.firestore {
       allow read: if true;
       allow create, delete: if isAdmin();
       
-      // La actualización es permitida si eres admin O si solo estás cambiando el supportCount
-      allow update: if isAdmin() || isOnlyChangingSupportCount();
+      // La actualización es permitida por el admin o por cualquier usuario registrado (para editar detalles del perfil)
+      allow update: if isRegisteredUser() || isAdmin();
 
       // Subcolección de Galería (galleryImages)
       match /galleryImages/{imageId} {
         allow read: if true;
         allow create: if isRegisteredUser() && request.resource.data.userId == request.auth.uid;
         allow update, delete: if (isRegisteredUser() && resource.data.userId == request.auth.uid) || isAdmin();
-      }
-      
-      // Función para verificar el cambio de supportCount
-      function isOnlyChangingSupportCount() {
-        // Obtenemos el valor anterior de supportCount, si no existe, es 0
-        let old_count = resource.data.get('supportCount', 0);
-        let new_count = request.resource.data.supportCount;
-        
-        // Permite la acción si está logueado (incluye anónimos)
-        // y si solo se está modificando el campo supportCount en +1 o -1
-        return isSignedIn() &&
-               request.resource.data.diff(resource.data).affectedKeys().hasOnly(['supportCount']) &&
-               (new_count == old_count + 1 || new_count == old_count - 1);
       }
     }
 
@@ -101,8 +88,8 @@ service cloud.firestore {
       allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin(); // Dueño o Admin
     }
     
-    // --- Reglas para Votos y Apoyos ---
-    // (Percepción, Actitud, Estrellas, Apoyo)
+    // --- Reglas para Votos ---
+    // (Percepción, Actitud, Estrellas)
     match /userPerceptions/{docId} {
       allow read, write: if isSignedIn() && isOwner(docId);
     }
@@ -111,10 +98,6 @@ service cloud.firestore {
     }
     match /userStarRatings/{docId} {
       allow read, write: if isSignedIn() && isOwner(docId);
-    }
-    // Permite que cualquier usuario conectado (anónimo o registrado) dé o quite su apoyo.
-    match /userSupports/{docId} {
-        allow read, write: if isSignedIn() && isOwner(docId);
     }
   }
 }

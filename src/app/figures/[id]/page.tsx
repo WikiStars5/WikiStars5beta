@@ -44,7 +44,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { submitGalleryImageAction } from "@/app/actions/figureGalleryActions";
 import { updateCommentLikes } from "@/app/actions/commentRatingActions";
-import { toggleFigureSupport } from "@/app/actions/supportAction";
 import { cn, correctMalformedUrl } from "@/lib/utils";
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
@@ -92,10 +91,6 @@ export default function FigurePage() {
   const [canCommentOrRate, setCanCommentOrRate] = useState(false);
   const [canVoteOnComments, setCanVoteOnComments] = useState(false);
   const [canSubmitGalleryImage, setCanSubmitGalleryImage] = useState(false);
-  
-  const [isSupported, setIsSupported] = useState(false);
-  const [supportCount, setSupportCount] = useState(0);
-  const [isLoadingSupport, setIsLoadingSupport] = useState(true);
 
   const [newComment, setNewComment] = useState("");
   const [newCommentStars, setNewCommentStars] = useState<StarValue | null>(null);
@@ -134,6 +129,7 @@ export default function FigurePage() {
   }, []);
 
   const displayedComments = useMemo(() => {
+    if (isLoadingComments) return [];
     let sortedComments = [...commentsList];
 
     switch (commentSortOrder) {
@@ -152,7 +148,7 @@ export default function FigurePage() {
         break;
     }
     return sortedComments;
-  }, [commentsList, commentSortOrder, currentUser]);
+  }, [commentsList, commentSortOrder, currentUser, isLoadingComments]);
 
 
   useEffect(() => {
@@ -207,27 +203,6 @@ export default function FigurePage() {
     });
     return () => unsubscribe();
   }, [figure?.id]); 
-
-  useEffect(() => {
-    if (currentUser && figure) {
-      setIsLoadingSupport(true);
-      const supportDocRef = doc(db, 'userSupports', `${currentUser.uid}_${figure.id}`);
-      getDoc(supportDocRef).then(docSnap => {
-        setIsSupported(docSnap.exists());
-        setSupportCount(figure.supportCount || 0);
-        setIsLoadingSupport(false);
-      }).catch(err => {
-        console.error("Error fetching support status:", err);
-        setIsLoadingSupport(false);
-      });
-    } else {
-      if (figure) {
-        setSupportCount(figure.supportCount || 0);
-      }
-      setIsSupported(false);
-      setIsLoadingSupport(false);
-    }
-  }, [currentUser, figure]);
 
   const resetEditFields = useCallback((currentFigure: Figure | null) => {
     if (currentFigure) {
@@ -708,30 +683,6 @@ export default function FigurePage() {
     setIsViewerOpen(true);
   };
 
-  const handleSupportToggle = async () => {
-    if (!currentUser) {
-      toast({ title: "Acción Requerida", description: "Debes estar conectado para mostrar tu apoyo.", variant: "default"});
-      return;
-    }
-    if (isLoadingSupport) return;
-    
-    setIsSupported(prev => !prev);
-    setSupportCount(prev => isSupported ? prev - 1 : prev + 1);
-
-    const result = await toggleFigureSupport(figure!.id, currentUser.uid);
-
-    if (!result.success) {
-      setIsSupported(prev => !prev);
-      setSupportCount(prev => isSupported ? prev + 1 : prev - 1);
-      toast({
-        title: "Error",
-        description: result.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-
   if (!id && figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="ml-2">Cargando ID...</p></div>;
   if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (figure === null) return <div className="text-center py-10"><h1 className="text-2xl font-bold">Figura No Encontrada</h1><p className="text-muted-foreground">ID: {id || "desconocido"}</p><Button asChild className="mt-4"><Link href="/">Ir al Inicio</Link></Button></div>;
@@ -924,11 +875,6 @@ export default function FigurePage() {
     <div className="space-y-8 lg:space-y-12">
       <ProfileHeader 
         figure={figure} 
-        supportCount={supportCount}
-        isSupported={isSupported}
-        isLoadingSupport={isLoadingSupport}
-        onSupportToggle={handleSupportToggle}
-        canSupport={!!currentUser}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">

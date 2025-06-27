@@ -4,26 +4,16 @@ import type { Figure } from "@/lib/types";
 import Image from "next/image";
 import { Card, CardTitle } from "@/components/ui/card";
 import { ShareButton } from "@/components/shared/ShareButton";
-import { ImageOff, Heart } from "lucide-react";
-import { correctMalformedUrl, cn } from "@/lib/utils";
+import { ImageOff } from "lucide-react";
+import { correctMalformedUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 interface ProfileHeaderProps {
   figure: Figure;
-  supportCount: number;
-  isSupported: boolean;
-  isLoadingSupport: boolean;
-  onSupportToggle: () => void;
-  canSupport: boolean;
 }
 
 export function ProfileHeader({ 
   figure, 
-  supportCount, 
-  isSupported, 
-  isLoadingSupport, 
-  onSupportToggle, 
-  canSupport 
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
 
@@ -56,18 +46,6 @@ export function ProfileHeader({
 
           <div className="flex items-center justify-center gap-4 pt-2 w-full">
             <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
-            <div className="flex items-center gap-1.5" title={canSupport ? `${supportCount.toLocaleString()} apoyos` : "Inicia sesión para ver y dar apoyo"}>
-              <Button 
-                variant={isSupported ? "destructive" : "outline"} 
-                size="icon" 
-                onClick={onSupportToggle} 
-                disabled={isLoadingSupport || !canSupport}
-                aria-label="Apoyar figura"
-              >
-                <Heart className={cn("h-5 w-5", isSupported && "fill-current")} />
-              </Button>
-              <span className="text-sm font-semibold text-foreground">{supportCount.toLocaleString()}</span>
-            </div>
           </div>
 
         </div>

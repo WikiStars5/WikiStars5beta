@@ -56,7 +56,6 @@ export interface Figure {
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean; // New field for featured figures
-  supportCount?: number;
 }
 
 export interface UserPerception {
@@ -78,12 +77,6 @@ export interface UserStarRating {
   figureId: string;
   starValue: StarValue; 
   timestamp: Timestamp; 
-}
-
-export interface UserSupport {
-  userId: string;
-  figureId: string;
-  timestamp: Timestamp;
 }
 
 export interface UserComment {
