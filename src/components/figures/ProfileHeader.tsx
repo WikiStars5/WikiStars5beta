@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Figure, UserProfile } from "@/lib/types";
+import type { Figure } from "@/lib/types";
 import Image from "next/image";
 import { Card, CardTitle } from "@/components/ui/card";
 import { ShareButton } from "@/components/shared/ShareButton";
@@ -12,13 +12,11 @@ import type { User } from 'firebase/auth';
 interface ProfileHeaderProps {
   figure: Figure;
   currentUser: User | null;
-  userProfile: UserProfile | null;
 }
 
 export function ProfileHeader({ 
   figure, 
-  currentUser,
-  userProfile
+  currentUser
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
 
