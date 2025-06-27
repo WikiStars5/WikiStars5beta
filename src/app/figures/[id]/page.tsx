@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage, FamilyMember, UserProfile } from "@/lib/types";
@@ -45,6 +44,7 @@ import {
 import { submitGalleryImageAction } from "@/app/actions/figureGalleryActions";
 import { updateCommentLikes } from "@/app/actions/commentRatingActions";
 import { cn, correctMalformedUrl } from "@/lib/utils";
+import { countryCodeToNameMap, getCountryEmojiByCode } from "@/config/countries";
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
   1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
@@ -86,6 +86,7 @@ export default function FigurePage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [anonymousUserCountryCode, setAnonymousUserCountryCode] = useState<string | null>(null);
   
   const [canEditFigure, setCanEditFigure] = useState(false);
   const [canCommentOrRate, setCanCommentOrRate] = useState(false);
@@ -204,6 +205,25 @@ export default function FigurePage() {
     return () => unsubscribe();
   }, [figure?.id]); 
 
+  useEffect(() => {
+    const fetchCountryCode = async () => {
+      if (currentUser && currentUser.isAnonymous && !anonymousUserCountryCode) {
+        try {
+          const response = await fetch('https://ipapi.co/country_code/');
+          if (response.ok) {
+            const countryCode = await response.text();
+            setAnonymousUserCountryCode(countryCode.trim());
+          }
+        } catch (error) {
+          console.warn("Could not fetch anonymous user country:", error);
+        }
+      }
+    };
+
+    fetchCountryCode();
+  }, [currentUser, anonymousUserCountryCode]);
+
+
   const resetEditFields = useCallback((currentFigure: Figure | null) => {
     if (currentFigure) {
       setEditedDescription(currentFigure.description || "");
@@ -309,6 +329,7 @@ export default function FigurePage() {
           dislikedBy: data.dislikedBy || [],
           parentId: data.parentId || null,
           replyCount: data.replyCount || 0,
+          userCountryCode: data.userCountryCode || null,
         });
       });
       setCommentsList(fetchedComments);
@@ -473,7 +494,7 @@ export default function FigurePage() {
         transaction.update(figureDocRef, { starRatingCounts: newAggregatedStarCounts });
       });
 
-      const commentData = {
+      const commentData: any = {
         figureId: figure.id,
         userId: currentUser.uid,
         username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
@@ -488,6 +509,11 @@ export default function FigurePage() {
         parentId: null,
         replyCount: 0,
       };
+
+      if (currentUser.isAnonymous && anonymousUserCountryCode) {
+        commentData.userCountryCode = anonymousUserCountryCode;
+      }
+
       await addDoc(collection(db, 'userComments'), commentData);
       
       await runTransaction(db, async (transaction) => {
@@ -733,7 +759,7 @@ export default function FigurePage() {
     const parentCommentRef = doc(db, "userComments", parentId);
 
     try {
-      const replyData = {
+      const replyData: any = {
         figureId: figure.id,
         userId: currentUser.uid,
         username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
@@ -748,6 +774,11 @@ export default function FigurePage() {
         parentId: parentId,
         replyCount: 0,
       };
+
+      if (currentUser.isAnonymous && anonymousUserCountryCode) {
+        replyData.userCountryCode = anonymousUserCountryCode;
+      }
+
 
       await runTransaction(db, async (transaction) => {
         transaction.update(figureRef, { commentCount: increment(1) });
@@ -821,6 +852,9 @@ export default function FigurePage() {
     const userHasDisliked = !!currentUser && comment.dislikedBy.includes(currentUser.uid);
     const isVoting = votingCommentId === comment.id;
 
+    const countryEmoji = comment.userCountryCode ? getCountryEmojiByCode(comment.userCountryCode) : null;
+    const countryName = comment.userCountryCode ? countryCodeToNameMap.get(comment.userCountryCode) : null;
+
     return (
       <div key={comment.id} className="relative group/comment">
         <div className="flex space-x-3">
@@ -830,7 +864,12 @@ export default function FigurePage() {
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-foreground">{comment.username}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">{comment.username}</p>
+                {comment.username === 'Invitado' && countryEmoji && (
+                  <span title={countryName || comment.userCountryCode || ''}>{countryEmoji}</span>
+                )}
+              </div>
               <div className="flex items-center space-x-2">
                 <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
                 {currentUser && (currentUser.uid === comment.userId || canEditFigure) && (

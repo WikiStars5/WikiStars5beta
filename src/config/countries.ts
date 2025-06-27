@@ -1,4 +1,3 @@
-
 import type { Country } from '@/lib/types';
 
 export const COUNTRIES: Country[] = [
@@ -196,3 +195,11 @@ export const COUNTRIES: Country[] = [
   { name: 'Zambia', code: 'ZM', emoji: '🇿🇲' },
   { name: 'Zimbabue', code: 'ZW', emoji: '🇿🇼' },
 ].sort((a, b) => a.name.localeCompare(b.name));
+
+export const getCountryEmojiByCode = (code: string): string | undefined => {
+  if (!code) return undefined;
+  const country = COUNTRIES.find(c => c.code.toUpperCase() === code.toUpperCase());
+  return country?.emoji;
+}
+
+export const countryCodeToNameMap = new Map(COUNTRIES.map(c => [c.code, c.name]));

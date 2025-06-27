@@ -94,6 +94,7 @@ export interface UserComment {
   dislikedBy: string[];
   parentId?: string | null; // ID of the parent comment if this is a reply
   replyCount?: number; // Number of replies this comment has
+  userCountryCode?: string | null;
 }
 
 
