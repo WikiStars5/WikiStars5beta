@@ -57,12 +57,10 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
       return mapDocToUserProfile(uid, userDocSnap.data());
     } else {
       console.log(`User profile not found for UID: ${uid}`);
-      // Return null instead of creating a profile here. Let ensureUserProfileExists handle creation.
       return null;
     }
   } catch (error) {
     console.error(`Error fetching user profile for UID ${uid}:`, error);
-    // Return null to allow the UI to handle the "not found" or error case gracefully.
     return null;
   }
 }
@@ -74,13 +72,12 @@ export async function getAllUserAttitudes(userId: string): Promise<Record<string
         const attitudes: Record<string, AttitudeKey> = {};
         const attitudesCollectionRef = collection(db, 'userAttitudes');
         
-        // Query by document ID range instead of a 'where' clause on a field.
-        // This is more robust as it doesn't require a custom Firestore index.
+        // This is the standard, secure way to query user-owned data.
+        // It requires a Firestore index on the 'userId' field for the 'userAttitudes' collection.
+        // Firestore will provide a link to create this index in the browser's console error if it's missing.
         const q = query(
             attitudesCollectionRef, 
-            orderBy('__name__'), // This is the document ID
-            startAt(userId + '_'), // Start with docs that have this user's ID as a prefix
-            endAt(userId + '_\uf8ff') // End at the last possible character combination after the prefix
+            where('userId', '==', userId)
         );
 
         const querySnapshot = await getDocs(q);
@@ -94,8 +91,8 @@ export async function getAllUserAttitudes(userId: string): Promise<Record<string
         return attitudes;
     } catch (error: any) {
         console.error("Error fetching all user attitudes: ", error);
-        // Re-throw the error so the calling page can handle it and show a message
-        // in case of permission errors or other unexpected issues.
+        // Re-throw the error so the calling page can handle it.
+        // The page will now display a helpful message about permissions/indexes.
         throw error;
     }
 }

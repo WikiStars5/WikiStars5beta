@@ -52,20 +52,17 @@ service cloud.firestore {
       // Un usuario registrado no es anónimo.
       return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
-    function isOwner(docId) {
-      // El docId es una combinación: `${userId}_${figureId}`
-      return request.auth.uid == docId.split('_')[0];
+    function isOwner(userId) {
+      // Comprueba si el UID de la solicitud coincide con el ID de usuario proporcionado.
+      return request.auth.uid == userId;
     }
     
     // --- Reglas de Figuras (figures) ---
     match /figures/{figureId} {
       allow read: if true;
       allow create, delete: if isAdmin();
-      
-      // La actualización es permitida por el admin o por cualquier usuario registrado (para editar detalles del perfil)
       allow update: if isRegisteredUser() || isAdmin();
 
-      // Subcolección de Galería (galleryImages)
       match /galleryImages/{imageId} {
         allow read: if true;
         allow create: if isRegisteredUser() && request.resource.data.userId == request.auth.uid;
@@ -75,29 +72,47 @@ service cloud.firestore {
 
     // --- Reglas de Usuarios (registered_users) ---
     match /registered_users/{userId} {
-      allow get: if isRegisteredUser() && request.auth.uid == userId;
-      allow update: if isRegisteredUser() && request.auth.uid == userId;
+      allow get, update: if isRegisteredUser() && isOwner(userId);
       allow list, create, delete: if isAdmin();
     }
     
     // --- Reglas de Comentarios (userComments) ---
     match /userComments/{commentId} {
       allow read: if true;
-      allow create: if isSignedIn(); // Anónimos y registrados pueden crear
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid; // Solo dueño
-      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin(); // Dueño o Admin
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
     
-    // --- Reglas para Votos ---
-    // (Percepción, Actitud, Estrellas)
-    match /userPerceptions/{docId} {
-      allow read, write: if isSignedIn() && isOwner(docId);
+    // --- Reglas para Votos (Actitud, Percepción, Calificaciones) ---
+    // Este es el patrón correcto para datos propiedad del usuario.
+    function isOwnerOfDoc() {
+      return request.auth.uid == resource.data.userId;
     }
+    
+    function isCreatingOwnDoc() {
+      return request.auth.uid == request.resource.data.userId;
+    }
+
     match /userAttitudes/{docId} {
-      allow read, write: if isSignedIn() && isOwner(docId);
+      // Un usuario puede LEER (get) o BORRAR su propio voto.
+      allow get, delete: if isSignedIn() && isOwnerOfDoc();
+      // Un usuario puede CREAR un voto para sí mismo.
+      allow create: if isSignedIn() && isCreatingOwnDoc();
+      // Un usuario puede LISTAR (query) solo sus propios votos.
+      allow list: if isSignedIn() && request.query.userId == request.auth.uid;
     }
+    
+    match /userPerceptions/{docId} {
+       allow get, delete: if isSignedIn() && isOwnerOfDoc();
+       allow create: if isSignedIn() && isCreatingOwnDoc();
+       allow list: if isSignedIn() && request.query.userId == request.auth.uid;
+    }
+    
     match /userStarRatings/{docId} {
-      allow read, write: if isSignedIn() && isOwner(docId);
+       allow get, delete: if isSignedIn() && isOwnerOfDoc();
+       allow create: if isSignedIn() && isCreatingOwnDoc();
+       allow list: if isSignedIn() && request.query.userId == request.auth.uid;
     }
   }
 }

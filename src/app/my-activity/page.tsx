@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import UserActivity from '@/components/user/UserActivity';
-import { Loader2, LogIn } from 'lucide-react';
+import { Loader2, LogIn, AlertTriangle } from 'lucide-react';
 import { CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -39,7 +39,13 @@ export default function MyActivityPage() {
           }
         } catch (err: any) {
           console.error("Error fetching activity data:", err);
-          setError(err.message || "Ocurrió un error inesperado al cargar tu actividad.");
+          let errorMessage = "Ocurrió un error inesperado al cargar tu actividad.";
+          if (err.message && (err.message.includes('permission-denied') || err.message.includes('missing-permission'))) {
+              errorMessage = "Error de permisos. Es posible que falte un índice en tu base de datos Firestore. Revisa la consola del navegador (F12) para ver si hay un enlace para crearlo automáticamente.";
+          } else if(err.message) {
+              errorMessage = err.message;
+          }
+          setError(errorMessage);
         }
       } else {
         setCurrentUser(null);
@@ -79,11 +85,15 @@ export default function MyActivityPage() {
 
   if (error) {
      return (
-      <div className="container max-w-md mx-auto py-10 text-center">
+      <div className="container max-w-lg mx-auto py-10 text-center">
         <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4"/>
             <AlertTitle>Error al Cargar Actividad</AlertTitle>
             <AlertDescription>
-                {error || "No se pudieron cargar tus datos de actividad."}
+                <p className="mb-2">{error}</p>
+                <p className="text-xs">
+                    <strong>Nota para desarrolladores:</strong> Este error suele indicar que las Reglas de Seguridad de Firestore no permiten la consulta o que falta un índice compuesto. Asegúrate de haber desplegado las reglas más recientes de `src/lib/firebase.ts` y revisa la consola del navegador en busca de errores de Firestore para obtener un enlace para crear el índice si es necesario.
+                </p>
             </AlertDescription>
         </Alert>
         <Button asChild className="mt-6">
