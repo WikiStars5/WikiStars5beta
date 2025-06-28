@@ -280,10 +280,11 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
 
   try {
     while (true) {
-      // Order by document ID (__name__) for stable pagination. This does not require a custom index.
+      // Use orderBy('name') for consistency with other paginated functions.
+      // This is more robust and may require a Firestore index on the 'name' field.
       const q = lastVisible
-        ? query(figuresCollectionRef, orderBy('__name__'), firestoreStartAfter(lastVisible), limit(batchSize))
-        : query(figuresCollectionRef, orderBy('__name__'), limit(batchSize));
+        ? query(figuresCollectionRef, orderBy('name'), firestoreStartAfter(lastVisible), limit(batchSize))
+        : query(figuresCollectionRef, orderBy('name'), limit(batchSize));
 
       const querySnapshot = await getDocs(q);
 
@@ -292,28 +293,31 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
       }
 
       querySnapshot.forEach((docSnap) => {
-        allFigures.push(mapDocToFigure(docSnap));
+        try {
+          allFigures.push(mapDocToFigure(docSnap));
+        } catch (e) {
+            console.error(`Error mapping document ${docSnap.id}, skipping.`, e)
+        }
       });
 
       lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
       
-      // If we fetched fewer documents than the batch size, we're at the end.
       if (querySnapshot.docs.length < batchSize) {
         break;
       }
     }
     
-    // Sort the results alphabetically by name before returning.
-    return allFigures.sort((a, b) => a.name.localeCompare(b.name));
+    // The list is already sorted by name from the query.
+    return allFigures;
 
   } catch (error: any) {
-    console.error("Error fetching all figures from Firestore with pagination. Message:", error.message);
+    console.error("Error fetching all figures from Firestore for sitemap. Message:", error.message);
     if (String(error.message).toLowerCase().includes("permission")) {
       console.error("Firestore permission error: This usually means your Firestore Security Rules are blocking the 'list' operation on the 'figures' collection.");
-      console.error("ACTION: Double-check your Firestore Security Rules to ensure 'allow list: if (condition);' is correctly set for the '/figures' path.");
+      console.error("ACTION: Double-check your Firestore Security Rules to ensure 'allow list: if true;' is correctly set for the '/figures/{figureId}' path.");
     } else if (String(error.message).toLowerCase().includes("index")) {
-        console.error("Firestore index error: The query (likely involving orderBy) requires a composite index that is missing.");
-        console.error("ACTION: Check the build logs or browser console for a more detailed error message from Firestore. It may provide a DIRECT LINK to create the necessary index.");
+        console.error("Firestore index error: The query (likely involving orderBy('name')) requires a composite index that is missing.");
+        console.error("ACTION: Check the build logs or browser console for a more detailed error message from Firestore. It may provide a DIRECT LINK to create the necessary index in your Firebase Console.");
     }
     return []; // Return empty on error
   }
