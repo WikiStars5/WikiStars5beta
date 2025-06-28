@@ -53,13 +53,22 @@ service cloud.firestore {
       // Un usuario registrado no es anónimo.
       return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
+    function canUpdateVoteCounters() {
+      // Anónimo o registrado puede votar, lo que actualiza los contadores en la figura.
+      // Esta función asegura que solo los campos de contador puedan ser modificados.
+      let allowedVoteKeys = ['attitudeCounts', 'perceptionCounts', 'starRatingCounts', 'commentCount'];
+      return isSignedIn() &&
+             request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(allowedVoteKeys);
+    }
     
     // --- Reglas de Figuras (figures) ---
     match /figures/{figureId} {
       // PERMITE a cualquiera leer la lista de figuras (para sitemap) y perfiles individuales.
       allow get, list: if true;
       allow create, delete: if isAdmin();
-      allow update: if isRegisteredUser() || isAdmin();
+      // MODIFICADO: Permite a usuarios registrados/admin editar todo, y a cualquiera que haya iniciado sesión (incluido anónimo) actualizar solo los contadores.
+      allow update: if (isRegisteredUser() || isAdmin()) || canUpdateVoteCounters();
 
       match /galleryImages/{imageId} {
         allow read: if true;
