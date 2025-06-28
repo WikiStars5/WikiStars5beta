@@ -52,8 +52,13 @@ service cloud.firestore {
     // ADVERTENCIA: Estas reglas son para probar la lógica de la app.
     
     match /figures/{figureId} {
-      allow read: if true;
+      // Cualquiera puede leer figuras individuales (get) y la lista completa (list) para el sitemap
+      allow get, list: if true;
+      
+      // Los usuarios autenticados (incluidos anónimos) pueden actualizar los contadores
       allow update: if request.auth != null; 
+      
+      // Solo el admin puede crear o eliminar figuras
       allow create, delete: if isAdmin();
 
       match /galleryImages/{galleryImageId} {
@@ -73,9 +78,7 @@ service cloud.firestore {
     // Colección de comentarios de usuario
     match /userComments/{commentId} {
       allow read: if true;
-      // PRUEBA DEFINITIVA: Permitir escritura a CUALQUIERA para depurar.
-      // Si esto funciona, el problema está en la condición `request.auth != null`
-      // y cómo la interpreta el servidor para esta operación específica.
+      // Permitir escritura a CUALQUIERA para depurar y para que los anónimos puedan comentar.
       allow write: if true; 
     }
   }
