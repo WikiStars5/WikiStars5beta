@@ -39,77 +39,23 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // --- ADVERTENCIA: REGLAS DE SEGURIDAD MUY PERMISIVAS PARA DEPURACIÓN ---
+    // Estas reglas son para probar la funcionalidad y NO SON SEGURAS para producción.
+    // Permiten que CUALQUIERA lea todos los datos y que CUALQUIER usuario 
+    // (incluidos anónimos) escriba/modifique/borre la mayoría de los datos.
 
-    // --- Funciones de Ayuda ---
-    function isAdmin() {
-      // UID del administrador. ¡REEMPLAZAR SI ES NECESARIO!
-      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
-    }
     function isSignedIn() {
-      // Verdadero para usuarios registrados y anónimos.
       return request.auth != null;
     }
-    function isRegisteredUser() {
-      // Un usuario registrado no es anónimo.
-      return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
-    }
-    function canUpdateVoteCounters() {
-      // Anónimo o registrado puede votar, lo que actualiza los contadores en la figura.
-      // Esta función asegura que solo los campos de contador puedan ser modificados.
-      let allowedVoteKeys = ['attitudeCounts', 'perceptionCounts', 'starRatingCounts', 'commentCount'];
-      return isSignedIn() &&
-             request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(allowedVoteKeys);
-    }
-    
-    // --- Reglas de Figuras (figures) ---
-    match /figures/{figureId} {
-      // PERMITE a cualquiera leer la lista de figuras (para sitemap) y perfiles individuales.
-      allow get, list: if true;
-      allow create, delete: if isAdmin();
-      // MODIFICADO: Permite a usuarios registrados/admin editar todo, y a cualquiera que haya iniciado sesión (incluido anónimo) actualizar solo los contadores.
-      allow update: if (isRegisteredUser() || isAdmin()) || canUpdateVoteCounters();
 
-      match /galleryImages/{imageId} {
-        allow read: if true;
-        allow create: if isRegisteredUser() && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if (isRegisteredUser() && resource.data.userId == request.auth.uid) || isAdmin();
-      }
-    }
-
-    // --- Reglas de Usuarios (registered_users) ---
-    match /registered_users/{userId} {
-      // Un usuario puede crear su propio perfil, y leerlo/actualizarlo.
-      allow create, get, update: if isRegisteredUser() && request.auth.uid == userId;
-      // Solo el administrador puede listar o eliminar usuarios.
-      allow list, delete: if isAdmin();
-    }
-    
-    // --- Reglas de Comentarios (userComments) ---
-    match /userComments/{commentId} {
+    match /{document=**} {
+      // Cualquiera puede leer cualquier cosa (para el sitemap y la vista pública).
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-    }
-    
-    // --- Reglas para Votos y Actividad del Usuario (CORREGIDO) ---
-    // La clave aquí es que la consulta `where('userId', '==', request.auth.uid)` del cliente
-    // restringe los resultados a los documentos que la regla `read` permite.
-    
-    match /userAttitudes/{docId} {
-      allow read, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
-    }
-    
-    match /userPerceptions/{docId} {
-       allow read, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
-       allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
-    }
-    
-    match /userStarRatings/{docId} {
-       allow read, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
-       allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      
+      // Cualquier usuario, incluso anónimo, puede escribir/modificar/borrar cualquier cosa.
+      // Esto debería desbloquear todas las interacciones.
+      allow write: if isSignedIn();
     }
   }
 }
