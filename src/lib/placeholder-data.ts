@@ -273,31 +273,49 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
 };
 
 export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
+  const figuresCollectionRef = collection(db, "figures");
+  const allFigures: Figure[] = [];
+  let lastVisible: QueryDocumentSnapshot | null = null;
+  const batchSize = 100; // Fetch 100 figures at a time
+
   try {
-    const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef );
-    const querySnapshot = await getDocs(q);
+    while (true) {
+      // Order by document ID (__name__) for stable pagination. This does not require a custom index.
+      const q = lastVisible
+        ? query(figuresCollectionRef, orderBy('__name__'), firestoreStartAfter(lastVisible), limit(batchSize))
+        : query(figuresCollectionRef, orderBy('__name__'), limit(batchSize));
 
+      const querySnapshot = await getDocs(q);
 
-    const figures: Figure[] = [];
-    if (querySnapshot.empty) {
-    } else {
+      if (querySnapshot.empty) {
+        break; // No more documents to fetch
+      }
+
       querySnapshot.forEach((docSnap) => {
-        figures.push(mapDocToFigure(docSnap));
+        allFigures.push(mapDocToFigure(docSnap));
       });
+
+      lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+      
+      // If we fetched fewer documents than the batch size, we're at the end.
+      if (querySnapshot.docs.length < batchSize) {
+        break;
+      }
     }
-    return figures.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Sort the results alphabetically by name before returning.
+    return allFigures.sort((a, b) => a.name.localeCompare(b.name));
+
   } catch (error: any) {
-    console.error("Error fetching all figures from Firestore. Message:", error.message);
+    console.error("Error fetching all figures from Firestore with pagination. Message:", error.message);
     if (String(error.message).toLowerCase().includes("permission")) {
-        console.error("Firestore permission error: This usually means your Firestore Security Rules are blocking the 'list' operation on the 'figures' collection, OR the query (e.g., with orderBy('name')) requires a Firestore Index that is missing.");
-        console.error("ACTION: 1. Double-check your Firestore Security Rules to ensure 'allow list: if (condition);' is correctly set for the '/figures' path.");
-        console.error("ACTION: 2. VERY IMPORTANTLY, check the BROWSER'S DEVELOPER CONSOLE (F12) for a more detailed error message from Firestore. It often provides a DIRECT LINK to create the necessary index if one is missing. Click that link to create the index.");
+      console.error("Firestore permission error: This usually means your Firestore Security Rules are blocking the 'list' operation on the 'figures' collection.");
+      console.error("ACTION: Double-check your Firestore Security Rules to ensure 'allow list: if (condition);' is correctly set for the '/figures' path.");
     } else if (String(error.message).toLowerCase().includes("index")) {
-        console.error("Firestore index error: The query (likely involving orderBy or where clauses) requires a composite index that is missing.");
-        console.error("ACTION: Check the BROWSER'S DEVELOPER CONSOLE (F12) for a more detailed error message from Firestore. It usually provides a DIRECT LINK to create the necessary index. Click that link.");
+        console.error("Firestore index error: The query (likely involving orderBy) requires a composite index that is missing.");
+        console.error("ACTION: Check the build logs or browser console for a more detailed error message from Firestore. It may provide a DIRECT LINK to create the necessary index.");
     }
-    return [];
+    return []; // Return empty on error
   }
 };
 
