@@ -1,4 +1,3 @@
-
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
@@ -35,27 +34,49 @@ export { app };
 // === COPIA Y PEGA ESTO EN TU CONSOLA DE FIREBASE -> Firestore Rules ===
 // ======================================================================
 /*
+// === REGLAS DE SEGURIDAD DE FIRESTORE (APLICAR EN CONSOLA FIREBASE) ===
+// Ve a Firebase Console -> Firestore Database -> Rules.
+// REEMPLAZA 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' CON TU ADMIN_UID REAL SI ES DIFERENTE.
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // --- ADVERTENCIA: REGLAS DE SEGURIDAD MUY PERMISIVAS PARA DEPURACIÓN ---
-    // Estas reglas son para probar la funcionalidad y NO SON SEGURAS para producción.
-    // Permiten que CUALQUIERA lea todos los datos y que CUALQUIER usuario 
-    // (incluidos anónimos) escriba/modifique/borre la mayoría de los datos.
 
-    function isSignedIn() {
-      return request.auth != null;
+    function isAdmin() {
+      // Reemplaza esto con el UID de tu cuenta de administrador
+      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
 
-    match /{document=**} {
-      // Cualquiera puede leer cualquier cosa (para el sitemap y la vista pública).
+    // --- REGLAS DE DESARROLLO (MUY PERMISIVAS) ---
+    // ADVERTENCIA: Estas reglas son para probar la lógica de la app.
+    
+    match /figures/{figureId} {
       allow read: if true;
-      
-      // Cualquier usuario, incluso anónimo, puede escribir/modificar/borrar cualquier cosa.
-      // Esto debería desbloquear todas las interacciones.
-      allow write: if isSignedIn();
+      allow update: if request.auth != null; 
+      allow create, delete: if isAdmin();
+
+      match /galleryImages/{galleryImageId} {
+        allow read: if true;
+        allow write: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+      }
+    }
+
+    match /registered_users/{userId} {
+      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /userPerceptions/{docId} { allow read, write: if request.auth != null; }
+    match /userAttitudes/{docId} { allow read, write: if request.auth != null; }
+    match /userStarRatings/{docId} { allow read, write: if request.auth != null; }
+
+    // Colección de comentarios de usuario
+    match /userComments/{commentId} {
+      allow read: if true;
+      // PRUEBA DEFINITIVA: Permitir escritura a CUALQUIERA para depurar.
+      // Si esto funciona, el problema está en la condición `request.auth != null`
+      // y cómo la interpreta el servidor para esta operación específica.
+      allow write: if true; 
     }
   }
 }
