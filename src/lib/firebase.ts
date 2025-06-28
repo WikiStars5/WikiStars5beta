@@ -1,3 +1,4 @@
+
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
@@ -55,7 +56,8 @@ service cloud.firestore {
     
     // --- Reglas de Figuras (figures) ---
     match /figures/{figureId} {
-      allow read: if true;
+      // PERMITE a cualquiera leer la lista de figuras (para sitemap) y perfiles individuales.
+      allow get, list: if true;
       allow create, delete: if isAdmin();
       allow update: if isRegisteredUser() || isAdmin();
 
