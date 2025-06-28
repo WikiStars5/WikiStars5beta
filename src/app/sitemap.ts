@@ -3,8 +3,8 @@ import { getAllFiguresFromFirestore } from '@/lib/placeholder-data';
 import type { Figure } from '@/lib/types';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // IMPORTANT: You must set this in your .env.local file
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  // Use the production URL directly to ensure correctness.
+  const baseUrl = 'https://wikistars5.com';
 
   // Get all figures to create dynamic routes
   const figures: Figure[] = await getAllFiguresFromFirestore();
