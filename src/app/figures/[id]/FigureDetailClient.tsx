@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage, FamilyMember, UserProfile } from "@/lib/types";
@@ -189,7 +190,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       const isNonAnonymous = !!user && !user.isAnonymous;
       const isAdmin = user?.uid === ADMIN_UID;
       
-      setCanEditFigure(isNonAnonymous || isAdmin);
+      setCanEditFigure(isAdmin);
       setCanCommentOrRate(!!user); 
       setCanVoteOnComments(!!user); 
       setCanSubmitGalleryImage(isNonAnonymous);
@@ -928,10 +929,9 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                   {!canEditFigure && !isEditing && (
                     <Alert variant="default" className="mb-4">
                         <LogIn className="h-4 w-4" />
-                        <AlertTitle>Edición para usuarios registrados</AlertTitle>
+                        <AlertTitle>Edición para Administradores</AlertTitle>
                         <AlertDescription>
-                          Para editar la información de esta figura, necesitas{" "}
-                          <Link href="/login" className="font-semibold text-primary hover:underline">iniciar sesión</Link> con una cuenta.
+                          Solo los administradores pueden editar los detalles de la figura.
                         </AlertDescription>
                     </Alert>
                   )}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link'; 
@@ -97,6 +98,12 @@ export function UserNav() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <Link href="/profile">
+            <DropdownMenuItem>
+              <User className="mr-2 h-4 w-4" />
+              <span>Mi Perfil</span>
+            </DropdownMenuItem>
+          </Link>
           {isAdmin && (
             <Link href="/admin">
               <DropdownMenuItem>
@@ -105,6 +112,7 @@ export function UserNav() {
               </DropdownMenuItem>
             </Link>
           )}
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
             <span>Cerrar Sesión</span>
