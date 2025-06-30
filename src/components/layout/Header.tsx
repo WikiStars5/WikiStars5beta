@@ -4,16 +4,14 @@ import { Logo } from '@/components/shared/Logo';
 import { UserNav } from '../auth/UserNav';
 import Link from 'next/link'; 
 import { MobileSearchButton } from './MobileSearchButton';
-import { ThemeToggleButton } from './ThemeToggleButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
 import { useState } from 'react';
 
 interface HeaderProps {
   theme: 'light' | 'dark';
-  toggleTheme: () => void;
 }
 
-export function Header({ theme, toggleTheme }: HeaderProps) {
+export function Header({ theme }: HeaderProps) {
   const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
 
   return (
@@ -41,7 +39,6 @@ export function Header({ theme, toggleTheme }: HeaderProps) {
           </nav>
 
           <MobileSearchButton />
-          <ThemeToggleButton theme={theme} toggleTheme={toggleTheme} />
           <UserNav />
         </div>
       </div>
