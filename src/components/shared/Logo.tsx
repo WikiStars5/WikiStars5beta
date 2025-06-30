@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { useState, useEffect } from 'react';
 
 interface LogoProps {
   className?: string;
@@ -19,14 +20,20 @@ const LOGO_INTRINSIC_WIDTH = 200; // Example intrinsic width
 const LOGO_INTRINSIC_HEIGHT = 50;  // Example intrinsic height (maintaining 4:1 ratio)
 
 export function Logo({ className, theme }: LogoProps) {
-  const currentLogoUrl = theme === 'light' ? logoLightUrl : logoDarkUrl;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const currentLogoUrl = theme === 'dark' ? logoDarkUrl : logoLightUrl;
 
   return (
     <Link href="/" className={cn("inline-flex items-end gap-2", className)}>
       {/* The Image component will be sized by its width/height props,
           and then CSS (h-7 w-auto) makes it responsive while maintaining aspect ratio. */}
       <Image
-        src={currentLogoUrl}
+        src={mounted ? currentLogoUrl : logoLightUrl} // Renderiza el logo claro por defecto para que coincida con el servidor
         alt="WikiStars5 Logo"
         width={LOGO_INTRINSIC_WIDTH}
         height={LOGO_INTRINSIC_HEIGHT}

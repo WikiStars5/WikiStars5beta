@@ -3,6 +3,7 @@
 
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 
 interface ThemeToggleButtonProps {
   theme: 'light' | 'dark';
@@ -10,6 +11,18 @@ interface ThemeToggleButtonProps {
 }
 
 export function ThemeToggleButton({ theme, toggleTheme }: ThemeToggleButtonProps) {
+  const [mounted, setMounted] = useState(false);
+
+  // Cuando el componente se monta en el cliente, podemos mostrar la UI de forma segura.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    // Para prevenir un cambio de diseño, renderizamos un placeholder del mismo tamaño.
+    return <div className="h-9 w-9" />;
+  }
+
   return (
     <Button 
       variant="ghost" 
