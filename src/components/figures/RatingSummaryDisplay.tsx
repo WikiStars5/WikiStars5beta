@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { StarValue, StarValueAsString } from "@/lib/types";
@@ -56,7 +55,7 @@ export function RatingSummaryDisplay({ starRatingCounts, figureName }: RatingSum
                       <span className="mr-1">{level}</span>
                       <Star className="h-3 w-3 text-yellow-400" />
                     </div>
-                    <Progress value={percentage} className="w-full h-2 [&>div]:bg-yellow-400" aria-label={`${percentage.toFixed(0)}% para ${level} estrellas`} />
+                    <Progress value={percentage} className="w-full h-2" aria-label={`${percentage.toFixed(0)}% para ${level} estrellas`} />
                     <span className="text-xs text-muted-foreground w-8 text-right">{countForLevel}</span>
                   </div>
                 );

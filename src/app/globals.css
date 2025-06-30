@@ -13,8 +13,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
  
-    --primary: 48 96% 54%;
-    --primary-foreground: 240 10% 3.9%;
+    --primary: 51 100% 50%; /* #FFD700 */
+    --primary-foreground: 51 100% 10%;
  
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
@@ -48,10 +48,10 @@
     --primary: 51 100% 50%; /* #FFD700 */
     --primary-foreground: 51 100% 10%; /* Dark text for on yellow primary */
 
-    --secondary: 0 0% 11.8%;
+    --secondary: 0 0% 17%;
     --secondary-foreground: 0 0% 96.1%;
 
-    --muted: 0 0% 11.8%;
+    --muted: 0 0% 17%;
     --muted-foreground: 0 0% 63.9%;
 
     --accent: 0 0% 20%; /* Same as border for hover effects */
