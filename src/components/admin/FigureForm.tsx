@@ -358,11 +358,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           placeholder="Ej: https://... (para el banner del perfil)"
         />
         {canPreviewCoverUrl ? (
-          <div className="mt-2 relative w-full max-w-sm aspect-[16/9] border rounded-md overflow-hidden bg-muted flex items-center justify-center">
+          <div className="mt-2 relative w-64 aspect-[16/9] border rounded-md overflow-hidden bg-muted flex items-center justify-center">
             <Image src={coverUrlToPreview} alt="Previsualización de Portada" layout="fill" objectFit="cover" />
           </div>
         ) : (
-          <div className="mt-2 w-full max-w-sm aspect-[16/9] border rounded-md bg-muted flex items-center justify-center text-muted-foreground">
+          <div className="mt-2 w-64 aspect-[16/9] border rounded-md bg-muted flex items-center justify-center text-muted-foreground">
             <ImageOff className="h-10 w-10" />
           </div>
         )}
