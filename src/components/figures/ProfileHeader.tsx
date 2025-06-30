@@ -40,13 +40,13 @@ export function ProfileHeader({
   
   return (
     <div className="w-full">
-      <div className="relative h-48 md:h-64 bg-card rounded-lg overflow-hidden shadow-lg group">
+      <div className="relative h-56 md:h-72 bg-card rounded-lg overflow-hidden shadow-lg group">
         <button onClick={() => onImageClick(coverImage)} className="w-full h-full block" aria-label={`Ver imagen de portada de ${figure.name} en pantalla completa`}>
           <Image
             src={coverImage}
             alt={`Portada de ${figure.name}`}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-50 group-hover:opacity-75"
+            className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-60 group-hover:opacity-80"
             priority
             data-ai-hint={correctedCoverPhotoUrl ? "background landscape" : "abstract pattern"}
             crossOrigin="anonymous" 
@@ -61,7 +61,7 @@ export function ProfileHeader({
              <button 
                 onClick={() => correctedPhotoUrl && onImageClick(correctedPhotoUrl)} 
                 disabled={!correctedPhotoUrl} 
-                className="w-full h-full block rounded-full border-4 border-primary shadow-xl bg-card overflow-hidden group/avatar drop-shadow-lg"
+                className="w-full h-full block rounded-full border-4 border-black shadow-xl bg-card overflow-hidden group/avatar drop-shadow-lg"
                 aria-label={`Ver foto de perfil de ${figure.name} en pantalla completa`}
               >
               {correctedPhotoUrl ? (
