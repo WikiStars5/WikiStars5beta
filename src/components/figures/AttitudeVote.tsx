@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -25,13 +26,13 @@ const ATTITUDE_OPTIONS_CONFIG: {
   key: AttitudeKey;
   label: string;
   emoji: string;
-  baseClass: string;
+  colorClass: string;
   selectedClass: string;
 }[] = [
-  { key: 'neutral', label: 'Neutral', emoji: '😐', baseClass: 'bg-card border-border hover:bg-accent', selectedClass: 'bg-muted-foreground/80 text-background ring-2 ring-muted-foreground' },
-  { key: 'fan', label: 'Fan', emoji: '😍', baseClass: 'bg-card border-border hover:bg-primary/10', selectedClass: 'bg-primary text-primary-foreground ring-2 ring-primary' },
-  { key: 'simp', label: 'Simp', emoji: '🥰', baseClass: 'bg-card border-border hover:bg-primary/10', selectedClass: 'bg-primary text-primary-foreground ring-2 ring-primary' },
-  { key: 'hater', label: 'Hater', emoji: '😡', baseClass: 'bg-card border-border hover:bg-destructive/10', selectedClass: 'bg-primary text-primary-foreground ring-2 ring-primary' },
+  { key: 'neutral', label: 'Neutral', emoji: '😐', colorClass: 'border-muted-foreground/50 text-muted-foreground hover:bg-muted-foreground/10 hover:border-muted-foreground', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-muted-foreground border-muted-foreground' },
+  { key: 'fan', label: 'Fan', emoji: '😍', colorClass: 'border-primary/50 text-primary hover:bg-primary/10 hover:border-primary', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-primary border-primary' },
+  { key: 'simp', label: 'Simp', emoji: '🥰', colorClass: 'border-[#FF4081]/50 text-[#FF4081] hover:bg-[#FF4081]/10 hover:border-[#FF4081]', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-[#FF4081] border-[#FF4081]' },
+  { key: 'hater', label: 'Hater', emoji: '😡', colorClass: 'border-destructive/50 text-destructive hover:bg-destructive/10 hover:border-destructive', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-destructive border-destructive' },
 ];
 
 
@@ -208,13 +209,14 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           </Alert>
         )}
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, baseClass, selectedClass }) => (
+          {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, colorClass, selectedClass }) => (
             <Button
               key={key}
-              variant="outline"
+              variant="ghost"
               className={cn(
-                "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 ring-offset-background border",
-                selectedAttitude === key ? selectedClass : baseClass,
+                "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 border bg-black",
+                colorClass,
+                selectedAttitude === key ? selectedClass : 'ring-0',
                 isLoadingAttitudeAction === key && 'opacity-50 cursor-not-allowed',
                 !canUserVote && 'cursor-not-allowed opacity-60'
               )}
