@@ -6,19 +6,16 @@ import Link from 'next/link';
 import { MobileSearchButton } from './MobileSearchButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
 import { useState } from 'react';
+import { ThemeToggleButton } from './ThemeToggleButton';
 
-interface HeaderProps {
-  theme: 'light' | 'dark';
-}
-
-export function Header({ theme }: HeaderProps) {
+export function Header() {
   const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
       <div className="flex h-18 w-full max-w-4xl items-center justify-between mx-auto py-3 px-4">
         <div className="flex items-center gap-2 md:gap-4">
-          <Logo theme={theme} />
+          <Logo />
           <div className={`hidden md:block transition-all duration-300 ease-in-out ${isHeaderSearchFocused ? 'w-72' : 'w-auto'}`}>
             <SearchBar 
               startAsIcon={true} 
@@ -39,6 +36,7 @@ export function Header({ theme }: HeaderProps) {
           </nav>
 
           <MobileSearchButton />
+          <ThemeToggleButton />
           <UserNav />
         </div>
       </div>
