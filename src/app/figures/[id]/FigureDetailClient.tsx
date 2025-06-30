@@ -188,9 +188,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
       setCurrentUser(user);
       const isNonAnonymous = !!user && !user.isAnonymous;
-      const isAdmin = user?.uid === ADMIN_UID;
       
-      setCanEditFigure(isAdmin);
+      setCanEditFigure(isNonAnonymous);
       setCanCommentOrRate(!!user); 
       setCanVoteOnComments(!!user); 
       setCanSubmitGalleryImage(isNonAnonymous);
@@ -848,7 +847,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
               </div>
               <div className="flex items-center space-x-2">
                 <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
-                {currentUser && (currentUser.uid === comment.userId || canEditFigure) && (
+                {currentUser && (currentUser.uid === comment.userId || (currentUser.uid === ADMIN_UID)) && (
                   <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/comment:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => openDeleteDialog(comment.id, comment.starRatingGiven)}>
                     <Trash2 className="h-4 w-4" />
                     <span className="sr-only">Eliminar comentario</span>
@@ -929,9 +928,9 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                   {!canEditFigure && !isEditing && (
                     <Alert variant="default" className="mb-4">
                         <LogIn className="h-4 w-4" />
-                        <AlertTitle>Edición para Administradores</AlertTitle>
+                        <AlertTitle>Edición para Usuarios Registrados</AlertTitle>
                         <AlertDescription>
-                          Solo los administradores pueden editar los detalles de la figura.
+                          Para editar esta sección, necesitas <Link href="/login" className="font-semibold text-primary hover:underline">iniciar sesión</Link> o <Link href="/signup" className="font-semibold text-primary hover:underline">crear una cuenta</Link>.
                         </AlertDescription>
                     </Alert>
                   )}
@@ -972,15 +971,15 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                         {figure!.species && renderDetailItem(Zap, "Especie", figure!.species)}
                         {figure!.firstAppearance && renderDetailItem(BookOpen, "Primera Aparición", figure!.firstAppearance)}
                         {figure!.birthDateOrAge && renderDetailItem(Cake, "Nacimiento/Edad", figure!.birthDateOrAge)}
-                        {figure!.birthPlace && renderDetailItem(MapPin, "Lugar Nacimiento", figure!.birthPlace)}
+                        {figure!.birthPlace && renderDetailItem(MapPin, "Lugar de Nacimiento", figure!.birthPlace)}
                         {figure!.nationality && renderDetailItem(Globe, "Nacionalidad", figure!.nationality)}
                         {figure!.occupation && renderDetailItem(Briefcase, "Ocupación", figure!.occupation)}
                         {figure!.statusLiveOrDead && renderDetailItem(Activity, "Estado (Vivo/Muerto)", figure!.statusLiveOrDead)}
                         {figure!.maritalStatus && renderDetailItem(HeartHandshake, "Estado Civil", figure!.maritalStatus)}
                         {figure!.height && renderDetailItem(StretchVertical, "Altura", figure!.height)}
                         {figure!.weight && renderDetailItem(Scale, "Peso", figure!.weight)}
-                        {figure!.hairColor && renderDetailItem(Palette, "Color Cabello", figure!.hairColor)}
-                        {figure!.eyeColor && renderDetailItem(Eye, "Color Ojos", figure!.eyeColor)}
+                        {figure!.hairColor && renderDetailItem(Palette, "Color de Cabello", figure!.hairColor)}
+                        {figure!.eyeColor && renderDetailItem(Eye, "Color de Ojos", figure!.eyeColor)}
                         {figure!.distinctiveFeatures && renderDetailItem(Scan, "Rasgos Distintivos", figure!.distinctiveFeatures)}
                       </div>
                     </>
