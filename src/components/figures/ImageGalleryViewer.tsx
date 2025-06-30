@@ -1,10 +1,15 @@
-
 "use client";
 
 import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import type { GalleryImage } from '@/lib/types';
-import { Dialog, DialogContent, DialogClose } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogClose,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, ChevronLeft, ChevronRight, Maximize, Minimize } from 'lucide-react';
 
@@ -63,6 +68,9 @@ export function ImageGalleryViewer({ images, initialIndex, isOpen, onClose }: Im
   if (!isOpen) {
     return null;
   }
+  
+  const currentImage = images.length > 0 ? images[currentIndex] : null;
+  const submittedBy = currentImage?.username ? `Enviada por ${currentImage.username}` : 'Galería de imágenes';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -72,6 +80,10 @@ export function ImageGalleryViewer({ images, initialIndex, isOpen, onClose }: Im
                     transition-all duration-300 ease-in-out`}
         onInteractOutside={(e) => e.preventDefault()} // Prevents closing on outside click
       >
+        <DialogTitle className="sr-only">Visor de Imágenes</DialogTitle>
+        <DialogDescription className="sr-only">
+          {`Imagen ${currentIndex + 1} de ${images.length}. ${submittedBy}. Usa las flechas para navegar.`}
+        </DialogDescription>
         <div className="absolute top-2 right-2 z-50 flex gap-2">
           <Button variant="ghost" size="icon" onClick={toggleFullScreen} className="text-white hover:bg-white/20 hover:text-white">
             {isFullScreen ? <Minimize className="h-6 w-6" /> : <Maximize className="h-6 w-6" />}
