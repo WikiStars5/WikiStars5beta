@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -186,7 +185,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
   
   if (isComponentLoading) { 
     return (
-      <Card>
+      <Card className="border border-white/20">
         <CardHeader>
           <CardTitle>¿Qué emoción te provoca {figureName}?</CardTitle>
           <CardDescription>Cargando opciones de emoción...</CardDescription>
@@ -200,7 +199,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
 
   return (
-    <Card>
+    <Card className="border border-white/20">
       <CardHeader>
         <CardTitle>¿Qué emoción te provoca {figureName}?</CardTitle>
         <CardDescription>

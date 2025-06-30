@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage, FamilyMember, UserProfile } from "@/lib/types";
@@ -932,7 +931,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-3 space-y-8">
           <Tabs defaultValue="attitude-poll" className="w-full">
-            <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-muted"> 
+            <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border-b border-white/20"> 
               <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
               <TabsTrigger value="attitude-poll" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><MessageSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
@@ -941,7 +940,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
             </TabsList>
 
             <TabsContent value="personal-info">
-              <Card>
+              <Card className="border border-white/20">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div className="flex items-center"><Info className="mr-2 h-6 w-6 text-primary" /><CardTitle className="text-2xl font-headline">Sobre {figure!.name}</CardTitle></div>
                   {canEditFigure && !isEditing && (<Button variant="outline" size="sm" onClick={handleEditToggle}><Edit className="mr-2 h-4 w-4" />Editar</Button>)}
@@ -1030,7 +1029,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
             <TabsContent value="perception-emotions">{figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
             
             <TabsContent value="image-gallery">
-              <Card>
+              <Card className="border border-white/20">
                 <CardHeader>
                   <CardTitle className="flex items-center text-2xl font-headline"><Images className="mr-3 h-7 w-7 text-primary" />Galería de Imágenes de {figure!.name}</CardTitle>
                   <CardDescription>Imágenes de la comunidad. Dominios permitidos: Wikimedia, Wikia, Firebase Storage, Placehold.co, Pinterest, etc.</CardDescription>
@@ -1096,7 +1095,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
             </TabsContent>
 
             <TabsContent value="family-tree">
-              <Card>
+              <Card className="border border-white/20">
                 <CardHeader>
                   <CardTitle className="flex items-center text-2xl font-headline"><FamilyIcon className="mr-3 h-7 w-7 text-primary" />Árbol Genealógico de {figure!.name}</CardTitle>
                    <CardDescription>Relaciones familiares conocidas de {figure!.name}. Edita la información directamente aquí.</CardDescription>
@@ -1110,7 +1109,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           
           {figure && (<RatingSummaryDisplay figureName={figure.name} starRatingCounts={figure.starRatingCounts} />)}
 
-          <Card className="mt-8 w-full">
+          <Card className="mt-8 w-full border border-white/20">
             <CardHeader>
               <CardTitle className="flex items-center text-2xl font-headline"><MessagesSquare className="mr-3 h-7 w-7 text-primary" />Califica y Comenta sobre {figure!.name}</CardTitle>
             </CardHeader>

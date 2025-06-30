@@ -28,11 +28,12 @@ const ATTITUDE_OPTIONS_CONFIG: {
   baseClass: string;
   selectedClass: string;
 }[] = [
-  { key: 'neutral', label: 'Neutral', emoji: '😐', baseClass: 'bg-card border-border hover:bg-muted-foreground/10', selectedClass: 'bg-muted-foreground/80 text-background ring-2 ring-muted-foreground' },
-  { key: 'fan', label: 'Fan', emoji: '😍', baseClass: 'bg-card border-border hover:bg-yellow-400/10', selectedClass: 'bg-primary text-primary-foreground ring-2 ring-primary' },
-  { key: 'simp', label: 'Simp', emoji: '🥰', baseClass: 'bg-card border-border hover:bg-yellow-400/10', selectedClass: 'bg-primary text-primary-foreground ring-2 ring-primary' },
-  { key: 'hater', label: 'Hater', emoji: '😡', baseClass: 'bg-card border-border hover:bg-yellow-400/10', selectedClass: 'bg-primary text-primary-foreground ring-2 ring-primary' },
+  { key: 'neutral', label: 'Neutral', emoji: '😐', baseClass: 'bg-card border-border hover:bg-accent', selectedClass: 'bg-muted-foreground/80 text-background ring-2 ring-muted-foreground' },
+  { key: 'fan', label: 'Fan', emoji: '😍', baseClass: 'bg-card border-border hover:bg-primary/10', selectedClass: 'bg-primary text-primary-foreground ring-2 ring-primary drop-shadow-[0_0_8px_#FFD700]' },
+  { key: 'simp', label: 'Simp', emoji: '🥰', baseClass: 'bg-card border-border hover:bg-[#FF4081]/10', selectedClass: 'bg-[#FF4081] text-white ring-2 ring-[#FF4081] drop-shadow-[0_0_8px_#FF4081]' },
+  { key: 'hater', label: 'Hater', emoji: '😡', baseClass: 'bg-card border-border hover:bg-destructive/10', selectedClass: 'bg-destructive text-destructive-foreground ring-2 ring-destructive drop-shadow-[0_0_8px_#F44336]' },
 ];
+
 
 const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
@@ -167,7 +168,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   
   if (isComponentLoading) { 
     return (
-      <Card>
+      <Card className="border border-white/20">
         <CardHeader>
           <CardTitle>¿Qué te consideras?</CardTitle>
           <CardDescription>Cargando opciones de actitud...</CardDescription>
@@ -180,7 +181,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   }
 
   return (
-    <Card>
+    <Card className="border border-white/20">
       <CardHeader>
         <CardTitle>¿Qué te consideras con respecto a {figureName}?</CardTitle>
         <CardDescription>
@@ -212,7 +213,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
               key={key}
               variant="outline"
               className={cn(
-                "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 ring-offset-background",
+                "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 ring-offset-background border",
                 selectedAttitude === key ? selectedClass : baseClass,
                 isLoadingAttitudeAction === key && 'opacity-50 cursor-not-allowed',
                 !canUserVote && 'cursor-not-allowed opacity-60'

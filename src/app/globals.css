@@ -36,6 +36,7 @@
   }
  
   .dark {
+    /* Total Black Mode */
     --background: 0 0% 4%; /* #0A0A0A */
     --foreground: 0 0% 96.1%; /* #F5F5F5 */
 
