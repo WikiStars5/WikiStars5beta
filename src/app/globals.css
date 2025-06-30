@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: 210 20% 96%; /* Light Cool Gray */
-    --foreground: 0 0% 8%;   /* Dark Gray / near black */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
 
-    --card: 0 0% 100%;        /* white */
-    --card-foreground: 0 0% 8%; 
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 8%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 48 100% 50%;   /* Vibrant Yellow */
-    --primary-foreground: 0 0% 8%; /* Dark text for on yellow primary */
+    --primary: 48 96% 54%; /* Vibrant Yellow */
+    --primary-foreground: 240 10% 3.9%; /* Dark text for on yellow primary */
 
-    --secondary: 48 100% 92%; /* Very light yellow */
-    --secondary-foreground: 48 100% 25%; /* Darker yellow text for on light yellow secondary */
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
 
-    --muted: 0 0% 94%;     /* Light gray */
-    --muted-foreground: 0 0% 45%; /* Medium gray for less important text */
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 48 100% 50%;    /* Vibrant Yellow (same as primary) */
-    --accent-foreground: 0 0% 8%; /* Dark text for on yellow accent */
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 88%; 
-    --input: 0 0% 100%; /* White input background */
-    --ring: 48 100% 50%; /* Yellow for focus rings */   
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 48 96% 54%; /* Yellow for focus rings */
     
     --chart-1: 48 100% 60%; /* Adjusted chart colors to fit yellow theme */
     --chart-2: 48 100% 70%;
@@ -38,20 +38,9 @@
     --chart-4: 48 100% 40%;
     --chart-5: 48 100% 30%;
     --radius: 0.5rem;
-
-    /* Sidebar variables - Light Theme */
-    --sidebar-background: 0 0% 97%; 
-    --sidebar-foreground: 0 0% 10%;
-    --sidebar-primary: 48 100% 50%;
-    --sidebar-primary-foreground: 0 0% 8%;
-    --sidebar-accent: 48 100% 50%;
-    --sidebar-accent-foreground: 0 0% 8%;
-    --sidebar-border: 0 0% 85%;
-    --sidebar-ring: 48 100% 50%;
   }
 
   .dark {
-    /* Reverted Dark Theme to yellow-based */
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
 
@@ -61,8 +50,8 @@
     --popover: 240 3.7% 15.9%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 48 100% 50%;   /* Vibrant Yellow */
-    --primary-foreground: 0 0% 8%; /* Dark text for on yellow primary */
+    --primary: 48 96% 54%;   /* Vibrant Yellow */
+    --primary-foreground: 240 10% 3.9%; /* Dark text for on yellow primary */
 
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
@@ -70,31 +59,21 @@
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
 
-    --accent: 48 100% 50%;    /* Vibrant Yellow */
-    --accent-foreground: 0 0% 8%; /* Dark text for on yellow accent */
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 48 100% 50%;
+    --ring: 48 96% 54%;
     
     --chart-1: 48 100% 60%;
     --chart-2: 48 100% 70%;
     --chart-3: 48 100% 80%;
     --chart-4: 48 100% 40%;
     --chart-5: 48 100% 30%;
-
-    /* Sidebar variables - Dark Theme */
-    --sidebar-background: 240 10% 3.9%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 48 100% 50%;
-    --sidebar-primary-foreground: 0 0% 8%;
-    --sidebar-accent: 48 100% 50%;
-    --sidebar-accent-foreground: 0 0% 8%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 48 100% 50%;
   }
 }
 

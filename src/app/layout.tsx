@@ -16,21 +16,27 @@ export default function RootLayout({
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
-    const storedTheme = localStorage.getItem('theme');
-    if (storedTheme === 'dark' || storedTheme === 'light') {
-      setTheme(storedTheme);
-    } else {
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setTheme(prefersDark ? 'dark' : 'light');
+    // Only run on the client
+    if (typeof window !== 'undefined') {
+      const storedTheme = localStorage.getItem('theme');
+      if (storedTheme === 'dark' || storedTheme === 'light') {
+        setTheme(storedTheme);
+      } else {
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setTheme(prefersDark ? 'dark' : 'light');
+      }
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('theme', theme);
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    // Only run on the client
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('theme', theme);
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
     }
   }, [theme]);
 
@@ -43,7 +49,6 @@ export default function RootLayout({
       <head>
         <title>WikiStars5 - Percepción de Figuras Públicas</title>
         <meta name="description" content="Califica y discute sobre figuras públicas en WikiStars5." />
-        {/* Updated favicon links for better compatibility */}
         <link rel="icon" href={logoUrl} type="image/png" sizes="any" />
         <link rel="apple-touch-icon" href={logoUrl} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -54,7 +59,7 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <div className="flex flex-col min-h-screen">
           <Header theme={theme} toggleTheme={toggleTheme} />
-          <main className="w-full flex-grow container mx-auto max-w-4xl py-8">
+          <main className="flex-grow w-full max-w-4xl mx-auto py-8 px-4">
             {children}
           </main>
           <Footer theme={theme} />
