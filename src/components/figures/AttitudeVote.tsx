@@ -28,10 +28,10 @@ const ATTITUDE_OPTIONS_CONFIG: {
   baseClass: string;
   selectedClass: string;
 }[] = [
-  { key: 'neutral', label: 'Neutral', emoji: '😐', baseClass: 'bg-black border border-white text-white hover:bg-neutral-800', selectedClass: 'bg-muted-foreground/80 text-background ring-2 ring-muted-foreground' },
-  { key: 'fan', label: 'Fan', emoji: '😍', baseClass: 'bg-black border border-white text-white hover:bg-neutral-800', selectedClass: 'bg-primary text-primary-foreground ring-2 ring-primary' },
-  { key: 'simp', label: 'Simp', emoji: '🥰', baseClass: 'bg-black border border-white text-white hover:bg-neutral-800', selectedClass: 'bg-[#FF4081] text-white ring-2 ring-[#FF4081]' },
-  { key: 'hater', label: 'Hater', emoji: '😡', baseClass: 'bg-black border border-white text-white hover:bg-neutral-800', selectedClass: 'bg-destructive text-destructive-foreground ring-2 ring-destructive' },
+  { key: 'neutral', label: 'Neutral', emoji: '😐', baseClass: 'bg-card border-border hover:bg-muted-foreground/10', selectedClass: 'bg-muted-foreground/80 text-background ring-2 ring-muted-foreground' },
+  { key: 'fan', label: 'Fan', emoji: '😍', baseClass: 'bg-card border-border hover:bg-yellow-400/10', selectedClass: 'bg-primary text-primary-foreground ring-2 ring-primary' },
+  { key: 'simp', label: 'Simp', emoji: '🥰', baseClass: 'bg-card border-border hover:bg-pink-400/10', selectedClass: 'bg-[#FF4081] text-white ring-2 ring-[#FF4081]' },
+  { key: 'hater', label: 'Hater', emoji: '😡', baseClass: 'bg-card border-border hover:bg-red-500/10', selectedClass: 'bg-destructive text-destructive-foreground ring-2 ring-destructive' },
 ];
 
 const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
