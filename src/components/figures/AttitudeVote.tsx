@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
 import Link from 'next/link';
 import { ShareButton } from '../shared/ShareButton';
+import { cn } from '@/lib/utils';
 
 interface AttitudeVoteProps {
   figureId: string;
@@ -21,11 +22,17 @@ interface AttitudeVoteProps {
   currentUser: User | null;
 }
 
-const ATTITUDE_OPTIONS_CONFIG: { key: AttitudeKey; label: string; emoji: string; colorClass: string }[] = [
-  { key: 'neutral', label: 'Neutral', emoji: '😐', colorClass: 'hover:bg-gray-400/20 border-gray-500 text-gray-600 dark:text-gray-400 dark:border-gray-600' },
-  { key: 'fan', label: 'Fan', emoji: '😍', colorClass: 'hover:bg-yellow-400/20 border-yellow-500 text-yellow-600 dark:text-yellow-400 dark:border-yellow-600' },
-  { key: 'simp', label: 'Simp', emoji: '🥰', colorClass: 'hover:bg-pink-400/20 border-pink-500 text-pink-600 dark:text-pink-400 dark:border-pink-600' },
-  { key: 'hater', label: 'Hater', emoji: '😡', colorClass: 'hover:bg-red-400/20 border-red-500 text-red-600 dark:text-red-400 dark:border-red-600' },
+const ATTITUDE_OPTIONS_CONFIG: {
+  key: AttitudeKey;
+  label: string;
+  emoji: string;
+  baseClass: string;
+  selectedClass: string;
+}[] = [
+  { key: 'neutral', label: 'Neutral', emoji: '😐', baseClass: 'border-muted-foreground/50 text-muted-foreground hover:bg-muted-foreground/10', selectedClass: 'bg-muted-foreground/80 text-background ring-2 ring-muted-foreground' },
+  { key: 'fan', label: 'Fan', emoji: '😍', baseClass: 'border-primary text-primary hover:bg-primary/10', selectedClass: 'bg-primary text-primary-foreground ring-2 ring-primary' },
+  { key: 'simp', label: 'Simp', emoji: '🥰', baseClass: 'border-[#FF4081] text-[#FF4081] hover:bg-[#FF4081]/10', selectedClass: 'bg-[#FF4081] text-white ring-2 ring-[#FF4081]' },
+  { key: 'hater', label: 'Hater', emoji: '😡', baseClass: 'border-destructive text-destructive hover:bg-destructive/10', selectedClass: 'bg-destructive text-destructive-foreground ring-2 ring-destructive' },
 ];
 
 const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
@@ -201,15 +208,16 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           </Alert>
         )}
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, colorClass }) => (
+          {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, baseClass, selectedClass }) => (
             <Button
               key={key}
-              variant={selectedAttitude === key ? "default" : "outline"}
-              className={`flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 
-                ${selectedAttitude === key ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 dark:ring-offset-card' : `${colorClass}`}
-                ${isLoadingAttitudeAction === key ? 'opacity-50 cursor-not-allowed' : ''}
-                ${!canUserVote ? 'cursor-not-allowed opacity-60' : ''}
-              `}
+              variant="outline"
+              className={cn(
+                "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 ring-offset-background",
+                selectedAttitude === key ? selectedClass : baseClass,
+                isLoadingAttitudeAction === key && 'opacity-50 cursor-not-allowed',
+                !canUserVote && 'cursor-not-allowed opacity-60'
+              )}
               onClick={() => handleAttitudeClick(key)}
               disabled={!canUserVote || !!isLoadingAttitudeAction}
               style={{ minHeight: '100px' }}
