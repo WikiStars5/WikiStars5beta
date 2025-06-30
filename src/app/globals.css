@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98%; /* Off-white */
+    --background: 210 20% 96%; /* Light Cool Gray */
     --foreground: 0 0% 8%;   /* Dark Gray / near black */
 
     --card: 0 0% 100%;        /* white */
@@ -55,10 +55,10 @@
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
 
-    --card: 240 10% 3.9%;
+    --card: 240 3.7% 15.9%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 240 10% 3.9%;
+    --popover: 240 3.7% 15.9%;
     --popover-foreground: 0 0% 98%;
 
     --primary: 48 100% 50%;   /* Vibrant Yellow */
