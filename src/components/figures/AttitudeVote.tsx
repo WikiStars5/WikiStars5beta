@@ -12,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
 import Link from 'next/link';
-import { ToastAction } from '../ui/toast';
+import { ShareButton } from '../shared/ShareButton';
 
 interface AttitudeVoteProps {
   figureId: string;
@@ -93,23 +93,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     };
   }, [figureId, currentUser, toast]);
 
-  const handleCopyLink = useCallback(() => {
-    const url = `${window.location.origin}/figures/${figureId}`;
-    navigator.clipboard.writeText(url).then(() => {
-      toast({
-        title: "Enlace Copiado",
-        description: "El enlace al perfil ha sido copiado.",
-      });
-    }).catch(err => {
-      console.error('Failed to copy: ', err);
-      toast({
-        title: "Error",
-        description: "No se pudo copiar el enlace.",
-        variant: "destructive"
-      });
-    });
-  }, [figureId, toast]);
-
   const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
     if (!canUserVote) {
       toast({ title: "Acción Requerida", description: "Inicia sesión o continúa como invitado para votar.", variant: "default" });
@@ -155,9 +138,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           description: "¡Gracias por tu voto! Compártelo para ver qué opinan los demás.",
           duration: 8000,
           action: (
-            <ToastAction altText="Compartir" onClick={handleCopyLink}>
-              Copiar Enlace
-            </ToastAction>
+            <ShareButton figureName={figureName} figureId={figureId} showText />
           ),
         });
       } else {

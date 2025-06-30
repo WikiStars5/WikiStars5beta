@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ToastAction } from '../ui/toast';
+import { ShareButton } from '../shared/ShareButton';
 
 interface PerceptionEmotionsProps {
   figureId: string;
@@ -97,23 +97,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     };
   }, [figureId, currentUser, toast]);
 
-  const handleCopyLink = useCallback(() => {
-    const url = `${window.location.origin}/figures/${figureId}`;
-    navigator.clipboard.writeText(url).then(() => {
-      toast({
-        title: "Enlace Copiado",
-        description: "El enlace al perfil ha sido copiado.",
-      });
-    }).catch(err => {
-      console.error('Failed to copy: ', err);
-      toast({
-        title: "Error",
-        description: "No se pudo copiar el enlace.",
-        variant: "destructive"
-      });
-    });
-  }, [figureId, toast]);
-
   const handleEmotionClick = async (emotionKey: EmotionKey) => {
     if (!canUserVote) {
       toast({ title: "Acción Requerida", description: "Inicia sesión o continúa como invitado para votar.", variant: "default" });
@@ -181,9 +164,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
           description: `Tu percepción ha sido guardada. ¡Invita a otros a votar!`,
           duration: 8000,
           action: (
-            <ToastAction altText="Compartir" onClick={handleCopyLink}>
-              Copiar Enlace
-            </ToastAction>
+            <ShareButton figureName={figureName} figureId={figureId} showText />
           ),
         });
       } else { 
