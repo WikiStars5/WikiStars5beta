@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -85,10 +84,8 @@ export default function ProfilePage() {
           <CardTitle className="text-3xl font-headline flex items-center gap-2">
             {displayName}
             {isAdmin && (
-              <Link href="/admin" legacyBehavior>
-                <a title="Ir al Panel de Administración">
-                  <ShieldCheck className="h-6 w-6 text-primary cursor-pointer"/>
-                </a>
+              <Link href="/admin" title="Ir al Panel de Administración">
+                <ShieldCheck className="h-6 w-6 text-primary cursor-pointer"/>
               </Link>
             )}
           </CardTitle>
