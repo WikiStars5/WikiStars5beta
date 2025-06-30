@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
 import Link from 'next/link';
+import { ToastAction } from '../ui/toast';
 
 interface AttitudeVoteProps {
   figureId: string;
@@ -92,6 +93,22 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     };
   }, [figureId, currentUser, toast]);
 
+  const handleCopyLink = useCallback(() => {
+    const url = `${window.location.origin}/figures/${figureId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast({
+        title: "Enlace Copiado",
+        description: "El enlace al perfil ha sido copiado.",
+      });
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+      toast({
+        title: "Error",
+        description: "No se pudo copiar el enlace.",
+        variant: "destructive"
+      });
+    });
+  }, [figureId, toast]);
 
   const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
     if (!canUserVote) {
@@ -133,7 +150,16 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
             attitude: newAttitudeToSet,
             timestamp: serverTimestamp(),
         });
-        toast({ title: "Voto Registrado", description: `Tu actitud como "${ATTITUDE_OPTIONS_CONFIG.find(e => e.key === newAttitudeToSet)?.label}" ha sido guardada.` });
+        toast({
+          title: "¡Voto Registrado!",
+          description: "¡Gracias por tu voto! Compártelo para ver qué opinan los demás.",
+          duration: 8000,
+          action: (
+            <ToastAction altText="Compartir" onClick={handleCopyLink}>
+              Copiar Enlace
+            </ToastAction>
+          ),
+        });
       } else {
         await deleteDoc(userAttitudeDocRef);
         toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });

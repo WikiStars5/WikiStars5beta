@@ -46,6 +46,7 @@ import { submitGalleryImageAction } from "@/app/actions/figureGalleryActions";
 import { updateCommentLikes } from "@/app/actions/commentRatingActions";
 import { cn, correctMalformedUrl } from "@/lib/utils";
 import { countryCodeToNameMap } from "@/config/countries";
+import { ToastAction } from "@/components/ui/toast";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -413,6 +414,24 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
   };
 
+  const handleCopyLink = useCallback(() => {
+    if (!figure) return;
+    const url = `${window.location.origin}/figures/${figure.id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast({
+        title: "Enlace Copiado",
+        description: "El enlace al perfil ha sido copiado a tu portapapeles.",
+      });
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+      toast({
+        title: "Error",
+        description: "No se pudo copiar el enlace.",
+        variant: "destructive"
+      });
+    });
+  }, [figure, toast]);
+
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canCommentOrRate || !currentUser || !figure) {
@@ -498,7 +517,18 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       if (currentStarsForComment) {
         playSoundEffect(currentStarsForComment);
       }
-      toast({ title: "Opinión Enviada", description: "Tu calificación y/o comentario ha sido guardado." });
+
+      toast({
+        title: "¡Opinión Enviada!",
+        description: "¡Gracias por contribuir! Compártelo para que más gente opine.",
+        duration: 8000,
+        action: (
+          <ToastAction altText="Compartir" onClick={handleCopyLink}>
+            Copiar Enlace
+          </ToastAction>
+        ),
+      });
+
       setNewComment("");
       fetchComments(); 
       router.refresh(); 
