@@ -31,7 +31,7 @@ export function Logo({ className }: LogoProps) {
       <Image
         src={mounted ? currentLogoUrl : logoLightUrl}
         alt="WikiStars5 Logo"
-        width={LOGO_INTRinsIC_WIDTH}
+        width={LOGO_INTRINSIC_WIDTH}
         height={LOGO_INTRINSIC_HEIGHT}
         className="h-7 w-auto object-contain"
         priority
