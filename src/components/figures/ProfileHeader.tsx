@@ -10,11 +10,13 @@ import type { User } from 'firebase/auth';
 interface ProfileHeaderProps {
   figure: Figure;
   currentUser: User | null;
+  onImageClick: (imageUrl: string) => void;
 }
 
 export function ProfileHeader({ 
   figure, 
-  currentUser
+  currentUser,
+  onImageClick
 }: ProfileHeaderProps) {
   const correctedCoverPhotoUrl = correctMalformedUrl(figure.coverPhotoUrl);
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
@@ -25,15 +27,17 @@ export function ProfileHeader({
     <div className="w-full">
       {/* Cover Photo Container */}
       <div className="relative h-48 md:h-64 bg-muted rounded-t-lg overflow-hidden shadow-lg group">
-        <Image
-          src={coverImage}
-          alt={`Portada de ${figure.name}`}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-500"
-          priority
-          data-ai-hint={correctedCoverPhotoUrl ? "background landscape" : "abstract pattern"}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+        <button onClick={() => onImageClick(coverImage)} className="w-full h-full block" aria-label={`Ver imagen de portada de ${figure.name} en pantalla completa`}>
+          <Image
+            src={coverImage}
+            alt={`Portada de ${figure.name}`}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
+            priority
+            data-ai-hint={correctedCoverPhotoUrl ? "background landscape" : "abstract pattern"}
+          />
+        </button>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
       </div>
 
       {/* Profile info section below the cover */}
@@ -41,23 +45,25 @@ export function ProfileHeader({
         {/* Using a container to manage the layout with negative margin */}
         <div className="relative -mt-16 md:-mt-20 flex flex-col items-center md:flex-row md:items-end md:space-x-5">
           {/* Profile Avatar */}
-          <div className="relative flex-shrink-0 w-28 h-28 md:w-36 md:h-36 border-4 border-card rounded-full overflow-hidden shadow-xl bg-muted">
-            {correctedPhotoUrl ? (
-              <Image
-                src={correctedPhotoUrl}
-                alt={figure.name}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 112px, 144px"
-                data-ai-hint="portrait person"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <span className="text-4xl font-bold text-muted-foreground">
-                  {figure.name.split(' ').map(n => n[0]).join('').substring(0, 3)}
-                </span>
-              </div>
-            )}
+          <div className="relative flex-shrink-0 w-28 h-28 md:w-36 md:h-36 border-4 border-card rounded-full shadow-xl bg-muted">
+            <button onClick={() => correctedPhotoUrl && onImageClick(correctedPhotoUrl)} disabled={!correctedPhotoUrl} className="w-full h-full block rounded-full overflow-hidden" aria-label={`Ver foto de perfil de ${figure.name} en pantalla completa`}>
+              {correctedPhotoUrl ? (
+                <Image
+                  src={correctedPhotoUrl}
+                  alt={figure.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 112px, 144px"
+                  data-ai-hint="portrait person"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="text-4xl font-bold text-muted-foreground">
+                    {figure.name.split(' ').map(n => n[0]).join('').substring(0, 3)}
+                  </span>
+                </div>
+              )}
+            </button>
           </div>
 
           {/* Name and Actions */}

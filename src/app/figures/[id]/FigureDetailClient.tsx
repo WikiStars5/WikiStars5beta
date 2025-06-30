@@ -127,7 +127,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [isLoadingGalleryImages, setIsLoadingGalleryImages] = useState(true);
 
-  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerImageUrl, setViewerImageUrl] = useState<string | null>(null);
+  const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const allowedImageDomains = useMemo(() => {
@@ -704,9 +705,15 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     setIsDeleteDialogOpen(true);
   };
 
-  const handleOpenImageViewer = (index: number) => {
+  const handleOpenGalleryViewer = (index: number) => {
     setSelectedImageIndex(index);
-    setIsViewerOpen(true);
+    setIsGalleryViewerOpen(true);
+  };
+
+  const handleOpenHeaderImage = (imageUrl: string) => {
+    if (imageUrl) {
+      setViewerImageUrl(imageUrl);
+    }
   };
 
   if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -919,6 +926,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       <ProfileHeader 
         figure={figure!} 
         currentUser={currentUser}
+        onImageClick={handleOpenHeaderImage}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
@@ -1061,7 +1069,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                       {galleryImages.map((img, index) => (
                         <button
                           key={img.id}
-                          onClick={() => handleOpenImageViewer(index)}
+                          onClick={() => handleOpenGalleryViewer(index)}
                           className="group mb-3 block break-inside-avoid relative overflow-hidden rounded-md shadow-md hover:shadow-xl transition-shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                           aria-label={`Ver imagen ${index + 1} de ${figure!.name}`}
                         >
@@ -1197,16 +1205,23 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         </AlertDialogContent>
       </AlertDialog>
 
-      {isViewerOpen && galleryImages.length > 0 && (
+      {isGalleryViewerOpen && galleryImages.length > 0 && (
         <ImageGalleryViewer
           images={galleryImages.map(img => ({...img, imageUrl: correctMalformedUrl(img.imageUrl)}))}
           initialIndex={selectedImageIndex}
-          isOpen={isViewerOpen}
-          onClose={() => setIsViewerOpen(false)}
+          isOpen={isGalleryViewerOpen}
+          onClose={() => setIsGalleryViewerOpen(false)}
+        />
+      )}
+      
+      {viewerImageUrl && (
+        <ImageGalleryViewer
+            images={[{ id: 'header-image', imageUrl: viewerImageUrl, userId: '', createdAt: new Timestamp(0,0) }]}
+            initialIndex={0}
+            isOpen={!!viewerImageUrl}
+            onClose={() => setViewerImageUrl(null)}
         />
       )}
     </div>
   );
 }
-
-    

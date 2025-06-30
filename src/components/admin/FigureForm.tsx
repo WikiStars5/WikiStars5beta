@@ -304,6 +304,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       urlToPreview.startsWith('blob:') ||
       urlToPreview.startsWith('data:')
   );
+  
+  const coverUrlToPreview = correctMalformedUrl(coverPhotoUrl.trim() ? coverPhotoUrl.trim() : initialData?.coverPhotoUrl || null);
+  const canPreviewCoverUrl = coverUrlToPreview && (coverUrlToPreview.startsWith('http://') || coverUrlToPreview.startsWith('https://'));
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-card rounded-lg shadow-md">
@@ -354,6 +357,15 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           onChange={(e) => setCoverPhotoUrl(e.target.value)}
           placeholder="Ej: https://... (para el banner del perfil)"
         />
+        {canPreviewCoverUrl ? (
+          <div className="mt-2 relative w-full max-w-sm aspect-[16/9] border rounded-md overflow-hidden bg-muted flex items-center justify-center">
+            <Image src={coverUrlToPreview} alt="Previsualización de Portada" layout="fill" objectFit="cover" />
+          </div>
+        ) : (
+          <div className="mt-2 w-full max-w-sm aspect-[16/9] border rounded-md bg-muted flex items-center justify-center text-muted-foreground">
+            <ImageOff className="h-10 w-10" />
+          </div>
+        )}
       </div>
 
       <div>
