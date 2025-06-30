@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage, FamilyMember, UserProfile } from "@/lib/types";
@@ -46,6 +47,7 @@ import { updateCommentLikes } from "@/app/actions/commentRatingActions";
 import { cn, correctMalformedUrl } from "@/lib/utils";
 import { countryCodeToNameMap } from "@/config/countries";
 import { ShareButton } from "@/components/shared/ShareButton";
+import { useTheme } from 'next-themes';
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -129,6 +131,21 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [viewerImageUrl, setViewerImageUrl] = useState<string | null>(null);
   const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  const { resolvedTheme } = useTheme();
+  const [dominantColor, setDominantColor] = useState<string | null>(null);
+  const [isDayMode, setIsDayMode] = useState(false);
+
+  useEffect(() => {
+    setIsDayMode(resolvedTheme === 'light');
+  }, [resolvedTheme]);
+
+  const bleedStyle = (isDayMode && dominantColor) ? {
+    background: `radial-gradient(ellipse 80% 100% at 50% -20%, rgba(${dominantColor.replace('rgb(', '').replace(')', '')}, 0.15) 0%, transparent 60%)`,
+    opacity: 1
+  } : {
+    opacity: 0 
+  };
 
   const allowedImageDomains = useMemo(() => {
     return [
@@ -921,11 +938,18 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   };
 
   return (
-    <div className="space-y-8 lg:space-y-12">
+    <div className="relative space-y-8 lg:space-y-12">
+      <div 
+        className="absolute -top-20 left-1/2 -translate-x-1/2 h-[500px] w-full max-w-7xl -z-10 transition-opacity duration-700"
+        style={bleedStyle}
+        aria-hidden="true"
+      />
+
       <ProfileHeader 
         figure={figure!} 
         currentUser={currentUser}
         onImageClick={handleOpenHeaderImage}
+        onColorExtracted={setDominantColor}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">

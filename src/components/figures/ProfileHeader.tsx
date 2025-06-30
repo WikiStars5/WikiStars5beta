@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Figure } from "@/lib/types";
@@ -5,26 +6,41 @@ import Image from "next/image";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { correctMalformedUrl } from "@/lib/utils";
 import type { User } from 'firebase/auth';
+import { useColor } from 'color-thief-react';
+import { useEffect } from 'react';
 
 interface ProfileHeaderProps {
   figure: Figure;
   currentUser: User | null;
   onImageClick: (imageUrl: string) => void;
+  onColorExtracted?: (color: string | null) => void;
 }
 
 export function ProfileHeader({ 
   figure, 
   currentUser,
-  onImageClick
+  onImageClick,
+  onColorExtracted
 }: ProfileHeaderProps) {
   const correctedCoverPhotoUrl = correctMalformedUrl(figure.coverPhotoUrl);
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
 
   const coverImage = correctedCoverPhotoUrl || 'https://placehold.co/1200x400.png';
 
+  const { data: dominantColor, loading } = useColor(coverImage, 'rgbString', {
+    crossOrigin: 'anonymous',
+    quality: 10,
+  });
+
+  useEffect(() => {
+    if (onColorExtracted && !loading) {
+      onColorExtracted(dominantColor || null);
+    }
+  }, [dominantColor, loading, onColorExtracted]);
+  
   return (
     <div className="w-full">
-      <div className="relative h-48 md:h-64 bg-black rounded-lg overflow-hidden shadow-lg group">
+      <div className="relative h-48 md:h-64 bg-card rounded-lg overflow-hidden shadow-lg group">
         <button onClick={() => onImageClick(coverImage)} className="w-full h-full block" aria-label={`Ver imagen de portada de ${figure.name} en pantalla completa`}>
           <Image
             src={coverImage}
@@ -33,18 +49,19 @@ export function ProfileHeader({
             className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-50 group-hover:opacity-75"
             priority
             data-ai-hint={correctedCoverPhotoUrl ? "background landscape" : "abstract pattern"}
+            crossOrigin="anonymous" 
           />
         </button>
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
       </div>
 
-      <div className="bg-card p-4 rounded-b-lg">
+      <div className="bg-transparent p-4 rounded-b-lg">
         <div className="relative -mt-16 md:-mt-20 flex flex-col items-center md:flex-row md:items-end md:space-x-5">
           <div className="relative flex-shrink-0 w-28 h-28 md:w-36 md:h-36">
              <button 
                 onClick={() => correctedPhotoUrl && onImageClick(correctedPhotoUrl)} 
                 disabled={!correctedPhotoUrl} 
-                className="w-full h-full block rounded-full border-4 border-primary shadow-xl bg-black overflow-hidden group/avatar drop-shadow-lg"
+                className="w-full h-full block rounded-full border-4 border-primary shadow-xl bg-card overflow-hidden group/avatar drop-shadow-lg"
                 aria-label={`Ver foto de perfil de ${figure.name} en pantalla completa`}
               >
               {correctedPhotoUrl ? (
