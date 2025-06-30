@@ -1,3 +1,4 @@
+
 import { SearchBar } from "@/components/shared/SearchBar";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import { getFeaturedFiguresFromFirestore } from "@/lib/placeholder-data";
@@ -33,28 +34,28 @@ export default async function HomePage() {
         <h2 className="text-3xl font-bold font-headline text-center mb-10">Cómo Funciona WikiStars5</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
-            <Lightbulb className="w-12 h-12 text-accent mb-4" />
+            <Lightbulb className="w-12 h-12 text-primary mb-4" />
             <h3 className="text-xl font-headline mb-2">Descubre Figuras</h3>
             <p className="text-sm text-muted-foreground">
               Busca o navega a través de perfiles de figuras públicas de diversos campos.
             </p>
           </div>
           <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
-            <Users className="w-12 h-12 text-accent mb-4" />
+            <Users className="w-12 h-12 text-primary mb-4" />
             <h3 className="text-xl font-headline mb-2">Expresa tu Percepción</h3>
             <p className="text-sm text-muted-foreground">
               Vota por la emoción que te provoca una figura y mira los resultados globales.
             </p>
           </div>
           <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
-            <MessageSquareText className="w-12 h-12 text-accent mb-4" />
+            <MessageSquareText className="w-12 h-12 text-primary mb-4" />
             <h3 className="text-xl font-headline mb-2">Únete a las Discusiones</h3>
             <p className="text-sm text-muted-foreground">
               Comparte tus opiniones en las secciones de comentarios y reacciona a los demás.
             </p>
           </div>
           <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
-            <Share2 className="w-12 h-12 text-accent mb-4" />
+            <Share2 className="w-12 h-12 text-primary mb-4" />
             <h3 className="text-xl font-headline mb-2">Comparte Perfiles</h3>
             <p className="text-sm text-muted-foreground">
               Comparte fácilmente perfiles con tus amigos en redes sociales.
