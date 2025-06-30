@@ -721,6 +721,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
   };
   const isValidEditedPhotoUrl = isValidUrl(correctMalformedUrl(editedPhotoUrl), allowedImageDomains);
+  const isValidCoverPhotoUrl = isValidUrl(correctMalformedUrl(editedCoverPhotoUrl), allowedImageDomains);
 
   const handleReplyClick = (commentId: string) => {
     if (replyingTo === commentId) {
@@ -950,6 +951,21 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                   {isEditing && canEditFigure ? (
                     <div className="space-y-4">
                       {renderEditInput("coverPhotoUrl", "URL de Imagen de Portada", editedCoverPhotoUrl, (e) => setEditedCoverPhotoUrl(e.target.value), "Ej: https://...")}
+                      {editedCoverPhotoUrl ? (
+                        isValidCoverPhotoUrl ? (
+                          <div className="mt-2 relative w-full aspect-[16/9] border rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                            <Image src={correctMalformedUrl(editedCoverPhotoUrl)} alt="Previsualización de Portada" layout="fill" objectFit="cover" />
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-xs text-destructive border border-destructive/50 bg-destructive/10 rounded-md p-2">
+                            URL de portada no válida o de un dominio no permitido.
+                          </div>
+                        )
+                      ) : (
+                        <div className="mt-2 w-full aspect-[16/9] border rounded-md bg-muted flex items-center justify-center text-muted-foreground">
+                          <ImageOff className="h-10 w-10" />
+                        </div>
+                      )}
                       {renderEditInput("photoUrl", "URL de Imagen de Perfil", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://...")}
                       <p className="text-xs text-muted-foreground mt-1">Dominios permitidos: {allowedImageDomains.join(', ')}.</p>
                       {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center"><Image src={correctMalformedUrl(editedPhotoUrl)} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground"><ImageOff className="h-10 w-10" /></div>}
@@ -1192,3 +1208,5 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
+
+    
