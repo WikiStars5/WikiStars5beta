@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { MobileSearchButton } from './MobileSearchButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
 import { useState } from 'react';
-import { ThemeToggleButton } from './ThemeToggleButton';
 
 export function Header() {
   const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
@@ -36,7 +35,6 @@ export function Header() {
           </nav>
 
           <MobileSearchButton />
-          <ThemeToggleButton />
           <UserNav />
         </div>
       </div>
