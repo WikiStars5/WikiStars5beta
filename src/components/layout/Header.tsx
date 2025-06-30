@@ -1,8 +1,7 @@
-
 "use client"; 
 
 import { Logo } from '@/components/shared/Logo';
-import { UserNav } from './UserNav';
+import { UserNav } from '../auth/UserNav';
 import Link from 'next/link'; 
 import { MobileSearchButton } from './MobileSearchButton';
 import { ThemeToggleButton } from './ThemeToggleButton';
@@ -19,7 +18,7 @@ export function Header({ theme, toggleTheme }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
-      <div className="container flex h-18 max-w-screen-2xl items-center justify-between py-3">
+      <div className="container flex h-18 max-w-5xl items-center justify-between py-3">
         <div className="flex items-center gap-2 md:gap-4">
           <Logo theme={theme} />
           <div className={`hidden md:block transition-all duration-300 ease-in-out ${isHeaderSearchFocused ? 'w-72' : 'w-auto'}`}>

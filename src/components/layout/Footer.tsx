@@ -1,3 +1,4 @@
+"use client";
 
 import { Logo } from '@/components/shared/Logo';
 
@@ -7,8 +8,8 @@ interface FooterProps {
 
 export function Footer({ theme }: FooterProps) {
   return (
-    <footer className="border-t border-border/40 py-8 mt-auto">
-      <div className="container max-w-screen-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+    <footer className="bg-card border-t border-border/40 py-8 mt-auto">
+      <div className="container max-w-5xl flex flex-col md:flex-row items-center justify-between gap-4">
         <Logo className="text-sm" theme={theme} />
         <p className="text-sm text-muted-foreground">
           &copy; {new Date().getFullYear()} WikiStars5. Todos los derechos reservados.
