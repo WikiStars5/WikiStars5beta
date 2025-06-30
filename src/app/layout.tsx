@@ -54,7 +54,7 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <div className="flex flex-col min-h-screen">
           <Header theme={theme} toggleTheme={toggleTheme} />
-          <main className="flex-grow container max-w-4xl py-8">
+          <main className="w-full flex-grow container mx-auto max-w-4xl py-8">
             {children}
           </main>
           <Footer theme={theme} />
