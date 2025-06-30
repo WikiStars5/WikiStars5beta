@@ -51,10 +51,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased bg-muted/40">
+      <body className="font-body antialiased">
         <div className="flex flex-col min-h-screen">
           <Header theme={theme} toggleTheme={toggleTheme} />
-          <main className="flex-grow container max-w-5xl py-8">
+          <main className="flex-grow container max-w-4xl py-8">
             {children}
           </main>
           <Footer theme={theme} />
