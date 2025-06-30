@@ -78,6 +78,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [editedOccupation, setEditedOccupation] = useState("");
   const [editedGender, setEditedGender] = useState("");
   const [editedPhotoUrl, setEditedPhotoUrl] = useState("");
+  const [editedCoverPhotoUrl, setEditedCoverPhotoUrl] = useState("");
   const [editedAlias, setEditedAlias] = useState("");
   const [editedSpecies, setEditedSpecies] = useState("");
   const [editedFirstAppearance, setEditedFirstAppearance] = useState("");
@@ -237,6 +238,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       setEditedOccupation(currentFigure.occupation || "");
       setEditedGender(currentFigure.gender || "");
       setEditedPhotoUrl(currentFigure.photoUrl || "");
+      setEditedCoverPhotoUrl(currentFigure.coverPhotoUrl || "");
       setEditedAlias(currentFigure.alias || "");
       setEditedSpecies(currentFigure.species || "");
       setEditedFirstAppearance(currentFigure.firstAppearance || "");
@@ -385,6 +387,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         occupation: editedOccupation,
         gender: editedGender,
         photoUrl: correctMalformedUrl(editedPhotoUrl.trim() || 'https://placehold.co/400x600.png'),
+        coverPhotoUrl: correctMalformedUrl(editedCoverPhotoUrl),
         alias: editedAlias,
         species: editedSpecies,
         firstAppearance: editedFirstAppearance,
@@ -946,7 +949,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                   )}
                   {isEditing && canEditFigure ? (
                     <div className="space-y-4">
-                      {renderEditInput("photoUrl", "URL de Imagen Principal", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://...")}
+                      {renderEditInput("coverPhotoUrl", "URL de Imagen de Portada", editedCoverPhotoUrl, (e) => setEditedCoverPhotoUrl(e.target.value), "Ej: https://...")}
+                      {renderEditInput("photoUrl", "URL de Imagen de Perfil", editedPhotoUrl, (e) => setEditedPhotoUrl(e.target.value), "Ej: https://...")}
                       <p className="text-xs text-muted-foreground mt-1">Dominios permitidos: {allowedImageDomains.join(', ')}.</p>
                       {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center"><Image src={correctMalformedUrl(editedPhotoUrl)} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground"><ImageOff className="h-10 w-10" /></div>}
                       {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}

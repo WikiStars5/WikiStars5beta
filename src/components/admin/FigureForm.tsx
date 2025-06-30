@@ -50,6 +50,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl || '');
+  const [coverPhotoUrl, setCoverPhotoUrl] = useState(initialData?.coverPhotoUrl || '');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
 
@@ -93,6 +94,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setName(initialData.name);
       setDescription(initialData.description || ''); 
       setPhotoUrl(initialData.photoUrl || ''); 
+      setCoverPhotoUrl(initialData.coverPhotoUrl || '');
       setOccupation(initialData.occupation || '');
       setGender(initialData.gender || '');
       setNationality(initialData.nationality || '');
@@ -122,6 +124,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setName('');
       setDescription('');
       setPhotoUrl('');
+      setCoverPhotoUrl('');
       setOccupation('');
       setGender('');
       setNationality('');
@@ -240,6 +243,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         nameLower: name.trim().toLowerCase(),
         description: description.trim() || initialData?.description || "", 
         photoUrl: finalPhotoUrlToSave,
+        coverPhotoUrl: correctMalformedUrl(coverPhotoUrl),
         nationality: nationality.trim(),
         occupation: occupation.trim(),
         gender: gender.trim(),
@@ -340,9 +344,20 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           rows={4}
         />
       </div>
+      
+      <div>
+        <Label htmlFor="coverPhotoUrl">URL de Imagen de Portada (Opcional)</Label>
+        <Input
+          id="coverPhotoUrl"
+          type="url"
+          value={coverPhotoUrl}
+          onChange={(e) => setCoverPhotoUrl(e.target.value)}
+          placeholder="Ej: https://... (para el banner del perfil)"
+        />
+      </div>
 
       <div>
-        <Label htmlFor="photoUrl">URL de la Imagen Principal (Opcional)</Label>
+        <Label htmlFor="photoUrl">URL de la Imagen de Perfil (Opcional)</Label>
         <Input
           id="photoUrl"
           type="url"
@@ -382,7 +397,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       </div>
 
       <div className="mt-4 border-t pt-4 border-border">
-        <Label htmlFor="fileInput">Subir Nueva Foto (Opcional)</Label>
+        <Label htmlFor="fileInput">Subir Nueva Foto de Perfil (Opcional)</Label>
         <Input
           id="fileInput"
           type="file"
@@ -391,7 +406,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           className="mt-1"
         />
         <p className="text-sm text-muted-foreground mt-1">
-          Sube una imagen para la figura. Esto tendrá prioridad sobre la URL de la imagen.
+          Sube una imagen para la figura. Esto tendrá prioridad sobre la URL de la imagen de perfil.
         </p>
       </div>
 

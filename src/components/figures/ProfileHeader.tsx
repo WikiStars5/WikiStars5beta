@@ -3,9 +3,7 @@
 
 import type { Figure } from "@/lib/types";
 import Image from "next/image";
-import { Card, CardTitle } from "@/components/ui/card";
 import { ShareButton } from "@/components/shared/ShareButton";
-import { ImageOff } from "lucide-react";
 import { correctMalformedUrl } from "@/lib/utils";
 import type { User } from 'firebase/auth';
 
@@ -18,41 +16,61 @@ export function ProfileHeader({
   figure, 
   currentUser
 }: ProfileHeaderProps) {
+  const correctedCoverPhotoUrl = correctMalformedUrl(figure.coverPhotoUrl);
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
 
-  return (
-    <Card className="overflow-hidden shadow-lg p-4 md:p-6">
-      <div className="flex justify-center w-full">
-        <div className="flex flex-col items-center w-full max-w-xl space-y-4">
-          
-          <CardTitle className="text-3xl lg:text-4xl font-headline text-primary text-center">
-            {figure.name}
-          </CardTitle>
+  const coverImage = correctedCoverPhotoUrl || 'https://placehold.co/1200x400.png';
 
-          <div className="relative w-4/5 sm:w-full aspect-[3/4] bg-muted rounded-lg overflow-hidden shadow-md">
+  return (
+    <div className="w-full">
+      {/* Cover Photo Container */}
+      <div className="relative h-48 md:h-64 bg-muted rounded-t-lg overflow-hidden shadow-lg group">
+        <Image
+          src={coverImage}
+          alt={`Portada de ${figure.name}`}
+          fill
+          className="object-cover group-hover:scale-105 transition-transform duration-500"
+          priority
+          data-ai-hint={correctedCoverPhotoUrl ? "background landscape" : "abstract pattern"}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+      </div>
+
+      {/* Profile info section below the cover */}
+      <div className="bg-card p-4 rounded-b-lg shadow-lg">
+        {/* Using a container to manage the layout with negative margin */}
+        <div className="relative -mt-16 md:-mt-20 flex flex-col items-center md:flex-row md:items-end md:space-x-5">
+          {/* Profile Avatar */}
+          <div className="relative flex-shrink-0 w-28 h-28 md:w-36 md:h-36 border-4 border-card rounded-full overflow-hidden shadow-xl bg-muted">
             {correctedPhotoUrl ? (
               <Image
                 src={correctedPhotoUrl}
                 alt={figure.name}
                 fill
-                sizes="(max-width: 639px) 80vw, (max-width: 1023px) 100vw, 672px"
-                className="object-contain"
+                className="object-cover"
+                sizes="(max-width: 768px) 112px, 144px"
                 data-ai-hint="portrait person"
-                priority={true}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-muted" data-ai-hint="placeholder abstract">
-                <ImageOff className="h-24 w-24 text-muted-foreground" />
+              <div className="w-full h-full flex items-center justify-center">
+                <span className="text-4xl font-bold text-muted-foreground">
+                  {figure.name.split(' ').map(n => n[0]).join('').substring(0, 3)}
+                </span>
               </div>
             )}
           </div>
 
-          <div className="flex items-center justify-center gap-4 pt-2 w-full">
-            <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
+          {/* Name and Actions */}
+          <div className="flex-grow flex flex-col md:flex-row justify-between items-center w-full mt-3 md:mt-0">
+             <h1 className="text-2xl md:text-4xl font-headline font-bold text-foreground text-center md:text-left">
+              {figure.name}
+            </h1>
+            <div className="mt-3 md:mt-0 md:pb-4 flex-shrink-0">
+              <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
+            </div>
           </div>
-
         </div>
       </div>
-    </Card>
+    </div>
   );
 }

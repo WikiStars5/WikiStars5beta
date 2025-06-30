@@ -40,6 +40,7 @@ export const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot
     name: data.name || "",
     nameLower: data.nameLower || (data.name ? data.name.toLowerCase() : ""),
     photoUrl: data.photoUrl || "",
+    coverPhotoUrl: data.coverPhotoUrl || "",
     description: data.description || "",
     nationality: data.nationality || "",
     occupation: data.occupation || "",
@@ -202,7 +203,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
         id, createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts, commentCount, familyMembers, 
         name, photoUrl, description, nationality, occupation, gender, alias, species,
         firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
-        height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured, 
+        height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured, coverPhotoUrl,
         ...rest
     } = figure;
 
@@ -210,6 +211,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
 
     if (name !== undefined) updatePayload.name = name;
     if (photoUrl !== undefined) updatePayload.photoUrl = photoUrl;
+    if (coverPhotoUrl !== undefined) updatePayload.coverPhotoUrl = coverPhotoUrl;
     if (description !== undefined) updatePayload.description = description;
     if (nationality !== undefined) updatePayload.nationality = nationality;
     if (occupation !== undefined) updatePayload.occupation = occupation;
