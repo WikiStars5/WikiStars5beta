@@ -52,12 +52,12 @@ export function ProfileHeader({
                   src={correctedPhotoUrl}
                   alt={figure.name}
                   fill
-                  className="object-cover group-hover/avatar:scale-105 transition-transform duration-300"
+                  className="rounded-full object-cover group-hover/avatar:scale-105 transition-transform duration-300"
                   sizes="(max-width: 768px) 112px, 144px"
                   data-ai-hint="portrait person"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
+                <div className="w-full h-full flex items-center justify-center rounded-full">
                   <span className="text-4xl font-bold text-muted-foreground">
                     {figure.name.split(' ').map(n => n[0]).join('').substring(0, 3)}
                   </span>
