@@ -185,7 +185,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
   
   if (isComponentLoading) { 
     return (
-      <Card className="border border-white/20">
+      <Card className="border border-white/20 bg-black">
         <CardHeader>
           <CardTitle>¿Qué emoción te provoca {figureName}?</CardTitle>
           <CardDescription>Cargando opciones de emoción...</CardDescription>
@@ -199,7 +199,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
 
   return (
-    <Card className="border border-white/20">
+    <Card className="border border-white/20 bg-black">
       <CardHeader>
         <CardTitle>¿Qué emoción te provoca {figureName}?</CardTitle>
         <CardDescription>

@@ -31,7 +31,7 @@ export function RatingSummaryDisplay({ starRatingCounts, figureName }: RatingSum
   const starLevels: StarValue[] = [5, 4, 3, 2, 1];
 
   return (
-    <Card className="mb-6 border border-white/20">
+    <Card className="mb-6 border border-white/20 bg-black">
       <CardHeader>
         <CardTitle className="text-xl font-headline">Calificación General de {figureName}</CardTitle>
         {totalVotes === 0 && <CardDescription>Aún no hay calificaciones para esta figura.</CardDescription>}
