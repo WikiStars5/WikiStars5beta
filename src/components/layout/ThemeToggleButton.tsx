@@ -13,14 +13,15 @@ interface ThemeToggleButtonProps {
 export function ThemeToggleButton({ theme, toggleTheme }: ThemeToggleButtonProps) {
   const [mounted, setMounted] = useState(false);
 
-  // Cuando el componente se monta en el cliente, podemos mostrar la UI de forma segura.
+  // When the component mounts on the client, we can safely show the UI.
   useEffect(() => {
     setMounted(true);
   }, []);
 
   if (!mounted) {
-    // Para prevenir un cambio de diseño, renderizamos un placeholder del mismo tamaño.
-    return <div className="h-9 w-9" />;
+    // To prevent hydration mismatch, render a disabled placeholder button on the server
+    // and on the initial client render. This ensures the component structure matches.
+    return <Button variant="ghost" size="icon" disabled />;
   }
 
   return (
