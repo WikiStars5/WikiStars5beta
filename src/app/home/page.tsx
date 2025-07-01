@@ -19,7 +19,7 @@ export default async function HomePage() {
             Bienvenido a <span className="text-primary">WikiStars5</span>
           </h1>
           <p className="text-lg md:text-xl text-foreground/80 mb-8 text-center">
-            Descubre, califica y discute la percepción pública de tus figuras famosas favoritas (y no tan favoritas). ¡Comparte tu opinión y mira lo que piensa el mundo!
+            La plataforma interactiva para explorar, calificar y debatir sobre la percepción pública de tus figuras favoritas. Descubre perfiles detallados, vota sobre tu actitud y emociones, y únete a la conversación global.
           </p>
           <div className="w-full max-w-xl">
             <SearchBar />
