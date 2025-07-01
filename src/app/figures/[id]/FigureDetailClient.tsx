@@ -132,8 +132,11 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [viewerImageUrl, setViewerImageUrl] = useState<string | null>(null);
   const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
+
 
   const MAX_COMMENT_LENGTH = 1000;
+  const COMMENT_TRUNCATE_LENGTH = 350;
 
   const { resolvedTheme } = useTheme();
   const [dominantColor, setDominantColor] = useState<string | null>(null);
@@ -864,12 +867,21 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     <div><Label htmlFor={idField} className="font-semibold text-foreground/90">{label}</Label><Textarea id={idField} value={value} onChange={onChange} placeholder={placeholder || `Añade ${label.toLowerCase()}...`} rows={rows || 3} className="mt-1" /></div>
   );
 
+  const toggleCommentExpansion = (commentId: string) => {
+    setExpandedComments(prev => ({
+      ...prev,
+      [commentId]: !prev[commentId],
+    }));
+  };
+
   const renderComment = (comment: UserComment, level: number) => {
     const MAX_NESTING_LEVEL = 4; 
     const userHasLiked = !!currentUser && comment.likedBy.includes(currentUser.uid);
     const userHasDisliked = !!currentUser && comment.dislikedBy.includes(currentUser.uid);
     const isVoting = votingCommentId === comment.id;
     const countryName = comment.userCountryCode ? countryCodeToNameMap.get(comment.userCountryCode) : null;
+    const isLongComment = comment.text && comment.text.length > COMMENT_TRUNCATE_LENGTH;
+    const isExpanded = !!expandedComments[comment.id];
 
     return (
       <div key={comment.id} className="relative group/comment">
@@ -904,7 +916,25 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
               </div>
             </div>
             {comment.starRatingGiven && (<div className="mt-1"><StarRating rating={comment.starRatingGiven} size={14} readOnly /></div>)}
-            {comment.text && comment.text.trim() !== "" && (<p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{comment.text}</p>)}
+            {comment.text && comment.text.trim() !== "" && (
+              <div className="mt-2">
+                <p className="text-sm text-foreground/90 whitespace-pre-wrap break-words">
+                  {isLongComment && !isExpanded
+                    ? `${comment.text.substring(0, COMMENT_TRUNCATE_LENGTH)}...`
+                    : comment.text
+                  }
+                </p>
+                {isLongComment && (
+                  <Button
+                    variant="link"
+                    className="p-0 h-auto text-xs text-primary hover:text-primary/80"
+                    onClick={() => toggleCommentExpansion(comment.id)}
+                  >
+                    {isExpanded ? 'Leer menos' : 'Leer más'}
+                  </Button>
+                )}
+              </div>
+            )}
             <div className="flex items-center gap-1 mt-2">
               <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'like', comment.parentId)} disabled={!canVoteOnComments || isVoting}>
                 <ThumbsUp className={cn("h-4 w-4 mr-1", userHasLiked && "fill-blue-500 text-blue-500")} /> {comment.likes}
