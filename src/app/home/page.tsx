@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Lightbulb, Users, MessageSquareText, Share2 } from "lucide-react";
 
-export const revalidate = 0; 
+export const revalidate = 60; // Revalidate every 60 seconds
 
 export default async function HomePage() {
   const featuredFigures = await getFeaturedFiguresFromFirestore(4); 

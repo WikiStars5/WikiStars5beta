@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: "Explora todos los perfiles de figuras públicas en WikiStars5, obtenidos de Firestore.",
 };
 
-export const revalidate = 0;
+export const revalidate = 60; // Revalidate every 60 seconds
 
 interface BrowseFiguresPageProps {
   searchParams?: {

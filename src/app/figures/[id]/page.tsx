@@ -7,6 +7,8 @@ interface FigurePageProps {
   params: { id: string };
 }
 
+export const revalidate = 60; // Revalidate every 60 seconds
+
 // Generate dynamic metadata for SEO
 export async function generateMetadata(
   { params }: FigurePageProps,
