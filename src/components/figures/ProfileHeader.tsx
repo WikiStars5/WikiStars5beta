@@ -25,7 +25,7 @@ export function ProfileHeader({
   const correctedCoverPhotoUrl = correctMalformedUrl(figure.coverPhotoUrl);
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
 
-  const coverImage = correctedCoverPhotoUrl || 'https://placehold.co/1280x720.png';
+  const coverImage = correctedCoverPhotoUrl || 'https://placehold.co/1280x550.png';
 
   const { data: dominantColor, loading } = useColor(coverImage, 'rgbString', {
     crossOrigin: 'anonymous',
@@ -40,13 +40,13 @@ export function ProfileHeader({
   
   return (
     <div className="w-full">
-      <div className="relative w-full aspect-video bg-card rounded-lg overflow-hidden shadow-lg group">
+      <div className="relative w-full aspect-[21/9] bg-card rounded-lg overflow-hidden shadow-lg group">
         <button onClick={() => onImageClick(coverImage)} className="w-full h-full block" aria-label={`Ver imagen de portada de ${figure.name} en pantalla completa`}>
           <Image
             src={coverImage}
             alt={`Portada de ${figure.name}`}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-60 group-hover:opacity-80"
+            className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-90"
             priority
             data-ai-hint={correctedCoverPhotoUrl ? "background landscape" : "abstract pattern"}
             crossOrigin="anonymous" 
@@ -56,7 +56,7 @@ export function ProfileHeader({
       </div>
 
       <div className="bg-transparent p-4 rounded-b-lg">
-        <div className="relative -mt-16 md:-mt-20 flex flex-col items-center md:flex-row md:items-end md:space-x-5">
+        <div className="relative -mt-14 md:-mt-16 flex flex-col items-center md:flex-row md:items-end md:space-x-5">
           <div className="relative flex-shrink-0 w-28 h-28 md:w-36 md:h-36">
              <button 
                 onClick={() => correctedPhotoUrl && onImageClick(correctedPhotoUrl)} 

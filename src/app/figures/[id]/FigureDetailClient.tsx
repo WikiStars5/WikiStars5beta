@@ -141,7 +141,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     setIsDayMode(resolvedTheme === 'light');
   }, [resolvedTheme]);
   
-  const correctedCoverPhotoUrlForColor = correctMalformedUrl(figure?.coverPhotoUrl) || 'https://placehold.co/1280x720.png';
+  const correctedCoverPhotoUrlForColor = correctMalformedUrl(figure?.coverPhotoUrl) || 'https://placehold.co/1280x550.png';
   const { data: extractedColor } = useColor(correctedCoverPhotoUrlForColor, 'rgbString', {
     crossOrigin: 'anonymous',
     quality: 10,
