@@ -141,7 +141,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     setIsDayMode(resolvedTheme === 'light');
   }, [resolvedTheme]);
   
-  const correctedCoverPhotoUrlForColor = correctMalformedUrl(figure?.coverPhotoUrl) || 'https://placehold.co/1200x400.png';
+  const correctedCoverPhotoUrlForColor = correctMalformedUrl(figure?.coverPhotoUrl) || 'https://placehold.co/1280x720.png';
   const { data: extractedColor } = useColor(correctedCoverPhotoUrlForColor, 'rgbString', {
     crossOrigin: 'anonymous',
     quality: 10,
@@ -951,7 +951,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   };
 
   return (
-    <div className="relative -mt-8 space-y-8 lg:space-y-12">
+    <div className="relative -mt-20 space-y-8 lg:space-y-12">
       <div 
         className="absolute -top-20 left-1/2 -translate-x-1/2 h-[500px] w-full max-w-7xl -z-10 transition-opacity duration-700"
         style={bleedStyle}

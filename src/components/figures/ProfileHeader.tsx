@@ -25,7 +25,7 @@ export function ProfileHeader({
   const correctedCoverPhotoUrl = correctMalformedUrl(figure.coverPhotoUrl);
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
 
-  const coverImage = correctedCoverPhotoUrl || 'https://placehold.co/1200x400.png';
+  const coverImage = correctedCoverPhotoUrl || 'https://placehold.co/1280x720.png';
 
   const { data: dominantColor, loading } = useColor(coverImage, 'rgbString', {
     crossOrigin: 'anonymous',
@@ -40,7 +40,7 @@ export function ProfileHeader({
   
   return (
     <div className="w-full">
-      <div className="relative h-56 md:h-72 bg-card rounded-lg overflow-hidden shadow-lg group">
+      <div className="relative w-full aspect-video bg-card rounded-lg overflow-hidden shadow-lg group">
         <button onClick={() => onImageClick(coverImage)} className="w-full h-full block" aria-label={`Ver imagen de portada de ${figure.name} en pantalla completa`}>
           <Image
             src={coverImage}
