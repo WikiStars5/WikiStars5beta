@@ -101,97 +101,75 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     };
   }, [figureId, currentUser, toast]);
 
-  const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
-    if (!canUserVote) {
-      toast({ title: "Acción Requerida", description: "Inicia sesión o continúa como invitado para votar.", variant: "default" });
+  const handleAttitudeClick = (attitudeKeyClicked: AttitudeKey) => {
+    if (!canUserVote || !currentUser) {
+      toast({ title: "Acción Requerida", description: "Inicia sesión o continúa como invitado para votar." });
       return;
     }
     if (isLoadingAttitudeAction) return;
-    if (!currentUser) return;
 
     setIsLoadingAttitudeAction(attitudeKeyClicked);
 
     const previousSelectedAttitude = selectedAttitude;
     const newAttitudeToSet = previousSelectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
 
-    // --- Optimistic UI Update ---
     const originalCounts = { ...figureAttitudeCounts };
-    const originalTotalVotes = totalVotes;
-    
     const newOptimisticCounts = { ...originalCounts };
-    let newOptimisticTotalVotes = originalTotalVotes;
-
     if (previousSelectedAttitude) {
-        newOptimisticCounts[previousSelectedAttitude] = Math.max(0, (newOptimisticCounts[previousSelectedAttitude] || 0) - 1);
-        newOptimisticTotalVotes--;
+      newOptimisticCounts[previousSelectedAttitude] = Math.max(0, (newOptimisticCounts[previousSelectedAttitude] || 0) - 1);
     }
     if (newAttitudeToSet) {
-        newOptimisticCounts[newAttitudeToSet] = (newOptimisticCounts[newAttitudeToSet] || 0) + 1;
-        newOptimisticTotalVotes++;
+      newOptimisticCounts[newAttitudeToSet] = (newOptimisticCounts[newAttitudeToSet] || 0) + 1;
     }
-
-    // Apply optimistic update
+    setTotalVotes(Object.values(newOptimisticCounts).reduce((sum, count) => sum + count, 0));
     setSelectedAttitude(newAttitudeToSet);
     setFigureAttitudeCounts(newOptimisticCounts);
-    setTotalVotes(newOptimisticTotalVotes);
 
-    // --- Server-side Action ---
-    const figureDocRef = doc(db, "figures", figureId);
-    const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
-    const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
+    (async () => {
+      const figureDocRef = doc(db, "figures", figureId);
+      const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
+      const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
 
-    try {
-      await runTransaction(db, async (transaction) => {
-        const figureDoc = await transaction.get(figureDocRef);
-        if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
+      try {
+        await runTransaction(db, async (transaction) => {
+          const figureDoc = await transaction.get(figureDocRef);
+          if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
+          
+          const serverCounts = figureDoc.data()?.attitudeCounts || { ...defaultAttitudeCountsData };
+          if (previousSelectedAttitude) {
+            serverCounts[previousSelectedAttitude] = Math.max(0, (serverCounts[previousSelectedAttitude] || 0) - 1);
+          }
+          if (newAttitudeToSet) {
+            serverCounts[newAttitudeToSet] = (serverCounts[newAttitudeToSet] || 0) + 1;
+          }
+          transaction.update(figureDocRef, { attitudeCounts: serverCounts });
+        });
 
-        const currentServerCounts = (figureDoc.data()?.attitudeCounts || { ...defaultAttitudeCountsData });
-        const finalServerCounts = { ...currentServerCounts };
-        if (previousSelectedAttitude) {
-          finalServerCounts[previousSelectedAttitude] = Math.max(0, (finalServerCounts[previousSelectedAttitude] || 0) - 1);
-        }
         if (newAttitudeToSet) {
-          finalServerCounts[newAttitudeToSet] = (finalServerCounts[newAttitudeToSet] || 0) + 1;
+          await setDoc(userAttitudeDocRef, {
+            userId: currentUser.uid, figureId, attitude: newAttitudeToSet, timestamp: serverTimestamp(),
+          });
+          toast({
+            title: "¡Voto Registrado!",
+            description: "¡Gracias por tu voto! Compártelo para ver qué opinan los demás.",
+            duration: 8000,
+            action: <ShareButton figureName={figureName} figureId={figureId} showText />,
+          });
+        } else {
+          await deleteDoc(userAttitudeDocRef);
+          toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
         }
-        transaction.update(figureDocRef, { attitudeCounts: finalServerCounts });
-      });
-
-      if (newAttitudeToSet) {
-        await setDoc(userAttitudeDocRef, {
-            userId: currentUser.uid,
-            figureId: figureId,
-            attitude: newAttitudeToSet,
-            timestamp: serverTimestamp(),
-        });
-        toast({
-          title: "¡Voto Registrado!",
-          description: "¡Gracias por tu voto! Compártelo para ver qué opinan los demás.",
-          duration: 8000,
-          action: (
-            <ShareButton figureName={figureName} figureId={figureId} showText />
-          ),
-        });
-      } else {
-        await deleteDoc(userAttitudeDocRef);
-        toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
+      } catch (error: any) {
+        setFigureAttitudeCounts(originalCounts);
+        setSelectedAttitude(previousSelectedAttitude);
+        setTotalVotes(Object.values(originalCounts).reduce((sum, count) => sum + count, 0));
+        
+        console.error("Error voting on attitude:", error);
+        toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
+      } finally {
+        setIsLoadingAttitudeAction(null);
       }
-    } catch (error: any) {
-      // --- Revert UI on error ---
-      setSelectedAttitude(previousSelectedAttitude);
-      setFigureAttitudeCounts(originalCounts);
-      setTotalVotes(originalTotalVotes);
-
-      console.error("Error voting on attitude:", error);
-      let errorMessage = "No se pudo registrar tu voto.";
-      if (error.message?.includes("Missing or insufficient permissions")) {
-        errorMessage = "Error de permisos. Verifica las reglas de Firestore.";
-      } else {
-        errorMessage = error.message;
-      }
-      toast({ title: "Error al Votar", description: errorMessage, variant: "destructive" });
-    } finally {
-      setIsLoadingAttitudeAction(null);
-    }
+    })();
   };
   
   if (isComponentLoading) { 

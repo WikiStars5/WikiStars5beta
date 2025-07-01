@@ -554,100 +554,84 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
   };
 
-  const handleLikeDislike = async (commentId: string, action: 'like' | 'dislike', parentCommentId: string | null = null) => {
-    if (!currentUser) {
-        toast({ title: 'Acción Requerida', description: 'Debes estar conectado (incluso como invitado) para votar.' });
-        return;
+  const handleLikeDislike = (commentId: string, action: 'like' | 'dislike', parentCommentId: string | null = null) => {
+    if (!currentUser || !figure) {
+      toast({ title: 'Acción Requerida', description: 'Debes estar conectado para votar.' });
+      return;
     }
     if (votingCommentId) return;
+
     setVotingCommentId(commentId);
 
-    const updateCommentRecursively = (comments: UserComment[], targetCommentId: string, currentUserId: string, action: 'like' | 'dislike'): UserComment[] => {
-        return comments.map(comment => {
-            if (comment.id === targetCommentId) {
-                let newLikes = comment.likes;
-                let newDislikes = comment.dislikes;
-                let newLikedBy = [...comment.likedBy];
-                let newDislikedBy = [...comment.dislikedBy];
-
-                const hasLiked = newLikedBy.includes(currentUserId);
-                const hasDisliked = newDislikedBy.includes(currentUserId);
-
-                if (action === 'like') {
-                    if (hasLiked) {
-                        newLikes--;
-                        newLikedBy = newLikedBy.filter(id => id !== currentUserId);
-                    } else {
-                        newLikes++;
-                        newLikedBy.push(currentUserId);
-                        if (hasDisliked) {
-                            newDislikes--;
-                            newDislikedBy = newDislikedBy.filter(id => id !== currentUserId);
-                        }
-                    }
-                } else {
-                    if (hasDisliked) {
-                        newDislikes--;
-                        newDislikedBy = newDislikedBy.filter(id => id !== currentUserId);
-                    } else {
-                        newDislikes++;
-                        newDislikedBy.push(currentUserId);
-                        if (hasLiked) {
-                            newLikes--;
-                            newLikedBy = newLikedBy.filter(id => id !== currentUserId);
-                        }
-                    }
-                }
-                return {
-                    ...comment,
-                    likes: newLikes,
-                    dislikes: newDislikes,
-                    likedBy: newLikedBy,
-                    dislikedBy: newDislikedBy,
-                };
-            }
-            if ((comment as any).replies && (comment as any).replies.length > 0) {
-                const updatedReplies = updateCommentRecursively((comment as any).replies, targetCommentId, currentUserId, action);
-                if (updatedReplies !== (comment as any).replies) {
-                    return {
-                        ...comment,
-                        replies: updatedReplies,
-                    };
-                }
-            }
-            return comment;
-        });
-    };
+    const originalComments = JSON.parse(JSON.stringify(commentsList));
+    const originalReplies = JSON.parse(JSON.stringify(replies));
     
-    const originalComments = [...commentsList];
-    const originalReplies = { ...replies };
+    const updateStateOptimistically = (comments: UserComment[], targetId: string, userId: string, voteAction: 'like' | 'dislike'): UserComment[] => {
+      return comments.map(comment => {
+        if (comment.id === targetId) {
+          const newComment = { ...comment, likedBy: [...comment.likedBy], dislikedBy: [...comment.dislikedBy] };
+          
+          const hasLiked = newComment.likedBy.includes(userId);
+          const hasDisliked = newComment.dislikedBy.includes(userId);
+
+          if (voteAction === 'like') {
+            if (hasLiked) {
+              newComment.likes--;
+              newComment.likedBy = newComment.likedBy.filter(id => id !== userId);
+            } else {
+              newComment.likes++;
+              newComment.likedBy.push(userId);
+              if (hasDisliked) {
+                newComment.dislikes--;
+                newComment.dislikedBy = newComment.dislikedBy.filter(id => id !== userId);
+              }
+            }
+          } else { // dislike
+            if (hasDisliked) {
+              newComment.dislikes--;
+              newComment.dislikedBy = newComment.dislikedBy.filter(id => id !== userId);
+            } else {
+              newComment.dislikes++;
+              newComment.dislikedBy.push(userId);
+              if (hasLiked) {
+                newComment.likes--;
+                newComment.likedBy = newComment.likedBy.filter(id => id !== userId);
+              }
+            }
+          }
+          return newComment;
+        }
+        return comment;
+      });
+    };
 
     if (parentCommentId && replies[parentCommentId]) {
-      setReplies(prevReplies => ({
-        ...prevReplies,
-        [parentCommentId]: updateCommentRecursively(prevReplies[parentCommentId], commentId, currentUser.uid, action)
+      setReplies(prev => ({
+        ...prev,
+        [parentCommentId]: updateStateOptimistically(prev[parentCommentId], commentId, currentUser.uid, action)
       }));
     } else {
-      setCommentsList(updateCommentRecursively(commentsList, commentId, currentUser.uid, action));
+      setCommentsList(prev => updateStateOptimistically(prev, commentId, currentUser.uid, action));
     }
 
-
-    try {
-        const result = await updateCommentLikes(commentId, figure!.id, currentUser.uid, action);
-
+    // Fire and forget server update
+    (async () => {
+      try {
+        const result = await updateCommentLikes(commentId, figure.id, currentUser.uid, action);
         if (!result.success) {
-            toast({ title: 'Error', description: result.message, variant: 'destructive' });
-            setCommentsList(originalComments);
-            setReplies(originalReplies);
+          toast({ title: 'Error', description: result.message, variant: 'destructive' });
+          setCommentsList(originalComments);
+          setReplies(originalReplies);
         }
-    } catch (error: any) {
+      } catch (error: any) {
         console.error("Error al llamar a la acción del servidor para me gusta/no me gusta:", error);
         toast({ title: 'Error', description: `Error inesperado al votar: ${error.message}`, variant: 'destructive' });
         setCommentsList(originalComments);
         setReplies(originalReplies);
-    } finally {
+      } finally {
         setVotingCommentId(null);
-    }
+      }
+    })();
 };
 
   const handleSubmitGalleryImage = async (e: React.FormEvent) => {
