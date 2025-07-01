@@ -133,6 +133,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
+  const MAX_COMMENT_LENGTH = 1000;
+
   const { resolvedTheme } = useTheme();
   const [dominantColor, setDominantColor] = useState<string | null>(null);
   const [isDayMode, setIsDayMode] = useState(false);
@@ -453,8 +455,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         toast({ title: "Error", description: "Debes estar conectado para opinar.", variant: "destructive" });
         return;
     }
-    if (newComment.trim() === "") {
-        toast({ title: "Comentario Requerido", description: "Es necesario escribir un comentario para poder enviar una opinión.", variant: "destructive" });
+    if (newComment.trim() === "" || newComment.length > MAX_COMMENT_LENGTH) {
+        toast({ title: "Comentario Inválido", description: `El comentario no puede estar vacío o exceder los ${MAX_COMMENT_LENGTH} caracteres.`, variant: "destructive" });
         return;
     }
     setIsSubmittingComment(true);
@@ -753,8 +755,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   };
 
   const handleSubmitReply = async (parentId: string) => {
-    if (!canCommentOrRate || !currentUser || !figure || !replyText.trim()) {
-      toast({ title: "Error", description: "Debes estar conectado y escribir un texto para responder.", variant: "destructive" });
+    if (!canCommentOrRate || !currentUser || !figure || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH) {
+      toast({ title: "Respuesta Inválida", description: `La respuesta no puede estar vacía o exceder los ${MAX_COMMENT_LENGTH} caracteres.`, variant: "destructive" });
       return;
     }
     setIsSubmittingReply(parentId);
@@ -913,10 +915,25 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
             )}
             {replyingTo === comment.id && (
               <div className="mt-4">
-                <Textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder={`Respondiendo a ${comment.username}...`} rows={2} className="w-full text-sm" disabled={isSubmittingReply === comment.id} />
+                <Textarea 
+                    value={replyText} 
+                    onChange={(e) => setReplyText(e.target.value)} 
+                    placeholder={`Respondiendo a ${comment.username}...`} 
+                    rows={2} 
+                    className="w-full text-sm" 
+                    disabled={isSubmittingReply === comment.id} 
+                    maxLength={MAX_COMMENT_LENGTH}
+                />
+                <div className="text-right text-xs text-muted-foreground mt-1">
+                    {replyText.length} / {MAX_COMMENT_LENGTH}
+                </div>
                 <div className="flex justify-end gap-2 mt-2">
                   <Button variant="ghost" size="sm" onClick={() => setReplyingTo(null)} disabled={isSubmittingReply === comment.id}>Cancelar</Button>
-                  <Button size="sm" onClick={() => handleSubmitReply(comment.id)} disabled={isSubmittingReply === comment.id || !replyText.trim()}>
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleSubmitReply(comment.id)} 
+                    disabled={isSubmittingReply === comment.id || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH}
+                  >
                     {isSubmittingReply === comment.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Enviar Respuesta
                   </Button>
@@ -1150,10 +1167,22 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                   </div>
                   <div>
                     <Label htmlFor="newComment" className="sr-only">Tu comentario</Label>
-                    <Textarea id="newComment" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Escribe tu comentario aquí (obligatorio)..." rows={4} className="w-full" disabled={isSubmittingComment} />
+                    <Textarea 
+                      id="newComment" 
+                      value={newComment} 
+                      onChange={(e) => setNewComment(e.target.value)} 
+                      placeholder="Escribe tu comentario aquí (obligatorio)..." 
+                      rows={4} 
+                      className="w-full" 
+                      disabled={isSubmittingComment} 
+                      maxLength={MAX_COMMENT_LENGTH}
+                    />
+                    <div className="text-right text-sm text-muted-foreground mt-1">
+                      {newComment.length} / {MAX_COMMENT_LENGTH}
+                    </div>
                   </div>
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmittingComment || !newComment.trim()}><Send className="mr-2 h-4 w-4" />{isSubmittingComment ? "Enviando..." : "Enviar Opinión"}</Button>
+                    <Button type="submit" disabled={isSubmittingComment || !newComment.trim() || newComment.length > MAX_COMMENT_LENGTH}><Send className="mr-2 h-4 w-4" />{isSubmittingComment ? "Enviando..." : "Enviar Opinión"}</Button>
                   </div>
                 </form>
               ) : ( 
