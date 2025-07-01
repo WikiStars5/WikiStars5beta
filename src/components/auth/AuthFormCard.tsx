@@ -24,11 +24,12 @@ const GoogleIcon = () => (
 );
 
 export function AuthFormCard({ title, description, children, footerLinkHref, footerLinkText, footerText, onGoogleSignIn, isGoogleLoading }: AuthFormCardProps) {
-  const currentTheme = (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) ? 'dark' : 'light';
+  // Removed client-side theme detection to prevent hydration errors.
+  // The Logo component now handles theme changes internally via CSS.
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] py-12">
-      <Logo className="mb-8" theme={currentTheme} />
+      <Logo className="mb-8" />
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-headline">{title}</CardTitle>
