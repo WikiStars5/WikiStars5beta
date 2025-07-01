@@ -292,11 +292,15 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       return;
     }
     
-    // Initial data is already set via props. We can fetch non-critical data.
     getAllFiguresFromFirestore().then(allFiguresData => {
         setAllFigures(allFiguresData);
     }).catch(err => {
         console.error("Could not load all figures for family tree; linking will be disabled.", err);
+        toast({
+          title: "Error al Cargar Datos Adicionales",
+          description: "No se pudieron cargar los datos para el árbol genealógico. Es posible que la vinculación de familiares no funcione.",
+          variant: "destructive"
+        });
     });
 
   }, [id, toast]);
@@ -343,12 +347,14 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     } catch (error: any) {
       console.error("Error fetching comments:", error); 
       let errorMessage = "No se pudieron cargar los comentarios.";
-      if (error.message && error.message.includes("firestore/failed-precondition")) {
+      if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('deadline'))) {
+        errorMessage = "La conexión con la base de datos ha tardado demasiado. Esto puede ser por una conexión lenta o por la falta de un índice en Firestore. Revisa la consola del navegador (F12) para ver si hay un enlace para crear el índice.";
+      } else if (error.message && error.message.includes("firestore/failed-precondition")) {
           errorMessage = "Error al cargar comentarios: Es posible que falte un índice en Firestore. Revisa la consola del navegador (F12) para un enlace de creación de índice.";
       } else if (error.message) {
           errorMessage = `No se pudieron cargar los comentarios. Detalles: ${error.message}`;
       }
-      toast({ title: "Error al Cargar Comentarios", description: errorMessage, variant: "destructive", duration: 7000 });
+      toast({ title: "Error al Cargar Comentarios", description: errorMessage, variant: "destructive", duration: 10000 });
       setCommentsList([]); 
     } finally {
       setIsLoadingComments(false);
@@ -377,7 +383,13 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       setGalleryImages(fetchedImages);
     } catch (error: any) {
       console.error("Error fetching gallery images:", error);
-      toast({ title: "Error al Cargar Galería", description: "No se pudieron cargar las imágenes de la galería.", variant: "destructive"});
+      let errorMessage = "No se pudieron cargar las imágenes de la galería.";
+      if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('deadline'))) {
+        errorMessage = "La conexión con la base de datos para la galería ha tardado demasiado. Esto puede ser por falta de un índice en Firestore para la subcolección 'galleryImages'. Revisa la consola del navegador (F12) para ver si hay un enlace para crear el índice.";
+      } else if (error.message && error.message.includes("firestore/failed-precondition")) {
+          errorMessage = "Error al cargar galería: Es posible que falte un índice en Firestore. Revisa la consola del navegador (F12) para un enlace de creación de índice.";
+      }
+      toast({ title: "Error al Cargar Galería", description: errorMessage, variant: "destructive", duration: 10000 });
     } finally {
       setIsLoadingGalleryImages(false);
     }
