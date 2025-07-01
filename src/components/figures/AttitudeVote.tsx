@@ -114,6 +114,28 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     const previousSelectedAttitude = selectedAttitude;
     const newAttitudeToSet = previousSelectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
 
+    // --- Optimistic UI Update ---
+    const originalCounts = { ...figureAttitudeCounts };
+    const originalTotalVotes = totalVotes;
+    
+    const newOptimisticCounts = { ...originalCounts };
+    let newOptimisticTotalVotes = originalTotalVotes;
+
+    if (previousSelectedAttitude) {
+        newOptimisticCounts[previousSelectedAttitude] = Math.max(0, (newOptimisticCounts[previousSelectedAttitude] || 0) - 1);
+        newOptimisticTotalVotes--;
+    }
+    if (newAttitudeToSet) {
+        newOptimisticCounts[newAttitudeToSet] = (newOptimisticCounts[newAttitudeToSet] || 0) + 1;
+        newOptimisticTotalVotes++;
+    }
+
+    // Apply optimistic update
+    setSelectedAttitude(newAttitudeToSet);
+    setFigureAttitudeCounts(newOptimisticCounts);
+    setTotalVotes(newOptimisticTotalVotes);
+
+    // --- Server-side Action ---
     const figureDocRef = doc(db, "figures", figureId);
     const userAttitudeDocId = `${currentUser.uid}_${figureId}`;
     const userAttitudeDocRef = doc(db, "userAttitudes", userAttitudeDocId);
@@ -154,6 +176,11 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
       }
     } catch (error: any) {
+      // --- Revert UI on error ---
+      setSelectedAttitude(previousSelectedAttitude);
+      setFigureAttitudeCounts(originalCounts);
+      setTotalVotes(originalTotalVotes);
+
       console.error("Error voting on attitude:", error);
       let errorMessage = "No se pudo registrar tu voto.";
       if (error.message?.includes("Missing or insufficient permissions")) {
