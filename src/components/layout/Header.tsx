@@ -12,7 +12,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
-      <div className="flex h-18 w-full max-w-4xl items-center justify-between mx-auto py-3 px-4">
+      <div className="flex h-18 w-full max-w-6xl items-center justify-between mx-auto py-3 px-4">
         <div className="flex items-center gap-2 md:gap-4">
           <Logo />
           <div className={`hidden md:block transition-all duration-300 ease-in-out ${isHeaderSearchFocused ? 'w-72' : 'w-auto'}`}>
