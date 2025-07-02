@@ -106,6 +106,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [newComment, setNewComment] = useState("");
   const [newCommentStars, setNewCommentStars] = useState<StarValue | null>(null);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [guestUsername, setGuestUsername] = useState("");
   const [commentsList, setCommentsList] = useState<UserComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(true);
   const [votingCommentId, setVotingCommentId] = useState<string | null>(null);
@@ -343,6 +344,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           dislikedBy: data.dislikedBy || [],
           parentId: data.parentId || null,
           replyCount: data.replyCount || 0,
+          guestUsername: data.guestUsername || null,
           userCountryCode: data.userCountryCode || null,
         });
       });
@@ -533,6 +535,10 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         replyCount: 0,
       };
 
+      if (currentUser.isAnonymous && guestUsername.trim()) {
+        commentData.guestUsername = guestUsername.trim();
+      }
+
       if (currentUser.isAnonymous && anonymousUserCountryCode) {
         commentData.userCountryCode = anonymousUserCountryCode;
       }
@@ -560,6 +566,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       });
 
       setNewComment("");
+      setGuestUsername("");
       fetchComments(); 
       router.refresh(); 
     } catch (error: any)
@@ -882,18 +889,19 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     const countryName = comment.userCountryCode ? countryCodeToNameMap.get(comment.userCountryCode) : null;
     const isLongComment = comment.text && comment.text.length > COMMENT_TRUNCATE_LENGTH;
     const isExpanded = !!expandedComments[comment.id];
+    const displayName = comment.guestUsername || comment.username;
 
     return (
       <div key={comment.id} className="relative group/comment">
         <div className="flex space-x-3">
           <Avatar className="h-10 w-10 flex-shrink-0">
-            <AvatarImage src={correctMalformedUrl(comment.userPhotoURL) || undefined} alt={comment.username} />
-            <AvatarFallback>{comment.username.charAt(0).toUpperCase()}</AvatarFallback>
+            <AvatarImage src={correctMalformedUrl(comment.userPhotoURL) || undefined} alt={displayName} />
+            <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-foreground">{comment.username}</p>
+                <p className="text-sm font-semibold text-foreground">{displayName}</p>
                 {comment.username === 'Invitado' && comment.userCountryCode && (
                   <Image
                     src={`https://flagcdn.com/w20/${comment.userCountryCode.toLowerCase()}.png`}
@@ -960,7 +968,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                 <Textarea 
                     value={replyText} 
                     onChange={(e) => setReplyText(e.target.value)} 
-                    placeholder={`Respondiendo a ${comment.username}...`} 
+                    placeholder={`Respondiendo a ${displayName}...`} 
                     rows={2} 
                     className="w-full text-sm" 
                     disabled={isSubmittingReply === comment.id} 
@@ -1207,6 +1215,21 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                         size={32}
                     />
                   </div>
+                   {currentUser?.isAnonymous && (
+                    <div>
+                      <Label htmlFor="guestUsername">Nombre de Invitado (Opcional)</Label>
+                      <Input
+                        id="guestUsername"
+                        value={guestUsername}
+                        onChange={(e) => setGuestUsername(e.target.value)}
+                        placeholder="Escribe un nombre para mostrar"
+                        className="w-full"
+                        disabled={isSubmittingComment}
+                        maxLength={50}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Este nombre se mostrará en lugar de "Invitado".</p>
+                    </div>
+                  )}
                   <div>
                     <Label htmlFor="newComment" className="sr-only">Tu comentario</Label>
                     <Textarea 

@@ -84,6 +84,7 @@ export interface UserComment {
   figureId: string;
   userId: string;
   username: string; 
+  guestUsername?: string | null;
   userPhotoURL: string | null; 
   text: string;
   starRatingGiven: StarValue | null; 
