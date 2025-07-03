@@ -358,12 +358,12 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           placeholder="Ej: https://... (para el banner del perfil)"
         />
         {canPreviewCoverUrl ? (
-          <div className="mt-2 relative w-40 aspect-[16/9] border rounded-md overflow-hidden bg-muted flex items-center justify-center">
+          <div className="mt-2 relative w-20 h-20 border rounded-md overflow-hidden bg-muted flex items-center justify-center">
             <Image src={coverUrlToPreview} alt="Previsualización de Portada" layout="fill" objectFit="cover" />
           </div>
         ) : (
-          <div className="mt-2 w-40 aspect-[16/9] border rounded-md bg-muted flex items-center justify-center text-muted-foreground">
-            <ImageOff className="h-10 w-10" />
+          <div className="mt-2 w-20 h-20 border rounded-md bg-muted flex items-center justify-center text-muted-foreground">
+            <ImageOff className="h-8 w-8" />
           </div>
         )}
       </div>
@@ -387,7 +387,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         </p>
         
         {canPreviewUrl ? (
-          <div className="relative w-40 h-60 border rounded-md overflow-hidden bg-muted flex items-center justify-center mt-2" data-ai-hint="image preview">
+          <div className="relative w-20 h-20 border rounded-md overflow-hidden bg-muted flex items-center justify-center mt-2" data-ai-hint="image preview">
             <Image
               src={urlToPreview}
               alt="Previsualización de la imagen"
@@ -397,13 +397,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
             />
           </div>
         ) : (
-           <div className="relative w-40 h-60 border rounded-md overflow-hidden bg-muted flex items-center justify-center mt-2 text-muted-foreground" data-ai-hint="placeholder abstract">
-             <ImageOff className="h-16 w-16" />
-             <span className="absolute bottom-2 text-xs text-center px-1">
-               {photoUrl.trim() && !previewFileUrl
-                 ? "URL Inválida o incompleta" 
-                 : "Sin Imagen"}
-             </span>
+           <div className="relative w-20 h-20 border rounded-md overflow-hidden bg-muted flex items-center justify-center mt-2 text-muted-foreground" data-ai-hint="placeholder abstract">
+             <ImageOff className="h-8 w-8" />
            </div>
         )}
       </div>
