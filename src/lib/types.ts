@@ -1,3 +1,4 @@
+
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -118,6 +119,12 @@ export interface UserProfile {
   role: 'user' | 'admin';
   createdAt: string; 
   lastLoginAt?: string;
+}
+
+export interface GenderOption {
+  value: string;
+  label: string;
+  symbol?: string; // e.g., '♂', '♀'
 }
 
 export interface GalleryImage {

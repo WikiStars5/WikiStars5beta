@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -160,7 +161,7 @@ export function SignupForm() {
                 <SelectContent>
                   {GENDER_OPTIONS.map((gender) => (
                     <SelectItem key={gender.value} value={gender.value}>
-                      {gender.emoji && <span role="img" aria-label={gender.label} className="mr-2">{gender.emoji}</span>}
+                      {gender.symbol && <span aria-hidden="true" className="mr-2">{gender.symbol}</span>}
                       {gender.label}
                     </SelectItem>
                   ))}

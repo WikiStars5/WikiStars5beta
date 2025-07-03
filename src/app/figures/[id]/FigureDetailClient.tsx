@@ -24,7 +24,6 @@ import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
-import { FamilyTreeDisplay } from "@/components/figures/FamilyTreeDisplay";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
@@ -927,7 +926,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     const isVoting = votingCommentId === comment.id;
     const countryName = comment.userCountryCode ? countryCodeToNameMap.get(comment.userCountryCode) : null;
     const genderOption = comment.guestGender ? GENDER_OPTIONS.find(g => g.value === comment.guestGender) : null;
-    const genderSymbol = genderOption?.emoji || null;
+    const genderSymbol = genderOption?.symbol || null;
     const isLongComment = comment.text && comment.text.length > COMMENT_TRUNCATE_LENGTH;
     const isExpanded = !!expandedComments[comment.id];
     const displayName = comment.guestUsername || comment.username;
@@ -954,7 +953,11 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                   />
                 )}
                  {comment.username === 'Invitado' && genderSymbol && (
-                  <span className="text-xs" title={genderOption?.label}>{genderSymbol}</span>
+                  <span className={cn(
+                      "text-sm font-bold",
+                      genderOption?.value === 'male' && "text-blue-400",
+                      genderOption?.value === 'female' && "text-pink-400"
+                    )} title={genderOption?.label}>{genderSymbol}</span>
                 )}
               </div>
               <div className="flex items-center space-x-2">
@@ -1297,7 +1300,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                                 <SelectContent>
                                   {GENDER_OPTIONS.filter(g => g.value === 'male' || g.value === 'female').map((gender) => (
                                     <SelectItem key={gender.value} value={gender.value}>
-                                      {gender.emoji && <span role="img" aria-label={gender.label} className="mr-2">{gender.emoji}</span>}
+                                      {gender.symbol && <span aria-hidden="true" className="mr-2">{gender.symbol}</span>}
                                       {gender.label}
                                     </SelectItem>
                                   ))}
