@@ -359,7 +359,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         />
         {canPreviewCoverUrl ? (
           <div className="mt-2 relative w-20 h-20 border rounded-md overflow-hidden bg-muted flex items-center justify-center">
-            <Image src={coverUrlToPreview} alt="Previsualización de Portada" layout="fill" objectFit="cover" />
+            <Image
+              src={coverUrlToPreview}
+              alt="Previsualización de Portada"
+              fill
+              className="object-cover"
+              sizes="80px"
+            />
           </div>
         ) : (
           <div className="mt-2 w-20 h-20 border rounded-md bg-muted flex items-center justify-center text-muted-foreground">
@@ -392,7 +398,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
               src={urlToPreview}
               alt="Previsualización de la imagen"
               fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              sizes="80px"
               className="object-cover"
             />
           </div>
