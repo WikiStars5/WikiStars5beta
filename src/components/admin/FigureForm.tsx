@@ -1,28 +1,22 @@
-
-
 // === src/components/admin/FigureForm.tsx ===
 // Este componente ha sido modificado para incluir la lógica de subida de archivos a Firebase Storage
 // y con depuración adicional para el proceso de subida.
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, ImageOff, Users2 } from 'lucide-react'; // Added Users2 for family tree icon
+import { Terminal, Users2 } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db, storage } from '@/lib/firebase'; // db and storage from shared firebase.ts
-// auth import from firebase/auth directly is fine for types, but actual auth state comes from AdminLayout context
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey, StarValueAsString, FamilyMember } from '@/lib/types';
 import slugify from 'slugify'; 
-import { Checkbox } from '@/components/ui/checkbox'; // Import Checkbox
-import { correctMalformedUrl } from '@/lib/utils'; // Import URL correction helper
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -49,11 +43,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
-  const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl || '');
   
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
-
   // Basic info
   const [occupation, setOccupation] = useState(initialData?.occupation || '');
   const [gender, setGender] = useState(initialData?.gender || '');
@@ -72,7 +62,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [hairColor, setHairColor] = useState(initialData?.hairColor || '');
   const [eyeColor, setEyeColor] = useState(initialData?.eyeColor || '');
   const [distinctiveFeatures, setDistinctiveFeatures] = useState(initialData?.distinctiveFeatures || '');
-  const [isFeatured, setIsFeatured] = useState(initialData?.isFeatured || false); // State for featured flag
+  const [isFeatured, setIsFeatured] = useState(initialData?.isFeatured || false);
 
 
   const [perceptionCounts, setPerceptionCounts] = useState(initialData?.perceptionCounts || { ...defaultPerceptionCounts });
@@ -93,7 +83,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     if (initialData) {
       setName(initialData.name);
       setDescription(initialData.description || ''); 
-      setPhotoUrl(initialData.photoUrl || ''); 
       setOccupation(initialData.occupation || '');
       setGender(initialData.gender || '');
       setNationality(initialData.nationality || '');
@@ -110,20 +99,17 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setHairColor(initialData.hairColor || '');
       setEyeColor(initialData.eyeColor || '');
       setDistinctiveFeatures(initialData.distinctiveFeatures || '');
-      setIsFeatured(initialData.isFeatured || false); // Set featured state
+      setIsFeatured(initialData.isFeatured || false);
 
       setPerceptionCounts(initialData.perceptionCounts || { ...defaultPerceptionCounts });
       setAttitudeCounts(initialData.attitudeCounts || { ...defaultAttitudeCounts });
       setStarRatingCounts(initialData.starRatingCounts || { ...defaultStarRatingCounts });
       setFamilyMembersJson(initialData.familyMembers ? JSON.stringify(initialData.familyMembers, null, 2) : '[]');
       
-      setSelectedFile(null);
-      setPreviewFileUrl(null);
     } else {
       // Reset all fields for new figure form
       setName('');
       setDescription('');
-      setPhotoUrl('');
       setOccupation('');
       setGender('');
       setNationality('');
@@ -139,47 +125,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setHairColor('');
       setEyeColor('');
       setDistinctiveFeatures('');
-      setIsFeatured(false); // Reset featured state
+      setIsFeatured(false);
       setPerceptionCounts({ ...defaultPerceptionCounts });
       setAttitudeCounts({ ...defaultAttitudeCounts });
       setStarRatingCounts({ ...defaultStarRatingCounts });
       setFamilyMembersJson('[]');
-      
-      setSelectedFile(null);
-      setPreviewFileUrl(null);
     }
   }, [initialData]);
 
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      setSelectedFile(file);
-      setPreviewFileUrl(URL.createObjectURL(file));
-      setPhotoUrl(''); 
-    } else {
-      setSelectedFile(null);
-      setPreviewFileUrl(null);
-    }
-  };
-
-  const uploadFileToFirebaseStorage = async (file: File, figureDocId: string): Promise<string> => {
-    const storagePath = `figures/${figureDocId}/${file.name}`;
-    console.log(`[uploadFileToFirebaseStorage] Uploading to path: ${storagePath}`);
-    const storageRef = ref(storage, storagePath);
-    try {
-      console.log(`[uploadFileToFirebaseStorage] Starting uploadBytes for ${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      console.log(`[uploadFileToFirebaseStorage] uploadBytes successful for ${file.name}. Getting download URL...`);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      console.log(`[uploadFileToFirebaseStorage] Download URL for ${file.name}: ${downloadURL}`);
-      return downloadURL;
-    } catch (uploadError: any) {
-      console.error(`[uploadFileToFirebaseStorage] Storage Upload Error for ${storagePath}:`, uploadError);
-      console.error(`[uploadFileToFirebaseStorage] Error Code: ${uploadError.code}, Server Response: ${uploadError.serverResponse}`);
-      throw uploadError; 
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,18 +156,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         throw new Error('El nombre de la figura es obligatorio.');
       }
       
-      let finalPhotoUrlToSave = photoUrl.trim();
-      if (selectedFile) {
-        console.log(`[FigureForm handleSubmit] Attempting to upload file: ${selectedFile.name} for figure ID: ${figureDocId}`);
-        finalPhotoUrlToSave = await uploadFileToFirebaseStorage(selectedFile, figureDocId);
-        console.log(`[FigureForm handleSubmit] File uploaded successfully, URL: ${finalPhotoUrlToSave}`);
-      } else if (!finalPhotoUrlToSave && initialData?.photoUrl) {
-        finalPhotoUrlToSave = initialData.photoUrl;
-      } else if (!finalPhotoUrlToSave && !initialData?.photoUrl && !selectedFile) {
-        finalPhotoUrlToSave = 'https://placehold.co/400x600.png';
-      }
-
-      finalPhotoUrlToSave = correctMalformedUrl(finalPhotoUrlToSave);
+      const finalPhotoUrlToSave = initialData?.photoUrl || 'https://placehold.co/400x600.png';
 
       let parsedFamilyMembers: FamilyMember[] = [];
       try {
@@ -261,9 +203,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       }
 
       const figureRef = doc(db, 'figures', figureDocId);
-      console.log(`[FigureForm handleSubmit] Attempting to setDoc for figure ID: ${figureDocId}`);
       await setDoc(figureRef, figureData, { merge: true });
-      console.log(`[FigureForm handleSubmit] setDoc successful for figure ID: ${figureDocId}`);
 
       setSuccess(`Figura "${name}" guardada exitosamente.`);
       
@@ -283,14 +223,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setIsLoading(false);
     }
   };
-
-  const urlToPreview = correctMalformedUrl(previewFileUrl || (photoUrl.trim() ? photoUrl.trim() : initialData?.photoUrl || null));
-  const canPreviewUrl = urlToPreview && (
-      urlToPreview.startsWith('http://') ||
-      urlToPreview.startsWith('https://') ||
-      urlToPreview.startsWith('blob:') ||
-      urlToPreview.startsWith('data:')
-  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-card rounded-lg shadow-md">
@@ -332,55 +264,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         />
       </div>
       
-      <div className="mt-4 border-t pt-4 border-border">
-        <Label htmlFor="photoUrl">URL de la Imagen de Perfil (Opcional)</Label>
-        <Input
-          id="photoUrl"
-          type="url"
-          value={photoUrl} 
-          onChange={(e) => {
-            setPhotoUrl(e.target.value);
-            setSelectedFile(null);
-            setPreviewFileUrl(null);
-          }}
-          placeholder="Ej: https://upload.wikimedia.org/..."
-          className="mb-2"
-        />
-        <p className="text-xs text-muted-foreground">
-          Pega la URL de una imagen externa. Dominios permitidos: Wikimedia, Wikia, Pinterest, Placehold.co y Firebase Storage.
-        </p>
-        
-        {canPreviewUrl ? (
-          <div className="relative w-20 h-20 border rounded-md overflow-hidden bg-muted flex items-center justify-center mt-2" data-ai-hint="image preview">
-            <Image
-              src={urlToPreview}
-              alt="Previsualización de la imagen"
-              fill
-              sizes="80px"
-              className="object-cover"
-            />
-          </div>
-        ) : (
-           <div className="relative w-20 h-20 border rounded-md overflow-hidden bg-muted flex items-center justify-center mt-2 text-muted-foreground" data-ai-hint="placeholder abstract">
-             <ImageOff className="h-8 w-8" />
-           </div>
-        )}
-      </div>
-
-      <div className="mt-2">
-        <Label htmlFor="fileInput">o Subir Nueva Foto de Perfil</Label>
-        <Input
-          id="fileInput"
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="mt-1"
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          Subir un archivo para el perfil tendrá prioridad sobre la URL.
-        </p>
-      </div>
-
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Información Detallada</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -437,7 +320,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
             Marcar como Figura Destacada
           </Label>
         </div>
-        <p className="text-xs text-muted-foreground mt-1 ml-6"> {/* Added ml-6 for alignment with checkbox text */}
+        <p className="text-xs text-muted-foreground mt-1 ml-6">
           Las figuras destacadas aparecerán en la sección principal de la página de inicio.
         </p>
       </div>
