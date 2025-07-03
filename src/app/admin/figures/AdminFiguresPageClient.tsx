@@ -1,44 +1,69 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { Figure } from "@/lib/types";
-import { PlusCircle, Edit3, MessageSquare, Star, Search as SearchIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { PlusCircle, Edit3, MessageSquare, Star, Search as SearchIcon, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { AdminFigureImage } from "@/components/admin/AdminFigureImage";
 import { AdminDeleteFigureButton } from "@/components/admin/AdminDeleteFigureButton";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { toggleFigureFeaturedStatus } from "@/app/actions/adminActions";
+import { getAdminFiguresList } from "@/lib/placeholder-data";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-interface AdminFiguresPageClientProps {
-  initialFigures: Figure[];
-  hasPrevPage: boolean;
-  hasNextPage: boolean;
-  startCursor: string | null;
-  endCursor: string | null;
-}
 
-export default function AdminFiguresPageClient({
-  initialFigures,
-  hasPrevPage,
-  hasNextPage,
-  startCursor,
-  endCursor
-}: AdminFiguresPageClientProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [figures, setFigures] = useState<Figure[]>(initialFigures);
-  const router = useRouter();
+function AdminFiguresPageComponent() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [figures, setFigures] = useState<Figure[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [hasPrevPage, setHasPrevPage] = useState(false);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [startCursor, setStartCursor] = useState<string | null>(null);
+  const [endCursor, setEndCursor] = useState<string | null>(null);
+
+  const startAfter = searchParams.get('startAfter');
+  const endBefore = searchParams.get('endBefore');
 
   useEffect(() => {
-    setFigures(initialFigures);
-  }, [initialFigures]);
+    const fetchFigures = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const result = await getAdminFiguresList({
+          startAfter: startAfter ?? undefined,
+          endBefore: endBefore ?? undefined,
+        });
+        setFigures(result.figures);
+        setHasPrevPage(result.hasPrevPage);
+        setHasNextPage(result.hasNextPage);
+        setStartCursor(result.startCursor);
+        setEndCursor(result.endCursor);
+      } catch (err: any) {
+        console.error("Failed to fetch figures:", err);
+        let errorMessage = "No se pudieron cargar las figuras. Revisa tu conexión a internet.";
+        if (err.message && String(err.message).toLowerCase().includes("permission")) {
+            errorMessage = "Error de permisos de Firestore. Revisa las reglas de seguridad para la colección 'figures' y asegúrate de que tu cuenta de administrador tenga permisos de 'list'.";
+        }
+        setError(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFigures();
+  }, [startAfter, endBefore]);
 
   const filteredFigures = useMemo(() => {
     if (!searchTerm) {
@@ -64,10 +89,8 @@ export default function AdminFiguresPageClient({
         title: "Estado Actualizado",
         description: result.message,
       });
-      // Do not refresh the whole page to keep pagination state
-      // The local state update is sufficient for the UI change
     } else {
-      setFigures(originalFigures); // Revert optimistic update
+      setFigures(originalFigures);
       toast({
         title: "Error",
         description: result.message || "No se pudo actualizar el estado.",
@@ -75,6 +98,39 @@ export default function AdminFiguresPageClient({
       });
     }
   };
+
+  if (isLoading) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-2xl font-headline">Gestionar Figuras</CardTitle>
+                <CardDescription>Crea, edita o elimina perfiles de figuras públicas de Firestore.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center items-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-4 text-muted-foreground">Cargando figuras...</p>
+            </CardContent>
+        </Card>
+    );
+  }
+
+  if (error) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-2xl font-headline">Gestionar Figuras</CardTitle>
+                 <CardDescription>Crea, edita o elimina perfiles de figuras públicas de Firestore.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Error de Carga</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            </CardContent>
+        </Card>
+    );
+  }
 
   return (
     <Card>
@@ -189,4 +245,13 @@ export default function AdminFiguresPageClient({
       </CardFooter>
     </Card>
   );
+}
+
+// Wrap the component that uses useSearchParams in a Suspense boundary
+export default function AdminFiguresPageClient() {
+    return (
+      <Suspense>
+        <AdminFiguresPageComponent />
+      </Suspense>
+    )
 }
