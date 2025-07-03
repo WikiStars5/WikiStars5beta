@@ -10,6 +10,7 @@ import { getAllUsersFromFirestore } from "@/lib/userData";
 import type { Figure, UserProfile } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
+import { auth } from '@/lib/firebase';
 
 const ADMIN_UID_FOR_MESSAGE = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
 
@@ -33,16 +34,29 @@ export default function AdminDashboardPage() {
         setUsers(usersData);
       } catch (error: any) {
         console.error("Error fetching admin dashboard data:", error);
+        
+        const currentUser = auth.currentUser;
+        const currentUserUID = currentUser ? currentUser.uid : 'No hay usuario conectado';
+        const currentUserEmail = currentUser ? currentUser.email : 'N/A';
+
         if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
-          setFetchError(`Error Crítico de Permisos: No se pudieron obtener los datos para el panel de administración. Tus Reglas de Seguridad de Firestore están bloqueando el acceso.
+          setFetchError(`Error Crítico de Permisos: No se pudieron obtener los datos.
 
-**Acción Requerida:**
-1. Ve al archivo 'src/lib/firebase.ts'.
-2. Copia el bloque de reglas de seguridad completo que está en los comentarios.
-3. Ve a tu Consola de Firebase -> Firestore Database -> Pestaña 'Rules'.
-4. Reemplaza las reglas antiguas con las que copiaste y publica los cambios.
+**Detalles del Problema:**
+- **Permiso Denegado:** Firestore está bloqueando la lectura de la lista de usuarios.
+- **UID de Administrador Esperado:** \`${ADMIN_UID_FOR_MESSAGE}\`
+- **UID del Usuario Actual Conectado:** \`${currentUserUID}\`
+- **Email del Usuario Actual:** \`${currentUserEmail || 'No disponible'}\`
 
-El UID de administrador esperado es: ${ADMIN_UID_FOR_MESSAGE}.`);
+**Posibles Causas y Soluciones:**
+1.  **Discrepancia de UID:** Si el UID del usuario conectado no coincide con el esperado, asegúrate de haber iniciado sesión con la cuenta de administrador correcta.
+2.  **Reglas No Actualizadas:** Si los UIDs coinciden, es probable que las reglas en la Consola de Firebase no se hayan publicado correctamente o necesiten tiempo para propagarse.
+    - **Paso 1:** Ve al archivo \`src/lib/firebase.ts\`.
+    - **Paso 2:** Copia el bloque completo de reglas de seguridad.
+    - **Paso 3:** Ve a tu **Consola de Firebase > Firestore Database > Pestaña 'Rules'**.
+    - **Paso 4:** Reemplaza las reglas antiguas con las que copiaste y haz clic en **Publish**.
+    - **Paso 5:** Espera uno o dos minutos y refresca esta página.
+`);
         } else {
           setFetchError(`Ocurrió un error inesperado al obtener los datos del panel: ${error.message || 'Error desconocido'}`);
         }
