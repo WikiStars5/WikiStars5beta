@@ -42,10 +42,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { submitGalleryImageAction } from "@/app/actions/figureGalleryActions";
 import { updateCommentLikes } from "@/app/actions/commentRatingActions";
 import { cn, correctMalformedUrl } from "@/lib/utils";
 import { countryCodeToNameMap } from "@/config/countries";
+import { GENDER_OPTIONS, type GenderOption } from "@/config/genderOptions";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { useTheme } from 'next-themes';
 import { useColor } from 'color-thief-react';
@@ -108,6 +110,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [guestUsername, setGuestUsername] = useState("");
   const [isGuestNameSet, setIsGuestNameSet] = useState(false);
+  const [guestGender, setGuestGender] = useState("");
+  const [isGuestGenderSet, setIsGuestGenderSet] = useState(false);
   const [commentsList, setCommentsList] = useState<UserComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(true);
   const [votingCommentId, setVotingCommentId] = useState<string | null>(null);
@@ -235,11 +239,15 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
       if (user) { 
         if (user.isAnonymous) {
-            // This runs on the client, so localStorage is safe
             const savedGuestName = localStorage.getItem('wikistars5-guestUsername');
             if (savedGuestName) {
                 setGuestUsername(savedGuestName);
                 setIsGuestNameSet(true);
+            }
+            const savedGuestGender = localStorage.getItem('wikistars5-guestGender');
+            if (savedGuestGender) {
+                setGuestGender(savedGuestGender);
+                setIsGuestGenderSet(true);
             }
         }
 
@@ -255,9 +263,10 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         }
       } else {
         setNewCommentStars(null);
-        // Also reset guest state on logout
         setIsGuestNameSet(false);
         setGuestUsername("");
+        setIsGuestGenderSet(false);
+        setGuestGender("");
       }
     });
     return () => unsubscribe();
@@ -360,6 +369,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           parentId: data.parentId || null,
           replyCount: data.replyCount || 0,
           guestUsername: data.guestUsername || null,
+          guestGender: data.guestGender || null,
           userCountryCode: data.userCountryCode || null,
         });
       });
@@ -487,8 +497,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         toast({ title: "Error", description: "Debes estar conectado para opinar.", variant: "destructive" });
         return;
     }
-    if (currentUser.isAnonymous && !guestUsername.trim()) {
-        toast({ title: "Nombre Requerido", description: "Por favor, introduce un nombre de invitado para comentar.", variant: "destructive" });
+    if (currentUser.isAnonymous && (!guestUsername.trim() || !guestGender.trim())) {
+        toast({ title: "Información Requerida", description: "Por favor, introduce un nombre y selecciona un sexo para comentar.", variant: "destructive" });
         return;
     }
     if (newComment.trim() === "" || newComment.length > MAX_COMMENT_LENGTH) {
@@ -556,17 +566,23 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
       if (currentUser.isAnonymous) {
         commentData.guestUsername = guestUsername.trim();
-      }
-
-      if (currentUser.isAnonymous && anonymousUserCountryCode) {
-        commentData.userCountryCode = anonymousUserCountryCode;
+        commentData.guestGender = guestGender;
+        if (anonymousUserCountryCode) {
+          commentData.userCountryCode = anonymousUserCountryCode;
+        }
       }
 
       await addDoc(collection(db, 'userComments'), commentData);
 
-      if (currentUser.isAnonymous && !isGuestNameSet) {
-          localStorage.setItem('wikistars5-guestUsername', guestUsername.trim());
-          setIsGuestNameSet(true);
+      if (currentUser.isAnonymous) {
+          if (!isGuestNameSet) {
+            localStorage.setItem('wikistars5-guestUsername', guestUsername.trim());
+            setIsGuestNameSet(true);
+          }
+          if (!isGuestGenderSet) {
+            localStorage.setItem('wikistars5-guestGender', guestGender);
+            setIsGuestGenderSet(true);
+          }
       }
       
       await runTransaction(db, async (transaction) => {
@@ -590,7 +606,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       });
 
       setNewComment("");
-      // Don't clear guestUsername, it's now persistent for the session
       fetchComments(); 
       router.refresh(); 
     } catch (error: any)
@@ -827,10 +842,10 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         replyCount: 0,
       };
 
-      if (currentUser.isAnonymous && anonymousUserCountryCode) {
-        replyData.userCountryCode = anonymousUserCountryCode;
+      if (currentUser.isAnonymous) {
+        if(anonymousUserCountryCode) replyData.userCountryCode = anonymousUserCountryCode;
+        if(guestGender) replyData.guestGender = guestGender;
       }
-
 
       await runTransaction(db, async (transaction) => {
         transaction.update(figureRef, { commentCount: increment(1) });
@@ -911,6 +926,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     const userHasDisliked = !!currentUser && comment.dislikedBy.includes(currentUser.uid);
     const isVoting = votingCommentId === comment.id;
     const countryName = comment.userCountryCode ? countryCodeToNameMap.get(comment.userCountryCode) : null;
+    const genderOption = comment.guestGender ? GENDER_OPTIONS.find(g => g.value === comment.guestGender) : null;
+    const genderSymbol = genderOption?.emoji || null;
     const isLongComment = comment.text && comment.text.length > COMMENT_TRUNCATE_LENGTH;
     const isExpanded = !!expandedComments[comment.id];
     const displayName = comment.guestUsername || comment.username;
@@ -935,6 +952,9 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                     height={15}
                     className="rounded-sm"
                   />
+                )}
+                 {comment.username === 'Invitado' && genderSymbol && (
+                  <span className="text-xs" title={genderOption?.label}>{genderSymbol}</span>
                 )}
               </div>
               <div className="flex items-center space-x-2">
@@ -1240,27 +1260,52 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                     />
                   </div>
                   {currentUser?.isAnonymous && (
-                    <div>
-                      {isGuestNameSet ? (
-                          <div className="text-sm p-3 bg-muted rounded-md border">
-                              <span className="text-muted-foreground">Comentarás como: </span>
-                              <strong className="text-foreground">{guestUsername}</strong>
-                          </div>
-                      ) : (
-                          <>
-                              <Label htmlFor="guestUsername">Nombre de Invitado (Requerido)</Label>
-                              <Input
-                                  id="guestUsername"
-                                  value={guestUsername}
-                                  onChange={(e) => setGuestUsername(e.target.value)}
-                                  placeholder="Escribe un nombre para mostrar"
-                                  className="w-full"
-                                  disabled={isSubmittingComment}
-                                  maxLength={50}
-                              />
-                              <p className="text-xs text-muted-foreground mt-1">Este nombre se usará para todos tus comentarios en este navegador.</p>
-                          </>
-                      )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        {isGuestNameSet ? (
+                            <div className="text-sm p-3 bg-muted rounded-md border h-full flex flex-col justify-center">
+                                <span className="text-muted-foreground text-xs">Comentarás como: </span>
+                                <strong className="text-foreground">{guestUsername}</strong>
+                            </div>
+                        ) : (
+                            <>
+                                <Label htmlFor="guestUsername">Nombre de Invitado (Requerido)</Label>
+                                <Input
+                                    id="guestUsername"
+                                    value={guestUsername}
+                                    onChange={(e) => setGuestUsername(e.target.value)}
+                                    placeholder="Escribe un nombre"
+                                    disabled={isSubmittingComment}
+                                    maxLength={50}
+                                />
+                            </>
+                        )}
+                      </div>
+                      <div>
+                        {isGuestGenderSet ? (
+                             <div className="text-sm p-3 bg-muted rounded-md border h-full flex flex-col justify-center">
+                                <span className="text-muted-foreground text-xs">Sexo: </span>
+                                <strong className="text-foreground">{GENDER_OPTIONS.find(g => g.value === guestGender)?.label || 'No especificado'}</strong>
+                            </div>
+                        ) : (
+                            <>
+                              <Label htmlFor="guestGender">Sexo (Requerido)</Label>
+                               <Select onValueChange={setGuestGender} value={guestGender} disabled={isSubmittingComment}>
+                                <SelectTrigger id="guestGender">
+                                  <SelectValue placeholder="Selecciona tu sexo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {GENDER_OPTIONS.filter(g => g.value === 'male' || g.value === 'female').map((gender) => (
+                                    <SelectItem key={gender.value} value={gender.value}>
+                                      {gender.emoji && <span role="img" aria-label={gender.label} className="mr-2">{gender.emoji}</span>}
+                                      {gender.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </>
+                        )}
+                      </div>
                     </div>
                   )}
                   <div>
@@ -1280,7 +1325,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                     </div>
                   </div>
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmittingComment || !newComment.trim() || newComment.length > MAX_COMMENT_LENGTH || (currentUser?.isAnonymous && !guestUsername.trim())}>
+                    <Button type="submit" disabled={isSubmittingComment || !newComment.trim() || newComment.length > MAX_COMMENT_LENGTH || (currentUser?.isAnonymous && (!guestUsername.trim() || !guestGender.trim()))}>
                       <Send className="mr-2 h-4 w-4" />
                       {isSubmittingComment ? "Enviando..." : "Enviar Opinión"}
                     </Button>

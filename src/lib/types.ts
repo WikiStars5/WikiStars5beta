@@ -85,6 +85,7 @@ export interface UserComment {
   userId: string;
   username: string; 
   guestUsername?: string | null;
+  guestGender?: string;
   userPhotoURL: string | null; 
   text: string;
   starRatingGiven: StarValue | null; 
