@@ -343,6 +343,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           parentId: data.parentId || null,
           replyCount: data.replyCount || 0,
           guestUsername: data.guestUsername || null,
+          guestUsernameLower: data.guestUsernameLower || null,
           guestGender: data.guestGender || null,
           userCountryCode: data.userCountryCode || null,
         });
@@ -482,19 +483,34 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     
     const figureDocRef = doc(db, "figures", figure.id);
     const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
-    const currentStarsForComment = newCommentStars;
+    const commentsCollectionRef = collection(db, 'userComments');
 
     try {
       await runTransaction(db, async (transaction) => {
-        const figureSnap = await transaction.get(figureDocRef);
-        const userPrevRatingSnap = await transaction.get(userStarRatingDocRef); 
-
-        if (!figureSnap.exists()) throw new Error("Figure document does not exist!");
+        // 1. Check for unique guest username if applicable
+        if (currentUser.isAnonymous) {
+          const normalizedGuestName = guestUsername.trim().toLowerCase();
+          if(normalizedGuestName) {
+            const uniquenessQuery = query(
+              commentsCollectionRef, 
+              where('figureId', '==', figure.id), 
+              where('guestUsernameLower', '==', normalizedGuestName)
+            );
+            const existingUsernames = await transaction.get(uniquenessQuery);
+            if (!existingUsernames.empty) {
+              throw new Error("Este nombre de invitado ya está en uso. Por favor, elige otro.");
+            }
+          }
+        }
         
+        // 2. Handle Star Rating
+        const figureSnap = await transaction.get(figureDocRef);
+        if (!figureSnap.exists()) throw new Error("Figure document does not exist!");
         const figureData = figureSnap.data()!;
         const currentAggregatedStarCounts = (figureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
         const newAggregatedStarCounts = { ...currentAggregatedStarCounts };
         
+        const userPrevRatingSnap = await transaction.get(userStarRatingDocRef); 
         const previousUserStarValue: StarValue | null = userPrevRatingSnap.exists() ? userPrevRatingSnap.data()!.starValue as StarValue : null;
 
         if (previousUserStarValue !== null) {
@@ -502,10 +518,10 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           newAggregatedStarCounts[prevKey] = Math.max(0, (newAggregatedStarCounts[prevKey] || 0) - 1);
         }
         
+        const currentStarsForComment = newCommentStars;
         if (currentStarsForComment !== null) {
           const newKey = currentStarsForComment.toString() as StarValueAsString;
           newAggregatedStarCounts[newKey] = (newAggregatedStarCounts[newKey] || 0) + 1;
-          
           transaction.set(userStarRatingDocRef, { 
             userId: currentUser.uid,
             figureId: figure.id,
@@ -518,35 +534,42 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           }
         }
         
-        transaction.update(figureDocRef, { starRatingCounts: newAggregatedStarCounts });
+        // 3. Prepare Comment Document
+        const newCommentRef = doc(commentsCollectionRef);
+        const commentData: any = {
+          figureId: figure.id,
+          userId: currentUser.uid,
+          username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
+          userPhotoURL: currentUser.photoURL || null,
+          text: newComment.trim(),
+          starRatingGiven: currentStarsForComment, 
+          createdAt: serverTimestamp(),
+          likes: 0,
+          dislikes: 0,
+          likedBy: [],
+          dislikedBy: [],
+          parentId: null,
+          replyCount: 0,
+        };
+
+        if (currentUser.isAnonymous) {
+          commentData.guestUsername = guestUsername.trim();
+          commentData.guestUsernameLower = guestUsername.trim().toLowerCase(); // Add normalized name
+          commentData.guestGender = guestGender;
+          if (anonymousUserCountryCode) {
+            commentData.userCountryCode = anonymousUserCountryCode;
+          }
+        }
+        
+        // 4. Set up all writes in the transaction
+        transaction.set(newCommentRef, commentData);
+        transaction.update(figureDocRef, { 
+          starRatingCounts: newAggregatedStarCounts,
+          commentCount: increment(1)
+        });
       });
 
-      const commentData: any = {
-        figureId: figure.id,
-        userId: currentUser.uid,
-        username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
-        userPhotoURL: currentUser.photoURL || null,
-        text: newComment.trim(),
-        starRatingGiven: currentStarsForComment, 
-        createdAt: serverTimestamp(),
-        likes: 0,
-        dislikes: 0,
-        likedBy: [],
-        dislikedBy: [],
-        parentId: null,
-        replyCount: 0,
-      };
-
-      if (currentUser.isAnonymous) {
-        commentData.guestUsername = guestUsername.trim();
-        commentData.guestGender = guestGender;
-        if (anonymousUserCountryCode) {
-          commentData.userCountryCode = anonymousUserCountryCode;
-        }
-      }
-
-      await addDoc(collection(db, 'userComments'), commentData);
-
+      // After successful transaction
       if (currentUser.isAnonymous) {
           if (!isGuestNameSet) {
             localStorage.setItem('wikistars5-guestUsername', guestUsername.trim());
@@ -558,15 +581,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           }
       }
       
-      await runTransaction(db, async (transaction) => {
-        const figureSnap = await transaction.get(figureDocRef);
-        if (!figureSnap.exists()) throw new Error("Documento de la figura no existe!");
-        const currentCommentCount = figureSnap.data().commentCount || 0;
-        transaction.update(figureDocRef, { commentCount: currentCommentCount + 1 });
-      });
-
-      if (currentStarsForComment) {
-        playSoundEffect(currentStarsForComment);
+      if (newCommentStars) {
+        playSoundEffect(newCommentStars);
       }
 
       toast({
@@ -581,14 +597,18 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       setNewComment("");
       fetchComments(); 
       router.refresh(); 
-    } catch (error: any)
-    {
+    } catch (error: any) {
       console.error("Error submitting opinion:", error);
-      toast({ title: "Error al Enviar", description: `No se pudo enviar tu opinión. ${error.message}`, variant: "destructive" });
+      let errorMessage = `No se pudo enviar tu opinión. ${error.message}`;
+      if (error.message.includes("firestore/failed-precondition")) {
+          errorMessage = "No se pudo enviar tu opinión. Es posible que falte un índice en Firestore para la validación de nombres de invitado. Revisa la consola del navegador (F12) para un enlace de creación de índice.";
+      }
+      toast({ title: "Error al Enviar", description: errorMessage, variant: "destructive" });
     } finally {
       setIsSubmittingComment(false);
     }
   };
+
 
   const handleLikeDislike = (commentId: string, action: 'like' | 'dislike', parentCommentId: string | null = null) => {
     if (!currentUser || !figure) {

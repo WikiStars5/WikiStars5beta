@@ -85,6 +85,7 @@ export interface UserComment {
   userId: string;
   username: string; 
   guestUsername?: string | null;
+  guestUsernameLower?: string | null;
   guestGender?: string;
   userPhotoURL: string | null; 
   text: string;
