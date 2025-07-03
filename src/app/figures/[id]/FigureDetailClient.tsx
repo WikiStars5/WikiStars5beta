@@ -49,8 +49,6 @@ import { cn, correctMalformedUrl } from "@/lib/utils";
 import { countryCodeToNameMap } from "@/config/countries";
 import { GENDER_OPTIONS, type GenderOption } from "@/config/genderOptions";
 import { ShareButton } from "@/components/shared/ShareButton";
-import { useTheme } from 'next-themes';
-import { useColor } from 'color-thief-react';
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -147,33 +145,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
   const MAX_COMMENT_LENGTH = 1000;
   const COMMENT_TRUNCATE_LENGTH = 350;
-
-  const { resolvedTheme } = useTheme();
-  const [dominantColor, setDominantColor] = useState<string | null>(null);
-  const [isDayMode, setIsDayMode] = useState(false);
-
-  useEffect(() => {
-    setIsDayMode(resolvedTheme === 'light');
-  }, [resolvedTheme]);
-  
-  const coverPhotoForColor = 'https://placehold.co/1280x550.png';
-  const { data: extractedColor } = useColor(coverPhotoForColor, 'rgbString', {
-    crossOrigin: 'anonymous',
-    quality: 10,
-  });
-
-  useEffect(() => {
-    if (extractedColor) {
-      setDominantColor(extractedColor);
-    }
-  }, [extractedColor]);
-
-  const bleedStyle = (isDayMode && dominantColor) ? {
-    background: `radial-gradient(ellipse 80% 100% at 50% -20%, rgba(${dominantColor.replace('rgb(', '').replace(')', '')}, 0.15) 0%, transparent 60%)`,
-    opacity: 1
-  } : {
-    opacity: 0 
-  };
 
   const allowedImageDomains = useMemo(() => {
     return [
@@ -788,7 +759,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     setIsGalleryViewerOpen(true);
   };
 
-  const handleOpenHeaderImage = (imageUrl: string) => {
+  const handleOpenProfileImage = (imageUrl: string) => {
     if (imageUrl) {
       setViewerImageUrl(imageUrl);
     }
@@ -1051,18 +1022,11 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   };
 
   return (
-    <div className="relative -mt-20 space-y-8 lg:space-y-12">
-      <div 
-        className="absolute -top-20 left-1/2 -translate-x-1/2 h-[500px] w-full max-w-7xl -z-10 transition-opacity duration-700"
-        style={bleedStyle}
-        aria-hidden="true"
-      />
-
+    <div className="space-y-8 lg:space-y-12">
       <ProfileHeader 
         figure={figure!} 
         currentUser={currentUser}
-        onImageClick={handleOpenHeaderImage}
-        onColorExtracted={setDominantColor}
+        onImageClick={handleOpenProfileImage}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
@@ -1400,7 +1364,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       
       {viewerImageUrl && (
         <ImageGalleryViewer
-            images={[{ id: 'header-image', imageUrl: viewerImageUrl, userId: '', createdAt: new Timestamp(0,0) }]}
+            images={[{ id: 'profile-image', imageUrl: viewerImageUrl, userId: '', createdAt: new Timestamp(0,0) }]}
             initialIndex={0}
             isOpen={!!viewerImageUrl}
             onClose={() => setViewerImageUrl(null)}
