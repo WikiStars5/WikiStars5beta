@@ -50,12 +50,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl || '');
-  const [coverPhotoUrl, setCoverPhotoUrl] = useState(initialData?.coverPhotoUrl || '');
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
-  const [selectedCoverFile, setSelectedCoverFile] = useState<File | null>(null);
-  const [previewCoverFileUrl, setPreviewCoverFileUrl] = useState<string | null>(null);
 
   // Basic info
   const [occupation, setOccupation] = useState(initialData?.occupation || '');
@@ -97,7 +94,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setName(initialData.name);
       setDescription(initialData.description || ''); 
       setPhotoUrl(initialData.photoUrl || ''); 
-      setCoverPhotoUrl(initialData.coverPhotoUrl || '');
       setOccupation(initialData.occupation || '');
       setGender(initialData.gender || '');
       setNationality(initialData.nationality || '');
@@ -123,14 +119,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       
       setSelectedFile(null);
       setPreviewFileUrl(null);
-      setSelectedCoverFile(null);
-      setPreviewCoverFileUrl(null);
     } else {
       // Reset all fields for new figure form
       setName('');
       setDescription('');
       setPhotoUrl('');
-      setCoverPhotoUrl('');
       setOccupation('');
       setGender('');
       setNationality('');
@@ -154,8 +147,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       
       setSelectedFile(null);
       setPreviewFileUrl(null);
-      setSelectedCoverFile(null);
-      setPreviewCoverFileUrl(null);
     }
   }, [initialData]);
 
@@ -169,18 +160,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     } else {
       setSelectedFile(null);
       setPreviewFileUrl(null);
-    }
-  };
-
-  const handleCoverFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      setSelectedCoverFile(file);
-      setPreviewCoverFileUrl(URL.createObjectURL(file));
-      setCoverPhotoUrl('');
-    } else {
-      setSelectedCoverFile(null);
-      setPreviewCoverFileUrl(null);
     }
   };
 
@@ -235,17 +214,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         finalPhotoUrlToSave = 'https://placehold.co/400x600.png';
       }
 
-      let finalCoverPhotoUrlToSave = coverPhotoUrl.trim();
-      if (selectedCoverFile) {
-        console.log(`[FigureForm handleSubmit] Attempting to upload COVER file: ${selectedCoverFile.name} for figure ID: ${figureDocId}`);
-        finalCoverPhotoUrlToSave = await uploadFileToFirebaseStorage(selectedCoverFile, figureDocId);
-        console.log(`[FigureForm handleSubmit] COVER file uploaded successfully, URL: ${finalCoverPhotoUrlToSave}`);
-      } else if (!finalCoverPhotoUrlToSave && initialData?.coverPhotoUrl) {
-        finalCoverPhotoUrlToSave = initialData.coverPhotoUrl;
-      }
-
       finalPhotoUrlToSave = correctMalformedUrl(finalPhotoUrlToSave);
-      finalCoverPhotoUrlToSave = correctMalformedUrl(finalCoverPhotoUrlToSave);
 
       let parsedFamilyMembers: FamilyMember[] = [];
       try {
@@ -264,7 +233,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         nameLower: name.trim().toLowerCase(),
         description: description.trim() || initialData?.description || "", 
         photoUrl: finalPhotoUrlToSave,
-        coverPhotoUrl: finalCoverPhotoUrlToSave,
         nationality: nationality.trim(),
         occupation: occupation.trim(),
         gender: gender.trim(),
@@ -323,14 +291,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       urlToPreview.startsWith('blob:') ||
       urlToPreview.startsWith('data:')
   );
-  
-  const coverUrlToPreview = correctMalformedUrl(previewCoverFileUrl || (coverPhotoUrl.trim() ? coverPhotoUrl.trim() : initialData?.coverPhotoUrl || null));
-  const canPreviewCoverUrl = coverUrlToPreview && (
-      coverUrlToPreview.startsWith('http://') || 
-      coverUrlToPreview.startsWith('https://') ||
-      coverUrlToPreview.startsWith('blob:') ||
-      coverUrlToPreview.startsWith('data:')
-  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-card rounded-lg shadow-md">
@@ -372,50 +332,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         />
       </div>
       
-      <div>
-        <Label htmlFor="coverPhotoUrl">URL de Imagen de Portada (Opcional)</Label>
-        <Input
-          id="coverPhotoUrl"
-          type="url"
-          value={coverPhotoUrl}
-          onChange={(e) => {
-            setCoverPhotoUrl(e.target.value);
-            setSelectedCoverFile(null);
-            setPreviewCoverFileUrl(null);
-          }}
-          placeholder="Ej: https://... (para el banner del perfil)"
-        />
-        {canPreviewCoverUrl ? (
-          <div className="mt-2 relative w-20 h-20 border rounded-md overflow-hidden bg-muted flex items-center justify-center">
-            <Image
-              src={coverUrlToPreview}
-              alt="Previsualización de Portada"
-              fill
-              className="object-cover"
-              sizes="80px"
-            />
-          </div>
-        ) : (
-          <div className="mt-2 w-20 h-20 border rounded-md bg-muted flex items-center justify-center text-muted-foreground">
-            <ImageOff className="h-8 w-8" />
-          </div>
-        )}
-      </div>
-
-      <div className="mt-2">
-        <Label htmlFor="coverFileInput">o Subir Nueva Portada</Label>
-        <Input
-          id="coverFileInput"
-          type="file"
-          accept="image/*"
-          onChange={handleCoverFileChange}
-          className="mt-1"
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          Subir un archivo para la portada tendrá prioridad sobre la URL.
-        </p>
-      </div>
-
       <div className="mt-4 border-t pt-4 border-border">
         <Label htmlFor="photoUrl">URL de la Imagen de Perfil (Opcional)</Label>
         <Input
