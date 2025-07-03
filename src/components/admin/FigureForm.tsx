@@ -51,8 +51,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [description, setDescription] = useState(initialData?.description || '');
   const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl || '');
   const [coverPhotoUrl, setCoverPhotoUrl] = useState(initialData?.coverPhotoUrl || '');
+  
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
+  const [selectedCoverFile, setSelectedCoverFile] = useState<File | null>(null);
+  const [previewCoverFileUrl, setPreviewCoverFileUrl] = useState<string | null>(null);
 
   // Basic info
   const [occupation, setOccupation] = useState(initialData?.occupation || '');
@@ -117,8 +120,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setAttitudeCounts(initialData.attitudeCounts || { ...defaultAttitudeCounts });
       setStarRatingCounts(initialData.starRatingCounts || { ...defaultStarRatingCounts });
       setFamilyMembersJson(initialData.familyMembers ? JSON.stringify(initialData.familyMembers, null, 2) : '[]');
+      
       setSelectedFile(null);
       setPreviewFileUrl(null);
+      setSelectedCoverFile(null);
+      setPreviewCoverFileUrl(null);
     } else {
       // Reset all fields for new figure form
       setName('');
@@ -145,8 +151,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setAttitudeCounts({ ...defaultAttitudeCounts });
       setStarRatingCounts({ ...defaultStarRatingCounts });
       setFamilyMembersJson('[]');
+      
       setSelectedFile(null);
       setPreviewFileUrl(null);
+      setSelectedCoverFile(null);
+      setPreviewCoverFileUrl(null);
     }
   }, [initialData]);
 
@@ -160,6 +169,18 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     } else {
       setSelectedFile(null);
       setPreviewFileUrl(null);
+    }
+  };
+
+  const handleCoverFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      setSelectedCoverFile(file);
+      setPreviewCoverFileUrl(URL.createObjectURL(file));
+      setCoverPhotoUrl('');
+    } else {
+      setSelectedCoverFile(null);
+      setPreviewCoverFileUrl(null);
     }
   };
 
@@ -189,7 +210,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
     let figureDocId = initialData?.id || slugify(name.trim(), { lower: true, strict: true });
     
-    if (!figureDocId && name.trim()) { // Double check slugify result if initialData.id is not present
+    if (!figureDocId && name.trim()) { 
       figureDocId = slugify(name.trim(), { lower: true, strict: true });
     }
     if (!figureDocId) {
@@ -198,33 +219,33 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       return;
     }
 
-
     try {
       if (!name.trim()) {
         throw new Error('El nombre de la figura es obligatorio.');
       }
       
       let finalPhotoUrlToSave = photoUrl.trim();
-      
       if (selectedFile) {
         console.log(`[FigureForm handleSubmit] Attempting to upload file: ${selectedFile.name} for figure ID: ${figureDocId}`);
-        try {
-          finalPhotoUrlToSave = await uploadFileToFirebaseStorage(selectedFile, figureDocId);
-          console.log(`[FigureForm handleSubmit] File uploaded successfully, URL: ${finalPhotoUrlToSave}`);
-        } catch (uploadError: any) {
-          console.error(`[FigureForm handleSubmit] Error during file upload for figure ${figureDocId}:`, uploadError);
-          setError(`Error al subir la imagen: ${uploadError.message}. Revisa las reglas de Storage y la consola del navegador para más detalles.`);
-          setIsLoading(false); 
-          return; 
-        }
+        finalPhotoUrlToSave = await uploadFileToFirebaseStorage(selectedFile, figureDocId);
+        console.log(`[FigureForm handleSubmit] File uploaded successfully, URL: ${finalPhotoUrlToSave}`);
       } else if (!finalPhotoUrlToSave && initialData?.photoUrl) {
         finalPhotoUrlToSave = initialData.photoUrl;
       } else if (!finalPhotoUrlToSave && !initialData?.photoUrl && !selectedFile) {
         finalPhotoUrlToSave = 'https://placehold.co/400x600.png';
       }
 
-      // Correct the URL just before saving
+      let finalCoverPhotoUrlToSave = coverPhotoUrl.trim();
+      if (selectedCoverFile) {
+        console.log(`[FigureForm handleSubmit] Attempting to upload COVER file: ${selectedCoverFile.name} for figure ID: ${figureDocId}`);
+        finalCoverPhotoUrlToSave = await uploadFileToFirebaseStorage(selectedCoverFile, figureDocId);
+        console.log(`[FigureForm handleSubmit] COVER file uploaded successfully, URL: ${finalCoverPhotoUrlToSave}`);
+      } else if (!finalCoverPhotoUrlToSave && initialData?.coverPhotoUrl) {
+        finalCoverPhotoUrlToSave = initialData.coverPhotoUrl;
+      }
+
       finalPhotoUrlToSave = correctMalformedUrl(finalPhotoUrlToSave);
+      finalCoverPhotoUrlToSave = correctMalformedUrl(finalCoverPhotoUrlToSave);
 
       let parsedFamilyMembers: FamilyMember[] = [];
       try {
@@ -243,11 +264,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         nameLower: name.trim().toLowerCase(),
         description: description.trim() || initialData?.description || "", 
         photoUrl: finalPhotoUrlToSave,
-        coverPhotoUrl: correctMalformedUrl(coverPhotoUrl),
+        coverPhotoUrl: finalCoverPhotoUrlToSave,
         nationality: nationality.trim(),
         occupation: occupation.trim(),
         gender: gender.trim(),
-        
         alias: alias.trim(),
         species: species.trim(),
         firstAppearance: firstAppearance.trim(),
@@ -261,7 +281,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         eyeColor: eyeColor.trim(),
         distinctiveFeatures: distinctiveFeatures.trim(),
         isFeatured: isFeatured,
-
         perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
         attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
         starRatingCounts: starRatingCounts || { ...defaultStarRatingCounts },
@@ -282,7 +301,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       
       setTimeout(() => {
         if (!initialData?.id) { 
-          router.push(`/admin/figures/${figureDocId}/edit`); // Redirect to edit page of new figure
+          router.push(`/admin/figures/${figureDocId}/edit`); 
         } else { 
           router.push('/admin/figures');
         }
@@ -305,8 +324,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       urlToPreview.startsWith('data:')
   );
   
-  const coverUrlToPreview = correctMalformedUrl(coverPhotoUrl.trim() ? coverPhotoUrl.trim() : initialData?.coverPhotoUrl || null);
-  const canPreviewCoverUrl = coverUrlToPreview && (coverUrlToPreview.startsWith('http://') || coverUrlToPreview.startsWith('https://'));
+  const coverUrlToPreview = correctMalformedUrl(previewCoverFileUrl || (coverPhotoUrl.trim() ? coverPhotoUrl.trim() : initialData?.coverPhotoUrl || null));
+  const canPreviewCoverUrl = coverUrlToPreview && (
+      coverUrlToPreview.startsWith('http://') || 
+      coverUrlToPreview.startsWith('https://') ||
+      coverUrlToPreview.startsWith('blob:') ||
+      coverUrlToPreview.startsWith('data:')
+  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-card rounded-lg shadow-md">
@@ -354,7 +378,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           id="coverPhotoUrl"
           type="url"
           value={coverPhotoUrl}
-          onChange={(e) => setCoverPhotoUrl(e.target.value)}
+          onChange={(e) => {
+            setCoverPhotoUrl(e.target.value);
+            setSelectedCoverFile(null);
+            setPreviewCoverFileUrl(null);
+          }}
           placeholder="Ej: https://... (para el banner del perfil)"
         />
         {canPreviewCoverUrl ? (
@@ -374,7 +402,21 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         )}
       </div>
 
-      <div>
+      <div className="mt-2">
+        <Label htmlFor="coverFileInput">o Subir Nueva Portada</Label>
+        <Input
+          id="coverFileInput"
+          type="file"
+          accept="image/*"
+          onChange={handleCoverFileChange}
+          className="mt-1"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Subir un archivo para la portada tendrá prioridad sobre la URL.
+        </p>
+      </div>
+
+      <div className="mt-4 border-t pt-4 border-border">
         <Label htmlFor="photoUrl">URL de la Imagen de Perfil (Opcional)</Label>
         <Input
           id="photoUrl"
@@ -388,8 +430,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           placeholder="Ej: https://upload.wikimedia.org/..."
           className="mb-2"
         />
-        <p className="text-sm text-muted-foreground">
-          Pega la URL de una imagen externa. Dominios permitidos: Wikimedia, Wikia, Pinterest, Placehold.co y Firebase Storage. Si también seleccionas un archivo, se priorizará el archivo subido.
+        <p className="text-xs text-muted-foreground">
+          Pega la URL de una imagen externa. Dominios permitidos: Wikimedia, Wikia, Pinterest, Placehold.co y Firebase Storage.
         </p>
         
         {canPreviewUrl ? (
@@ -409,8 +451,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         )}
       </div>
 
-      <div className="mt-4 border-t pt-4 border-border">
-        <Label htmlFor="fileInput">Subir Nueva Foto de Perfil (Opcional)</Label>
+      <div className="mt-2">
+        <Label htmlFor="fileInput">o Subir Nueva Foto de Perfil</Label>
         <Input
           id="fileInput"
           type="file"
@@ -418,8 +460,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           onChange={handleFileChange}
           className="mt-1"
         />
-        <p className="text-sm text-muted-foreground mt-1">
-          Sube una imagen para la figura. Esto tendrá prioridad sobre la URL de la imagen de perfil.
+        <p className="text-xs text-muted-foreground mt-1">
+          Subir un archivo para el perfil tendrá prioridad sobre la URL.
         </p>
       </div>
 
