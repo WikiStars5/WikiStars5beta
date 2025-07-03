@@ -13,10 +13,8 @@ const ALLOWED_IMAGE_DOMAINS = [
   'firebasestorage.googleapis.com', 
   'wikimedia.org', // Permitir el dominio base para cubrir subdominios como upload, commons, etc.
   'static.wikia.nocookie.net', 
-  'i.pinimg.com',
-  'encrypted-tbn0.gstatic.com',
-  'm.media-amazon.com'
-  // Añade aquí otros dominios si los tienes en next.config.ts
+  'pinimg.com', // Base domain for i.pinimg.com, etc.
+  'flagcdn.com'
 ];
 
 function isValidImageUrl(url: string): boolean {

@@ -179,7 +179,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const allowedImageDomains = useMemo(() => {
     return [
       'placehold.co', 'firebasestorage.googleapis.com', 'wikimedia.org', 
-      'static.wikia.nocookie.net', 'i.pinimg.com', 'encrypted-tbn0.gstatic.com', 'm.media-amazon.com'
+      'static.wikia.nocookie.net', 'pinimg.com', 'flagcdn.com'
     ];
   }, []);
 
@@ -1173,7 +1173,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
               <Card className="border border-white/20 bg-black">
                 <CardHeader>
                   <CardTitle className="flex items-center text-2xl font-headline"><Images className="mr-3 h-7 w-7 text-primary" />Galería de Imágenes de {figure!.name}</CardTitle>
-                  <CardDescription>Imágenes de la comunidad. Dominios permitidos: Wikimedia, Wikia, Firebase Storage, Placehold.co, Pinterest, etc.</CardDescription>
+                  <CardDescription>Imágenes de la comunidad. Dominios permitidos: {allowedImageDomains.join(', ')}.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {canSubmitGalleryImage && (

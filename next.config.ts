@@ -40,18 +40,6 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'encrypted-tbn0.gstatic.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'm.media-amazon.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
         hostname: '*.pinimg.com',
         port: '',
         pathname: '/**',
@@ -59,37 +47,6 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'flagcdn.com',
-        port: '',
-        pathname: '/**',
-      },
-      // New domains for K-Pop and other media
-      {
-        protocol: 'https',
-        hostname: '*.kpopping.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.soompi.io',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.asianwiki.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.kpop-profile.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.lisimg.com',
         port: '',
         pathname: '/**',
       },

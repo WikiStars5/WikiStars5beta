@@ -383,7 +383,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           className="mb-2"
         />
         <p className="text-sm text-muted-foreground">
-          Pega la URL de una imagen externa. Dominios permitidos: Wikimedia, Wikia, Placehold.co, Firebase Storage, Pinterest, etc. Si también seleccionas un archivo, se priorizará el archivo subido.
+          Pega la URL de una imagen externa. Dominios permitidos: Wikimedia, Wikia, Pinterest, Placehold.co y Firebase Storage. Si también seleccionas un archivo, se priorizará el archivo subido.
         </p>
         
         {canPreviewUrl ? (
