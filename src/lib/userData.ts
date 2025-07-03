@@ -133,23 +133,30 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
     return users;
   } catch (error: any) {
     console.error("Error fetching all users from Firestore:", error);
-    // Re-throw a specific, user-friendly error to be caught by the UI.
-    // This makes the cause of the error unmistakable.
+    // The error is re-thrown with a very specific, user-friendly message
+    // to guide the user to fix their Firebase Console settings.
+    // This is not an application code bug, but a configuration issue.
     if (error.code === 'permission-denied' || String(error.message).toLowerCase().includes("permission")) {
         throw new Error(
-`**Error de Permiso de Firestore: ACCIÓN REQUERIDA**
+`**ACCIÓN MANUAL REQUERIDA: Permisos de Firestore**
 
-La configuración de seguridad en tu **Consola de Firebase** está bloqueando el acceso.
+Este no es un error en el código de la aplicación. Es un problema de configuración en tu proyecto de Firebase que debes solucionar manualmente.
 
-**Solución Inmediata:**
-1. Ve a \`src/lib/firebase.ts\`.
-2. Copia el bloque de código completo de las reglas de seguridad.
-3. Ve a tu proyecto de Firebase -> Firestore -> Pestaña 'Reglas'.
-4. **Borra** las reglas antiguas y **pega** las nuevas.
-5. Haz clic en **Publicar**.
-6. Espera un minuto y refresca esta página.
+La aplicación no tiene permiso para leer la lista de usuarios.
 
-**El panel de administración no funcionará hasta que se corrijan las reglas en la Consola de Firebase.**`
+**Sigue estos pasos EXACTAMENTE para solucionarlo:**
+
+1.  **Abre el archivo \`src/lib/firebase.ts\` en el editor de código.**
+2.  **Copia TODO el bloque de código de reglas que empieza con \`rules_version = '2';\`**
+3.  **Ve a la página web de la Consola de Firebase en tu navegador.** (https://console.firebase.google.com/)
+4.  Selecciona tu proyecto: **wikistars5-2yctr**.
+5.  En el menú de la izquierda, ve a **Compilación -> Firestore Database**.
+6.  Haz clic en la pestaña **"Reglas"** en la parte superior.
+7.  **BORRA TODO** el texto que está en el editor de reglas.
+8.  **PEGA** las reglas que copiaste en el paso 2.
+9.  Haz clic en el botón azul **"Publicar"**.
+
+El panel de administración no funcionará y seguirá mostrando este error hasta que completes estos pasos.`
         );
     }
     throw error; // Re-throw other errors
