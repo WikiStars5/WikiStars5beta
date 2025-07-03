@@ -24,6 +24,7 @@ import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
+import { FamilyTreeDisplay } from "@/components/figures/FamilyTreeDisplay";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
