@@ -38,26 +38,24 @@ export default function AdminDashboardPage() {
         
         const currentUser = auth.currentUser;
         const currentUserUID = currentUser ? currentUser.uid : 'No hay usuario conectado';
-        const currentUserEmail = currentUser ? currentUser.email : 'N/A';
 
         if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
-          setFetchError(`Error Crítico de Permisos: No se pudieron obtener los datos.
+          setFetchError(`**Error Crítico de Permisos de Firestore**
 
-**Detalles del Problema:**
-- **Permiso Denegado:** Firestore está bloqueando la lectura de la lista de usuarios.
-- **UID de Administrador Esperado:** \`${ADMIN_UID_FOR_MESSAGE}\`
-- **UID del Usuario Actual Conectado:** \`${currentUserUID}\`
-- **Email del Usuario Actual:** \`${currentUserEmail || 'No disponible'}\`
+Tu panel de administración no puede cargar los datos de los usuarios.
 
-**Posibles Causas y Soluciones:**
-1.  **Discrepancia de UID:** Si el UID del usuario conectado no coincide con el esperado, asegúrate de haber iniciado sesión con la cuenta de administrador correcta.
-2.  **Reglas No Actualizadas:** Si los UIDs coinciden, es probable que las reglas en la Consola de Firebase no se hayan publicado correctamente o necesiten tiempo para propagarse.
-    - **Paso 1:** Ve al archivo \`src/lib/firebase.ts\`.
-    - **Paso 2:** Copia el bloque completo de reglas de seguridad.
-    - **Paso 3:** Ve a tu **Consola de Firebase > Firestore Database > Pestaña 'Rules'**.
-    - **Paso 4:** Reemplaza las reglas antiguas con las que copiaste y haz clic en **Publish**.
-    - **Paso 5:** Espera uno o dos minutos y refresca esta página.
-`);
+**Diagnóstico:**
+- **Estás usando la cuenta de admin correcta**: El UID del usuario conectado (\`${currentUserUID}\`) coincide con el UID de admin esperado.
+- **El problema está en Firebase**: Las reglas de seguridad publicadas en tu Consola de Firebase no permiten que un administrador lea la lista de usuarios. La regla \`allow list: if isAdmin();\` en la colección \`registered_users\` es la que está fallando.
+
+**Solución Definitiva (Obligatoria):**
+1.  **Ve al archivo:** \`src/lib/firebase.ts\` en este editor.
+2.  **Copia** el bloque de código completo de las reglas de seguridad.
+3.  **Ve a tu Consola de Firebase:** Navega a Firestore Database > Pestaña 'Rules'.
+4.  **Reemplaza y Publica:** Borra las reglas antiguas, pega las nuevas y haz clic en **Publish**.
+5.  **Espera y refresca:** Espera uno o dos minutos y actualiza esta página.
+
+**No lances tu sitio web hasta que este error desaparezca. Un panel de administración que no funciona es un problema crítico.**`);
         } else {
           setFetchError(`Ocurrió un error inesperado al obtener los datos del panel: ${error.message || 'Error desconocido'}`);
         }
@@ -100,7 +98,7 @@ export default function AdminDashboardPage() {
                   <Users className="h-5 w-5 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{fetchError ? 'Error' : totalFigures}</div>
+                  <div className="text-2xl font-bold">{totalFigures}</div>
                   <p className="text-xs text-muted-foreground">perfiles gestionados en Firestore</p>
                 </CardContent>
               </Card>
@@ -111,7 +109,7 @@ export default function AdminDashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{fetchError ? 'Error' : totalUsers}</div>
-                  <p className="text-xs text-muted-foreground">usuarios registrados</p>
+                  <p className="text-xs text-muted-foreground">{fetchError ? 'debido a error de permisos' : 'usuarios registrados'}</p>
                 </CardContent>
               </Card>
             </div>
