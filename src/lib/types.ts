@@ -28,7 +28,6 @@ export interface Figure {
   name: string;
   nameLower: string;
   photoUrl: string;
-  coverPhotoUrl?: string;
   description?: string;
   
   nationality?: string;

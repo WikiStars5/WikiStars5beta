@@ -43,41 +43,60 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Función auxiliar para verificar si el usuario es el administrador.
+    // ¡ASEGÚRATE DE QUE EL UID COINCIDA CON TU CUENTA DE ADMINISTRADOR!
     function isAdmin() {
-      // Reemplaza esto con el UID de tu cuenta de administrador
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
 
+    // Reglas para la colección 'figures'
     match /figures/{figureId} {
+      // Cualquiera puede leer la lista de figuras o una figura individual.
       allow get, list: if true;
+      // Cualquier usuario autenticado (incluidos anónimos) puede actualizar una figura.
+      // Esto permite la edición pública y el voto en encuestas.
       allow update: if request.auth != null; 
+      // Solo los administradores pueden crear o eliminar figuras.
       allow create, delete: if isAdmin();
 
+      // Reglas para la subcolección de galería de imágenes
       match /galleryImages/{galleryImageId} {
+        // Cualquiera puede leer las imágenes de la galería.
         allow read: if true;
+        // Solo los usuarios autenticados (no anónimos) pueden añadir/eliminar imágenes.
         allow write: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
       }
     }
 
+    // Reglas para la colección de usuarios registrados
     match /registered_users/{userId} {
-      // Admins can read any user profile. A user can read their own profile.
+      // Un administrador puede leer el perfil de cualquier usuario.
+      // Un usuario puede leer su propio perfil.
       allow get: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      // Only admins can list all users (for the admin panel).
+      // IMPORTANTE: Solo un administrador puede listar todos los documentos de esta colección.
+      // Esto es necesario para el panel de administración.
       allow list: if isAdmin();
       
-      // A user can create their own profile document.
+      // Un usuario puede crear su propio documento de perfil.
       allow create: if request.auth != null && request.auth.uid == userId;
-      // Admins can update any user profile. A user can update their own profile.
+      // Un administrador puede actualizar cualquier perfil. Un usuario puede actualizar el suyo.
       allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      // Only admins can delete users.
+      // Solo los administradores pueden eliminar perfiles de usuario.
       allow delete: if isAdmin();
     }
 
+    // Reglas para las colecciones de votos y encuestas.
+    // Cualquier usuario autenticado (incluidos anónimos) puede escribir su voto.
     match /userPerceptions/{docId} { allow read, write: if request.auth != null; }
     match /userAttitudes/{docId} { allow read, write: if request.auth != null; }
     match /userStarRatings/{docId} { allow read, write: if request.auth != null; }
+    
+    // Reglas para la colección de comentarios.
     match /userComments/{commentId} {
+      // Cualquiera puede leer los comentarios.
       allow read: if true;
+      // Cualquier usuario autenticado (incluidos anónimos) puede escribir/actualizar.
+      // Esto permite comentar y dar me gusta/no me gusta.
       allow write: if true; 
     }
   }

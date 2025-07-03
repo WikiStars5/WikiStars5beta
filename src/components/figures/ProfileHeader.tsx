@@ -22,12 +22,11 @@ export function ProfileHeader({
   onImageClick,
   onColorExtracted
 }: ProfileHeaderProps) {
-  const correctedCoverPhotoUrl = correctMalformedUrl(figure.coverPhotoUrl);
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
 
-  const coverImage = correctedCoverPhotoUrl || 'https://placehold.co/1280x550.png';
+  const coverImage = 'https://placehold.co/1280x550.png';
 
-  const { data: dominantColor, loading } = useColor(correctedCoverPhotoUrl, 'rgbString', {
+  const { data: dominantColor, loading } = useColor(coverImage, 'rgbString', {
     crossOrigin: 'anonymous',
     quality: 10,
   });
@@ -49,7 +48,7 @@ export function ProfileHeader({
             className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-90"
             priority
             sizes="100vw"
-            data-ai-hint={correctedCoverPhotoUrl ? "background landscape" : "abstract pattern"}
+            data-ai-hint={"abstract pattern"}
             crossOrigin="anonymous" 
           />
         </button>
