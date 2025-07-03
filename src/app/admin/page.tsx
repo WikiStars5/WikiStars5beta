@@ -11,9 +11,6 @@ import { getAllUsersFromFirestore } from "@/lib/userData";
 import type { Figure, UserProfile } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
-import { auth } from '@/lib/firebase';
-
-const ADMIN_UID_FOR_MESSAGE = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
 
 export default function AdminDashboardPage() {
   const [figures, setFigures] = useState<Figure[]>([]);
@@ -35,30 +32,8 @@ export default function AdminDashboardPage() {
         setUsers(usersData);
       } catch (error: any) {
         console.error("Error fetching admin dashboard data:", error);
-        
-        const currentUser = auth.currentUser;
-        const currentUserUID = currentUser ? currentUser.uid : 'No hay usuario conectado';
-
-        if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
-          setFetchError(`**Error Crítico de Permisos de Firestore**
-
-Tu panel de administración no puede cargar los datos de los usuarios.
-
-**Diagnóstico:**
-- **Estás usando la cuenta de admin correcta**: El UID del usuario conectado (\`${currentUserUID}\`) coincide con el UID de admin esperado.
-- **El problema está en Firebase**: Las reglas de seguridad publicadas en tu Consola de Firebase no permiten que un administrador lea la lista de usuarios. La regla \`allow list: if isAdmin();\` en la colección \`registered_users\` es la que está fallando.
-
-**Solución Definitiva (Obligatoria):**
-1.  **Ve al archivo:** \`src/lib/firebase.ts\` en este editor.
-2.  **Copia** el bloque de código completo de las reglas de seguridad.
-3.  **Ve a tu Consola de Firebase:** Navega a Firestore Database > Pestaña 'Rules'.
-4.  **Reemplaza y Publica:** Borra las reglas antiguas, pega las nuevas y haz clic en **Publish**.
-5.  **Espera y refresca:** Espera uno o dos minutos y actualiza esta página.
-
-**No lances tu sitio web hasta que este error desaparezca. Un panel de administración que no funciona es un problema crítico.**`);
-        } else {
-          setFetchError(`Ocurrió un error inesperado al obtener los datos del panel: ${error.message || 'Error desconocido'}`);
-        }
+        // The error message now comes directly from the action, pre-formatted and clear.
+        setFetchError(error.message || 'Ocurrió un error inesperado al cargar los datos.');
       } finally {
         setIsLoading(false);
       }
@@ -75,7 +50,7 @@ Tu panel de administración no puede cargar los datos de los usuarios.
       {fetchError && (
         <Alert variant="destructive" className="mb-6 whitespace-pre-wrap">
           <AlertTriangle className="h-5 w-5" />
-          <AlertTitle>Error de Permiso de Firestore</AlertTitle>
+          <AlertTitle>Error Crítico de Configuración</AlertTitle>
           <AlertDescription>{fetchError}</AlertDescription>
         </Alert>
       )}

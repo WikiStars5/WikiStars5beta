@@ -133,8 +133,25 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
     return users;
   } catch (error: any) {
     console.error("Error fetching all users from Firestore:", error);
-    // Re-throw the error so it can be caught by the calling page component
-    // and displayed to the user in a more visible way.
-    throw error;
+    // Re-throw a specific, user-friendly error to be caught by the UI.
+    // This makes the cause of the error unmistakable.
+    if (error.code === 'permission-denied' || String(error.message).toLowerCase().includes("permission")) {
+        throw new Error(
+`**Error de Permiso de Firestore: ACCIÓN REQUERIDA**
+
+La configuración de seguridad en tu **Consola de Firebase** está bloqueando el acceso.
+
+**Solución Inmediata:**
+1. Ve a \`src/lib/firebase.ts\`.
+2. Copia el bloque de código completo de las reglas de seguridad.
+3. Ve a tu proyecto de Firebase -> Firestore -> Pestaña 'Reglas'.
+4. **Borra** las reglas antiguas y **pega** las nuevas.
+5. Haz clic en **Publicar**.
+6. Espera un minuto y refresca esta página.
+
+**El panel de administración no funcionará hasta que se corrijan las reglas en la Consola de Firebase.**`
+        );
+    }
+    throw error; // Re-throw other errors
   }
 }
