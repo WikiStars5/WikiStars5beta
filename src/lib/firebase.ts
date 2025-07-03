@@ -48,17 +48,9 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
 
-    // --- REGLAS DE DESARROLLO (MUY PERMISIVAS) ---
-    // ADVERTENCIA: Estas reglas son para probar la lógica de la app.
-    
     match /figures/{figureId} {
-      // Cualquiera puede leer figuras individuales (get) y la lista completa (list) para el sitemap
       allow get, list: if true;
-      
-      // Los usuarios autenticados (incluidos anónimos) pueden actualizar los contadores
       allow update: if request.auth != null; 
-      
-      // Solo el admin puede crear o eliminar figuras
       allow create, delete: if isAdmin();
 
       match /galleryImages/{galleryImageId} {
@@ -68,17 +60,24 @@ service cloud.firestore {
     }
 
     match /registered_users/{userId} {
-      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // Admins can read any user profile. A user can read their own profile.
+      allow get: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // Only admins can list all users (for the admin panel).
+      allow list: if isAdmin();
+      
+      // A user can create their own profile document.
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Admins can update any user profile. A user can update their own profile.
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // Only admins can delete users.
+      allow delete: if isAdmin();
     }
 
     match /userPerceptions/{docId} { allow read, write: if request.auth != null; }
     match /userAttitudes/{docId} { allow read, write: if request.auth != null; }
     match /userStarRatings/{docId} { allow read, write: if request.auth != null; }
-
-    // Colección de comentarios de usuario
     match /userComments/{commentId} {
       allow read: if true;
-      // Permitir escritura a CUALQUIERA para depurar y para que los anónimos puedan comentar.
       allow write: if true; 
     }
   }

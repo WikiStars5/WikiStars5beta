@@ -133,11 +133,8 @@ export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
     return users;
   } catch (error: any) {
     console.error("Error fetching all users from Firestore:", error);
-    if (String(error.message).toLowerCase().includes("permission")) {
-      console.error("Firestore permission error: Check your security rules for the 'registered_users' collection to ensure the admin has 'list' permissions.");
-    } else if (String(error.message).toLowerCase().includes("index")) {
-      console.error("Firestore index error: An index is required for the query. Check the browser console for a link to create it.");
-    }
-    return [];
+    // Re-throw the error so it can be caught by the calling page component
+    // and displayed to the user in a more visible way.
+    throw error;
   }
 }
