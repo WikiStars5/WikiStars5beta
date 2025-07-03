@@ -1,4 +1,3 @@
-
 "use client"; // Convert to client component
 
 import { useState, useEffect } from "react";
@@ -7,14 +6,13 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Users, ListOrdered, PlusCircle, AlertTriangle, ImageUp, Loader2 } from "lucide-react";
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
-import { getAllUsersFromFirestore } from "@/lib/userData"; 
-import type { Figure, UserProfile } from "@/lib/types";
+// La importación de getAllUsersFromFirestore y UserProfile se ha eliminado para evitar el error de permisos.
+import type { Figure } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
 
 export default function AdminDashboardPage() {
   const [figures, setFigures] = useState<Figure[]>([]);
-  const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -23,16 +21,12 @@ export default function AdminDashboardPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        // Fetch figures and users in parallel
-        const [figuresData, usersData] = await Promise.all([
-          getAllFiguresFromFirestore(),
-          getAllUsersFromFirestore()
-        ]);
+        // Ahora solo obtenemos los datos de las figuras, ya que la obtención de usuarios se ha desactivado.
+        const figuresData = await getAllFiguresFromFirestore();
         setFigures(figuresData);
-        setUsers(usersData);
       } catch (error: any) {
         console.error("Error fetching admin dashboard data:", error);
-        // The error message now comes directly from the action, pre-formatted and clear.
+        // Este error ahora solo se activará si falla la obtención de figuras.
         setFetchError(error.message || 'Ocurrió un error inesperado al cargar los datos.');
       } finally {
         setIsLoading(false);
@@ -43,7 +37,6 @@ export default function AdminDashboardPage() {
   }, []);
 
   const totalFigures = figures.length;
-  const totalUsers = users.length;
 
   return (
     <div className="space-y-8">
@@ -77,16 +70,9 @@ export default function AdminDashboardPage() {
                   <p className="text-xs text-muted-foreground">perfiles gestionados en Firestore</p>
                 </CardContent>
               </Card>
-              <Card className="hover:shadow-md transition-shadow">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de Usuarios</CardTitle>
-                  <Users className="h-5 w-5 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{fetchError ? 'Error' : totalUsers}</div>
-                  <p className="text-xs text-muted-foreground">{fetchError ? 'debido a error de permisos' : 'usuarios registrados'}</p>
-                </CardContent>
-              </Card>
+              {/* La tarjeta "Total de Usuarios" ha sido eliminada para evitar el error de permisos.
+                  Para reactivarla, primero debes arreglar las reglas de seguridad de Firestore para permitir
+                  al administrador 'listar' la colección 'registered_users'. */}
             </div>
           )}
         </CardContent>
