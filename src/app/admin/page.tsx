@@ -1,35 +1,40 @@
+"use client"; // Convert to client component
+
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Users, ListOrdered, PlusCircle, AlertTriangle, ImageUp } from "lucide-react";
+import { Users, ListOrdered, PlusCircle, AlertTriangle, ImageUp, Loader2 } from "lucide-react";
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { getAllUsersFromFirestore } from "@/lib/userData"; 
+import type { Figure, UserProfile } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
 
-export const revalidate = 0; 
-
 const ADMIN_UID_FOR_MESSAGE = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
 
-export default async function AdminDashboardPage() {
-  let figures = [];
-  let totalFigures = 0;
-  let fetchError: string | null = null;
-  let users = [];
-  let totalUsers = 0;
+export default function AdminDashboardPage() {
+  const [figures, setFigures] = useState<Figure[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  try {
-    // Fetch figures and users in parallel
-    [figures, users] = await Promise.all([
-      getAllFiguresFromFirestore(),
-      getAllUsersFromFirestore()
-    ]);
-    totalFigures = figures.length;
-    totalUsers = users.length;
-  } catch (error: any) {
-    console.error("Error fetching admin dashboard data:", error);
-    if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
-      fetchError = `Error Crítico de Permisos: No se pudieron obtener los datos para el panel de administración. Tus Reglas de Seguridad de Firestore están bloqueando el acceso.
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setFetchError(null);
+      try {
+        // Fetch figures and users in parallel
+        const [figuresData, usersData] = await Promise.all([
+          getAllFiguresFromFirestore(),
+          getAllUsersFromFirestore()
+        ]);
+        setFigures(figuresData);
+        setUsers(usersData);
+      } catch (error: any) {
+        console.error("Error fetching admin dashboard data:", error);
+        if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
+          setFetchError(`Error Crítico de Permisos: No se pudieron obtener los datos para el panel de administración. Tus Reglas de Seguridad de Firestore están bloqueando el acceso.
 
 **Acción Requerida:**
 1. Ve al archivo 'src/lib/firebase.ts'.
@@ -37,11 +42,20 @@ export default async function AdminDashboardPage() {
 3. Ve a tu Consola de Firebase -> Firestore Database -> Pestaña 'Rules'.
 4. Reemplaza las reglas antiguas con las que copiaste y publica los cambios.
 
-El UID de administrador esperado es: ${ADMIN_UID_FOR_MESSAGE}.`;
-    } else {
-      fetchError = `Ocurrió un error inesperado al obtener los datos del panel: ${error.message || 'Error desconocido'}`;
-    }
-  }
+El UID de administrador esperado es: ${ADMIN_UID_FOR_MESSAGE}.`);
+        } else {
+          setFetchError(`Ocurrió un error inesperado al obtener los datos del panel: ${error.message || 'Error desconocido'}`);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const totalFigures = figures.length;
+  const totalUsers = users.length;
 
   return (
     <div className="space-y-8">
@@ -58,28 +72,35 @@ El UID de administrador esperado es: ${ADMIN_UID_FOR_MESSAGE}.`;
           <CardDescription>Resumen del estado de la aplicación WikiStars5. Datos de figuras y usuarios desde Firestore.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card className="hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total de Figuras</CardTitle>
-                <Users className="h-5 w-5 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{fetchError ? 'Error' : totalFigures}</div>
-                <p className="text-xs text-muted-foreground">perfiles gestionados en Firestore</p>
-              </CardContent>
-            </Card>
-            <Card className="hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total de Usuarios</CardTitle>
-                <Users className="h-5 w-5 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{fetchError ? 'Error' : totalUsers}</div>
-                <p className="text-xs text-muted-foreground">usuarios registrados</p>
-              </CardContent>
-            </Card>
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center h-24">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="ml-4 text-muted-foreground">Cargando datos...</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card className="hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total de Figuras</CardTitle>
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{fetchError ? 'Error' : totalFigures}</div>
+                  <p className="text-xs text-muted-foreground">perfiles gestionados en Firestore</p>
+                </CardContent>
+              </Card>
+              <Card className="hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total de Usuarios</CardTitle>
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{fetchError ? 'Error' : totalUsers}</div>
+                  <p className="text-xs text-muted-foreground">usuarios registrados</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </CardContent>
       </Card>
 
