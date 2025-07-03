@@ -73,6 +73,11 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const router = useRouter();
 
   const [figure, setFigure] = useState<Figure | null | undefined>(initialFigure); 
+  
+  useEffect(() => {
+      setFigure(initialFigure);
+  }, [initialFigure]);
+
   const [allFigures, setAllFigures] = useState<Figure[]>([]);
   const { toast } = useToast();
 

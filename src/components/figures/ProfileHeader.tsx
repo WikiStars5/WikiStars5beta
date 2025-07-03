@@ -27,7 +27,7 @@ export function ProfileHeader({
 
   const coverImage = correctedCoverPhotoUrl || 'https://placehold.co/1280x550.png';
 
-  const { data: dominantColor, loading } = useColor(coverImage, 'rgbString', {
+  const { data: dominantColor, loading } = useColor(correctedCoverPhotoUrl, 'rgbString', {
     crossOrigin: 'anonymous',
     quality: 10,
   });
@@ -48,6 +48,7 @@ export function ProfileHeader({
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-90"
             priority
+            sizes="100vw"
             data-ai-hint={correctedCoverPhotoUrl ? "background landscape" : "abstract pattern"}
             crossOrigin="anonymous" 
           />

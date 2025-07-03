@@ -28,15 +28,14 @@ const nextConfig: NextConfig = {
       }, 
       { 
         protocol: 'https', 
-        hostname: '*.wikimedia.org', // Corregido: comodín para CUALQUIER subdominio de wikimedia.org
+        hostname: '*.wikimedia.org',
         port: '', 
         pathname: '/**', 
       }, 
       { 
         protocol: 'https', 
-        hostname: 'static.wikia.nocookie.net', // Dominio para Wikia/Fandom 
+        hostname: 'static.wikia.nocookie.net',
         port: '', 
-        // Permite cualquier ruta de imagen bajo este hostname.
         pathname: '/**', 
       },
       {
@@ -53,13 +52,44 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'i.pinimg.com',
+        hostname: '*.pinimg.com',
         port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'flagcdn.com',
+        port: '',
+        pathname: '/**',
+      },
+      // New domains for K-Pop and other media
+      {
+        protocol: 'https',
+        hostname: '*.kpopping.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.soompi.io',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.asianwiki.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.kpop-profile.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.lisimg.com',
         port: '',
         pathname: '/**',
       },
