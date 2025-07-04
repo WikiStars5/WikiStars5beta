@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Figure, UserComment, StarValue, StarValueAsString, GalleryImage, FamilyMember, UserProfile } from "@/lib/types";
+import type { Figure, UserComment, StarValue, StarValueAsString, FamilyMember, UserProfile } from "@/lib/types";
 import { getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
@@ -43,7 +43,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { submitGalleryImageAction } from "@/app/actions/figureGalleryActions";
 import { updateCommentLikes } from "@/app/actions/commentRatingActions";
 import { cn, correctMalformedUrl } from "@/lib/utils";
 import { countryCodeToNameMap } from "@/config/countries";
@@ -105,7 +104,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [canEditFigure, setCanEditFigure] = useState(false);
   const [canCommentOrRate, setCanCommentOrRate] = useState(false);
   const [canVoteOnComments, setCanVoteOnComments] = useState(false);
-  const [canSubmitGalleryImage, setCanSubmitGalleryImage] = useState(false);
 
   const [newComment, setNewComment] = useState("");
   const [newCommentStars, setNewCommentStars] = useState<StarValue | null>(null);
@@ -132,14 +130,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [commentToDeleteId, setCommentToDeleteId] = useState<string | null>(null);
   const [starRatingOfCommentToDelete, setStarRatingOfCommentToDelete] = useState<StarValue | null>(null);
 
-  const [newImageUrl, setNewImageUrl] = useState("");
-  const [isSubmittingImage, setIsSubmittingImage] = useState(false);
-  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
-  const [isLoadingGalleryImages, setIsLoadingGalleryImages] = useState(true);
-
   const [viewerImageUrl, setViewerImageUrl] = useState<string | null>(null);
-  const [isGalleryViewerOpen, setIsGalleryViewerOpen] = useState(false);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
 
 
@@ -210,7 +201,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       setCanEditFigure(isNonAnonymous || (user?.uid === ADMIN_UID));
       setCanCommentOrRate(!!user); 
       setCanVoteOnComments(!!user); 
-      setCanSubmitGalleryImage(isNonAnonymous);
 
       if (user) { 
         if (user.isAnonymous) {
@@ -366,48 +356,13 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
   }, [id, toast]);
 
-  const fetchGalleryImages = useCallback(async () => {
-    if (!id) {
-      setGalleryImages([]);
-      setIsLoadingGalleryImages(false);
-      return;
-    }
-    setGalleryImages([]);
-    setIsLoadingGalleryImages(true);
-    try {
-      const galleryImagesQuery = query(
-        collection(db, `figures/${id}/galleryImages`),
-        orderBy('createdAt', 'desc'),
-        limit(50) 
-      );
-      const querySnapshot = await getDocs(galleryImagesQuery);
-      const fetchedImages: GalleryImage[] = [];
-      querySnapshot.forEach((docSnap) => {
-        fetchedImages.push({ id: docSnap.id, ...docSnap.data() } as GalleryImage);
-      });
-      setGalleryImages(fetchedImages);
-    } catch (error: any) {
-      console.error("Error fetching gallery images:", error);
-      let errorMessage = "No se pudieron cargar las imágenes de la galería.";
-      if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('deadline'))) {
-        errorMessage = "La conexión con la base de datos para la galería ha tardado demasiado. Esto puede ser por falta de un índice en Firestore para la subcolección 'galleryImages'. Revisa la consola del navegador (F12) para ver si hay un enlace para crear el índice.";
-      } else if (error.message && error.message.includes("firestore/failed-precondition")) {
-          errorMessage = "Error al cargar galería: Es posible que falte un índice en Firestore. Revisa la consola del navegador (F12) para un enlace de creación de índice.";
-      }
-      toast({ title: "Error al Cargar Galería", description: errorMessage, variant: "destructive", duration: 10000 });
-    } finally {
-      setIsLoadingGalleryImages(false);
-    }
-  }, [id, toast]);
-
 
   useEffect(() => {
     if (id) {
       fetchFigureData();
       fetchComments();
-      fetchGalleryImages();
     }
-  }, [id, fetchFigureData, fetchComments, fetchGalleryImages]);
+  }, [id, fetchFigureData, fetchComments]);
 
   useEffect(() => {
     if (figure && isEditing) {
@@ -715,25 +670,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     })();
 };
 
-  const handleSubmitGalleryImage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canSubmitGalleryImage || !currentUser || !figure || !newImageUrl.trim()) {
-      toast({ title: "Error", description: "Debes iniciar sesión y proporcionar una URL de imagen válida.", variant: "destructive" });
-      return;
-    }
-    setIsSubmittingImage(true);
-    const result = await submitGalleryImageAction(figure.id, newImageUrl, currentUser.uid, currentUser.displayName || "Usuario Anónimo");
-    setIsSubmittingImage(false);
-
-    if (result.success) {
-      toast({ title: "Imagen Añadida", description: result.message });
-      setNewImageUrl("");
-      fetchGalleryImages(); 
-    } else {
-      toast({ title: "Error al Añadir Imagen", description: result.message, variant: "destructive" });
-    }
-  };
-
   const formatDate = (timestamp: any): string => {
     if (!timestamp || typeof timestamp.toDate !== 'function') return 'Fecha desconocida';
     try {
@@ -797,11 +733,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     setCommentToDeleteId(commentId);
     setStarRatingOfCommentToDelete(starRating);
     setIsDeleteDialogOpen(true);
-  };
-
-  const handleOpenGalleryViewer = (index: number) => {
-    setSelectedImageIndex(index);
-    setIsGalleryViewerOpen(true);
   };
 
   const handleOpenProfileImage = (imageUrl: string) => {
@@ -1081,7 +1012,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
               <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
               <TabsTrigger value="attitude-poll" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><MessageSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
-              <TabsTrigger value="image-gallery" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Images className="h-4 sm:h-5 w-4 sm:w-5" />Galería</TabsTrigger>
               <TabsTrigger value="family-tree" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><FamilyIcon className="h-4 sm:h-5 w-4 sm:w-5" />Familia</TabsTrigger>
             </TabsList>
 
@@ -1158,71 +1088,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
             <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
             <TabsContent value="perception-emotions">{figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
             
-            <TabsContent value="image-gallery">
-              <Card className="border border-white/20 bg-black">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-2xl font-headline"><Images className="mr-3 h-7 w-7 text-primary" />Galería de Imágenes de {figure!.name}</CardTitle>
-                  <CardDescription>Imágenes de la comunidad. Dominios permitidos: {allowedImageDomains.join(', ')}.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {canSubmitGalleryImage && (
-                    <form onSubmit={handleSubmitGalleryImage} className="flex items-end gap-2 mb-6 p-4 border rounded-lg bg-muted/50">
-                      <div className="flex-grow">
-                        <Label htmlFor="newImageUrl" className="sr-only">URL de la Imagen</Label>
-                        <Input 
-                          id="newImageUrl" 
-                          type="url" 
-                          value={newImageUrl} 
-                          onChange={(e) => setNewImageUrl(e.target.value)} 
-                          placeholder="Pega aquí la URL de la imagen..." 
-                          disabled={isSubmittingImage}
-                          required
-                        />
-                      </div>
-                      <Button type="submit" disabled={isSubmittingImage || !newImageUrl.trim()}>
-                        {isSubmittingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                        Añadir
-                      </Button>
-                    </form>
-                  )}
-                  {!canSubmitGalleryImage && (
-                     <Alert variant="default"><LogIn className="h-4 w-4" /><AlertTitle>Añadir a la Galería</AlertTitle><AlertDescription>
-                       <Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión con una cuenta</Link> para añadir imágenes.
-                     </AlertDescription></Alert>
-                  )}
-
-                  {isLoadingGalleryImages ? (
-                    <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-2">Cargando galería...</p></div>
-                  ) : galleryImages.length > 0 ? (
-                    <div className="columns-1 xs:columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-3">
-                      {galleryImages.map((img, index) => (
-                        <button
-                          key={img.id}
-                          onClick={() => handleOpenGalleryViewer(index)}
-                          className="group mb-3 block break-inside-avoid relative overflow-hidden rounded-md shadow-md hover:shadow-xl transition-shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                          aria-label={`Ver imagen ${index + 1} de ${figure!.name}`}
-                        >
-                          <Image 
-                            src={correctMalformedUrl(img.imageUrl)} 
-                            alt={`Imagen de galería para ${figure!.name} - ${index + 1}`} 
-                            width={0}
-                            height={0}
-                            sizes="(max-width: 639px) 100vw, (max-width: 767px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, 20vw"
-                            style={{ width: '100%', height: 'auto' }}
-                            className="w-full h-auto object-contain rounded-md group-hover:scale-105 transition-transform"
-                          />
-                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <ImageIconLucide className="h-10 w-10 text-white/80" />
-                            </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground text-center py-10">Aún no hay imágenes en la galería. ¡Sé el primero en añadir una!</p>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             <TabsContent value="family-tree">
               <Card className="border border-white/20 bg-black">
@@ -1398,15 +1263,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         </AlertDialogContent>
       </AlertDialog>
 
-      {isGalleryViewerOpen && galleryImages.length > 0 && (
-        <ImageGalleryViewer
-          images={galleryImages.map(img => ({...img, imageUrl: correctMalformedUrl(img.imageUrl)}))}
-          initialIndex={selectedImageIndex}
-          isOpen={isGalleryViewerOpen}
-          onClose={() => setIsGalleryViewerOpen(false)}
-        />
-      )}
-      
       {viewerImageUrl && (
         <ImageGalleryViewer
             images={[{ id: 'profile-image', imageUrl: viewerImageUrl, userId: '', createdAt: new Timestamp(0,0) }]}

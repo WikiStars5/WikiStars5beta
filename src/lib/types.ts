@@ -127,10 +127,4 @@ export interface GenderOption {
   symbol?: string; // e.g., '♂', '♀'
 }
 
-export interface GalleryImage {
-  id: string;
-  imageUrl: string;
-  userId: string;
-  username?: string;
-  createdAt: Timestamp;
-}
+// GalleryImage type removed
