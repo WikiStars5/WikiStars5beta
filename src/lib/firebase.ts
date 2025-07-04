@@ -43,61 +43,71 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Función auxiliar para verificar si el usuario es el administrador.
-    // ¡ASEGÚRATE DE QUE EL UID COINCIDA CON TU CUENTA DE ADMINISTRADOR!
+    // =====================================================================
+    // Helper Functions
+    // =====================================================================
     function isAdmin() {
+      // ¡Asegúrate de que este UID coincida con tu cuenta de administrador!
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isRegisteredUser() {
+      return isAuthenticated() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
 
-    // Reglas para la colección 'figures'
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // =====================================================================
+    // Collection Rules
+    // =====================================================================
+
+    // Las figuras pueden ser leídas por cualquiera. Las actualizaciones (para encuestas) por cualquier usuario autenticado.
+    // La creación/eliminación solo por administradores.
     match /figures/{figureId} {
-      // Cualquiera puede leer la lista de figuras o una figura individual.
       allow get, list: if true;
-      // Cualquier usuario autenticado (incluidos anónimos) puede actualizar una figura.
-      // Esto permite la edición pública y el voto en encuestas.
-      allow update: if request.auth != null; 
-      // Solo los administradores pueden crear o eliminar figuras.
+      allow update: if isAuthenticated();
       allow create, delete: if isAdmin();
 
-      // Reglas para la subcolección de galería de imágenes
+      // Subcolección para imágenes de la galería
       match /galleryImages/{galleryImageId} {
-        // Cualquiera puede leer las imágenes de la galería.
         allow read: if true;
-        // Solo los usuarios autenticados (no anónimos) pueden añadir/eliminar imágenes.
-        allow write: if request.auth != null && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+        // Solo un usuario registrado puede crear un registro de imagen, y debe ser el propietario.
+        allow create: if isRegisteredUser() && request.resource.data.userId == request.auth.uid;
+        // Solo el propietario o un administrador pueden eliminar un registro de imagen.
+        allow delete: if isOwner(resource.data.userId) || isAdmin();
+        // No se permiten actualizaciones para evitar manipulaciones.
+        allow update: if false;
       }
     }
 
-    // Reglas para la colección de usuarios registrados
+    // Los perfiles de usuario pueden ser gestionados por el propio usuario o un administrador.
+    // Listar todos los usuarios es una operación solo para administradores.
     match /registered_users/{userId} {
-      // Un administrador puede leer el perfil de cualquier usuario.
-      // Un usuario puede leer su propio perfil.
-      allow get: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      // IMPORTANTE: Solo un administrador puede listar todos los documentos de esta colección.
-      // Esto es necesario para el panel de administración.
+      allow get, update: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId);
       allow list: if isAdmin();
-      
-      // Un usuario puede crear su propio documento de perfil.
-      allow create: if request.auth != null && request.auth.uid == userId;
-      // Un administrador puede actualizar cualquier perfil. Un usuario puede actualizar el suyo.
-      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      // Solo los administradores pueden eliminar perfiles de usuario.
       allow delete: if isAdmin();
     }
 
-    // Reglas para las colecciones de votos y encuestas.
-    // Cualquier usuario autenticado (incluidos anónimos) puede escribir su voto.
-    match /userPerceptions/{docId} { allow read, write: if request.auth != null; }
-    match /userAttitudes/{docId} { allow read, write: if request.auth != null; }
-    match /userStarRatings/{docId} { allow read, write: if request.auth != null; }
-    
-    // Reglas para la colección de comentarios.
+    // Las colecciones de votación pueden ser escritas por cualquier usuario autenticado.
+    match /userPerceptions/{docId} { allow read, write: if isAuthenticated(); }
+    match /userAttitudes/{docId} { allow read, write: if isAuthenticated(); }
+    match /userStarRatings/{docId} { allow read, write: if isAuthenticated(); }
+
+    // Los comentarios pueden ser creados por cualquier usuario autenticado.
+    // Las actualizaciones (para "me gusta") las puede hacer cualquier usuario autenticado.
+    // La eliminación está restringida al propietario o a un administrador.
     match /userComments/{commentId} {
-      // Cualquiera puede leer los comentarios.
       allow read: if true;
-      // Cualquier usuario autenticado (incluidos anónimos) puede escribir/actualizar.
-      // Esto permite comentar y dar me gusta/no me gusta.
-      allow write: if true; 
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated(); // Para "me gusta" de cualquiera
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
   }
 }
