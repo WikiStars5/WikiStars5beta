@@ -481,27 +481,52 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
     setIsSubmittingComment(true);
     
+    // 1. Check for unique guest username if applicable (OUTSIDE the transaction)
+    if (currentUser.isAnonymous) {
+      const normalizedGuestName = guestUsername.trim().toLowerCase();
+      if (normalizedGuestName) {
+        try {
+          const commentsCollectionRef = collection(db, 'userComments');
+          const uniquenessQuery = query(
+            commentsCollectionRef,
+            where('figureId', '==', figure.id),
+            where('guestUsernameLower', '==', normalizedGuestName)
+          );
+          // Use getDocs, which is the correct way to execute a query
+          const existingUsernamesSnapshot = await getDocs(uniquenessQuery);
+          if (!existingUsernamesSnapshot.empty) {
+            toast({
+              title: "Nombre en Uso",
+              description: "Este nombre de invitado ya está en uso. Por favor, elige otro.",
+              variant: "destructive"
+            });
+            setIsSubmittingComment(false);
+            return; // Stop the submission
+          }
+        } catch (queryError: any) {
+          console.error("Error checking guest username uniqueness:", queryError);
+          let errorMessage = "No se pudo verificar el nombre de invitado. Inténtalo de nuevo.";
+          if (queryError.message && queryError.message.includes("firestore/failed-precondition")) {
+            errorMessage = "Error de base de datos: Falta un índice para buscar nombres de invitado. Revisa la consola del navegador (F12) para un enlace de creación de índice."
+          }
+          toast({
+            title: "Error de Verificación",
+            description: errorMessage,
+            variant: "destructive"
+          });
+          setIsSubmittingComment(false);
+          return;
+        }
+      }
+    }
+
     const figureDocRef = doc(db, "figures", figure.id);
     const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
     const commentsCollectionRef = collection(db, 'userComments');
 
     try {
       await runTransaction(db, async (transaction) => {
-        // 1. Check for unique guest username if applicable
-        if (currentUser.isAnonymous) {
-          const normalizedGuestName = guestUsername.trim().toLowerCase();
-          if(normalizedGuestName) {
-            const uniquenessQuery = query(
-              commentsCollectionRef, 
-              where('figureId', '==', figure.id), 
-              where('guestUsernameLower', '==', normalizedGuestName)
-            );
-            const existingUsernames = await transaction.get(uniquenessQuery);
-            if (!existingUsernames.empty) {
-              throw new Error("Este nombre de invitado ya está en uso. Por favor, elige otro.");
-            }
-          }
-        }
+        // The uniqueness check that was here has been moved outside.
         
         // 2. Handle Star Rating
         const figureSnap = await transaction.get(figureDocRef);
