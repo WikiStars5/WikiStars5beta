@@ -86,8 +86,9 @@ export function NotificationBell() {
     if (!notification.isRead) {
       await markNotificationAsRead(notification.id);
     }
-    // Navigate to the figure's page with a hash to identify the comment.
-    router.push(`/figures/${notification.figureId}#comment-${notification.commentId}`);
+    // Prioritize replyId for the hash, fallback to commentId
+    const targetId = notification.replyId || notification.commentId;
+    router.push(`/figures/${notification.figureId}#comment-${targetId}`);
     setIsOpen(false);
   };
 

@@ -335,6 +335,33 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
   }, [id, toast]);
 
+  const handleToggleReplies = React.useCallback(async (commentId: string, forceRefresh = false) => {
+    if (visibleReplies[commentId] && !forceRefresh) {
+      setVisibleReplies(prev => ({ ...prev, [commentId]: false }));
+      return;
+    }
+
+    setLoadingReplies(prev => ({ ...prev, [commentId]: true }));
+    try {
+      const repliesQuery = query(
+        collection(db, 'userComments'),
+        where('parentId', '==', commentId),
+        orderBy('createdAt', 'asc')
+      );
+      const querySnapshot = await getDocs(repliesQuery);
+      const fetchedReplies: UserComment[] = [];
+      querySnapshot.forEach((doc) => {
+        fetchedReplies.push({ id: doc.id, ...doc.data() } as UserComment);
+      });
+      setReplies(prev => ({ ...prev, [commentId]: fetchedReplies }));
+      setVisibleReplies(prev => ({ ...prev, [commentId]: true }));
+    } catch (error) {
+      console.error("Error fetching replies:", error);
+      toast({ title: "Error", description: "No se pudieron cargar las respuestas.", variant: "destructive" });
+    } finally {
+      setLoadingReplies(prev => ({ ...prev, [commentId]: false }));
+    }
+  }, [toast, visibleReplies]);
 
   React.useEffect(() => {
     if (id) {
@@ -349,34 +376,70 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   }, [figure, isEditing, resetEditFields]);
 
   React.useEffect(() => {
-    // This effect runs after comments are loaded to scroll to and highlight a comment from the URL hash.
-    if (isLoadingComments) return; // Don't run while comments are loading.
+    // This effect runs once after top-level comments load to find the target comment
+    if (isLoadingComments) return;
+
+    const findAndHighlight = async () => {
+      const hash = window.location.hash;
+      if (!hash || !hash.startsWith('#comment-')) return;
+
+      const elementId = hash.substring(1);
+      const element = document.getElementById(elementId);
+
+      if (element) {
+        // Case A: Element (top-level comment) is already in the DOM.
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlightedCommentId(elementId);
+        setTimeout(() => setHighlightedCommentId(null), 3000);
+      } else {
+        // Case B: Element is not in the DOM. Assume it's a reply.
+        // We need to fetch its data to find its parent, then expand the parent.
+        const potentialReplyId = elementId.replace('comment-', '');
+        try {
+          const replyRef = doc(db, 'userComments', potentialReplyId);
+          const replySnap = await getDoc(replyRef);
+          if (replySnap.exists()) {
+            const parentId = replySnap.data().parentId;
+            if (parentId) {
+              // This fetches replies, updates state, and causes a re-render.
+              // A separate useEffect will handle highlighting after the render.
+              await handleToggleReplies(parentId, true);
+            }
+          }
+        } catch (error) {
+          console.error("Error pre-fetching reply for highlighting:", error);
+        }
+      }
+    };
 
     // A small delay to ensure the DOM is fully painted after comments are loaded
-    const scrollTimer = setTimeout(() => {
-        const hash = window.location.hash;
-        if (hash && hash.startsWith('#comment-')) {
-            const elementId = hash.substring(1);
-            const element = document.getElementById(elementId);
-            
-            if (element) {
-                // Scroll to the element
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                
-                // Set state to highlight the comment via a class
-                setHighlightedCommentId(elementId);
+    const timer = setTimeout(findAndHighlight, 100);
+    return () => clearTimeout(timer);
 
-                // Remove the highlight after a few seconds
-                const highlightTimer = setTimeout(() => {
-                    setHighlightedCommentId(null);
-                }, 3000);
-            }
-        }
-    }, 100);
+  }, [isLoadingComments, handleToggleReplies]); // Runs once when top-level comments are ready
 
-    return () => clearTimeout(scrollTimer);
 
-  }, [isLoadingComments]);
+  React.useEffect(() => {
+    // This effect runs whenever replies are loaded/updated to handle highlighting a nested reply.
+    const hash = window.location.hash;
+    if (!hash || !hash.startsWith('#comment-')) return;
+    
+    const elementId = hash.substring(1);
+    
+    // A small delay to let the DOM update with the new replies
+    const timer = setTimeout(() => {
+      const element = document.getElementById(elementId);
+      // Only highlight if it's not already highlighted
+      if (element && highlightedCommentId !== elementId) { 
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlightedCommentId(elementId);
+        setTimeout(() => setHighlightedCommentId(null), 3000);
+      }
+    }, 150); // Slightly longer delay to be safe
+
+    return () => clearTimeout(timer);
+
+  }, [replies, highlightedCommentId]); // Dependency on the replies object
 
   const handleEditToggle = () => {
     if (isEditing) {
@@ -857,34 +920,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       toast({ title: "Error al Responder", description: `No se pudo enviar tu respuesta. ${error.message}`, variant: "destructive" });
     } finally {
       setIsSubmittingReply(null);
-    }
-  };
-
-  const handleToggleReplies = async (commentId: string, forceRefresh = false) => {
-    if (visibleReplies[commentId] && !forceRefresh) {
-      setVisibleReplies(prev => ({ ...prev, [commentId]: false }));
-      return;
-    }
-
-    setLoadingReplies(prev => ({ ...prev, [commentId]: true }));
-    try {
-      const repliesQuery = query(
-        collection(db, 'userComments'),
-        where('parentId', '==', commentId),
-        orderBy('createdAt', 'asc')
-      );
-      const querySnapshot = await getDocs(repliesQuery);
-      const fetchedReplies: UserComment[] = [];
-      querySnapshot.forEach((doc) => {
-        fetchedReplies.push({ id: doc.id, ...doc.data() } as UserComment);
-      });
-      setReplies(prev => ({ ...prev, [commentId]: fetchedReplies }));
-      setVisibleReplies(prev => ({ ...prev, [commentId]: true }));
-    } catch (error) {
-      console.error("Error fetching replies:", error);
-      toast({ title: "Error", description: "No se pudieron cargar las respuestas.", variant: "destructive" });
-    } finally {
-      setLoadingReplies(prev => ({ ...prev, [commentId]: false }));
     }
   };
 
