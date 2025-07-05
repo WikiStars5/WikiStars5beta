@@ -58,7 +58,16 @@ const nextConfig: NextConfig = {
       'https://9000-firebase-studio-1749775328349.cluster-vpxjqdstfzgs6qeiaf7rdlsqrc.cloudworkstations.dev', 
       'https://6000-firebase-studio-1749775328349.cluster-vpxjqdstfzgs6qeiaf7rdlsqrc.cloudworkstations.dev', 
     ], 
-  }, 
+  },
+  async redirects() {
+    return [
+      {
+        source: '/favicon.ico',
+        destination: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194',
+        permanent: true,
+      },
+    ]
+  },
 }; 
 
 export default nextConfig;
