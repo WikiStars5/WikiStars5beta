@@ -129,6 +129,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   const [expandedComments, setExpandedComments] = React.useState<Record<string, boolean>>({});
+  const [highlightedCommentId, setHighlightedCommentId] = React.useState<string | null>(null);
 
 
   const MAX_COMMENT_LENGTH = 1000;
@@ -346,6 +347,36 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       resetEditFields(figure);
     }
   }, [figure, isEditing, resetEditFields]);
+
+  React.useEffect(() => {
+    // This effect runs after comments are loaded to scroll to and highlight a comment from the URL hash.
+    if (isLoadingComments) return; // Don't run while comments are loading.
+
+    // A small delay to ensure the DOM is fully painted after comments are loaded
+    const scrollTimer = setTimeout(() => {
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#comment-')) {
+            const elementId = hash.substring(1);
+            const element = document.getElementById(elementId);
+            
+            if (element) {
+                // Scroll to the element
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Set state to highlight the comment via a class
+                setHighlightedCommentId(elementId);
+
+                // Remove the highlight after a few seconds
+                const highlightTimer = setTimeout(() => {
+                    setHighlightedCommentId(null);
+                }, 3000);
+            }
+        }
+    }, 100);
+
+    return () => clearTimeout(scrollTimer);
+
+  }, [isLoadingComments]);
 
   const handleEditToggle = () => {
     if (isEditing) {
@@ -894,9 +925,17 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     const isLongComment = comment.text && comment.text.length > COMMENT_TRUNCATE_LENGTH;
     const isExpanded = !!expandedComments[comment.id];
     const displayName = comment.guestUsername || comment.username;
+    const isHighlighted = highlightedCommentId === `comment-${comment.id}`;
 
     return (
-      <div key={comment.id} className="relative group/comment">
+      <div 
+        key={comment.id} 
+        id={`comment-${comment.id}`}
+        className={cn(
+          "relative group/comment scroll-mt-24 p-2 rounded-lg -m-2", // scroll-mt for sticky header, -m-2/p-2 for larger highlight area
+          isHighlighted && "bg-primary/10 ring-2 ring-primary/50 transition-all duration-500"
+        )}
+      >
         <div className="flex space-x-3">
           <Avatar className="h-10 w-10 flex-shrink-0">
             <AvatarImage src={correctMalformedUrl(comment.userPhotoURL) || undefined} alt={displayName} />

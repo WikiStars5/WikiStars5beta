@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -85,7 +86,8 @@ export function NotificationBell() {
     if (!notification.isRead) {
       await markNotificationAsRead(notification.id);
     }
-    router.push(`/figures/${notification.figureId}`);
+    // Navigate to the figure's page with a hash to identify the comment.
+    router.push(`/figures/${notification.figureId}#comment-${notification.commentId}`);
     setIsOpen(false);
   };
 
