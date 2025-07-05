@@ -1,14 +1,11 @@
-
 "use client";
 
-import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile } from "@/lib/types";
-import { updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   Terminal, Info, UserCircle, Globe, Briefcase, Users2 as FamilyIcon, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
-  ImageOff, BarChartHorizontal, Star as StarIcon,
+  ImageOff, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
-  MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Heart
+  MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
@@ -47,11 +44,12 @@ import { cn, correctMalformedUrl } from "@/lib/utils";
 import { countryCodeToNameMap } from "@/config/countries";
 import { GENDER_OPTIONS, type GenderOption } from "@/config/genderOptions";
 import { ShareButton } from "@/components/shared/ShareButton";
+import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile } from "@/lib/types";
+import { updateFigureInFirestore } from "@/lib/placeholder-data";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
 }
-
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
   1: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
@@ -751,39 +749,69 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     const figureRef = doc(db, "figures", figure.id);
     const parentCommentRef = doc(db, "userComments", parentId);
 
+    // Data for the new reply
+    const replyData: any = {
+      figureId: figure.id,
+      userId: currentUser.uid,
+      username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
+      userPhotoURL: currentUser.photoURL || null,
+      text: replyText.trim(),
+      starRatingGiven: null,
+      createdAt: serverTimestamp(),
+      likes: 0,
+      dislikes: 0,
+      likedBy: [],
+      dislikedBy: [],
+      parentId: parentId,
+      replyCount: 0,
+    };
+
+    if (currentUser.isAnonymous) {
+      if(guestUsername) replyData.guestUsername = guestUsername.trim();
+      if(anonymousUserCountryCode) replyData.userCountryCode = anonymousUserCountryCode;
+      if(guestGender) replyData.guestGender = guestGender;
+    }
+    
     try {
-      const replyData: any = {
-        figureId: figure.id,
-        userId: currentUser.uid,
-        username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
-        userPhotoURL: currentUser.photoURL || null,
-        text: replyText.trim(),
-        starRatingGiven: null,
-        createdAt: serverTimestamp(),
-        likes: 0,
-        dislikes: 0,
-        likedBy: [],
-        dislikedBy: [],
-        parentId: parentId,
-        replyCount: 0,
-      };
-
-      if (currentUser.isAnonymous) {
-        if(anonymousUserCountryCode) replyData.userCountryCode = anonymousUserCountryCode;
-        if(guestGender) replyData.guestGender = guestGender;
-      }
-
+      // The whole process is now in a single transaction
       await runTransaction(db, async (transaction) => {
+        const parentCommentDoc = await transaction.get(parentCommentRef);
+        if (!parentCommentDoc.exists()) throw new Error("El comentario original no fue encontrado.");
+
+        const parentCommentData = parentCommentDoc.data();
+        const parentUserId = parentCommentData.userId;
+        
+        // 1. Create the new reply document reference and set its data
+        const newReplyRef = doc(collection(db, 'userComments'));
+        transaction.set(newReplyRef, replyData);
+
+        // 2. Increment comment and reply counts
         transaction.update(figureRef, { commentCount: increment(1) });
         transaction.update(parentCommentRef, { replyCount: increment(1) });
+        
+        // 3. Create a notification for the parent comment's author if they are not the one replying
+        if (parentUserId && currentUser.uid !== parentUserId) {
+          const notificationRef = doc(collection(db, 'notifications'));
+          transaction.set(notificationRef, {
+            userId: parentUserId,
+            actorId: currentUser.uid,
+            actorName: currentUser.isAnonymous ? guestUsername.trim() : (currentUser.displayName || "Usuario Anónimo"),
+            actorPhotoUrl: currentUser.photoURL || null,
+            type: 'reply',
+            isRead: false,
+            figureId: figure.id,
+            figureName: figure.name,
+            commentId: parentId, // The comment being replied to
+            replyId: newReplyRef.id,
+            createdAt: serverTimestamp()
+          });
+        }
       });
-
-      await addDoc(collection(db, 'userComments'), replyData);
 
       toast({ title: "Respuesta Enviada", description: "Tu respuesta ha sido guardada." });
       setReplyText("");
       setReplyingTo(null);
-      handleToggleReplies(parentId, true); 
+      handleToggleReplies(parentId, true); // Force refresh replies
     } catch (error: any) {
       console.error("Error submitting reply:", error);
       toast({ title: "Error al Responder", description: `No se pudo enviar tu respuesta. ${error.message}`, variant: "destructive" });
@@ -1237,5 +1265,3 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
-
-    

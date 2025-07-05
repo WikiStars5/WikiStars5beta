@@ -117,3 +117,18 @@ export interface GenderOption {
   label: string;
   symbol?: string; // e.g., '♂', '♀'
 }
+
+export interface Notification {
+  id: string;
+  userId: string; // ID of the user to notify
+  actorId: string; // ID of the user who performed the action
+  actorName: string;
+  actorPhotoUrl: string | null;
+  type: 'reply' | 'like';
+  isRead: boolean;
+  figureId: string;
+  figureName: string;
+  commentId: string; // ID of the comment that was replied to or liked
+  replyId?: string; // ID of the reply itself
+  createdAt: Timestamp;
+}

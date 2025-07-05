@@ -98,6 +98,13 @@ service cloud.firestore {
       allow update: if isAuthenticated(); // Para "me gusta" de cualquiera
       allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
+
+    // Un usuario puede leer sus propias notificaciones y actualizarlas (para marcarlas como leídas).
+    // La creación está permitida para cualquier usuario autenticado (ya que la lógica del servidor lo gestionará).
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isAuthenticated();
+    }
   }
 }
 */
