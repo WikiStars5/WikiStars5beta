@@ -14,7 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Users2 } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Figure, EmotionKey, AttitudeKey, StarValueAsString, FamilyMember } from '@/lib/types';
+import type { Figure, EmotionKey, AttitudeKey, StarValueAsString } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -69,11 +69,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [attitudeCounts, setAttitudeCounts] = useState(initialData?.attitudeCounts || { ...defaultAttitudeCounts });
   const [starRatingCounts, setStarRatingCounts] = useState(initialData?.starRatingCounts || { ...defaultStarRatingCounts });
   
-  const [familyMembersJson, setFamilyMembersJson] = useState(
-    initialData?.familyMembers ? JSON.stringify(initialData.familyMembers, null, 2) : '[]'
-  );
-
-
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -104,7 +99,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setPerceptionCounts(initialData.perceptionCounts || { ...defaultPerceptionCounts });
       setAttitudeCounts(initialData.attitudeCounts || { ...defaultAttitudeCounts });
       setStarRatingCounts(initialData.starRatingCounts || { ...defaultStarRatingCounts });
-      setFamilyMembersJson(initialData.familyMembers ? JSON.stringify(initialData.familyMembers, null, 2) : '[]');
       
     } else {
       // Reset all fields for new figure form
@@ -129,7 +123,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setPerceptionCounts({ ...defaultPerceptionCounts });
       setAttitudeCounts({ ...defaultAttitudeCounts });
       setStarRatingCounts({ ...defaultStarRatingCounts });
-      setFamilyMembersJson('[]');
     }
   }, [initialData]);
 
@@ -158,19 +151,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       
       const finalPhotoUrlToSave = initialData?.photoUrl || 'https://placehold.co/400x600.png';
 
-      let parsedFamilyMembers: FamilyMember[] = [];
-      try {
-        parsedFamilyMembers = JSON.parse(familyMembersJson || "[]");
-        if (!Array.isArray(parsedFamilyMembers)) {
-          throw new Error("El JSON de miembros de la familia debe ser un array.");
-        }
-      } catch (jsonError: any) {
-        setError(`Error en el formato JSON de Miembros de la Familia: ${jsonError.message}`);
-        setIsLoading(false);
-        return;
-      }
-
-      const figureData: Omit<Figure, 'id' | 'createdAt'> & { createdAt?: any; familyMembers?: FamilyMember[] } = { 
+      const figureData: Omit<Figure, 'id' | 'createdAt'> & { createdAt?: any } = { 
         name: name.trim(),
         nameLower: name.trim().toLowerCase(),
         description: description.trim() || initialData?.description || "", 
@@ -194,7 +175,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
         attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
         starRatingCounts: starRatingCounts || { ...defaultStarRatingCounts },
-        familyMembers: parsedFamilyMembers,
         status: initialData?.status || 'approved',
       };
 
@@ -288,26 +268,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div className="md:col-span-2"><Label htmlFor="distinctiveFeatures">Rasgos Distintivos</Label><Textarea id="distinctiveFeatures" value={distinctiveFeatures} onChange={(e) => setDistinctiveFeatures(e.target.value)} placeholder="Ej: Cicatriz en el ojo, Alas de demonio" rows={2}/></div>
       </div>
       
-      <div className="mt-6 border-t pt-4 border-border">
-        <Label htmlFor="familyMembersJson" className="flex items-center gap-2 text-lg font-semibold">
-          <Users2 className="h-5 w-5" /> Miembros de la Familia (JSON)
-        </Label>
-        <Textarea
-          id="familyMembersJson"
-          value={familyMembersJson}
-          onChange={(e) => setFamilyMembersJson(e.target.value)}
-          placeholder='Ej: [{"id": "fm1", "name": "Nombre Padre", "relationship": "Padre", "figureId": "id-del-padre-si-existe"}]'
-          rows={8}
-          className="mt-1 font-mono text-xs"
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          Ingresa un array de objetos JSON. Cada objeto debe tener: `id` (string, único), `name` (string), `relationship` (string), `figureId` (opcional, string), `photoUrl` (opcional, string).
-        </p>
-         <p className="text-xs text-muted-foreground mt-1">
-          Ejemplo de relación: "Padre", "Madre", "Abuelo paterno", "Abuela paterna", "Abuelo materno", "Abuela materna", "Hijo/a", "Hermano/a", "Tío (Paterno)", "Tía (Paterna)", "Tío (Materno)", "Tía (Materna)".
-        </p>
-      </div>
-
       <div className="mt-6 border-t pt-4 border-border">
         <div className="flex items-center space-x-2">
           <Checkbox

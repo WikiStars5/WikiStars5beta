@@ -1,4 +1,4 @@
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, StarValueAsString, FamilyMember } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, StarValueAsString } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore } from "firebase/firestore";
@@ -60,7 +60,6 @@ export const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
     starRatingCounts: data.starRatingCounts || { ...defaultStarRatingCounts },
     commentCount: data.commentCount || 0,
-    familyMembers: data.familyMembers || [],
     createdAt: createdAtTimestamp && typeof createdAtTimestamp.toDate === 'function' 
                  ? createdAtTimestamp.toDate().toISOString() 
                  : undefined,
@@ -182,7 +181,6 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
       starRatingCounts: figure.starRatingCounts || { ...defaultStarRatingCounts },
       commentCount: figure.commentCount || 0,
-      familyMembers: figure.familyMembers || [], // Ensure familyMembers is an array
       isFeatured: figure.isFeatured || false, // Ensure isFeatured is set
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
@@ -199,7 +197,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
   try {
     const figureRef = doc(db, "figures", figure.id);
     const { 
-        id, createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts, commentCount, familyMembers, 
+        id, createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts, commentCount, 
         name, photoUrl, description, nationality, occupation, gender, alias, species,
         firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
         height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
@@ -229,7 +227,6 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
     if (status !== undefined) updatePayload.status = status;
     if (nameLower !== undefined) updatePayload.nameLower = nameLower;
     if (commentCount !== undefined) updatePayload.commentCount = commentCount; 
-    if (familyMembers !== undefined) updatePayload.familyMembers = familyMembers;
     if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured;
 
     if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;

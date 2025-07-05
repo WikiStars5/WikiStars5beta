@@ -1,8 +1,8 @@
 
 "use client";
 
-import type { Figure, UserComment, StarValue, StarValueAsString, FamilyMember, UserProfile } from "@/lib/types";
-import { getAllFiguresFromFirestore, updateFigureInFirestore } from "@/lib/placeholder-data";
+import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile } from "@/lib/types";
+import { updateFigureInFirestore } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   Terminal, Info, UserCircle, Globe, Briefcase, Users2 as FamilyIcon, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
@@ -24,7 +24,6 @@ import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
-import { FamilyTreeDisplay } from "@/components/figures/FamilyTreeDisplay";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
@@ -75,7 +74,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       setFigure(initialFigure);
   }, [initialFigure]);
 
-  const [allFigures, setAllFigures] = useState<Figure[]>([]);
   const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -278,25 +276,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
   }, []);
 
-  const fetchFigureData = useCallback(async () => {
-    if (!id) {
-      setFigure(undefined);
-      return;
-    }
-    
-    getAllFiguresFromFirestore().then(allFiguresData => {
-        setAllFigures(allFiguresData);
-    }).catch(err => {
-        console.error("Could not load all figures for family tree; linking will be disabled.", err);
-        toast({
-          title: "Error al Cargar Datos Adicionales",
-          description: "No se pudieron cargar los datos para el árbol genealógico. Es posible que la vinculación de familiares no funcione.",
-          variant: "destructive"
-        });
-    });
-
-  }, [id, toast]);
-
   const fetchComments = useCallback(async () => {
      if (!id) {
       setCommentsList([]);
@@ -359,10 +338,9 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
   useEffect(() => {
     if (id) {
-      fetchFigureData();
       fetchComments();
     }
-  }, [id, fetchFigureData, fetchComments]);
+  }, [id, fetchComments]);
 
   useEffect(() => {
     if (figure && isEditing) {
@@ -1012,7 +990,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
               <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
               <TabsTrigger value="attitude-poll" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><MessageSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
-              <TabsTrigger value="family-tree" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><FamilyIcon className="h-4 sm:h-5 w-4 sm:w-5" />Familia</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal-info">
@@ -1087,19 +1064,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
             <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
             <TabsContent value="perception-emotions">{figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
-            
-
-            <TabsContent value="family-tree">
-              <Card className="border border-white/20 bg-black">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-2xl font-headline"><FamilyIcon className="mr-3 h-7 w-7 text-primary" />Árbol Genealógico de {figure!.name}</CardTitle>
-                   <CardDescription>Relaciones familiares conocidas de {figure!.name}. Edita la información directamente aquí.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {figure && allFigures && <FamilyTreeDisplay figure={figure} allFigures={allFigures} canEdit={canEditFigure} />}
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
           
           {figure && (<RatingSummaryDisplay figureName={figure.name} starRatingCounts={figure.starRatingCounts} />)}
