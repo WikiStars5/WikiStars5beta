@@ -41,7 +41,9 @@ export function NotificationBell() {
   const [notificationSound, setNotificationSound] = React.useState<HTMLAudioElement | null>(null);
   const prevUnreadCountRef = React.useRef(0);
   const isInitialLoadRef = React.useRef(true);
-  
+  const lastSoundPlayedAtRef = React.useRef(0);
+  const SOUND_COOLDOWN = 15000; // 15 segundos
+
   React.useEffect(() => {
     const sound = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711");
     sound.preload = 'auto';
@@ -99,11 +101,15 @@ export function NotificationBell() {
         return mergedNotifications;
       });
 
-      // Handle sound effect logic using server data to prevent playing on optimistic updates
+      // Handle sound effect logic with cooldown
       if (isInitialLoadRef.current) {
         isInitialLoadRef.current = false;
       } else if (serverUnreadCount > prevUnreadCountRef.current) {
-        notificationSound?.play().catch(err => console.error("Audio play failed:", err));
+        const now = Date.now();
+        if (now - lastSoundPlayedAtRef.current > SOUND_COOLDOWN) {
+          notificationSound?.play().catch(err => console.error("Audio play failed:", err));
+          lastSoundPlayedAtRef.current = now;
+        }
       }
       prevUnreadCountRef.current = serverUnreadCount;
 
@@ -116,15 +122,18 @@ export function NotificationBell() {
       isInitialLoadRef.current = true;
       prevUnreadCountRef.current = 0;
     };
-  }, [currentUser, notificationSound]);
+  }, [currentUser, notificationSound, SOUND_COOLDOWN]);
 
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.isRead) {
+      // Optimistic update
       setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
       
+      // Server update
       markNotificationAsRead(notification.id).catch(err => {
         console.error("Failed to mark notification as read on server:", err);
+        // Optional: revert optimistic update on error
       });
     }
 
@@ -136,11 +145,14 @@ export function NotificationBell() {
   const handleMarkAllAsRead = () => {
     if (!currentUser || unreadCount === 0) return;
 
+    // Optimistic update
     setNotifications(prev => prev.map(n => n.isRead ? n : { ...n, isRead: true }));
     setUnreadCount(0);
 
+    // Server update
     markAllNotificationsAsRead(currentUser.uid).catch(err => {
       console.error("Failed to mark all as read on server:", err);
+      // Optional: revert optimistic update on error
     });
   };
   
