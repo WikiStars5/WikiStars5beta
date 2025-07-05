@@ -37,6 +37,16 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isOpen, setIsOpen] = React.useState(false);
   const router = useRouter();
+  
+  const [notificationSound, setNotificationSound] = React.useState<HTMLAudioElement | null>(null);
+  const prevUnreadCountRef = React.useRef(0);
+  const isInitialLoadRef = React.useRef(true);
+  
+  React.useEffect(() => {
+    const sound = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711");
+    sound.preload = 'auto';
+    setNotificationSound(sound);
+  }, []);
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -74,23 +84,32 @@ export function NotificationBell() {
       });
       setNotifications(fetchedNotifications);
       setUnreadCount(newUnreadCount);
+      
+      if (isInitialLoadRef.current) {
+        isInitialLoadRef.current = false;
+      } else if (newUnreadCount > prevUnreadCountRef.current) {
+        notificationSound?.play().catch(err => console.error("Audio play failed:", err));
+      }
+      prevUnreadCountRef.current = newUnreadCount;
+
     }, (error) => {
       console.error("Error fetching notifications:", error);
     });
 
-    return () => unsubscribe();
-  }, [currentUser]);
+    return () => {
+      unsubscribe();
+      isInitialLoadRef.current = true;
+      prevUnreadCountRef.current = 0;
+    };
+  }, [currentUser, notificationSound]);
 
   const handleNotificationClick = (notification: Notification) => {
-    // Optimistic UI update
     if (!notification.isRead) {
       setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
       
-      // Update backend in the background
       markNotificationAsRead(notification.id).catch(err => {
         console.error("Failed to mark notification as read on server:", err);
-        // UI will self-correct on next snapshot if this fails
       });
     }
 
@@ -102,14 +121,11 @@ export function NotificationBell() {
   const handleMarkAllAsRead = () => {
     if (!currentUser || unreadCount === 0) return;
 
-    // Optimistic UI update
     setNotifications(prev => prev.map(n => n.isRead ? n : { ...n, isRead: true }));
     setUnreadCount(0);
 
-    // Update backend in the background
     markAllNotificationsAsRead(currentUser.uid).catch(err => {
       console.error("Failed to mark all as read on server:", err);
-      // UI will self-correct on next snapshot
     });
   };
   
