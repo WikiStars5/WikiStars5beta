@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment, writeBatch } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/shared/StarRating";
 import {
@@ -125,8 +125,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [commentToDeleteId, setCommentToDeleteId] = React.useState<string | null>(null);
-  const [starRatingOfCommentToDelete, setStarRatingOfCommentToDelete] = React.useState<StarValue | null>(null);
-
+  
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   const [expandedComments, setExpandedComments] = React.useState<Record<string, boolean>>({});
   const [highlightedCommentId, setHighlightedCommentId] = React.useState<string | null>(null);
@@ -754,55 +753,87 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
   const handleDeleteCommentConfirmation = async () => {
     if (!commentToDeleteId || !figure || !currentUser) return;
+
     const commentRef = doc(db, "userComments", commentToDeleteId);
+    
+    const commentToDeleteSnap = await getDoc(commentRef);
+    if (!commentToDeleteSnap.exists()) {
+        toast({ title: "Error", description: "El comentario ya no existe.", variant: "destructive" });
+        setIsDeleteDialogOpen(false);
+        setCommentToDeleteId(null);
+        return;
+    }
+    const commentToDeleteData = commentToDeleteSnap.data() as UserComment;
     const figureRef = doc(db, "figures", figure.id);
 
     try {
       await runTransaction(db, async (transaction) => {
-        const figureDoc = await transaction.get(figureRef);
-        if (!figureDoc.exists()) throw "Figure document does not exist!";
-        
-        const figureData = figureDoc.data();
-        let newCommentCount = (figureData.commentCount || 0) - 1;
-        newCommentCount = Math.max(0, newCommentCount); 
-        
-        const updates: any = { commentCount: newCommentCount };
+        // Decrement total figure comment count
+        transaction.update(figureRef, { commentCount: increment(-1) });
 
-        if (starRatingOfCommentToDelete) {
-          const starKey = starRatingOfCommentToDelete.toString() as StarValueAsString;
-          const currentStarCounts = (figureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
-          const newStarCounts = { ...currentStarCounts };
-          newStarCounts[starKey] = Math.max(0, (newStarCounts[starKey] || 0) - 1);
-          updates.starRatingCounts = newStarCounts;
+        // If it was a reply, decrement parent's replyCount
+        if (commentToDeleteData.parentId) {
+          const parentCommentRef = doc(db, "userComments", commentToDeleteData.parentId);
+          transaction.update(parentCommentRef, { replyCount: increment(-1) });
+        }
 
-          const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${figure.id}`);
-          const userStarRatingSnap = await transaction.get(userStarRatingDocRef);
-          if (userStarRatingSnap.exists() && userStarRatingSnap.data().starValue === starRatingOfCommentToDelete) {
-             transaction.delete(userStarRatingDocRef);
-             setNewCommentStars(null); 
+        // Adjust star ratings if the deleted comment had one
+        if (commentToDeleteData.starRatingGiven) {
+          const figureDoc = await transaction.get(figureRef);
+          if (figureDoc.exists()) {
+            const figureData = figureDoc.data();
+            const starKey = commentToDeleteData.starRatingGiven.toString() as StarValueAsString;
+            const currentStarCounts = (figureData.starRatingCounts || {}) as Record<StarValueAsString, number>;
+            const newStarCounts = { ...currentStarCounts };
+            newStarCounts[starKey] = Math.max(0, (newStarCounts[starKey] || 0) - 1);
+            
+            transaction.update(figureRef, { starRatingCounts: newStarCounts });
+
+            const userStarRatingDocRef = doc(db, 'userStarRatings', `${commentToDeleteData.userId}_${figure.id}`);
+            const userStarRatingSnap = await transaction.get(userStarRatingDocRef);
+            if (userStarRatingSnap.exists() && userStarRatingSnap.data().starValue === commentToDeleteData.starRatingGiven) {
+               transaction.delete(userStarRatingDocRef);
+               if (currentUser.uid === commentToDeleteData.userId) {
+                   setNewCommentStars(null);
+               }
+            }
           }
         }
         
-        transaction.update(figureRef, updates);
         transaction.delete(commentRef);
       });
 
+      // After transaction, delete associated notification if it was a reply
+      if (commentToDeleteData.parentId) {
+        const notificationsRef = collection(db, 'notifications');
+        const q = query(notificationsRef, where('replyId', '==', commentToDeleteId));
+        const querySnapshot = await getDocs(q);
+        const batch = writeBatch(db);
+        querySnapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
+
       toast({ title: "Comentario Eliminado", description: "El comentario ha sido eliminado." });
-      fetchComments(); 
-      router.refresh(); 
+      
+      if (commentToDeleteData.parentId) {
+        handleToggleReplies(commentToDeleteData.parentId, true);
+      } else {
+        fetchComments();
+      }
+      
+      router.refresh();
     } catch (error: any) {
       console.error("Error deleting comment:", error);
       toast({ title: "Error al Eliminar", description: `No se pudo eliminar el comentario. ${error.message}`, variant: "destructive" });
     } finally {
       setIsDeleteDialogOpen(false);
       setCommentToDeleteId(null);
-      setStarRatingOfCommentToDelete(null);
     }
   };
 
-  const openDeleteDialog = (commentId: string, starRating: StarValue | null) => {
+
+  const openDeleteDialog = (commentId: string) => {
     setCommentToDeleteId(commentId);
-    setStarRatingOfCommentToDelete(starRating);
     setIsDeleteDialogOpen(true);
   };
 
@@ -1001,7 +1032,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
               <div className="flex items-center space-x-2">
                 <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
                 {currentUser && (currentUser.uid === comment.userId || (currentUser.uid === ADMIN_UID)) && (
-                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/comment:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => openDeleteDialog(comment.id, comment.starRatingGiven)}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/comment:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => openDeleteDialog(comment.id)}>
                     <Trash2 className="h-4 w-4" />
                     <span className="sr-only">Eliminar comentario</span>
                   </Button>
@@ -1042,7 +1073,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
               )}
               {isVoting && <Loader2 className="h-4 w-4 animate-spin" />}
             </div>
-            {comment.replyCount > 0 && (
+            {(comment.replyCount ?? 0) > 0 && (
               <Button variant="link" size="sm" className="px-0 h-auto text-xs mt-1" onClick={() => handleToggleReplies(comment.id)}>
                 {loadingReplies[comment.id] ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                 {visibleReplies[comment.id] ? 'Ocultar respuestas' : `Ver ${comment.replyCount} respuestas`}
@@ -1329,7 +1360,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
               setCommentToDeleteId(null);
-              setStarRatingOfCommentToDelete(null);
             }}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteCommentConfirmation} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Eliminar
@@ -1348,3 +1378,4 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
+
