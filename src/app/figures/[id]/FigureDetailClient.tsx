@@ -968,7 +968,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         </div>
         {visibleReplies[comment.id] && replies[comment.id] && (
           <div className="mt-4 pl-12 border-l-2 border-muted-foreground/20 space-y-4">
-            {replies[comment.id].map(reply => renderComment({ ...reply, replies: replies[reply.id] || [] }, level + 1))}
+            {replies[comment.id].map(reply => renderComment(reply, level + 1))}
           </div>
         )}
       </div>
@@ -1229,8 +1229,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
       {viewerImageUrl && (
         <ImageGalleryViewer
-            images={[{ id: 'profile-image', imageUrl: viewerImageUrl, userId: '', createdAt: new Timestamp(0,0) }]}
-            initialIndex={0}
+            imageUrl={viewerImageUrl}
             isOpen={!!viewerImageUrl}
             onClose={() => setViewerImageUrl(null)}
         />
