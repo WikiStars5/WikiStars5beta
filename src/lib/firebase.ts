@@ -73,17 +73,6 @@ service cloud.firestore {
       allow get, list: if true;
       allow update: if isAuthenticated();
       allow create, delete: if isAdmin();
-
-      // Subcolección para imágenes de la galería
-      match /galleryImages/{galleryImageId} {
-        allow read: if true;
-        // Solo un usuario registrado puede crear un registro de imagen, y debe ser el propietario.
-        allow create: if isRegisteredUser() && request.resource.data.userId == request.auth.uid;
-        // Solo el propietario o un administrador pueden eliminar un registro de imagen.
-        allow delete: if isOwner(resource.data.userId) || isAdmin();
-        // No se permiten actualizaciones para evitar manipulaciones.
-        allow update: if false;
-      }
     }
 
     // Los perfiles de usuario pueden ser gestionados por el propio usuario o un administrador.
