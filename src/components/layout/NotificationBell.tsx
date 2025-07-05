@@ -73,24 +73,39 @@ export function NotificationBell() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedNotifications: Notification[] = [];
-      let newUnreadCount = 0;
-      snapshot.forEach(doc => {
-        const data = { id: doc.id, ...doc.data() } as Notification;
-        fetchedNotifications.push(data);
-        if (!data.isRead) {
-          newUnreadCount++;
-        }
+      // Get raw data from the server for sound logic
+      const serverUnreadCount = snapshot.docs.filter(doc => !doc.data().isRead).length;
+
+      // Update state using a callback to get the latest state and avoid dependency loops
+      setNotifications(prevLocalNotifications => {
+        // Create a map of the previous optimistic `isRead` states for quick lookup
+        const localReadState = new Map(prevLocalNotifications.map(n => [n.id, n.isRead]));
+        
+        // Map the new server data
+        const serverNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+        
+        // Merge server data with local optimistic updates
+        const mergedNotifications = serverNotifications.map(serverN => {
+          if (localReadState.get(serverN.id) === true && !serverN.isRead) {
+            return { ...serverN, isRead: true }; // Preserve optimistic read
+          }
+          return serverN;
+        });
+
+        // Update the visual unread count based on the final merged list
+        const finalUnreadCount = mergedNotifications.filter(n => !n.isRead).length;
+        setUnreadCount(finalUnreadCount);
+        
+        return mergedNotifications;
       });
-      setNotifications(fetchedNotifications);
-      setUnreadCount(newUnreadCount);
-      
+
+      // Handle sound effect logic using server data to prevent playing on optimistic updates
       if (isInitialLoadRef.current) {
         isInitialLoadRef.current = false;
-      } else if (newUnreadCount > prevUnreadCountRef.current) {
+      } else if (serverUnreadCount > prevUnreadCountRef.current) {
         notificationSound?.play().catch(err => console.error("Audio play failed:", err));
       }
-      prevUnreadCountRef.current = newUnreadCount;
+      prevUnreadCountRef.current = serverUnreadCount;
 
     }, (error) => {
       console.error("Error fetching notifications:", error);
