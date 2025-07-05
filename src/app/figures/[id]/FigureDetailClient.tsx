@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { AttitudeVote } from '@/components/figures/AttitudeVote';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import * as React from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
@@ -68,81 +68,81 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const id = routeParams?.id;
   const router = useRouter();
 
-  const [figure, setFigure] = useState<Figure | null | undefined>(initialFigure); 
+  const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
   
-  useEffect(() => {
+  React.useEffect(() => {
       setFigure(initialFigure);
   }, [initialFigure]);
 
   const { toast } = useToast();
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedDescription, setEditedDescription] = useState("");
-  const [editedNationality, setEditedNationality] = useState("");
-  const [editedOccupation, setEditedOccupation] = useState("");
-  const [editedGender, setEditedGender] = useState("");
-  const [editedPhotoUrl, setEditedPhotoUrl] = useState("");
-  const [editedAlias, setEditedAlias] = useState("");
-  const [editedSpecies, setEditedSpecies] = useState("");
-  const [editedFirstAppearance, setEditedFirstAppearance] = useState("");
-  const [editedBirthDateOrAge, setEditedBirthDateOrAge] = useState("");
-  const [editedBirthPlace, setEditedBirthPlace] = useState("");
-  const [editedStatusLiveOrDead, setEditedStatusLiveOrDead] = useState("");
-  const [editedMaritalStatus, setEditedMaritalStatus] = useState("");
-  const [editedHeight, setEditedHeight] = useState("");
-  const [editedWeight, setEditedWeight] = useState("");
-  const [editedHairColor, setEditedHairColor] = useState("");
-  const [editedEyeColor, setEditedEyeColor] = useState("");
-  const [editedDistinctiveFeatures, setEditedDistinctiveFeatures] = useState("");
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [editedDescription, setEditedDescription] = React.useState("");
+  const [editedNationality, setEditedNationality] = React.useState("");
+  const [editedOccupation, setEditedOccupation] = React.useState("");
+  const [editedGender, setEditedGender] = React.useState("");
+  const [editedPhotoUrl, setEditedPhotoUrl] = React.useState("");
+  const [editedAlias, setEditedAlias] = React.useState("");
+  const [editedSpecies, setEditedSpecies] = React.useState("");
+  const [editedFirstAppearance, setEditedFirstAppearance] = React.useState("");
+  const [editedBirthDateOrAge, setEditedBirthDateOrAge] = React.useState("");
+  const [editedBirthPlace, setEditedBirthPlace] = React.useState("");
+  const [editedStatusLiveOrDead, setEditedStatusLiveOrDead] = React.useState("");
+  const [editedMaritalStatus, setEditedMaritalStatus] = React.useState("");
+  const [editedHeight, setEditedHeight] = React.useState("");
+  const [editedWeight, setEditedWeight] = React.useState("");
+  const [editedHairColor, setEditedHairColor] = React.useState("");
+  const [editedEyeColor, setEditedEyeColor] = React.useState("");
+  const [editedDistinctiveFeatures, setEditedDistinctiveFeatures] = React.useState("");
 
-  const [isSaving, setIsSaving] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [anonymousUserCountryCode, setAnonymousUserCountryCode] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [currentUser, setCurrentUser] = React.useState<User | null>(null);
+  const [anonymousUserCountryCode, setAnonymousUserCountryCode] = React.useState<string | null>(null);
   
-  const [canEditFigure, setCanEditFigure] = useState(false);
-  const [canCommentOrRate, setCanCommentOrRate] = useState(false);
-  const [canVoteOnComments, setCanVoteOnComments] = useState(false);
+  const [canEditFigure, setCanEditFigure] = React.useState(false);
+  const [canCommentOrRate, setCanCommentOrRate] = React.useState(false);
+  const [canVoteOnComments, setCanVoteOnComments] = React.useState(false);
 
-  const [newComment, setNewComment] = useState("");
-  const [newCommentStars, setNewCommentStars] = useState<StarValue | null>(null);
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [guestUsername, setGuestUsername] = useState("");
-  const [isGuestNameSet, setIsGuestNameSet] = useState(false);
-  const [guestGender, setGuestGender] = useState("");
-  const [isGuestGenderSet, setIsGuestGenderSet] = useState(false);
-  const [commentsList, setCommentsList] = useState<UserComment[]>([]);
-  const [isLoadingComments, setIsLoadingComments] = useState(true);
-  const [votingCommentId, setVotingCommentId] = useState<string | null>(null);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
-  const [isSubmittingReply, setIsSubmittingReply] = useState<string | null>(null);
+  const [newComment, setNewComment] = React.useState("");
+  const [newCommentStars, setNewCommentStars] = React.useState<StarValue | null>(null);
+  const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
+  const [guestUsername, setGuestUsername] = React.useState("");
+  const [isGuestNameSet, setIsGuestNameSet] = React.useState(false);
+  const [guestGender, setGuestGender] = React.useState("");
+  const [isGuestGenderSet, setIsGuestGenderSet] = React.useState(false);
+  const [commentsList, setCommentsList] = React.useState<UserComment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = React.useState(true);
+  const [votingCommentId, setVotingCommentId] = React.useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = React.useState<string | null>(null);
+  const [replyText, setReplyText] = React.useState("");
+  const [isSubmittingReply, setIsSubmittingReply] = React.useState<string | null>(null);
 
-  const [replies, setReplies] = useState<Record<string, UserComment[]>>({});
-  const [visibleReplies, setVisibleReplies] = useState<Record<string, boolean>>({});
-  const [loadingReplies, setLoadingReplies] = useState<Record<string, boolean>>({});
-  const [commentSortOrder, setCommentSortOrder] = useState('newest');
+  const [replies, setReplies] = React.useState<Record<string, UserComment[]>>({});
+  const [visibleReplies, setVisibleReplies] = React.useState<Record<string, boolean>>({});
+  const [loadingReplies, setLoadingReplies] = React.useState<Record<string, boolean>>({});
+  const [commentSortOrder, setCommentSortOrder] = React.useState('newest');
 
-  const [starAudios, setStarAudios] = useState<Partial<Record<StarValue, HTMLAudioElement>>>({});
+  const [starAudios, setStarAudios] = React.useState<Partial<Record<StarValue, HTMLAudioElement>>>({});
 
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [commentToDeleteId, setCommentToDeleteId] = useState<string | null>(null);
-  const [starRatingOfCommentToDelete, setStarRatingOfCommentToDelete] = useState<StarValue | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [commentToDeleteId, setCommentToDeleteId] = React.useState<string | null>(null);
+  const [starRatingOfCommentToDelete, setStarRatingOfCommentToDelete] = React.useState<StarValue | null>(null);
 
-  const [viewerImageUrl, setViewerImageUrl] = useState<string | null>(null);
-  const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
+  const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
+  const [expandedComments, setExpandedComments] = React.useState<Record<string, boolean>>({});
 
 
   const MAX_COMMENT_LENGTH = 1000;
   const COMMENT_TRUNCATE_LENGTH = 350;
 
-  const allowedImageDomains = useMemo(() => {
+  const allowedImageDomains = React.useMemo(() => {
     return [
       'placehold.co', 'firebasestorage.googleapis.com', 'wikimedia.org', 
       'static.wikia.nocookie.net', 'pinimg.com', 'flagcdn.com'
     ];
   }, []);
 
-  const displayedComments = useMemo(() => {
+  const displayedComments = React.useMemo(() => {
     if (isLoadingComments) return [];
     let sortedComments = [...commentsList];
 
@@ -165,7 +165,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   }, [commentsList, commentSortOrder, currentUser, isLoadingComments]);
 
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (typeof window !== "undefined") {
       const audios: Partial<Record<StarValue, HTMLAudioElement>> = {};
       (Object.keys(STAR_SOUND_URLS) as unknown as StarValue[]).forEach(key => {
@@ -180,7 +180,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
   }, []);
 
-  const playSoundEffect = useCallback((starValue: StarValue) => {
+  const playSoundEffect = React.useCallback((starValue: StarValue) => {
     const audio = starAudios[starValue];
     if (audio) {
       audio.currentTime = 0; 
@@ -191,7 +191,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   }, [starAudios]);
 
 
-  useEffect(() => {
+  React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
       setCurrentUser(user);
       const isNonAnonymous = !!user && !user.isAnonymous;
@@ -235,7 +235,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     return () => unsubscribe();
   }, [figure?.id]); 
 
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchCountryCode = async () => {
       if (currentUser && currentUser.isAnonymous && !anonymousUserCountryCode) {
         try {
@@ -254,7 +254,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   }, [currentUser, anonymousUserCountryCode]);
 
 
-  const resetEditFields = useCallback((currentFigure: Figure | null) => {
+  const resetEditFields = React.useCallback((currentFigure: Figure | null) => {
     if (currentFigure) {
       setEditedDescription(currentFigure.description || "");
       setEditedNationality(currentFigure.nationality || "");
@@ -276,7 +276,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
   }, []);
 
-  const fetchComments = useCallback(async () => {
+  const fetchComments = React.useCallback(async () => {
      if (!id) {
       setCommentsList([]);
       setIsLoadingComments(false);
@@ -336,13 +336,13 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   }, [id, toast]);
 
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (id) {
       fetchComments();
     }
   }, [id, fetchComments]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (figure && isEditing) {
       resetEditFields(figure);
     }
@@ -1238,3 +1238,5 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
+
+    
