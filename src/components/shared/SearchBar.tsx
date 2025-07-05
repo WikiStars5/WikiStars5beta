@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import * as React from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2, ImageOff, XCircle } from 'lucide-react';
@@ -36,15 +35,15 @@ export function SearchBar({
   className,
   onResultClick // Nueva prop
 }: SearchBarProps) {
-  const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState<Figure[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isInputActive, setIsInputActive] = useState(!startAsIcon);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = React.useState(initialQuery);
+  const [results, setResults] = React.useState<Figure[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+  const [isInputActive, setIsInputActive] = React.useState(!startAsIcon);
+  const searchContainerRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
-  const debouncedSearch = useCallback(
+  const debouncedSearch = React.useCallback(
     debounce(async (searchTerm: string) => {
       if (searchTerm.trim().length < 2) {
         setResults([]);
@@ -71,7 +70,7 @@ export function SearchBar({
     []
   );
 
-  useEffect(() => {
+  React.useEffect(() => {
     // Si el componente se monta con una query inicial y no es solo un icono, buscar inmediatamente.
     if (isInputActive && initialQuery.trim().length >= 2) {
       debouncedSearch(initialQuery);
@@ -79,7 +78,7 @@ export function SearchBar({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInputActive, initialQuery]); // Solo re-ejecutar si estas props cambian, debouncedSearch es estable
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (isInputActive && query.trim() === '') {
       setResults([]);
       setIsLoading(false);
@@ -91,7 +90,7 @@ export function SearchBar({
     }
   }, [query, debouncedSearch, isInputActive]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
