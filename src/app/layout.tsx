@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   description: 'Califica y discute sobre figuras públicas en WikiStars5.',
   icons: {
     icon: logoUrl,
+    shortcut: logoUrl,
     apple: logoUrl,
   },
 };
