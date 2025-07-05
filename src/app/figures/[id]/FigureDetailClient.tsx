@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -740,7 +741,15 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   };
 
   const handleSubmitReply = async (parentId: string) => {
-    if (!canCommentOrRate || !currentUser || !figure || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH) {
+    if (!canCommentOrRate || !currentUser || !figure) {
+      toast({ title: "Acción Requerida", description: "Debes estar conectado para responder.", variant: "destructive" });
+      return;
+    }
+    if (currentUser.isAnonymous && (!guestUsername.trim() || !guestGender.trim())) {
+      toast({ title: "Información Requerida", description: "Por favor, introduce un nombre y selecciona un sexo para poder responder.", variant: "destructive" });
+      return;
+    }
+    if (!replyText.trim() || replyText.length > MAX_COMMENT_LENGTH) {
       toast({ title: "Respuesta Inválida", description: `La respuesta no puede estar vacía o exceder los ${MAX_COMMENT_LENGTH} caracteres.`, variant: "destructive" });
       return;
     }
