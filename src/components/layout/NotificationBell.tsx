@@ -40,7 +40,6 @@ export function NotificationBell() {
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      // We only care about registered users for notifications
       if (user && !user.isAnonymous) {
         setCurrentUser(user);
       } else {
@@ -82,23 +81,40 @@ export function NotificationBell() {
     return () => unsubscribe();
   }, [currentUser]);
 
-  const handleNotificationClick = async (notification: Notification) => {
+  const handleNotificationClick = (notification: Notification) => {
+    // Optimistic UI update
     if (!notification.isRead) {
-      await markNotificationAsRead(notification.id);
+      setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      
+      // Update backend in the background
+      markNotificationAsRead(notification.id).catch(err => {
+        console.error("Failed to mark notification as read on server:", err);
+        // UI will self-correct on next snapshot if this fails
+      });
     }
-    // Prioritize replyId for the hash, fallback to commentId
+
     const targetId = notification.replyId || notification.commentId;
     router.push(`/figures/${notification.figureId}#comment-${targetId}`);
     setIsOpen(false);
   };
 
-  const handleMarkAllAsRead = async () => {
+  const handleMarkAllAsRead = () => {
     if (!currentUser || unreadCount === 0) return;
-    await markAllNotificationsAsRead(currentUser.uid);
+
+    // Optimistic UI update
+    setNotifications(prev => prev.map(n => n.isRead ? n : { ...n, isRead: true }));
+    setUnreadCount(0);
+
+    // Update backend in the background
+    markAllNotificationsAsRead(currentUser.uid).catch(err => {
+      console.error("Failed to mark all as read on server:", err);
+      // UI will self-correct on next snapshot
+    });
   };
   
   if (!currentUser) {
-    return null; // Don't show the bell if not logged in
+    return null;
   }
 
   return (
@@ -108,7 +124,7 @@ export function NotificationBell() {
           <Bell className="h-5 w-5 text-foreground/70" />
           {unreadCount > 0 && (
             <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
-              {unreadCount}
+              {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
           <span className="sr-only">Abrir notificaciones</span>
@@ -147,7 +163,7 @@ export function NotificationBell() {
                       <span className="font-semibold">{notification.figureName}</span>.
                     </p>
                      <p className="text-xs text-muted-foreground mt-1">
-                      {timeSince(notification.createdAt.toDate())}
+                      {notification.createdAt ? timeSince(notification.createdAt.toDate()) : ''}
                     </p>
                   </div>
                   {!notification.isRead && (
