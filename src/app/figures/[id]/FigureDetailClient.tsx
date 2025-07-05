@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment, writeBatch, type DocumentSnapshot } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/shared/StarRating";
 import {
@@ -768,42 +768,58 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
     try {
       await runTransaction(db, async (transaction) => {
-        // Decrement total figure comment count
+        // --- READ PHASE ---
+        // All reads must be executed before all writes in a Firestore transaction.
+        const figureDoc = await transaction.get(figureRef);
+        if (!figureDoc.exists()) {
+          throw new Error("Figure document does not exist!");
+        }
+
+        let userStarRatingSnap: DocumentSnapshot | null = null;
+        if (commentToDeleteData.starRatingGiven) {
+          const userStarRatingDocRef = doc(db, 'userStarRatings', `${commentToDeleteData.userId}_${figure.id}`);
+          userStarRatingSnap = await transaction.get(userStarRatingDocRef);
+        }
+
+        // --- WRITE PHASE ---
+        // Now we can perform all our writes.
+
+        // 1. Decrement total figure comment count.
         transaction.update(figureRef, { commentCount: increment(-1) });
 
-        // If it was a reply, decrement parent's replyCount
+        // 2. If it was a reply, decrement parent's replyCount.
         if (commentToDeleteData.parentId) {
           const parentCommentRef = doc(db, "userComments", commentToDeleteData.parentId);
           transaction.update(parentCommentRef, { replyCount: increment(-1) });
         }
 
-        // Adjust star ratings if the deleted comment had one
+        // 3. Adjust star ratings if the deleted comment had one.
         if (commentToDeleteData.starRatingGiven) {
-          const figureDoc = await transaction.get(figureRef);
-          if (figureDoc.exists()) {
-            const figureData = figureDoc.data();
-            const starKey = commentToDeleteData.starRatingGiven.toString() as StarValueAsString;
-            const currentStarCounts = (figureData.starRatingCounts || {}) as Record<StarValueAsString, number>;
-            const newStarCounts = { ...currentStarCounts };
-            newStarCounts[starKey] = Math.max(0, (newStarCounts[starKey] || 0) - 1);
-            
-            transaction.update(figureRef, { starRatingCounts: newStarCounts });
+          const figureData = figureDoc.data();
+          const starKey = commentToDeleteData.starRatingGiven.toString() as StarValueAsString;
+          const currentStarCounts = (figureData.starRatingCounts || {}) as Record<StarValueAsString, number>;
+          
+          if (currentStarCounts[starKey] !== undefined) {
+              const newStarCounts = { ...currentStarCounts };
+              newStarCounts[starKey] = Math.max(0, newStarCounts[starKey] - 1);
+              transaction.update(figureRef, { starRatingCounts: newStarCounts });
+          }
 
-            const userStarRatingDocRef = doc(db, 'userStarRatings', `${commentToDeleteData.userId}_${figure.id}`);
-            const userStarRatingSnap = await transaction.get(userStarRatingDocRef);
-            if (userStarRatingSnap.exists() && userStarRatingSnap.data().starValue === commentToDeleteData.starRatingGiven) {
-               transaction.delete(userStarRatingDocRef);
-               if (currentUser.uid === commentToDeleteData.userId) {
-                   setNewCommentStars(null);
-               }
-            }
+          // And delete the specific user-figure rating document if it matches.
+          if (userStarRatingSnap && userStarRatingSnap.exists() && userStarRatingSnap.data()?.starValue === commentToDeleteData.starRatingGiven) {
+            transaction.delete(userStarRatingSnap.ref);
           }
         }
         
+        // 4. Finally, delete the comment itself.
         transaction.delete(commentRef);
       });
 
-      // After transaction, delete associated notification if it was a reply
+      // After successful transaction, handle client-side and non-transactional updates.
+      if (commentToDeleteData.starRatingGiven && currentUser.uid === commentToDeleteData.userId) {
+        setNewCommentStars(null);
+      }
+      
       if (commentToDeleteData.parentId) {
         const notificationsRef = collection(db, 'notifications');
         const q = query(notificationsRef, where('replyId', '==', commentToDeleteId));
@@ -824,7 +840,11 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       router.refresh();
     } catch (error: any) {
       console.error("Error deleting comment:", error);
-      toast({ title: "Error al Eliminar", description: `No se pudo eliminar el comentario. ${error.message}`, variant: "destructive" });
+      let errorMessage = `No se pudo eliminar el comentario. ${error.message}`;
+      if (String(error.message).toLowerCase().includes("transaction")) {
+          errorMessage = "No se pudo eliminar el comentario debido a un error de base de datos.";
+      }
+      toast({ title: "Error al Eliminar", description: errorMessage, variant: "destructive" });
     } finally {
       setIsDeleteDialogOpen(false);
       setCommentToDeleteId(null);
@@ -1378,4 +1398,3 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
-
