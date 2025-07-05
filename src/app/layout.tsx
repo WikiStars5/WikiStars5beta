@@ -12,9 +12,18 @@ export const metadata: Metadata = {
   title: 'WikiStars5 - Percepción de Figuras Públicas',
   description: 'Califica y discute sobre figuras públicas en WikiStars5.',
   icons: {
-    icon: logoUrl,
-    shortcut: logoUrl,
-    apple: logoUrl,
+    icon: {
+      url: logoUrl,
+      type: 'image/png',
+    },
+    shortcut: {
+      url: logoUrl,
+      type: 'image/png',
+    },
+    apple: {
+      url: logoUrl,
+      type: 'image/png',
+    },
   },
 };
 
