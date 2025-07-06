@@ -55,12 +55,8 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    function isRegisteredUser() {
-      return isAuthenticated() && request.auth.token.firebase.sign_in_provider != 'anonymous';
-    }
-
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
     // =====================================================================
@@ -74,9 +70,8 @@ service cloud.firestore {
     }
 
     match /registered_users/{userId} {
-      allow get, update: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow list: if isAdmin();
+      allow get, list: if isAdmin();
+      allow create, update: if isOwner(userId);
       allow delete: if isAdmin();
     }
 
@@ -92,10 +87,11 @@ service cloud.firestore {
     }
     
     match /notifications/{notificationId} {
-      allow create: if isAuthenticated(); // Server-side only action, so this is okay.
+      allow create: if isAuthenticated();
       allow read, delete: if isOwner(resource.data.userId) || isAdmin();
-      // A user can update their OWN notification (e.g., to mark it as read).
-      allow update: if isOwner(resource.data.userId);
+      // Un usuario puede actualizar su propia notificación (e.g., para marcarla como leída).
+      // Se añade el chequeo de admin como un respaldo de seguridad.
+      allow update: if isOwner(resource.data.userId) || isAdmin();
     }
   }
 }
