@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Bell, CheckCheck } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
 
 function timeSince(date: Date): string {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -37,6 +38,7 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isOpen, setIsOpen] = React.useState(false);
   const router = useRouter();
+  const { toast } = useToast();
   
   const [notificationSound, setNotificationSound] = React.useState<HTMLAudioElement | null>(null);
   const prevUnreadCountRef = React.useRef(0);
@@ -45,7 +47,7 @@ export function NotificationBell() {
   const SOUND_COOLDOWN = 15000; // 15 segundos
 
   React.useEffect(() => {
-    const sound = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711");
+    const sound = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076ddf9711");
     sound.preload = 'auto';
     setNotificationSound(sound);
   }, []);
@@ -75,43 +77,22 @@ export function NotificationBell() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      // Get raw data from the server for sound logic
-      const serverUnreadCount = snapshot.docs.filter(doc => !doc.data().isRead).length;
+      const serverNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+      const currentUnreadCount = serverNotifications.filter(n => !n.isRead).length;
 
-      // Update state using a callback to get the latest state and avoid dependency loops
-      setNotifications(prevLocalNotifications => {
-        // Create a map of the previous optimistic `isRead` states for quick lookup
-        const localReadState = new Map(prevLocalNotifications.map(n => [n.id, n.isRead]));
-        
-        // Map the new server data
-        const serverNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
-        
-        // Merge server data with local optimistic updates
-        const mergedNotifications = serverNotifications.map(serverN => {
-          if (localReadState.get(serverN.id) === true && !serverN.isRead) {
-            return { ...serverN, isRead: true }; // Preserve optimistic read
-          }
-          return serverN;
-        });
+      setNotifications(serverNotifications);
+      setUnreadCount(currentUnreadCount);
 
-        // Update the visual unread count based on the final merged list
-        const finalUnreadCount = mergedNotifications.filter(n => !n.isRead).length;
-        setUnreadCount(finalUnreadCount);
-        
-        return mergedNotifications;
-      });
-
-      // Handle sound effect logic with cooldown
       if (isInitialLoadRef.current) {
         isInitialLoadRef.current = false;
-      } else if (serverUnreadCount > prevUnreadCountRef.current) {
+      } else if (currentUnreadCount > prevUnreadCountRef.current) {
         const now = Date.now();
         if (now - lastSoundPlayedAtRef.current > SOUND_COOLDOWN) {
           notificationSound?.play().catch(err => console.error("Audio play failed:", err));
           lastSoundPlayedAtRef.current = now;
         }
       }
-      prevUnreadCountRef.current = serverUnreadCount;
+      prevUnreadCountRef.current = currentUnreadCount;
 
     }, (error) => {
       console.error("Error fetching notifications:", error);
@@ -126,14 +107,14 @@ export function NotificationBell() {
 
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.isRead) {
-      // Optimistic update
-      setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-      
-      // Server update
-      markNotificationAsRead(notification.id).catch(err => {
+      markNotificationAsRead(notification.id).then(result => {
+        if (!result.success) {
+          toast({ title: "Error", description: "No se pudo marcar la notificación como leída.", variant: "destructive" });
+        }
+        // UI will update automatically via the onSnapshot listener
+      }).catch(err => {
+        toast({ title: "Error", description: "Ocurrió un error al marcar la notificación.", variant: "destructive" });
         console.error("Failed to mark notification as read on server:", err);
-        // Optional: revert optimistic update on error
       });
     }
 
@@ -145,14 +126,14 @@ export function NotificationBell() {
   const handleMarkAllAsRead = () => {
     if (!currentUser || unreadCount === 0) return;
 
-    // Optimistic update
-    setNotifications(prev => prev.map(n => n.isRead ? n : { ...n, isRead: true }));
-    setUnreadCount(0);
-
-    // Server update
-    markAllNotificationsAsRead(currentUser.uid).catch(err => {
+    markAllNotificationsAsRead(currentUser.uid).then(result => {
+        if (!result.success) {
+          toast({ title: "Error", description: "No se pudieron marcar todas las notificaciones como leídas.", variant: "destructive" });
+        }
+        // UI will update automatically via onSnapshot
+    }).catch(err => {
+      toast({ title: "Error", description: "Ocurrió un error al marcar las notificaciones.", variant: "destructive" });
       console.error("Failed to mark all as read on server:", err);
-      // Optional: revert optimistic update on error
     });
   };
   
