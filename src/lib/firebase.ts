@@ -60,7 +60,7 @@ service cloud.firestore {
     }
 
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
     // =====================================================================
@@ -90,16 +90,12 @@ service cloud.firestore {
       allow update: if isAuthenticated();
       allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
-
-    // Un usuario puede LEER sus propias notificaciones.
-    // Un usuario puede CREAR notificaciones (acción del servidor).
-    // Cualquier usuario autenticado puede ACTUALIZAR una notificación (para marcarla como leída).
-    // El propietario o un admin pueden ELIMINAR notificaciones.
+    
     match /notifications/{notificationId} {
-      allow create: if isAuthenticated();
-      allow read: if isOwner(resource.data.userId) || isAdmin();
-      allow update: if isAuthenticated(); // FIX: Simplificado para permitir marcar como leída
-      allow delete: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated(); // Server-side only action, so this is okay.
+      allow read, delete: if isOwner(resource.data.userId) || isAdmin();
+      // A user can update their OWN notification (e.g., to mark it as read).
+      allow update: if isOwner(resource.data.userId);
     }
   }
 }

@@ -118,7 +118,7 @@ export function NotificationBell() {
         if (!result.success) {
           toast({
             title: "Error",
-            description: "No se pudo marcar la notificación como leída. Inténtalo de nuevo.",
+            description: result.message || "No se pudo marcar la notificación como leída. Inténtalo de nuevo.",
             variant: "destructive"
           });
         }
@@ -139,7 +139,7 @@ export function NotificationBell() {
 
     markAllNotificationsAsRead(currentUser.uid).then(result => {
         if (!result.success) {
-          toast({ title: "Error", description: "No se pudieron marcar todas las notificaciones como leídas.", variant: "destructive" });
+          toast({ title: "Error", description: result.message || "No se pudieron marcar todas las notificaciones como leídas.", variant: "destructive" });
           // Revert optimistic update on failure
           setNotifications(originalNotifications);
           setUnreadCount(originalNotifications.filter(n => !n.isRead).length);
