@@ -106,39 +106,50 @@ export function NotificationBell() {
   }, [currentUser, notificationSound, SOUND_COOLDOWN]);
 
   const handleNotificationClick = (notification: Notification) => {
-    // Close the popover and navigate immediately. This is the primary user action.
+    // Navigate immediately for the best user experience.
     setIsOpen(false);
     const targetId = notification.replyId || notification.commentId;
     router.push(`/figures/${notification.figureId}#comment-${targetId}`);
 
-    // After navigating, fire and forget the "mark as read" action.
-    // This way, it doesn't block the user. If it fails, a toast will appear,
-    // but the user is already where they want to be.
+    // Mark as read in the background. If it fails, the user will see it again,
+    // but their navigation is not blocked. The Firestore rule change makes this reliable.
     if (!notification.isRead) {
       markNotificationAsRead(notification.id).then(result => {
-        // If it succeeds, the onSnapshot listener will update the UI automatically.
         if (!result.success) {
           toast({
             title: "Error",
-            description: "No se pudo marcar la notificación como leída.",
+            description: "No se pudo marcar la notificación como leída. Inténtalo de nuevo.",
             variant: "destructive"
           });
         }
+        // No need for optimistic update, the onSnapshot listener is the source of truth
+        // and will update the UI once the backend write is successful.
       });
     }
   };
 
-
   const handleMarkAllAsRead = () => {
     if (!currentUser || unreadCount === 0) return;
+
+    // To provide immediate feedback, we can optimistically update the UI
+    const originalNotifications = [...notifications];
+    const newNotifications = notifications.map(n => ({ ...n, isRead: true }));
+    setNotifications(newNotifications);
+    setUnreadCount(0);
 
     markAllNotificationsAsRead(currentUser.uid).then(result => {
         if (!result.success) {
           toast({ title: "Error", description: "No se pudieron marcar todas las notificaciones como leídas.", variant: "destructive" });
+          // Revert optimistic update on failure
+          setNotifications(originalNotifications);
+          setUnreadCount(originalNotifications.filter(n => !n.isRead).length);
         }
-        // UI will update automatically via onSnapshot
+        // On success, the onSnapshot listener will eventually confirm the state,
+        // so no further action is needed here.
     }).catch(err => {
       toast({ title: "Error", description: "Ocurrió un error al marcar las notificaciones.", variant: "destructive" });
+      setNotifications(originalNotifications);
+      setUnreadCount(originalNotifications.filter(n => !n.isRead).length);
       console.error("Failed to mark all as read on server:", err);
     });
   };

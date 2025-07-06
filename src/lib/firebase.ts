@@ -67,16 +67,12 @@ service cloud.firestore {
     // Collection Rules
     // =====================================================================
 
-    // Las figuras pueden ser leídas por cualquiera. Las actualizaciones (para encuestas) por cualquier usuario autenticado.
-    // La creación/eliminación solo por administradores.
     match /figures/{figureId} {
       allow get, list: if true;
       allow update: if isAuthenticated();
       allow create, delete: if isAdmin();
     }
 
-    // Los perfiles de usuario pueden ser gestionados por el propio usuario o un administrador.
-    // Listar todos los usuarios es una operación solo para administradores.
     match /registered_users/{userId} {
       allow get, update: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId);
@@ -84,26 +80,26 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Las colecciones de votación pueden ser escritas por cualquier usuario autenticado.
     match /userPerceptions/{docId} { allow read, write: if isAuthenticated(); }
     match /userAttitudes/{docId} { allow read, write: if isAuthenticated(); }
     match /userStarRatings/{docId} { allow read, write: if isAuthenticated(); }
 
-    // Los comentarios pueden ser creados por cualquier usuario autenticado.
-    // Las actualizaciones (para "me gusta") las puede hacer cualquier usuario autenticado.
-    // La eliminación está restringida al propietario o a un administrador.
     match /userComments/{commentId} {
       allow read: if true;
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated(); // Para "me gusta" de cualquiera
+      allow update: if isAuthenticated();
       allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
-    // Un usuario puede leer sus propias notificaciones. Un admin puede leerlas, actualizarlas y eliminarlas.
-    // La creación está permitida para cualquier usuario autenticado (ya que la lógica del servidor lo gestionará).
+    // Un usuario puede LEER sus propias notificaciones.
+    // Un usuario puede CREAR notificaciones (acción del servidor).
+    // Cualquier usuario autenticado puede ACTUALIZAR una notificación (para marcarla como leída).
+    // El propietario o un admin pueden ELIMINAR notificaciones.
     match /notifications/{notificationId} {
       allow create: if isAuthenticated();
-      allow read, update, delete: if isOwner(resource.data.userId) || isAdmin();
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow update: if isAuthenticated(); // FIX: Simplificado para permitir marcar como leída
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
   }
 }
