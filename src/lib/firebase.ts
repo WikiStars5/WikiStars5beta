@@ -99,11 +99,11 @@ service cloud.firestore {
       allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
-    // Un usuario puede leer sus propias notificaciones y actualizarlas (para marcarlas como leídas).
+    // Un usuario puede leer sus propias notificaciones. Un admin puede leerlas, actualizarlas y eliminarlas.
     // La creación está permitida para cualquier usuario autenticado (ya que la lógica del servidor lo gestionará).
     match /notifications/{notificationId} {
-      allow read, update, delete: if isOwner(resource.data.userId);
       allow create: if isAuthenticated();
+      allow read, update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
   }
 }

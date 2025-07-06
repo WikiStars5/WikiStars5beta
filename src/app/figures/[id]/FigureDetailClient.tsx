@@ -753,9 +753,10 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
   const handleDeleteCommentConfirmation = async () => {
     if (!commentToDeleteId || !figure || !currentUser) return;
-
+  
     const commentRef = doc(db, "userComments", commentToDeleteId);
     
+    // Fetch comment data BEFORE transaction
     const commentToDeleteSnap = await getDoc(commentRef);
     if (!commentToDeleteSnap.exists()) {
         toast({ title: "Error", description: "El comentario ya no existe.", variant: "destructive" });
@@ -764,36 +765,28 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         return;
     }
     const commentToDeleteData = commentToDeleteSnap.data() as UserComment;
-    const figureRef = doc(db, "figures", figure.id);
-
+    const isReply = !!commentToDeleteData.parentId;
+  
     try {
+      const figureRef = doc(db, "figures", figure.id);
+  
+      // Main transaction for comment data
       await runTransaction(db, async (transaction) => {
         // --- READ PHASE ---
-        // All reads must be executed before all writes in a Firestore transaction.
         const figureDoc = await transaction.get(figureRef);
-        if (!figureDoc.exists()) {
-          throw new Error("Figure document does not exist!");
-        }
-
-        let userStarRatingSnap: DocumentSnapshot | null = null;
-        if (commentToDeleteData.starRatingGiven) {
-          const userStarRatingDocRef = doc(db, 'userStarRatings', `${commentToDeleteData.userId}_${figure.id}`);
-          userStarRatingSnap = await transaction.get(userStarRatingDocRef);
-        }
-
+        if (!figureDoc.exists()) throw new Error("Figure document does not exist!");
+  
+        const userStarRatingDocRef = doc(db, 'userStarRatings', `${commentToDeleteData.userId}_${figure.id}`);
+        const userStarRatingSnap = await transaction.get(userStarRatingDocRef);
+        
         // --- WRITE PHASE ---
-        // Now we can perform all our writes.
-
-        // 1. Decrement total figure comment count.
         transaction.update(figureRef, { commentCount: increment(-1) });
-
-        // 2. If it was a reply, decrement parent's replyCount.
-        if (commentToDeleteData.parentId) {
+  
+        if (isReply && commentToDeleteData.parentId) {
           const parentCommentRef = doc(db, "userComments", commentToDeleteData.parentId);
           transaction.update(parentCommentRef, { replyCount: increment(-1) });
         }
-
-        // 3. Adjust star ratings if the deleted comment had one.
+  
         if (commentToDeleteData.starRatingGiven) {
           const figureData = figureDoc.data();
           const starKey = commentToDeleteData.starRatingGiven.toString() as StarValueAsString;
@@ -804,45 +797,51 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
               newStarCounts[starKey] = Math.max(0, newStarCounts[starKey] - 1);
               transaction.update(figureRef, { starRatingCounts: newStarCounts });
           }
-
-          // And delete the specific user-figure rating document if it matches.
-          if (userStarRatingSnap && userStarRatingSnap.exists() && userStarRatingSnap.data()?.starValue === commentToDeleteData.starRatingGiven) {
+  
+          if (userStarRatingSnap.exists() && userStarRatingSnap.data()?.starValue === commentToDeleteData.starRatingGiven) {
             transaction.delete(userStarRatingSnap.ref);
           }
         }
         
-        // 4. Finally, delete the comment itself.
         transaction.delete(commentRef);
       });
-
-      // After successful transaction, handle client-side and non-transactional updates.
+  
+      // After successful transaction, delete associated notification if it's a reply
+      if (isReply) {
+        try {
+          const notificationsBatch = writeBatch(db);
+          const notificationsRef = collection(db, 'notifications');
+          const q = query(notificationsRef, where('replyId', '==', commentToDeleteId));
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            querySnapshot.forEach(doc => notificationsBatch.delete(doc.ref));
+            await notificationsBatch.commit();
+          }
+        } catch (notificationError) {
+          console.error("Failed to delete associated notification, but comment was deleted:", notificationError);
+          // Don't need to alert the user, main action was successful
+        }
+      }
+  
+      toast({ title: "Comentario Eliminado", description: "El comentario ha sido eliminado." });
+      
       if (commentToDeleteData.starRatingGiven && currentUser.uid === commentToDeleteData.userId) {
         setNewCommentStars(null);
       }
       
-      if (commentToDeleteData.parentId) {
-        const notificationsRef = collection(db, 'notifications');
-        const q = query(notificationsRef, where('replyId', '==', commentToDeleteId));
-        const querySnapshot = await getDocs(q);
-        const batch = writeBatch(db);
-        querySnapshot.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-      }
-
-      toast({ title: "Comentario Eliminado", description: "El comentario ha sido eliminado." });
-      
-      if (commentToDeleteData.parentId) {
+      if (isReply && commentToDeleteData.parentId) {
         handleToggleReplies(commentToDeleteData.parentId, true);
       } else {
         fetchComments();
       }
       
       router.refresh();
+  
     } catch (error: any) {
       console.error("Error deleting comment:", error);
       let errorMessage = `No se pudo eliminar el comentario. ${error.message}`;
-      if (String(error.message).toLowerCase().includes("transaction")) {
-          errorMessage = "No se pudo eliminar el comentario debido a un error de base de datos.";
+      if (String(error.message).toLowerCase().includes("permission")) {
+          errorMessage = "No se pudo eliminar el comentario debido a un error de permisos. Asegúrate de que las reglas de seguridad de Firestore estén actualizadas.";
       }
       toast({ title: "Error al Eliminar", description: errorMessage, variant: "destructive" });
     } finally {
@@ -850,7 +849,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       setCommentToDeleteId(null);
     }
   };
-
+  
 
   const openDeleteDialog = (commentId: string) => {
     setCommentToDeleteId(commentId);
