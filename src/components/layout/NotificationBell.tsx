@@ -105,26 +105,29 @@ export function NotificationBell() {
     };
   }, [currentUser, notificationSound, SOUND_COOLDOWN]);
 
-  const handleNotificationClick = async (notification: Notification) => {
-    // Close the popover immediately for a better user experience.
+  const handleNotificationClick = (notification: Notification) => {
+    // Close the popover and navigate immediately. This is the primary user action.
     setIsOpen(false);
-
-    // If the notification is unread, try to mark it as read.
-    if (!notification.isRead) {
-      const result = await markNotificationAsRead(notification.id);
-      
-      // If marking as read fails, show an error and stop execution.
-      // This prevents navigation and provides clear feedback to the user.
-      if (!result.success) {
-        toast({ title: "Error", description: "No se pudo marcar la notificación como leída.", variant: "destructive" });
-        return; // Halt the function here.
-      }
-    }
-
-    // If marking as read was successful (or not needed), navigate to the comment.
     const targetId = notification.replyId || notification.commentId;
     router.push(`/figures/${notification.figureId}#comment-${targetId}`);
+
+    // After navigating, fire and forget the "mark as read" action.
+    // This way, it doesn't block the user. If it fails, a toast will appear,
+    // but the user is already where they want to be.
+    if (!notification.isRead) {
+      markNotificationAsRead(notification.id).then(result => {
+        // If it succeeds, the onSnapshot listener will update the UI automatically.
+        if (!result.success) {
+          toast({
+            title: "Error",
+            description: "No se pudo marcar la notificación como leída.",
+            variant: "destructive"
+          });
+        }
+      });
+    }
   };
+
 
   const handleMarkAllAsRead = () => {
     if (!currentUser || unreadCount === 0) return;
