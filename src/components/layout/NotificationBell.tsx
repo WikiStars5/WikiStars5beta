@@ -47,7 +47,7 @@ export function NotificationBell() {
   const SOUND_COOLDOWN = 15000; // 15 segundos
 
   React.useEffect(() => {
-    const sound = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076ddf9711");
+    const sound = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711");
     sound.preload = 'auto';
     setNotificationSound(sound);
   }, []);
@@ -105,22 +105,25 @@ export function NotificationBell() {
     };
   }, [currentUser, notificationSound, SOUND_COOLDOWN]);
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = async (notification: Notification) => {
+    // Close the popover immediately for a better user experience.
+    setIsOpen(false);
+
+    // If the notification is unread, try to mark it as read.
     if (!notification.isRead) {
-      markNotificationAsRead(notification.id).then(result => {
-        if (!result.success) {
-          toast({ title: "Error", description: "No se pudo marcar la notificación como leída.", variant: "destructive" });
-        }
-        // UI will update automatically via the onSnapshot listener
-      }).catch(err => {
-        toast({ title: "Error", description: "Ocurrió un error al marcar la notificación.", variant: "destructive" });
-        console.error("Failed to mark notification as read on server:", err);
-      });
+      const result = await markNotificationAsRead(notification.id);
+      
+      // If marking as read fails, show an error and stop execution.
+      // This prevents navigation and provides clear feedback to the user.
+      if (!result.success) {
+        toast({ title: "Error", description: "No se pudo marcar la notificación como leída.", variant: "destructive" });
+        return; // Halt the function here.
+      }
     }
 
+    // If marking as read was successful (or not needed), navigate to the comment.
     const targetId = notification.replyId || notification.commentId;
     router.push(`/figures/${notification.figureId}#comment-${targetId}`);
-    setIsOpen(false);
   };
 
   const handleMarkAllAsRead = () => {
