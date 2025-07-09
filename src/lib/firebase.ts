@@ -1,3 +1,4 @@
+
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
@@ -82,17 +83,20 @@ service cloud.firestore {
     match /userComments/{commentId} {
       allow read: if true;
       allow create: if isAuthenticated();
+      // Cualquier usuario autenticado puede actualizar (para likes/dislikes).
+      // Solo el dueño del comentario o un admin pueden borrarlo.
       allow update: if isAuthenticated();
       allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
     
     match /notifications/{notificationId} {
       allow create: if isAuthenticated();
-      // Un usuario puede leer y actualizar su propia notificación.
-      // El autor de la respuesta (actor) también necesita leerla para poder borrarla después.
-      allow read, update: if isOwner(resource.data.userId) || isAdmin() || isOwner(resource.data.actorId);
-      // El destinatario, el admin o el autor de la respuesta pueden borrar la notificación.
-      allow delete: if isOwner(resource.data.userId) || isAdmin() || isOwner(resource.data.actorId);
+      // 'list' es para poder buscar las notificaciones de un usuario.
+      // 'read'/'update' para verlas y marcarlas como leídas.
+      // Solo el dueño (userId) o un admin puede hacerlo.
+      allow list, read, update: if isOwner(resource.data.userId) || isAdmin();
+      // Solo el dueño o un admin pueden borrarlas.
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
   }
 }
