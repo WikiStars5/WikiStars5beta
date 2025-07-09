@@ -143,11 +143,16 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
   const displayedComments = React.useMemo(() => {
     if (isLoadingComments) return [];
-    let sortedComments = [...commentsList];
+    let commentsToDisplay = [...commentsList];
 
     switch (commentSortOrder) {
       case 'mostVoted':
-        sortedComments.sort((a, b) => {
+        // First, filter out comments that have no votes at all.
+        commentsToDisplay = commentsToDisplay.filter(
+          (comment) => (comment.likes || 0) > 0 || (comment.dislikes || 0) > 0
+        );
+        // Then, sort the remaining comments.
+        commentsToDisplay.sort((a, b) => {
           const scoreA = (a.likes || 0) - (a.dislikes || 0);
           const scoreB = (b.likes || 0) - (b.dislikes || 0);
 
@@ -167,17 +172,23 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         });
         break;
       case 'oldest':
-        sortedComments.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+        commentsToDisplay.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
         break;
       case 'myComment':
-        if (!currentUser || currentUser.isAnonymous) return [];
-        return commentsList.filter(comment => comment.userId === currentUser.uid);
+        if (!currentUser || currentUser.isAnonymous) {
+          commentsToDisplay = [];
+        } else {
+          commentsToDisplay = commentsToDisplay.filter(
+            (comment) => comment.userId === currentUser.uid
+          );
+        }
+        break;
       case 'newest':
       default:
-        sortedComments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+        commentsToDisplay.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
         break;
     }
-    return sortedComments;
+    return commentsToDisplay;
   }, [commentsList, commentSortOrder, currentUser, isLoadingComments]);
 
 
@@ -398,20 +409,19 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     const targetId = hash.substring(1);
 
     const handleHighlighting = async () => {
+      // Clear URL immediately to prevent re-triggering and "sticky scroll"
+      if (window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+
       const element = document.getElementById(targetId);
 
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setHighlightedCommentId(targetId);
-
         setTimeout(() => setHighlightedCommentId(null), 5000);
-        setTimeout(() => {
-          if (window.history.replaceState) {
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
-          }
-        }, 500);
-
       } else if (!isLoadingComments) {
+        // If element is not found, it might be a reply that needs to be loaded
         const potentialReplyId = targetId.replace('comment-', '');
         try {
           const replyRef = doc(db, 'userComments', potentialReplyId);
@@ -419,20 +429,30 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           if (replySnap.exists()) {
             const parentId = replySnap.data().parentId;
             if (parentId && !visibleReplies[parentId]) {
-              handleToggleReplies(parentId, true);
+              // Load replies and then try to highlight
+              await handleToggleReplies(parentId, true);
+              // After replies are loaded, the element should exist for the next effect run
+              // Re-run highlighting logic after a short delay to allow DOM update
+              setTimeout(() => {
+                const newElement = document.getElementById(targetId);
+                if (newElement) {
+                   newElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                   setHighlightedCommentId(targetId);
+                   setTimeout(() => setHighlightedCommentId(null), 5000);
+                }
+              }, 100);
             }
           }
         } catch (error) {
           console.error("Error pre-fetching reply for highlighting:", error);
-          if (window.history.replaceState) {
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
-          }
         }
       }
     };
-    const timer = setTimeout(handleHighlighting, 150);
+
+    // Use a small delay to ensure the DOM has had a chance to render from other effects
+    const timer = setTimeout(handleHighlighting, 150); 
     return () => clearTimeout(timer);
-  }, [isLoadingComments, replies, handleToggleReplies, visibleReplies]);
+  }, [isLoadingComments, handleToggleReplies, visibleReplies]);
 
 
   const handleEditToggle = () => {
@@ -733,7 +753,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           setCommentsList(originalComments);
           setReplies(originalReplies);
         } else {
-          router.refresh();
+          // No need to refresh, optimistic update is enough.
+          // router.refresh();
         }
       } catch (error: any) {
         console.error("Error al llamar a la acción del servidor para me gusta/no me gusta:", error);
