@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -41,9 +40,7 @@ export function NotificationBell() {
   const { toast } = useToast();
   
   const [notificationSound, setNotificationSound] = React.useState<HTMLAudioElement | null>(null);
-  const [hasPlayedSoundForBatch, setHasPlayedSoundForBatch] = React.useState(false);
-  const lastSoundPlayedAtRef = React.useRef(0);
-  const SOUND_COOLDOWN = 5000; // 5 segundos
+  const isInitialLoadRef = React.useRef(true);
 
   React.useEffect(() => {
     // This effect runs only once on the client to create the audio element.
@@ -78,41 +75,38 @@ export function NotificationBell() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const serverNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+      const newUnreadCount = serverNotifications.filter(n => !n.isRead).length;
+
+      // Play sound only if a new unread notification has arrived after the initial load.
+      if (!isInitialLoadRef.current && newUnreadCount > unreadCount) {
+        notificationSound?.play().catch(err => {
+          // This catch is important to handle autoplay restrictions gracefully.
+          console.warn("Notification sound blocked by browser autoplay policy. This is expected if the user hasn't interacted with the page yet.", err);
+        });
+      }
+
       setNotifications(serverNotifications);
-      setUnreadCount(serverNotifications.filter(n => !n.isRead).length);
+      setUnreadCount(newUnreadCount);
+
+      // After the first snapshot is processed, set initial load to false.
+      if (isInitialLoadRef.current) {
+        isInitialLoadRef.current = false;
+      }
+
     }, (error) => {
       console.error("Error fetching notifications:", error);
     });
 
+    // Reset initial load flag when user changes, so it doesn't play sound on login.
+    isInitialLoadRef.current = true;
+
     return () => unsubscribe();
-  }, [currentUser]);
-
-  React.useEffect(() => {
-    // When the number of unread notifications changes (e.g., a new one arrives or one is read),
-    // we reset the flag. This allows the sound to play on the next popover open if there are still unread items.
-    setHasPlayedSoundForBatch(false);
-  }, [unreadCount]);
-
-
-  const handlePopoverChange = (open: boolean) => {
-    setIsOpen(open);
-    if (open && unreadCount > 0 && !hasPlayedSoundForBatch) {
-      const now = Date.now();
-      if (now - lastSoundPlayedAtRef.current > SOUND_COOLDOWN) {
-        notificationSound?.play().catch(err => {
-          // A catch is still good practice in case of unexpected issues.
-          console.error("Audio play failed on interaction:", err);
-        });
-        lastSoundPlayedAtRef.current = now;
-      }
-      setHasPlayedSoundForBatch(true);
-    }
-  };
+  }, [currentUser, notificationSound, unreadCount]); // unreadCount is crucial here to compare old vs new.
 
   const handleNotificationClick = async (notification: Notification) => {
     // Navigate immediately for the best user experience.
-    setIsOpen(false);
     router.push(`/figures/${notification.figureId}#comment-${notification.replyId || notification.commentId}`);
+    setIsOpen(false);
 
     // Mark as read in the background.
     if (!notification.isRead) {
@@ -154,7 +148,7 @@ export function NotificationBell() {
   }
 
   return (
-    <Popover open={isOpen} onOpenChange={handlePopoverChange}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative h-9 w-9">
           <Bell className="h-5 w-5 text-foreground/70" />
