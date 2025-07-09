@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -11,10 +12,12 @@ import { markNotificationAsRead, markAllNotificationsAsRead } from '@/app/action
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, MessageSquareReply, Heart } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 function timeSince(date: Date): string {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -40,8 +43,7 @@ export function NotificationBell() {
   const { toast } = useToast();
   
   const [notificationSound, setNotificationSound] = React.useState<HTMLAudioElement | null>(null);
-  const isInitialLoadRef = React.useRef(true);
-  const prevUnreadCountRef = React.useRef(0);
+  const soundTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Effect to create the audio element once on the client
   React.useEffect(() => {
@@ -59,13 +61,12 @@ export function NotificationBell() {
         setCurrentUser(null);
         setNotifications([]);
         setUnreadCount(0);
-        isInitialLoadRef.current = true;
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // Effect to fetch notifications from Firestore and update state
+  // Separate effect for listening to notifications
   React.useEffect(() => {
     if (!currentUser) return;
 
@@ -79,10 +80,7 @@ export function NotificationBell() {
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const serverNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
-      const newUnreadCount = serverNotifications.filter(n => !n.isRead).length;
-
       setNotifications(serverNotifications);
-      setUnreadCount(newUnreadCount);
     }, (error) => {
       console.error("Error fetching notifications:", error);
     });
@@ -90,43 +88,41 @@ export function NotificationBell() {
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Effect to play sound when unreadCount increases
+  // Separate effect to handle unread count and play sound
   React.useEffect(() => {
-    // On the very first load, sync the previous count ref but don't play a sound.
-    if (isInitialLoadRef.current) {
-      prevUnreadCountRef.current = unreadCount;
-      isInitialLoadRef.current = false;
-      return;
-    }
-    
-    // Play sound only if the new unread count is greater than the previous one.
-    if (unreadCount > prevUnreadCountRef.current) {
-      notificationSound?.play().catch(err => {
-        // This catch is important to handle browser autoplay restrictions gracefully.
-        console.warn("Notification sound was blocked by browser autoplay policy.", err);
-      });
+    const newUnreadCount = notifications.filter(n => !n.isRead).length;
+
+    if (newUnreadCount > unreadCount) {
+      if (soundTimeoutRef.current) {
+        clearTimeout(soundTimeoutRef.current);
+      }
+      soundTimeoutRef.current = setTimeout(() => {
+        notificationSound?.play().catch(err => {
+          console.warn("Notification sound was blocked by browser autoplay policy.", err);
+        });
+      }, 300); // Small delay to bundle rapid updates
     }
 
-    // Always update the ref to the current count for the next comparison.
-    prevUnreadCountRef.current = unreadCount;
-  }, [unreadCount, notificationSound]);
+    setUnreadCount(newUnreadCount);
+    
+    return () => {
+      if (soundTimeoutRef.current) {
+        clearTimeout(soundTimeoutRef.current);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifications, notificationSound]);
 
 
   const handleNotificationClick = async (notification: Notification) => {
     // Navigate immediately for the best user experience.
-    router.push(`/figures/${notification.figureId}#comment-${notification.replyId || notification.commentId}`);
+    const url = `/figures/${notification.figureId}#comment-${notification.replyId || notification.commentId}`;
+    router.push(url);
     setIsOpen(false);
 
     // Mark as read in the background.
     if (!notification.isRead) {
-      const result = await markNotificationAsRead(notification.id);
-      if (!result.success) {
-        toast({
-          title: "Error de Sincronización",
-          description: result.message || "No se pudo marcar la notificación como leída. Inténtalo de nuevo.",
-          variant: "destructive"
-        });
-      }
+      await markNotificationAsRead(notification.id);
     }
   };
 
@@ -134,7 +130,6 @@ export function NotificationBell() {
     if (!currentUser || unreadCount === 0) return;
 
     const originalNotifications = [...notifications];
-    // Optimistically update UI
     const newNotifications = notifications.map(n => ({ ...n, isRead: true }));
     setNotifications(newNotifications);
     setUnreadCount(0);
@@ -142,22 +137,55 @@ export function NotificationBell() {
     markAllNotificationsAsRead(currentUser.uid).then(result => {
         if (!result.success) {
           toast({ title: "Error", description: result.message || "No se pudieron marcar todas las notificaciones como leídas.", variant: "destructive" });
-          // Revert optimistic update on failure
           setNotifications(originalNotifications);
           setUnreadCount(originalNotifications.filter(n => !n.isRead).length);
         }
-    }).catch(err => {
-      toast({ title: "Error", description: "Ocurrió un error al marcar las notificaciones.", variant: "destructive" });
-       // Revert optimistic update on failure
-      setNotifications(originalNotifications);
-      setUnreadCount(originalNotifications.filter(n => !n.isRead).length);
-      console.error("Failed to mark all as read on server:", err);
     });
   };
   
   if (!currentUser) {
     return null;
   }
+
+  const replyNotifications = notifications.filter(n => n.type === 'reply');
+  const likeNotifications = notifications.filter(n => n.type === 'like');
+
+  const renderNotificationItem = (notification: Notification) => (
+    <div
+      key={notification.id}
+      onClick={() => handleNotificationClick(notification)}
+      className={cn(
+        "flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50",
+        !notification.isRead && "bg-primary/5"
+      )}
+    >
+      <Avatar className="h-8 w-8 mt-1">
+        <AvatarImage src={correctMalformedUrl(notification.actorPhotoUrl) || undefined} alt={notification.actorName} />
+        <AvatarFallback>{notification.actorName.charAt(0).toUpperCase()}</AvatarFallback>
+      </Avatar>
+      <div className="text-sm flex-1">
+        {notification.type === 'reply' ? (
+          <p>
+            <span className="font-semibold">{notification.actorName}</span>
+            {' '}ha respondido a tu comentario sobre{' '}
+            <span className="font-semibold">{notification.figureName}</span>.
+          </p>
+        ) : (
+          <p>
+            <span className="font-semibold">{notification.actorName}</span>
+            {' '}le ha dado me gusta a tu comentario sobre{' '}
+            <span className="font-semibold">{notification.figureName}</span>.
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground mt-1">
+          {notification.createdAt ? timeSince(notification.createdAt.toDate()) : ''}
+        </p>
+      </div>
+      {!notification.isRead && (
+        <div className="w-2 h-2 rounded-full bg-primary mt-1" title="No leído"></div>
+      )}
+    </div>
+  );
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -182,42 +210,32 @@ export function NotificationBell() {
             </Button>
           )}
         </div>
-        <ScrollArea className="h-[400px]">
-          {notifications.length > 0 ? (
-            <div className="divide-y">
-              {notifications.map(notification => (
-                <div
-                  key={notification.id}
-                  onClick={() => handleNotificationClick(notification)}
-                  className={cn(
-                    "flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50",
-                    !notification.isRead && "bg-primary/5"
-                  )}
-                >
-                  <Avatar className="h-8 w-8 mt-1">
-                      <AvatarImage src={correctMalformedUrl(notification.actorPhotoUrl) || undefined} alt={notification.actorName} />
-                      <AvatarFallback>{notification.actorName.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div className="text-sm flex-1">
-                    <p>
-                      <span className="font-semibold">{notification.actorName}</span>
-                      {' '}ha respondido a tu comentario sobre{' '}
-                      <span className="font-semibold">{notification.figureName}</span>.
-                    </p>
-                     <p className="text-xs text-muted-foreground mt-1">
-                      {notification.createdAt ? timeSince(notification.createdAt.toDate()) : ''}
-                    </p>
-                  </div>
-                  {!notification.isRead && (
-                    <div className="w-2 h-2 rounded-full bg-primary mt-1" title="No leído"></div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-sm text-muted-foreground p-8">No tienes notificaciones.</p>
-          )}
-        </ScrollArea>
+        <Tabs defaultValue="all" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 h-auto p-0 rounded-none border-b">
+                <TabsTrigger value="replies" className="py-2 rounded-none text-xs"><MessageSquareReply className="mr-2 h-4 w-4"/>Respuestas</TabsTrigger>
+                <TabsTrigger value="likes" className="py-2 rounded-none text-xs"><Heart className="mr-2 h-4 w-4"/>Me gusta</TabsTrigger>
+            </TabsList>
+            <ScrollArea className="h-[400px]">
+                <TabsContent value="replies">
+                    {replyNotifications.length > 0 ? (
+                        <div className="divide-y">
+                            {replyNotifications.map(renderNotificationItem)}
+                        </div>
+                    ) : (
+                        <p className="text-center text-sm text-muted-foreground p-8">No tienes respuestas nuevas.</p>
+                    )}
+                </TabsContent>
+                <TabsContent value="likes">
+                    {likeNotifications.length > 0 ? (
+                        <div className="divide-y">
+                            {likeNotifications.map(renderNotificationItem)}
+                        </div>
+                    ) : (
+                        <p className="text-center text-sm text-muted-foreground p-8">Nadie le ha dado 'me gusta' a tus comentarios aún.</p>
+                    )}
+                </TabsContent>
+            </ScrollArea>
+        </Tabs>
       </PopoverContent>
     </Popover>
   );

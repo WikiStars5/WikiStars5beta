@@ -1,17 +1,21 @@
+
 'use server';
 
 import { db } from '@/lib/firebase';
-import { doc, runTransaction, arrayUnion, arrayRemove, increment, getDoc } from 'firebase/firestore';
+import { doc, runTransaction, arrayUnion, arrayRemove, increment, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 export async function updateCommentLikes(
   commentId: string,
   figureId: string,
-  userId: string,
+  figureName: string, // <-- Added for notification context
+  userId: string, // This is the actor's ID
+  actorName: string, // <-- Added for notification context
+  actorPhotoUrl: string | null, // <-- Added for notification context
   action: 'like' | 'dislike'
 ): Promise<{ success: boolean; message: string; newLikes?: number; newDislikes?: number; }> {
-  if (!commentId || !userId || !action || !figureId) {
-    return { success: false, message: 'Información incompleta.' };
+  if (!commentId || !userId || !action || !figureId || !figureName) {
+    return { success: false, message: 'Información incompleta para actualizar el voto.' };
   }
 
   const commentRef = doc(db, 'userComments', commentId);
@@ -27,6 +31,9 @@ export async function updateCommentLikes(
       }
 
       const data = commentDoc.data();
+      const commentAuthorId = data.userId;
+      const isCommentAuthorGuest = !!data.guestUsername;
+      
       const likedBy: string[] = data.likedBy || [];
       const dislikedBy: string[] = data.dislikedBy || [];
 
@@ -37,7 +44,7 @@ export async function updateCommentLikes(
 
       if (action === 'like') {
         if (hasLiked) {
-          // User is un-liking
+          // User is un-liking, no notification needed.
           updateData.likedBy = arrayRemove(userId);
           updateData.likes = increment(-1);
         } else {
@@ -45,22 +52,36 @@ export async function updateCommentLikes(
           updateData.likedBy = arrayUnion(userId);
           updateData.likes = increment(1);
           if (hasDisliked) {
-            // also remove from dislikes
             updateData.dislikedBy = arrayRemove(userId);
             updateData.dislikes = increment(-1);
           }
+          
+          // Create a notification if the user is not liking their own comment and the author is not a guest
+          if (userId !== commentAuthorId && !isCommentAuthorGuest) {
+            const notificationRef = doc(collection(db, 'notifications'));
+            transaction.set(notificationRef, {
+              userId: commentAuthorId, // The user to notify
+              actorId: userId,
+              actorName: actorName,
+              actorPhotoUrl: actorPhotoUrl,
+              type: 'like',
+              isRead: false,
+              figureId: figureId,
+              figureName: figureName,
+              commentId: commentId,
+              createdAt: serverTimestamp()
+            });
+          }
         }
       } else if (action === 'dislike') {
+        // No notifications for dislikes to maintain a positive environment
         if (hasDisliked) {
-          // User is un-disliking
           updateData.dislikedBy = arrayRemove(userId);
           updateData.dislikes = increment(-1);
         } else {
-          // User is disliking
           updateData.dislikedBy = arrayUnion(userId);
           updateData.dislikes = increment(1);
           if (hasLiked) {
-            // also remove from likes
             updateData.likedBy = arrayRemove(userId);
             updateData.likes = increment(-1);
           }
@@ -75,7 +96,6 @@ export async function updateCommentLikes(
         newDislikes = finalCommentDoc.data().dislikes;
     }
     
-    // Path revalidation for a non-i18n setup
     revalidatePath(`/figures/${figureId}`);
 
     return { success: true, message: 'Voto actualizado.', newLikes, newDislikes };

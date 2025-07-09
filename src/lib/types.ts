@@ -129,6 +129,6 @@ export interface Notification {
   figureId: string;
   figureName: string;
   commentId: string; // ID of the comment that was replied to or liked
-  replyId?: string; // ID of the reply itself
+  replyId?: string; // ID of the reply itself, if applicable
   createdAt: Timestamp;
 }

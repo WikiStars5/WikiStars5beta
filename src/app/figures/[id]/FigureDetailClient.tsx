@@ -723,7 +723,16 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     // Fire and forget server update
     (async () => {
       try {
-        const result = await updateCommentLikes(commentId, figure.id, currentUser.uid, action);
+        const actorName = currentUser.isAnonymous ? guestUsername : (currentUser.displayName || "Usuario Anónimo");
+        const result = await updateCommentLikes(
+          commentId,
+          figure.id,
+          figure.name,
+          currentUser.uid,
+          actorName,
+          currentUser.photoURL,
+          action
+        );
         if (!result.success) {
           toast({ title: 'Error', description: result.message, variant: 'destructive' });
           setCommentsList(originalComments);
