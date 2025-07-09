@@ -47,6 +47,7 @@ import { GENDER_OPTIONS, type GenderOption } from "@/config/genderOptions";
 import { ShareButton } from "@/components/shared/ShareButton";
 import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile } from "@/lib/types";
 import { updateFigureInFirestore } from "@/lib/placeholder-data";
+import { markAllNotificationsAsRead, markNotificationAsRead } from '@/app/actions/notificationActions';
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -1117,7 +1118,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                   <Button 
                     size="sm" 
                     onClick={() => handleSubmitReply(comment.id)} 
-                    disabled={isSubmittingReply === comment.id || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH}
+                    disabled={isSubmittingReply === comment.id || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH || (currentUser?.isAnonymous && (!guestUsername.trim() || !guestGender.trim()))}
                   >
                     {isSubmittingReply === comment.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Enviar Respuesta
