@@ -37,6 +37,7 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     role: data.role || 'user',
     createdAt: createdAt,
     lastLoginAt: convertTimestampToString(data.lastLoginAt),
+    fcmToken: data.fcmToken || undefined,
   };
 };
 
@@ -97,6 +98,7 @@ export async function ensureUserProfileExists(
         role: 'user',
         createdAt: serverTimestamp(),
         lastLoginAt: serverTimestamp(),
+        fcmToken: '', // Initialize fcmToken field
       };
       await setDoc(userDocRef, newProfileData);
       

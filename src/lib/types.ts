@@ -110,6 +110,7 @@ export interface UserProfile {
   role: 'user' | 'admin';
   createdAt: string; 
   lastLoginAt?: string;
+  fcmToken?: string; // Field to store the Firebase Cloud Messaging token
 }
 
 export interface GenderOption {
