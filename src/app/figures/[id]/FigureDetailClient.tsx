@@ -794,24 +794,30 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
         const commentToDeleteData = commentToDeleteSnap.data() as UserComment;
 
-        // Find all replies to the comment
+        // Find all replies to the comment being deleted (this will be empty if deleting a reply)
         const repliesQuery = query(collection(db, 'userComments'), where('parentId', '==', commentToDeleteId));
         const repliesSnapshot = await getDocs(repliesQuery);
         const repliesToDelete = repliesSnapshot.docs;
-        const totalDeletions = 1 + repliesToDelete.length;
+        const totalDeletions = 1 + repliesToDelete.length; // Count the comment itself + all its children
 
         // Start a batch write for all deletions and updates
         const batch = writeBatch(db);
+        
+        // If the comment being deleted IS a reply, we must decrement its parent's replyCount
+        if (commentToDeleteData.parentId) {
+            const parentCommentRef = doc(db, 'userComments', commentToDeleteData.parentId);
+            batch.update(parentCommentRef, { replyCount: increment(-1) });
+        }
 
         // 1. Delete the main comment
         batch.delete(commentRef);
 
-        // 2. Delete all replies
+        // 2. Delete all its replies
         repliesToDelete.forEach(replyDoc => {
             batch.delete(replyDoc.ref);
         });
 
-        // 3. Update the figure's comment count
+        // 3. Update the figure's total comment count
         const figureRef = doc(db, "figures", figure.id);
         batch.update(figureRef, { commentCount: increment(-totalDeletions) });
 
@@ -849,8 +855,10 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         
         // Refresh the UI
         if (commentToDeleteData.parentId) {
+            // If we deleted a reply, refresh its parent's replies
             handleToggleReplies(commentToDeleteData.parentId, true);
         } else {
+            // If we deleted a top-level comment, refresh all comments
             fetchComments();
         }
         
@@ -868,6 +876,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         setCommentToDeleteId(null);
     }
 };
+
 
   const openDeleteDialog = (commentId: string) => {
     setCommentToDeleteId(commentId);
@@ -1114,7 +1123,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
             {(comment.replyCount ?? 0) > 0 && (
               <Button variant="link" size="sm" className="px-0 h-auto text-xs mt-1" onClick={() => handleToggleReplies(comment.id)}>
                 {loadingReplies[comment.id] ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                {visibleReplies[comment.id] ? 'Ocultar respuestas' : `Ver ${comment.replyCount} respuestas`}
+                {visibleReplies[comment.id] ? 'Ocultar respuestas' : `Ver ${comment.replyCount} ${comment.replyCount === 1 ? 'respuesta' : 'respuestas'}`}
               </Button>
             )}
             {replyingTo === comment.id && (
