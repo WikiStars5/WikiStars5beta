@@ -409,49 +409,35 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   
       const targetId = hash.substring(1);
       
-      // Attempt to clear the hash to prevent "sticky scrolling" on reload
-      try {
-        if (window.history.replaceState) {
-          const url = new URL(window.location.href);
-          url.hash = '';
-          window.history.replaceState({}, document.title, url.toString());
-        }
-      } catch (e) {
-        console.warn('Could not remove hash from URL.', e);
-      }
-  
       const findAndHighlight = () => {
         const element = document.getElementById(targetId);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           setHighlightedCommentId(targetId);
-          setTimeout(() => setHighlightedCommentId(null), 5000);
+          setTimeout(() => setHighlightedCommentId(null), 5000); // Highlight for 5 seconds
+          // Clear the hash from the URL without causing a re-render
+          history.replaceState(null, '', ' ');
           return true;
         }
         return false;
       };
   
-      // Try to find the element immediately.
+      // If the comment is already in view, highlight it.
       if (findAndHighlight()) {
         return;
       }
   
-      // If not found, it might be a reply that needs to be loaded.
+      // If not, it might be a reply. Let's try to load it.
       const potentialReplyId = targetId.replace('comment-', '');
       try {
         const replyRef = doc(db, 'userComments', potentialReplyId);
         const replySnap = await getDoc(replyRef);
-  
         if (replySnap.exists()) {
           const parentId = replySnap.data().parentId;
           if (parentId && !visibleReplies[parentId]) {
             await handleToggleReplies(parentId, true); // Force-load replies
-            
-            // Wait for the DOM to update after loading replies.
-            // Using requestAnimationFrame is more reliable than a fixed timeout.
-            requestAnimationFrame(() => {
-              findAndHighlight();
-            });
+            // After loading, wait for the DOM to update, then try to highlight again.
+            setTimeout(findAndHighlight, 100);
           }
         }
       } catch (error) {
@@ -459,8 +445,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       }
     };
   
-    // Run this logic after the component has mounted and comments might have loaded.
-    const timer = setTimeout(handleHighlighting, 100);
+    // Run this logic after a short delay to ensure the page has had time to render.
+    const timer = setTimeout(handleHighlighting, 100); 
     return () => clearTimeout(timer);
   }, [isLoadingComments, handleToggleReplies, visibleReplies]);
 
@@ -1435,3 +1421,5 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
+
+    
