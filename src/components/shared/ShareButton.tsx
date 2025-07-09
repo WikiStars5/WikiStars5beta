@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Share2, Link as LinkIcon, Facebook, Twitter, Linkedin, MessageCircle, Mail } from "lucide-react"; // Removed Reddit as RedditIcon
+import { Share2, Link as LinkIcon, Facebook, Twitter, Linkedin, MessageCircle, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Simple inline SVG component for Reddit Icon
@@ -47,11 +47,15 @@ interface SocialShareOption {
 export function ShareButton({ figureName, figureId, showText = false }: ShareButtonProps) {
   const { toast } = useToast();
   const [currentUrl, setCurrentUrl] = useState('');
+  const [isWebShareSupported, setIsWebShareSupported] = useState(false);
 
   useEffect(() => {
     // Ensure this runs only on the client
     if (typeof window !== 'undefined') {
       setCurrentUrl(window.location.origin + `/figures/${figureId}`);
+      if (navigator.share) {
+        setIsWebShareSupported(true);
+      }
     }
   }, [figureId]);
 
@@ -67,6 +71,40 @@ export function ShareButton({ figureName, figureId, showText = false }: ShareBut
     );
   }
 
+  // If Web Share API is supported, show a direct share button.
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      const shareTitle = `¡Mira a ${figureName} en WikiStars5!`;
+      const shareText = `¡Echa un vistazo al perfil, opiniones y calificaciones de ${figureName} en WikiStars5!`;
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: currentUrl,
+        });
+      } catch (error) {
+        // This can happen if the user cancels the share dialog. We don't need to show an error for that.
+        console.log("Web Share API was cancelled or failed:", error);
+      }
+    }
+  };
+
+  if (isWebShareSupported) {
+    return (
+      <Button
+        variant="outline"
+        size={buttonSize}
+        onClick={handleNativeShare}
+        aria-label={`Compartir perfil de ${figureName}`}
+      >
+        <Share2 className="h-5 w-5" />
+        {showText && <span>Compartir perfil</span>}
+      </Button>
+    );
+  }
+
+  // --- Fallback for browsers that don't support Web Share API (e.g., desktop) ---
+
   const encodedUrl = encodeURIComponent(currentUrl);
   const shareTitle = `¡Mira a ${figureName} en WikiStars5!`;
   const encodedTitle = encodeURIComponent(shareTitle);
@@ -78,7 +116,7 @@ export function ShareButton({ figureName, figureId, showText = false }: ShareBut
     {
       name: "Copiar Enlace",
       icon: LinkIcon,
-      url: "#copy", // Special handler for copying
+      url: "#copy",
     },
     {
       name: "Facebook",
@@ -102,7 +140,7 @@ export function ShareButton({ figureName, figureId, showText = false }: ShareBut
     },
     {
       name: "Reddit",
-      icon: RedditIcon, // Using the new inline SVG component
+      icon: RedditIcon,
       url: `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedTitle}`,
     },
     {
