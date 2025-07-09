@@ -116,7 +116,9 @@ export function NotificationBell() {
 
   const handleNotificationClick = async (notification: Notification) => {
     // Navigate immediately for the best user experience.
-    const url = `/figures/${notification.figureId}#comment-${notification.replyId || notification.commentId}`;
+    // Use replyId for reply notifications, and commentId for like notifications.
+    const commentIdForUrl = notification.type === 'reply' ? notification.replyId : notification.commentId;
+    const url = `/figures/${notification.figureId}#comment-${commentIdForUrl}`;
     router.push(url);
     setIsOpen(false);
 
