@@ -41,16 +41,16 @@ export function NotificationBell() {
   
   const [notificationSound, setNotificationSound] = React.useState<HTMLAudioElement | null>(null);
   const isInitialLoadRef = React.useRef(true);
-  const unreadCountRef = React.useRef(0);
-  const lastSoundPlayTimeRef = React.useRef(0);
+  const prevUnreadCountRef = React.useRef(0);
 
+  // Effect to create the audio element once on the client
   React.useEffect(() => {
-    // This effect runs only once on the client to create the audio element.
     const sound = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711");
     sound.preload = 'auto';
     setNotificationSound(sound);
   }, []);
 
+  // Effect to manage user authentication state
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user && !user.isAnonymous) {
@@ -59,16 +59,15 @@ export function NotificationBell() {
         setCurrentUser(null);
         setNotifications([]);
         setUnreadCount(0);
+        isInitialLoadRef.current = true;
       }
     });
     return () => unsubscribe();
   }, []);
 
+  // Effect to fetch notifications from Firestore and update state
   React.useEffect(() => {
-    if (!currentUser) {
-        isInitialLoadRef.current = true;
-        return;
-    };
+    if (!currentUser) return;
 
     const notificationsRef = collection(db, 'notifications');
     const q = query(
@@ -78,40 +77,40 @@ export function NotificationBell() {
       limit(50)
     );
     
-    isInitialLoadRef.current = true; 
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const serverNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
       const newUnreadCount = serverNotifications.filter(n => !n.isRead).length;
 
-      // Play sound only if a new unread notification has arrived after the initial load.
-      if (!isInitialLoadRef.current && newUnreadCount > unreadCountRef.current) {
-        const now = Date.now();
-        // Add a debounce/cooldown to prevent rapid, successive plays. 2 seconds should be enough.
-        if (now - lastSoundPlayTimeRef.current > 2000) {
-            notificationSound?.play().catch(err => {
-              // This catch is important to handle autoplay restrictions gracefully.
-              console.warn("Notification sound blocked by browser autoplay policy. This is expected if the user hasn't interacted with the page yet.", err);
-            });
-            lastSoundPlayTimeRef.current = now;
-        }
-      }
-
       setNotifications(serverNotifications);
       setUnreadCount(newUnreadCount);
-      unreadCountRef.current = newUnreadCount;
-
-      // After the first snapshot is processed, set initial load to false.
-      if (isInitialLoadRef.current) {
-        isInitialLoadRef.current = false;
-      }
-
     }, (error) => {
       console.error("Error fetching notifications:", error);
     });
 
     return () => unsubscribe();
-  }, [currentUser, notificationSound]);
+  }, [currentUser]);
+
+  // Effect to play sound when unreadCount increases
+  React.useEffect(() => {
+    // On the very first load, sync the previous count ref but don't play a sound.
+    if (isInitialLoadRef.current) {
+      prevUnreadCountRef.current = unreadCount;
+      isInitialLoadRef.current = false;
+      return;
+    }
+    
+    // Play sound only if the new unread count is greater than the previous one.
+    if (unreadCount > prevUnreadCountRef.current) {
+      notificationSound?.play().catch(err => {
+        // This catch is important to handle browser autoplay restrictions gracefully.
+        console.warn("Notification sound was blocked by browser autoplay policy.", err);
+      });
+    }
+
+    // Always update the ref to the current count for the next comparison.
+    prevUnreadCountRef.current = unreadCount;
+  }, [unreadCount, notificationSound]);
+
 
   const handleNotificationClick = async (notification: Notification) => {
     // Navigate immediately for the best user experience.
@@ -135,6 +134,7 @@ export function NotificationBell() {
     if (!currentUser || unreadCount === 0) return;
 
     const originalNotifications = [...notifications];
+    // Optimistically update UI
     const newNotifications = notifications.map(n => ({ ...n, isRead: true }));
     setNotifications(newNotifications);
     setUnreadCount(0);
@@ -142,11 +142,13 @@ export function NotificationBell() {
     markAllNotificationsAsRead(currentUser.uid).then(result => {
         if (!result.success) {
           toast({ title: "Error", description: result.message || "No se pudieron marcar todas las notificaciones como leídas.", variant: "destructive" });
+          // Revert optimistic update on failure
           setNotifications(originalNotifications);
           setUnreadCount(originalNotifications.filter(n => !n.isRead).length);
         }
     }).catch(err => {
       toast({ title: "Error", description: "Ocurrió un error al marcar las notificaciones.", variant: "destructive" });
+       // Revert optimistic update on failure
       setNotifications(originalNotifications);
       setUnreadCount(originalNotifications.filter(n => !n.isRead).length);
       console.error("Failed to mark all as read on server:", err);
