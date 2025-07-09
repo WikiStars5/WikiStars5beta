@@ -147,7 +147,24 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
     switch (commentSortOrder) {
       case 'mostVoted':
-        sortedComments.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
+        sortedComments.sort((a, b) => {
+          const scoreA = (a.likes || 0) - (a.dislikes || 0);
+          const scoreB = (b.likes || 0) - (b.dislikes || 0);
+
+          if (scoreB !== scoreA) {
+            return scoreB - scoreA;
+          }
+
+          // Tie-breaker 1: More likes is better
+          const likesA = a.likes || 0;
+          const likesB = b.likes || 0;
+          if (likesB !== likesA) {
+            return likesB - likesA;
+          }
+
+          // Tie-breaker 2: Newest first
+          return b.createdAt.toMillis() - a.createdAt.toMillis();
+        });
         break;
       case 'oldest':
         sortedComments.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
@@ -375,9 +392,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   }, [figure, isEditing, resetEditFields]);
 
   React.useEffect(() => {
-    // This effect handles scrolling to and highlighting a comment specified in the URL hash.
-    // It runs when comments or replies are loaded/updated.
-
     const hash = window.location.hash;
     if (!hash || !hash.startsWith('#comment-')) return;
 
@@ -387,15 +401,10 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       const element = document.getElementById(targetId);
 
       if (element) {
-        // The element is in the DOM. Scroll, highlight, and clean up.
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setHighlightedCommentId(targetId);
 
-        // Remove the highlight after a delay
         setTimeout(() => setHighlightedCommentId(null), 5000);
-
-        // IMPORTANT: Clean the URL hash to prevent re-triggering and "sticky scroll"
-        // Use a timeout to ensure the scroll has finished before cleaning the URL
         setTimeout(() => {
           if (window.history.replaceState) {
             window.history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -403,8 +412,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         }, 500);
 
       } else if (!isLoadingComments) {
-        // The element is not found, but comments have loaded. It might be a reply.
-        // Let's try to fetch its parent and expand the replies.
         const potentialReplyId = targetId.replace('comment-', '');
         try {
           const replyRef = doc(db, 'userComments', potentialReplyId);
@@ -412,26 +419,20 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           if (replySnap.exists()) {
             const parentId = replySnap.data().parentId;
             if (parentId && !visibleReplies[parentId]) {
-              // This will fetch the replies and trigger this effect again.
-              // On the next run, the element should be found.
               handleToggleReplies(parentId, true);
             }
           }
         } catch (error) {
           console.error("Error pre-fetching reply for highlighting:", error);
-          // If something goes wrong, clean the hash anyway to prevent broken behavior.
           if (window.history.replaceState) {
             window.history.replaceState(null, '', window.location.pathname + window.location.search);
           }
         }
       }
     };
-
-    // A small delay to ensure the DOM is painted before we try to find the element.
     const timer = setTimeout(handleHighlighting, 150);
     return () => clearTimeout(timer);
-
-  }, [isLoadingComments, replies, handleToggleReplies]);
+  }, [isLoadingComments, replies, handleToggleReplies, visibleReplies]);
 
 
   const handleEditToggle = () => {
