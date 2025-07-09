@@ -403,54 +403,64 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   }, [figure, isEditing, resetEditFields]);
 
   React.useEffect(() => {
-    const hash = window.location.hash;
-    if (!hash || !hash.startsWith('#comment-')) return;
-
-    const targetId = hash.substring(1);
-
     const handleHighlighting = async () => {
-      // Clear URL immediately to prevent re-triggering and "sticky scroll"
-      if (window.history.replaceState) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      }
-
-      const element = document.getElementById(targetId);
-
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setHighlightedCommentId(targetId);
-        setTimeout(() => setHighlightedCommentId(null), 5000);
-      } else if (!isLoadingComments) {
-        // If element is not found, it might be a reply that needs to be loaded
-        const potentialReplyId = targetId.replace('comment-', '');
-        try {
-          const replyRef = doc(db, 'userComments', potentialReplyId);
-          const replySnap = await getDoc(replyRef);
-          if (replySnap.exists()) {
-            const parentId = replySnap.data().parentId;
-            if (parentId && !visibleReplies[parentId]) {
-              // Load replies and then try to highlight
-              await handleToggleReplies(parentId, true);
-              // After replies are loaded, the element should exist for the next effect run
-              // Re-run highlighting logic after a short delay to allow DOM update
-              setTimeout(() => {
-                const newElement = document.getElementById(targetId);
-                if (newElement) {
-                   newElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                   setHighlightedCommentId(targetId);
-                   setTimeout(() => setHighlightedCommentId(null), 5000);
-                }
-              }, 100);
-            }
-          }
-        } catch (error) {
-          console.error("Error pre-fetching reply for highlighting:", error);
+      const hash = window.location.hash;
+      if (!hash || !hash.startsWith('#comment-')) return;
+  
+      const targetId = hash.substring(1);
+      
+      // Attempt to clear the hash to prevent "sticky scrolling" on reload
+      try {
+        if (window.history.replaceState) {
+          const url = new URL(window.location.href);
+          url.hash = '';
+          window.history.replaceState({}, document.title, url.toString());
         }
+      } catch (e) {
+        console.warn('Could not remove hash from URL.', e);
+      }
+  
+      const findAndHighlight = () => {
+        const element = document.getElementById(targetId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setHighlightedCommentId(targetId);
+          setTimeout(() => setHighlightedCommentId(null), 5000);
+          return true;
+        }
+        return false;
+      };
+  
+      // Try to find the element immediately.
+      if (findAndHighlight()) {
+        return;
+      }
+  
+      // If not found, it might be a reply that needs to be loaded.
+      const potentialReplyId = targetId.replace('comment-', '');
+      try {
+        const replyRef = doc(db, 'userComments', potentialReplyId);
+        const replySnap = await getDoc(replyRef);
+  
+        if (replySnap.exists()) {
+          const parentId = replySnap.data().parentId;
+          if (parentId && !visibleReplies[parentId]) {
+            await handleToggleReplies(parentId, true); // Force-load replies
+            
+            // Wait for the DOM to update after loading replies.
+            // Using requestAnimationFrame is more reliable than a fixed timeout.
+            requestAnimationFrame(() => {
+              findAndHighlight();
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error pre-fetching reply for highlighting:", error);
       }
     };
-
-    // Use a small delay to ensure the DOM has had a chance to render from other effects
-    const timer = setTimeout(handleHighlighting, 150); 
+  
+    // Run this logic after the component has mounted and comments might have loaded.
+    const timer = setTimeout(handleHighlighting, 100);
     return () => clearTimeout(timer);
   }, [isLoadingComments, handleToggleReplies, visibleReplies]);
 
