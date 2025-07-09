@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -41,6 +42,7 @@ export function NotificationBell() {
   
   const [notificationSound, setNotificationSound] = React.useState<HTMLAudioElement | null>(null);
   const isInitialLoadRef = React.useRef(true);
+  const unreadCountRef = React.useRef(0);
 
   React.useEffect(() => {
     // This effect runs only once on the client to create the audio element.
@@ -63,7 +65,10 @@ export function NotificationBell() {
   }, []);
 
   React.useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+        isInitialLoadRef.current = true;
+        return;
+    };
 
     const notificationsRef = collection(db, 'notifications');
     const q = query(
@@ -72,13 +77,15 @@ export function NotificationBell() {
       orderBy('createdAt', 'desc'),
       limit(20)
     );
+    
+    isInitialLoadRef.current = true; 
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const serverNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
       const newUnreadCount = serverNotifications.filter(n => !n.isRead).length;
 
       // Play sound only if a new unread notification has arrived after the initial load.
-      if (!isInitialLoadRef.current && newUnreadCount > unreadCount) {
+      if (!isInitialLoadRef.current && newUnreadCount > unreadCountRef.current) {
         notificationSound?.play().catch(err => {
           // This catch is important to handle autoplay restrictions gracefully.
           console.warn("Notification sound blocked by browser autoplay policy. This is expected if the user hasn't interacted with the page yet.", err);
@@ -87,6 +94,7 @@ export function NotificationBell() {
 
       setNotifications(serverNotifications);
       setUnreadCount(newUnreadCount);
+      unreadCountRef.current = newUnreadCount;
 
       // After the first snapshot is processed, set initial load to false.
       if (isInitialLoadRef.current) {
@@ -97,11 +105,8 @@ export function NotificationBell() {
       console.error("Error fetching notifications:", error);
     });
 
-    // Reset initial load flag when user changes, so it doesn't play sound on login.
-    isInitialLoadRef.current = true;
-
     return () => unsubscribe();
-  }, [currentUser, notificationSound, unreadCount]); // unreadCount is crucial here to compare old vs new.
+  }, [currentUser, notificationSound]);
 
   const handleNotificationClick = async (notification: Notification) => {
     // Navigate immediately for the best user experience.
