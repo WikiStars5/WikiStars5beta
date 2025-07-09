@@ -9,6 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>;
@@ -21,17 +22,15 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function InstallPwaButton() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
-      // Stash the event so it can be triggered later.
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
     const handleAppInstalled = () => {
-      // Clear the deferredPrompt so it can be garbage collected
       setDeferredPrompt(null);
     };
 
@@ -48,12 +47,34 @@ export function InstallPwaButton() {
     if (!deferredPrompt) {
       return;
     }
-    // Show the install prompt
+    
     await deferredPrompt.prompt();
-    // Wait for the user to respond to the prompt
-    await deferredPrompt.userChoice;
-    // We've used the prompt, and can't use it again, throw it away
+    const { outcome } = await deferredPrompt.userChoice;
     setDeferredPrompt(null);
+
+    if (outcome === 'accepted') {
+      toast({
+        title: "¡App Instalada!",
+        description: "Ahora, activa las notificaciones para no perderte nada."
+      });
+
+      setTimeout(async () => {
+        if ('Notification' in window && Notification.permission !== 'granted') {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            toast({
+              title: "¡Notificaciones Activadas!",
+              description: "¡Todo listo! Recibirás alertas importantes.",
+            });
+          } else {
+             toast({
+              title: "Permiso de Notificación Opcional",
+              description: "Puedes activar las notificaciones más tarde desde tu perfil.",
+            });
+          }
+        }
+      }, 2000);
+    }
   };
 
   if (!deferredPrompt) {

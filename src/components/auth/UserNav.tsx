@@ -92,11 +92,36 @@ export function UserNav() {
     if (!deferredPrompt) {
       return;
     }
+    
     await deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
+    const { outcome } = await deferredPrompt.userChoice;
     setDeferredPrompt(null);
-  };
 
+    if (outcome === 'accepted') {
+      toast({
+        title: "¡App Instalada!",
+        description: "Ahora, activa las notificaciones para no perderte nada."
+      });
+
+      setTimeout(async () => {
+        if ('Notification' in window && Notification.permission !== 'granted') {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            toast({
+              title: "¡Notificaciones Activadas!",
+              description: "¡Todo listo! Recibirás alertas importantes.",
+            });
+          } else {
+             toast({
+              title: "Permiso de Notificación Opcional",
+              description: "Puedes activar las notificaciones más tarde desde tu perfil.",
+            });
+          }
+        }
+      }, 2000);
+    }
+  };
+  
   if (isLoading) {
     return (
       <div className="flex items-center gap-2">
