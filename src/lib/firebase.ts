@@ -1,4 +1,3 @@
-
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
@@ -89,11 +88,10 @@ service cloud.firestore {
     
     match /notifications/{notificationId} {
       allow create: if isAuthenticated();
-      // Un usuario puede leer y actualizar su propia notificación (p.ej. para marcarla como leída).
-      allow read, update: if isOwner(resource.data.userId) || isAdmin();
-      // Un usuario puede borrar una notificación que recibió (isOwner).
-      // Un admin puede borrar cualquier notificación (isAdmin).
-      // El autor de la respuesta (actor) puede borrar la notificación si elimina su respuesta (isOwner(resource.data.actorId)).
+      // Un usuario puede leer y actualizar su propia notificación.
+      // El autor de la respuesta (actor) también necesita leerla para poder borrarla después.
+      allow read, update: if isOwner(resource.data.userId) || isAdmin() || isOwner(resource.data.actorId);
+      // El destinatario, el admin o el autor de la respuesta pueden borrar la notificación.
       allow delete: if isOwner(resource.data.userId) || isAdmin() || isOwner(resource.data.actorId);
     }
   }

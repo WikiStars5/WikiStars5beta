@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -75,7 +74,7 @@ export function NotificationBell() {
       notificationsRef,
       where('userId', '==', currentUser.uid),
       orderBy('createdAt', 'desc'),
-      limit(20)
+      limit(50)
     );
     
     isInitialLoadRef.current = true; 
