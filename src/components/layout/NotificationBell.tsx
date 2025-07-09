@@ -41,12 +41,12 @@ export function NotificationBell() {
   const { toast } = useToast();
   
   const [notificationSound, setNotificationSound] = React.useState<HTMLAudioElement | null>(null);
-  const prevUnreadCountRef = React.useRef(0);
-  const isInitialLoadRef = React.useRef(true);
+  const [hasPlayedSoundForBatch, setHasPlayedSoundForBatch] = React.useState(false);
   const lastSoundPlayedAtRef = React.useRef(0);
-  const SOUND_COOLDOWN = 15000; // 15 segundos
+  const SOUND_COOLDOWN = 5000; // 5 segundos
 
   React.useEffect(() => {
+    // This effect runs only once on the client to create the audio element.
     const sound = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711");
     sound.preload = 'auto';
     setNotificationSound(sound);
@@ -78,60 +78,58 @@ export function NotificationBell() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const serverNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
-      const currentUnreadCount = serverNotifications.filter(n => !n.isRead).length;
-
       setNotifications(serverNotifications);
-      setUnreadCount(currentUnreadCount);
-
-      if (isInitialLoadRef.current) {
-        isInitialLoadRef.current = false;
-      } else if (currentUnreadCount > prevUnreadCountRef.current) {
-        const now = Date.now();
-        if (now - lastSoundPlayedAtRef.current > SOUND_COOLDOWN) {
-          notificationSound?.play().catch(err => console.error("Audio play failed:", err));
-          lastSoundPlayedAtRef.current = now;
-        }
-      }
-      prevUnreadCountRef.current = currentUnreadCount;
-
+      setUnreadCount(serverNotifications.filter(n => !n.isRead).length);
     }, (error) => {
       console.error("Error fetching notifications:", error);
     });
 
-    return () => {
-      unsubscribe();
-      isInitialLoadRef.current = true;
-      prevUnreadCountRef.current = 0;
-    };
-  }, [currentUser, notificationSound, SOUND_COOLDOWN]);
+    return () => unsubscribe();
+  }, [currentUser]);
 
-  const handleNotificationClick = (notification: Notification) => {
+  React.useEffect(() => {
+    // When the number of unread notifications changes (e.g., a new one arrives or one is read),
+    // we reset the flag. This allows the sound to play on the next popover open if there are still unread items.
+    setHasPlayedSoundForBatch(false);
+  }, [unreadCount]);
+
+
+  const handlePopoverChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && unreadCount > 0 && !hasPlayedSoundForBatch) {
+      const now = Date.now();
+      if (now - lastSoundPlayedAtRef.current > SOUND_COOLDOWN) {
+        notificationSound?.play().catch(err => {
+          // A catch is still good practice in case of unexpected issues.
+          console.error("Audio play failed on interaction:", err);
+        });
+        lastSoundPlayedAtRef.current = now;
+      }
+      setHasPlayedSoundForBatch(true);
+    }
+  };
+
+  const handleNotificationClick = async (notification: Notification) => {
     // Navigate immediately for the best user experience.
     setIsOpen(false);
-    const targetId = notification.replyId || notification.commentId;
-    router.push(`/figures/${notification.figureId}#comment-${targetId}`);
+    router.push(`/figures/${notification.figureId}#comment-${notification.replyId || notification.commentId}`);
 
-    // Mark as read in the background. If it fails, the user will see it again,
-    // but their navigation is not blocked. The Firestore rule change makes this reliable.
+    // Mark as read in the background.
     if (!notification.isRead) {
-      markNotificationAsRead(notification.id).then(result => {
-        if (!result.success) {
-          toast({
-            title: "Error",
-            description: result.message || "No se pudo marcar la notificación como leída. Inténtalo de nuevo.",
-            variant: "destructive"
-          });
-        }
-        // No need for optimistic update, the onSnapshot listener is the source of truth
-        // and will update the UI once the backend write is successful.
-      });
+      const result = await markNotificationAsRead(notification.id);
+      if (!result.success) {
+        toast({
+          title: "Error de Sincronización",
+          description: result.message || "No se pudo marcar la notificación como leída. Inténtalo de nuevo.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
   const handleMarkAllAsRead = () => {
     if (!currentUser || unreadCount === 0) return;
 
-    // To provide immediate feedback, we can optimistically update the UI
     const originalNotifications = [...notifications];
     const newNotifications = notifications.map(n => ({ ...n, isRead: true }));
     setNotifications(newNotifications);
@@ -140,12 +138,9 @@ export function NotificationBell() {
     markAllNotificationsAsRead(currentUser.uid).then(result => {
         if (!result.success) {
           toast({ title: "Error", description: result.message || "No se pudieron marcar todas las notificaciones como leídas.", variant: "destructive" });
-          // Revert optimistic update on failure
           setNotifications(originalNotifications);
           setUnreadCount(originalNotifications.filter(n => !n.isRead).length);
         }
-        // On success, the onSnapshot listener will eventually confirm the state,
-        // so no further action is needed here.
     }).catch(err => {
       toast({ title: "Error", description: "Ocurrió un error al marcar las notificaciones.", variant: "destructive" });
       setNotifications(originalNotifications);
@@ -159,7 +154,7 @@ export function NotificationBell() {
   }
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handlePopoverChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative h-9 w-9">
           <Bell className="h-5 w-5 text-foreground/70" />
