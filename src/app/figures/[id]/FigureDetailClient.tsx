@@ -375,70 +375,64 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   }, [figure, isEditing, resetEditFields]);
 
   React.useEffect(() => {
-    // This effect runs once after top-level comments load to find the target comment
-    if (isLoadingComments) return;
+    // This effect handles scrolling to and highlighting a comment specified in the URL hash.
+    // It runs when comments or replies are loaded/updated.
 
-    const findAndHighlight = async () => {
-      const hash = window.location.hash;
-      if (!hash || !hash.startsWith('#comment-')) return;
+    const hash = window.location.hash;
+    if (!hash || !hash.startsWith('#comment-')) return;
 
-      const elementId = hash.substring(1);
-      const element = document.getElementById(elementId);
+    const targetId = hash.substring(1);
+
+    const handleHighlighting = async () => {
+      const element = document.getElementById(targetId);
 
       if (element) {
-        // Case A: Element (top-level comment) is already in the DOM.
+        // The element is in the DOM. Scroll, highlight, and clean up.
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setHighlightedCommentId(elementId);
-        setTimeout(() => setHighlightedCommentId(null), 3000);
-      } else {
-        // Case B: Element is not in the DOM. Assume it's a reply.
-        // We need to fetch its data to find its parent, then expand the parent.
-        const potentialReplyId = elementId.replace('comment-', '');
+        setHighlightedCommentId(targetId);
+
+        // Remove the highlight after a delay
+        setTimeout(() => setHighlightedCommentId(null), 5000);
+
+        // IMPORTANT: Clean the URL hash to prevent re-triggering and "sticky scroll"
+        // Use a timeout to ensure the scroll has finished before cleaning the URL
+        setTimeout(() => {
+          if (window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
+        }, 500);
+
+      } else if (!isLoadingComments) {
+        // The element is not found, but comments have loaded. It might be a reply.
+        // Let's try to fetch its parent and expand the replies.
+        const potentialReplyId = targetId.replace('comment-', '');
         try {
           const replyRef = doc(db, 'userComments', potentialReplyId);
           const replySnap = await getDoc(replyRef);
           if (replySnap.exists()) {
             const parentId = replySnap.data().parentId;
-            if (parentId) {
-              // This fetches replies, updates state, and causes a re-render.
-              // A separate useEffect will handle highlighting after the render.
-              await handleToggleReplies(parentId, true);
+            if (parentId && !visibleReplies[parentId]) {
+              // This will fetch the replies and trigger this effect again.
+              // On the next run, the element should be found.
+              handleToggleReplies(parentId, true);
             }
           }
         } catch (error) {
           console.error("Error pre-fetching reply for highlighting:", error);
+          // If something goes wrong, clean the hash anyway to prevent broken behavior.
+          if (window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
         }
       }
     };
 
-    // A small delay to ensure the DOM is fully painted after comments are loaded
-    const timer = setTimeout(findAndHighlight, 100);
+    // A small delay to ensure the DOM is painted before we try to find the element.
+    const timer = setTimeout(handleHighlighting, 150);
     return () => clearTimeout(timer);
 
-  }, [isLoadingComments, handleToggleReplies]); // Runs once when top-level comments are ready
+  }, [isLoadingComments, replies, handleToggleReplies]);
 
-
-  React.useEffect(() => {
-    // This effect runs whenever replies are loaded/updated to handle highlighting a nested reply.
-    const hash = window.location.hash;
-    if (!hash || !hash.startsWith('#comment-')) return;
-    
-    const elementId = hash.substring(1);
-    
-    // A small delay to let the DOM update with the new replies
-    const timer = setTimeout(() => {
-      const element = document.getElementById(elementId);
-      // Only highlight if it's not already highlighted
-      if (element && highlightedCommentId !== elementId) { 
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setHighlightedCommentId(elementId);
-        setTimeout(() => setHighlightedCommentId(null), 3000);
-      }
-    }, 150); // Slightly longer delay to be safe
-
-    return () => clearTimeout(timer);
-
-  }, [replies, highlightedCommentId]); // Dependency on the replies object
 
   const handleEditToggle = () => {
     if (isEditing) {
