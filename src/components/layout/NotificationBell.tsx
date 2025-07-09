@@ -210,7 +210,7 @@ export function NotificationBell() {
             </Button>
           )}
         </div>
-        <Tabs defaultValue="all" className="w-full">
+        <Tabs defaultValue="replies" className="w-full">
             <TabsList className="grid w-full grid-cols-2 h-auto p-0 rounded-none border-b">
                 <TabsTrigger value="replies" className="py-2 rounded-none text-xs"><MessageSquareReply className="mr-2 h-4 w-4"/>Respuestas</TabsTrigger>
                 <TabsTrigger value="likes" className="py-2 rounded-none text-xs"><Heart className="mr-2 h-4 w-4"/>Me gusta</TabsTrigger>
