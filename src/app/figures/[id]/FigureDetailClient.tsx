@@ -934,6 +934,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
         const parentCommentData = parentCommentDoc.data();
         const parentUserId = parentCommentData.userId;
+        const parentIsGuest = !!parentCommentData.guestUsername;
         
         // 1. Create the new reply document reference and set its data
         const newReplyRef = doc(collection(db, 'userComments'));
@@ -943,8 +944,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         transaction.update(figureRef, { commentCount: increment(1) });
         transaction.update(parentCommentRef, { replyCount: increment(1) });
         
-        // 3. Create a notification for the parent comment's author if they are not the one replying
-        if (parentUserId && currentUser.uid !== parentUserId) {
+        // 3. Create a notification only if the parent comment's author is NOT a guest and not the one replying
+        if (parentUserId && currentUser.uid !== parentUserId && !parentIsGuest) {
           const notificationRef = doc(collection(db, 'notifications'));
           transaction.set(notificationRef, {
             userId: parentUserId,
