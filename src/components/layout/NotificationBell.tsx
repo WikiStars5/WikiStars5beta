@@ -42,6 +42,7 @@ export function NotificationBell() {
   const [notificationSound, setNotificationSound] = React.useState<HTMLAudioElement | null>(null);
   const isInitialLoadRef = React.useRef(true);
   const unreadCountRef = React.useRef(0);
+  const lastSoundPlayTimeRef = React.useRef(0);
 
   React.useEffect(() => {
     // This effect runs only once on the client to create the audio element.
@@ -85,10 +86,15 @@ export function NotificationBell() {
 
       // Play sound only if a new unread notification has arrived after the initial load.
       if (!isInitialLoadRef.current && newUnreadCount > unreadCountRef.current) {
-        notificationSound?.play().catch(err => {
-          // This catch is important to handle autoplay restrictions gracefully.
-          console.warn("Notification sound blocked by browser autoplay policy. This is expected if the user hasn't interacted with the page yet.", err);
-        });
+        const now = Date.now();
+        // Add a debounce/cooldown to prevent rapid, successive plays. 2 seconds should be enough.
+        if (now - lastSoundPlayTimeRef.current > 2000) {
+            notificationSound?.play().catch(err => {
+              // This catch is important to handle autoplay restrictions gracefully.
+              console.warn("Notification sound blocked by browser autoplay policy. This is expected if the user hasn't interacted with the page yet.", err);
+            });
+            lastSoundPlayTimeRef.current = now;
+        }
       }
 
       setNotifications(serverNotifications);
