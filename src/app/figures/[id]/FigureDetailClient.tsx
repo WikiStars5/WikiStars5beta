@@ -48,6 +48,7 @@ import { ShareButton } from "@/components/shared/ShareButton";
 import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile } from "@/lib/types";
 import { updateFigureInFirestore } from "@/lib/placeholder-data";
 import { markAllNotificationsAsRead, markNotificationAsRead } from '@/app/actions/notificationActions';
+import { ADMIN_UID } from '@/config/admin';
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -60,8 +61,6 @@ const STAR_SOUND_URLS: Record<StarValue, string> = {
   4: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826",
   5: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f",
 };
-
-const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
 
 export default function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const routeParams = useParams<{ id: string }>();
@@ -754,103 +753,94 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
   const handleDeleteCommentConfirmation = async () => {
     if (!commentToDeleteId || !figure || !currentUser) return;
-  
-    const commentRef = doc(db, "userComments", commentToDeleteId);
     
-    // Fetch comment data BEFORE transaction
-    const commentToDeleteSnap = await getDoc(commentRef);
-    if (!commentToDeleteSnap.exists()) {
-        toast({ title: "Error", description: "El comentario ya no existe.", variant: "destructive" });
+    try {
+        const commentRef = doc(db, "userComments", commentToDeleteId);
+        const commentToDeleteSnap = await getDoc(commentRef);
+    
+        if (!commentToDeleteSnap.exists()) {
+            toast({ title: "Error", description: "El comentario ya no existe.", variant: "destructive" });
+            setIsDeleteDialogOpen(false);
+            setCommentToDeleteId(null);
+            return;
+        }
+
+        const commentToDeleteData = commentToDeleteSnap.data() as UserComment;
+
+        // Find all replies to the comment
+        const repliesQuery = query(collection(db, 'userComments'), where('parentId', '==', commentToDeleteId));
+        const repliesSnapshot = await getDocs(repliesQuery);
+        const repliesToDelete = repliesSnapshot.docs;
+        const totalDeletions = 1 + repliesToDelete.length;
+
+        // Start a batch write for all deletions and updates
+        const batch = writeBatch(db);
+
+        // 1. Delete the main comment
+        batch.delete(commentRef);
+
+        // 2. Delete all replies
+        repliesToDelete.forEach(replyDoc => {
+            batch.delete(replyDoc.ref);
+        });
+
+        // 3. Update the figure's comment count
+        const figureRef = doc(db, "figures", figure.id);
+        batch.update(figureRef, { commentCount: increment(-totalDeletions) });
+
+        // 4. Handle star rating adjustment if the main comment had one
+        if (commentToDeleteData.starRatingGiven) {
+            const userStarRatingDocRef = doc(db, 'userStarRatings', `${commentToDeleteData.userId}_${figure.id}`);
+            const userStarRatingSnap = await getDoc(userStarRatingDocRef);
+            
+            const figureDoc = await getDoc(figureRef);
+            if (figureDoc.exists()) {
+                const figureData = figureDoc.data();
+                const starKey = commentToDeleteData.starRatingGiven.toString() as StarValueAsString;
+                const currentStarCounts = (figureData.starRatingCounts || {}) as Record<StarValueAsString, number>;
+                
+                if (currentStarCounts[starKey] !== undefined) {
+                    const newStarCounts = { ...currentStarCounts };
+                    newStarCounts[starKey] = Math.max(0, newStarCounts[starKey] - 1);
+                    batch.update(figureRef, { starRatingCounts: newStarCounts });
+                }
+            }
+
+            if (userStarRatingSnap.exists() && userStarRatingSnap.data()?.starValue === commentToDeleteData.starRatingGiven) {
+                batch.delete(userStarRatingSnap.ref);
+            }
+        }
+        
+        // 5. Commit all batched writes
+        await batch.commit();
+
+        toast({ title: "Comentario Eliminado", description: "El comentario y todas sus respuestas han sido eliminados." });
+      
+        if (commentToDeleteData.starRatingGiven && currentUser.uid === commentToDeleteData.userId) {
+            setNewCommentStars(null);
+        }
+        
+        // Refresh the UI
+        if (commentToDeleteData.parentId) {
+            handleToggleReplies(commentToDeleteData.parentId, true);
+        } else {
+            fetchComments();
+        }
+        
+        router.refresh();
+
+    } catch (error: any) {
+        console.error("Error deleting comment and its replies:", error);
+        let errorMessage = `No se pudo eliminar el comentario. ${error.message}`;
+        if (String(error.message).toLowerCase().includes("permission")) {
+            errorMessage = "No se pudo eliminar el comentario debido a un error de permisos. Asegúrate de que las reglas de seguridad de Firestore estén actualizadas.";
+        }
+        toast({ title: "Error al Eliminar", description: errorMessage, variant: "destructive" });
+    } finally {
         setIsDeleteDialogOpen(false);
         setCommentToDeleteId(null);
-        return;
     }
-    const commentToDeleteData = commentToDeleteSnap.data() as UserComment;
-    const isReply = !!commentToDeleteData.parentId;
-  
-    try {
-      const figureRef = doc(db, "figures", figure.id);
-  
-      // Main transaction for comment data
-      await runTransaction(db, async (transaction) => {
-        // --- READ PHASE ---
-        const figureDoc = await transaction.get(figureRef);
-        if (!figureDoc.exists()) throw new Error("Figure document does not exist!");
-  
-        const userStarRatingDocRef = doc(db, 'userStarRatings', `${commentToDeleteData.userId}_${figure.id}`);
-        const userStarRatingSnap = await transaction.get(userStarRatingDocRef);
-        
-        // --- WRITE PHASE ---
-        transaction.update(figureRef, { commentCount: increment(-1) });
-  
-        if (isReply && commentToDeleteData.parentId) {
-          const parentCommentRef = doc(db, "userComments", commentToDeleteData.parentId);
-          transaction.update(parentCommentRef, { replyCount: increment(-1) });
-        }
-  
-        if (commentToDeleteData.starRatingGiven) {
-          const figureData = figureDoc.data();
-          const starKey = commentToDeleteData.starRatingGiven.toString() as StarValueAsString;
-          const currentStarCounts = (figureData.starRatingCounts || {}) as Record<StarValueAsString, number>;
-          
-          if (currentStarCounts[starKey] !== undefined) {
-              const newStarCounts = { ...currentStarCounts };
-              newStarCounts[starKey] = Math.max(0, newStarCounts[starKey] - 1);
-              transaction.update(figureRef, { starRatingCounts: newStarCounts });
-          }
-  
-          if (userStarRatingSnap.exists() && userStarRatingSnap.data()?.starValue === commentToDeleteData.starRatingGiven) {
-            transaction.delete(userStarRatingSnap.ref);
-          }
-        }
-        
-        transaction.delete(commentRef);
-      });
-  
-      // After successful transaction, delete associated notification if it's a reply
-      if (isReply) {
-        try {
-          const notificationsBatch = writeBatch(db);
-          const notificationsRef = collection(db, 'notifications');
-          const q = query(notificationsRef, where('replyId', '==', commentToDeleteId));
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-            querySnapshot.forEach(doc => notificationsBatch.delete(doc.ref));
-            await notificationsBatch.commit();
-          }
-        } catch (notificationError) {
-          console.error("Failed to delete associated notification, but comment was deleted:", notificationError);
-          // Don't need to alert the user, main action was successful
-        }
-      }
-  
-      toast({ title: "Comentario Eliminado", description: "El comentario ha sido eliminado." });
-      
-      if (commentToDeleteData.starRatingGiven && currentUser.uid === commentToDeleteData.userId) {
-        setNewCommentStars(null);
-      }
-      
-      if (isReply && commentToDeleteData.parentId) {
-        handleToggleReplies(commentToDeleteData.parentId, true);
-      } else {
-        fetchComments();
-      }
-      
-      router.refresh();
-  
-    } catch (error: any) {
-      console.error("Error deleting comment:", error);
-      let errorMessage = `No se pudo eliminar el comentario. ${error.message}`;
-      if (String(error.message).toLowerCase().includes("permission")) {
-          errorMessage = "No se pudo eliminar el comentario debido a un error de permisos. Asegúrate de que las reglas de seguridad de Firestore estén actualizadas.";
-      }
-      toast({ title: "Error al Eliminar", description: errorMessage, variant: "destructive" });
-    } finally {
-      setIsDeleteDialogOpen(false);
-      setCommentToDeleteId(null);
-    }
-  };
-  
+};
 
   const openDeleteDialog = (commentId: string) => {
     setCommentToDeleteId(commentId);

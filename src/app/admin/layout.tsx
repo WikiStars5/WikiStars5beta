@@ -8,8 +8,7 @@ import { useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
-
-const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
+import { ADMIN_UID } from '@/config/admin';
 
 export default function AdminLayout({
   children,

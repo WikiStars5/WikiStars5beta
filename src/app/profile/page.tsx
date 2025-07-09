@@ -11,8 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Loader2, User, LogOut, ShieldCheck } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
-
-const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
+import { ADMIN_UID } from '@/config/admin';
 
 export default function ProfilePage() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);

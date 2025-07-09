@@ -18,8 +18,7 @@ import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation'; 
 import { correctMalformedUrl } from '@/lib/utils';
-
-const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+import { ADMIN_UID } from '@/config/admin';
 
 export function UserNav() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);

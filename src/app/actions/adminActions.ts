@@ -5,8 +5,9 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Figure } from '@/lib/types';
+import { ADMIN_UID } from '@/config/admin';
 
-const ADMIN_UID_FOR_MESSAGE = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'; 
+const ADMIN_UID_FOR_MESSAGE = ADMIN_UID; 
 
 export async function toggleFigureFeaturedStatus(
   figureId: string

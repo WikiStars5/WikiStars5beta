@@ -43,6 +43,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
+  const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl || '');
   
   // Basic info
   const [occupation, setOccupation] = useState(initialData?.occupation || '');
@@ -78,6 +79,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     if (initialData) {
       setName(initialData.name);
       setDescription(initialData.description || ''); 
+      setPhotoUrl(initialData.photoUrl || '');
       setOccupation(initialData.occupation || '');
       setGender(initialData.gender || '');
       setNationality(initialData.nationality || '');
@@ -104,6 +106,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       // Reset all fields for new figure form
       setName('');
       setDescription('');
+      setPhotoUrl('');
       setOccupation('');
       setGender('');
       setNationality('');
@@ -149,7 +152,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         throw new Error('El nombre de la figura es obligatorio.');
       }
       
-      const finalPhotoUrlToSave = initialData?.photoUrl || 'https://placehold.co/400x600.png';
+      const finalPhotoUrlToSave = photoUrl.trim() || 'https://placehold.co/400x600.png';
 
       const figureData: Omit<Figure, 'id' | 'createdAt'> & { createdAt?: any } = { 
         name: name.trim(),
@@ -231,6 +234,20 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           placeholder="Ej: Albert Einstein"
           required
         />
+      </div>
+
+      <div>
+        <Label htmlFor="photoUrl">URL de la Imagen de Perfil</Label>
+        <Input
+          id="photoUrl"
+          type="url"
+          value={photoUrl}
+          onChange={(e) => setPhotoUrl(e.target.value)}
+          placeholder="https://ejemplo.com/imagen.png"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Si se deja en blanco, se usará una imagen de marcador de posición.
+        </p>
       </div>
 
       <div>
