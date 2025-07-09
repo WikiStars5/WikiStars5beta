@@ -669,8 +669,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
     setVotingCommentId(commentId);
 
-    const originalComments = JSON.parse(JSON.stringify(commentsList));
-    const originalReplies = JSON.parse(JSON.stringify(replies));
+    const originalComments = commentsList;
+    const originalReplies = replies;
     
     const updateStateOptimistically = (comments: UserComment[], targetId: string, userId: string, voteAction: 'like' | 'dislike'): UserComment[] => {
       return comments.map(comment => {
