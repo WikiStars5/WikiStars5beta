@@ -7,6 +7,7 @@ import { MobileSearchButton } from './MobileSearchButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
 import { useState } from 'react';
 import { NotificationBell } from './NotificationBell';
+import { InstallPwaButton } from './InstallPwaButton';
 
 export function Header() {
   const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
@@ -35,6 +36,7 @@ export function Header() {
             </Link>
           </nav>
 
+          <InstallPwaButton />
           <MobileSearchButton />
           <NotificationBell />
           <UserNav />
