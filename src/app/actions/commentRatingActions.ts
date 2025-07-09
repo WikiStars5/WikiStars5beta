@@ -1,9 +1,5 @@
-
-'use server';
-
 import { db } from '@/lib/firebase';
 import { doc, runTransaction, arrayUnion, arrayRemove, increment, getDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { revalidatePath } from 'next/cache';
 
 export async function updateCommentLikes(
   commentId: string,
@@ -96,8 +92,6 @@ export async function updateCommentLikes(
         newDislikes = finalCommentDoc.data().dislikes;
     }
     
-    revalidatePath(`/figures/${figureId}`);
-
     return { success: true, message: 'Voto actualizado.', newLikes, newDislikes };
   } catch (error: any) {
     console.error('Error updating comment likes:', error);

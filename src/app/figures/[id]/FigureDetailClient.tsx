@@ -669,8 +669,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
     setVotingCommentId(commentId);
 
-    const originalComments = commentsList;
-    const originalReplies = replies;
+    const originalComments = structuredClone(commentsList);
+    const originalReplies = structuredClone(replies);
     
     const updateStateOptimistically = (comments: UserComment[], targetId: string, userId: string, voteAction: 'like' | 'dislike'): UserComment[] => {
       return comments.map(comment => {
@@ -737,6 +737,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           toast({ title: 'Error', description: result.message, variant: 'destructive' });
           setCommentsList(originalComments);
           setReplies(originalReplies);
+        } else {
+          router.refresh();
         }
       } catch (error: any) {
         console.error("Error al llamar a la acción del servidor para me gusta/no me gusta:", error);
