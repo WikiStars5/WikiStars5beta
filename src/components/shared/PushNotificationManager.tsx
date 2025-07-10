@@ -5,8 +5,11 @@ import { useEffect } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { auth, db, app as firebaseApp } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+
+// VAPID key for web push notifications, moved to a constant for clarity.
+const VAPID_KEY = "BLgyZLePKEpMgnpd_0J9q-wVPR2_qH3gA-z-XikU4y2PjHnEPF2M5f0G4RkG3kZ_6_a2jYp-0t_Z-5C4Z-f9B2c";
 
 // This component is designed to be placed in the main layout.
 // It will handle push notification logic in the background AFTER permission is granted.
@@ -30,16 +33,16 @@ export function PushNotificationManager() {
           }
 
           const messaging = getMessaging(firebaseApp);
-          const VAPID_KEY = "BLgyZLePKEpMgnpd_0J9q-wVPR2_qH3gA-z-XikU4y2PjHnEPF2M5f0G4RkG3kZ_6_a2jYp-0t_Z-5C4Z-f9B2c";
           const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
           
           if (currentToken && user && !user.isAnonymous) {
             const userDocRef = doc(db, 'registered_users', user.uid);
             const userDocSnap = await getDoc(userDocRef);
             
-            // Only update Firestore if the token is new or doesn't exist
+            // Only update Firestore if the token is new or doesn't exist on the document
             if (!userDocSnap.exists() || userDocSnap.data()?.fcmToken !== currentToken) {
-                await updateDoc(userDocRef, { 
+                // Use setDoc with merge:true to create the doc if it doesn't exist, or update it if it does.
+                await setDoc(userDocRef, { 
                     fcmToken: currentToken,
                     lastTokenUpdate: serverTimestamp()
                 }, { merge: true });

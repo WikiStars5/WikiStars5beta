@@ -1,7 +1,8 @@
+
 "use client"; 
 
 import { Logo } from '@/components/shared/Logo';
-import { UserNav } from '../auth/UserNav';
+import { UserNav } from '@/components/layout/UserNav';
 import Link from 'next/link'; 
 import { MobileSearchButton } from './MobileSearchButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
