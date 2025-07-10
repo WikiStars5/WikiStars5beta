@@ -10,7 +10,7 @@ const withPWA = require('next-pwa')({
   // By injecting the Firebase script into the PWA's service worker,
   // we ensure both functionalities coexist without conflict.
   // This is the standard and recommended approach to fix messaging registration errors.
-  swSrc: 'firebase-messaging-sw.js', 
+  swSrc: 'service-worker.js', 
 });
 
 const nextConfig: NextConfig = { 
