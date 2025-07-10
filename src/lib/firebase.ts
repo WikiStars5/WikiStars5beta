@@ -18,36 +18,34 @@ const firebaseConfig = {
 };
 
 // =======================================================================================
-// === ¡¡¡ATENCIÓN: SOLUCIÓN AL ERROR DE NOTIFICACIONES "403 Forbidden"!!! ===
+// ===       ¡¡¡ATENCIÓN: SOLUCIÓN DEFINITIVA AL ERROR 403 Forbidden!!!                  ===
 // =======================================================================================
 /*
 El error "Request is missing required authentication credential" o "403 Forbidden"
 al intentar obtener el token de notificación (FCM) se debe a que la clave de API
 (apiKey de arriba) tiene restricciones de "referentes HTTP". Esto significa que la
-clave solo puede ser usada desde dominios autorizados.
+clave solo puede ser usada desde dominios autorizados. La captura que enviaste
+era de la configuración de OAuth (para login), ¡pero el error está en la
+configuración de la Clave de API!
 
-**BASADO EN TU CAPTURA DE PANTALLA, SOLO FALTA UN DOMINIO.**
+**SIGUE ESTOS PASOS PARA SOLUCIONARLO DEFINITIVAMENTE:**
 
-SIGUE ESTOS PASOS PARA SOLUCIONARLO:
-
-1.  **ABRE ESTE ENLACE EN UNA NUEVA PESTAÑA:**
+1.  **ABRE ESTE ENLACE EN UNA NUEVA PESTAÑA (lleva a la sección correcta de "Credenciales"):**
     https://console.cloud.google.com/apis/credentials?project=wikistars5-2yctr
 
-2.  **ENCUENTRA Y EDITA LA CLAVE DE API:**
-    Busca la clave "Browser key (auto created by Firebase)" y haz clic en el icono del lápiz (Editar).
+2.  **ENCUENTRA Y EDITA LA CLAVE DE API CORRECTA:**
+    - Busca la clave llamada "**Browser key (auto created by Firebase)**" en la lista.
+    - Haz clic en el icono del lápiz (Editar) a la derecha de esa clave.
 
-3.  **AÑADE EL DOMINIO DE PRODUCCIÓN QUE FALTA:**
-    - En la sección "Restricciones de sitios web", haz clic en "**AÑADIR UN ELEMENTO**".
-    - Añade el siguiente referente EXACTAMENTE como está escrito:
+3.  **AÑADE LOS DOMINIOS DE DESARROLLO Y PRODUCCIÓN:**
+    - Dentro de la sección "**Restricciones de sitios web**", haz clic en "**AÑADIR UN ELEMENTO**".
+    - Añade los siguientes referentes UNO POR UNO (después de añadir uno, haz clic en "AÑADIR UN ELEMENTO" de nuevo para el siguiente):
+      - `*.cloudworkstations.dev`  (Para que funcione en el editor)
+      - `localhost`                 (Para pruebas locales)
+      - `wikistars5-2yctr.web.app`  (Tu dominio de producción de Firebase)
+      - `wikistars5.com`            (Tu dominio personalizado, si lo usas)
 
-      - **Referente a añadir:** `wikistars5-2yctr.web.app`
-
-    - Tu lista final debería tener estos 5 elementos:
-      - `*.cloudworkstations.dev`
-      - `*.google.com`
-      - `localhost`
-      - `wikistars5.com`
-      - `wikistars5-2yctr.web.app`
+    - Tu lista final debería tener al menos esos 4 elementos (más `*.google.com` si ya estaba).
 
 4.  **GUARDA LOS CAMBIOS:**
     Haz clic en el botón azul "Guardar". Los cambios pueden tardar hasta 5 minutos en aplicarse.
