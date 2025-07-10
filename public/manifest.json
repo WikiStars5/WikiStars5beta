@@ -1,23 +1,33 @@
 
 {
+  "theme_color": "#FFD700",
+  "background_color": "#0A0A0A",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/home",
   "name": "WikiStars5",
   "short_name": "WikiStars5",
-  "description": "Califica y discute sobre figuras públicas en WikiStars5.",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0A0A0A",
-  "theme_color": "#FFD700",
+  "description": "Califica y discute sobre figuras p\u00fablicas en WikiStars5.",
   "icons": [
     {
-      "src": "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194",
+      "src": "/logo-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194",
+      "src": "/logo-256.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo-384.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ],
-  "gcm_sender_id": "103953800507"
+  ]
 }
