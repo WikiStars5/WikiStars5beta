@@ -31,6 +31,7 @@ export function PushNotificationManager() {
           }
 
           const messaging = getMessaging(firebaseApp);
+          // Correct VAPID key from Firebase project settings
           const VAPID_KEY = "BLgyZLePKEpMgnpd_0J9q-wVPR2_qH3gA-z-XikU4y2PjHnEPF2M5f0G4RkG3kZ_6_a2jYp-0t_Z-5C4Z-f9B2c";
           const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
           
