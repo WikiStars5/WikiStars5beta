@@ -1,10 +1,8 @@
 
 // Import and initialize the Firebase SDK
-// This is the version 9+ syntax for service workers
-import { initializeApp } from "firebase/app";
-import { getMessaging, onBackgroundMessage } from "firebase/messaging/sw";
+import { initializeApp } from 'firebase/app';
+import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCwH29ruiIl_pohEoUHh7d26m5qCLCmYm0",
   authDomain: "wikistars5-2yctr.firebaseapp.com",
@@ -18,15 +16,19 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
 
-// This function will be triggered when a push notification is received while the app is in the background.
+// This listener handles messages received when the app is in the background.
+// The browser displays a notification for these messages automatically.
 onBackgroundMessage(messaging, (payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  
-  // Customize the notification here
-  const notificationTitle = payload.notification.title;
+  console.log(
+    '[firebase-messaging-sw.js] Received background message ',
+    payload
+  );
+
+  // Customize the notification here if needed
+  const notificationTitle = payload.notification?.title || 'Nueva Notificación';
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: payload.notification.icon || '/logo/logodia.png', // A default icon
+    body: payload.notification?.body || 'Tienes una nueva alerta.',
+    icon: payload.notification?.icon || '/logo/logodia.png', // Fallback icon
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
