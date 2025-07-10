@@ -21,10 +21,11 @@ const firebaseConfig = {
 // === ¡¡¡ATENCIÓN: SOLUCIÓN AL ERROR DE NOTIFICACIONES "403 Forbidden"!!! ===
 // =======================================================================================
 /*
-El error "403 Forbidden" al intentar obtener el token de notificación (FCM)
-se debe a que la clave de API (apiKey de arriba) tiene restricciones de "referentes HTTP".
-Esto significa que la clave solo puede ser usada desde dominios autorizados.
-El dominio de desarrollo actual no está en la lista.
+El error "Request is missing required authentication credential" o "403 Forbidden"
+al intentar obtener el token de notificación (FCM) se debe a que la clave de API
+(apiKey de arriba) tiene restricciones de "referentes HTTP". Esto significa que la
+clave solo puede ser usada desde dominios autorizados. El dominio de desarrollo
+actual no está en la lista.
 
 SIGUE ESTOS PASOS PARA SOLUCIONARLO:
 
@@ -41,7 +42,7 @@ SIGUE ESTOS PASOS PARA SOLUCIONARLO:
 4.  **AÑADE LOS DOMINIOS PERMITIDOS:**
     - Dentro de la sección "Restricciones de la aplicación", asegúrate de que "Referentes HTTP (sitios web)" esté seleccionado.
     - En la sección "Restricciones de sitios web", haz clic en "**AÑADIR UN ELEMENTO**".
-    - Añade los siguientes dos (2) referentes, uno por uno:
+    - Añade los siguientes cuatro (4) referentes, uno por uno:
 
       - **Referente 1:** `localhost`
       - **Referente 2:** `*.google.com`
