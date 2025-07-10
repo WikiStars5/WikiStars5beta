@@ -69,16 +69,15 @@ export const sendPushNotification = onDocumentCreated("notifications/{notificati
   
   const payload = {
     token: fcmToken,
-    notification: {
-      title: notificationTitle,
-      body: notificationBody,
-    },
     webpush: {
       notification: {
+        title: notificationTitle,
+        body: notificationBody,
         icon: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194",
-      },
-      fcm_options: {
-        link: `https://wikistars5-2yctr.web.app/figures/${notificationData.figureId}#comment-${notificationData.replyId || notificationData.commentId}`,
+        // The data field is where you put custom information for the service worker.
+        data: {
+            url: `https://wikistars5-2yctr.web.app/figures/${notificationData.figureId}#comment-${notificationData.replyId || notificationData.commentId}`
+        }
       },
     },
   };
