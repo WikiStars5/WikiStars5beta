@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { LanguageSwitcher as ClientProviders } from '@/components/layout/LanguageSwitcher';
 import type { Metadata } from 'next';
 import { PushNotificationManager } from '@/components/shared/PushNotificationManager';
+import { NotificationPrompt } from '@/components/shared/NotificationPrompt';
 
 const logoUrl = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194";
 
@@ -58,6 +59,7 @@ export default function RootLayout({
             </main>
             <Footer />
           </div>
+          <NotificationPrompt />
         </ClientProviders>
       </body>
     </html>
