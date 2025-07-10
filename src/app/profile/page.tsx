@@ -4,9 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -58,10 +56,10 @@ export default function ProfilePage() {
   };
 
   const handleRequestNotificationPermission = async () => {
-    if (!('Notification' in window) || !('serviceWorker' in navigator) || !currentUser) {
+    if (!('Notification' in window)) {
       toast({
         title: "No Soportado",
-        description: "Tu navegador no soporta notificaciones push o no has iniciado sesión.",
+        description: "Tu navegador no soporta notificaciones push.",
         variant: "destructive",
       });
       return;
@@ -74,39 +72,18 @@ export default function ProfilePage() {
       if (permission === 'granted') {
         toast({
           title: "¡Permiso Concedido!",
-          description: "Obteniendo token de notificación...",
+          description: "Todo listo para recibir notificaciones. El sistema registrará tu dispositivo en segundo plano.",
         });
-
-        const messaging = getMessaging();
-        const VAPID_KEY = "BLgyZLePKEpMgnpd_0J9q-wVPR2_qH3gA-z-XikU4y2PjHnEPF2M5f0G4RkG3kZ_6_a2jYp-0t_Z-5C4Z-f9B2c";
-
-        const fcmToken = await getToken(messaging, { vapidKey: VAPID_KEY });
-
-        if (fcmToken) {
-          console.log("FCM Token:", fcmToken);
-          // Save the token to the user's document in Firestore
-          const userDocRef = doc(db, 'registered_users', currentUser.uid);
-          await updateDoc(userDocRef, { fcmToken: fcmToken });
-          toast({
-            title: "¡Todo Listo!",
-            description: "Las notificaciones push están activadas y configuradas para este dispositivo.",
-          });
-        } else {
-          toast({
-            title: "Error de Configuración",
-            description: "No se pudo obtener el token de notificación. Asegúrate de que el Service Worker esté registrado.",
-            variant: "destructive",
-          });
-        }
+        // The PushNotificationManager will handle token registration automatically.
       } else {
         toast({
           title: "Permiso Denegado",
-          description: "Has bloqueado las notificaciones. Puedes cambiarlas en la configuración de tu navegador si cambias de opinión.",
+          description: "Has bloqueado las notificaciones. Puedes cambiarlas en la configuración de tu navegador.",
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error('Error durante la solicitud de permiso o la obtención del token:', error);
+      console.error('Error durante la solicitud de permiso:', error);
       toast({
         title: "Error Inesperado",
         description: "Ocurrió un error al intentar activar las notificaciones.",
