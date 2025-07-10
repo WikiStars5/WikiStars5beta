@@ -1,9 +1,9 @@
-
 // Import the Firebase app and messaging services
-importScripts("https://www.gstatic.com/firebasejs/9.2.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/9.2.0/firebase-messaging-compat.js");
+import { initializeApp } from "firebase/app";
+import { getMessaging, onBackgroundMessage } from "firebase/messaging/sw";
 
 // Your web app's Firebase configuration
+// This needs to be here for the service worker to initialize Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyCwH29ruiIl_pohEoUHh7d26m5qCLCmYm0",
   authDomain: "wikistars5-2yctr.firebaseapp.com",
@@ -13,49 +13,50 @@ const firebaseConfig = {
   appId: "1:939359993461:web:c8aab67046db949495823c",
 };
 
+// Initialize the Firebase app in the service worker
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
 
-// Initialize Firebase
-const app = firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
+// onBackgroundMessage is used to handle messages received when the app is in the background or closed.
+onBackgroundMessage(messaging, (payload) => {
+  console.log(
+    "[firebase-messaging-sw.js] Received background message ",
+    payload
+  );
 
-// This handler will be called when the app is in the background or closed
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-
-  // Customize the notification here
-  const notificationTitle = payload.notification.title;
+  // Customize notification here
+  const notificationTitle = payload.notification?.title || "Nueva Notificación";
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: payload.notification.icon || '/icon-192x192.png',
-    // The data object from the Functions payload can be used here
+    body: payload.notification?.body || "Tienes una nueva actualización",
+    icon: payload.notification?.icon || "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194",
+    // Use the URL from the payload's data field to open the correct page on click
     data: {
-      url: payload.fcmOptions.link // The link sent from the function
+        url: payload.fcmOptions?.link || '/'
     }
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Handle notification click
+// Optional: Add a 'notificationclick' event listener to handle notification clicks
 self.addEventListener('notificationclick', (event) => {
-  console.log('[firebase-messaging-sw.js] Notification click Received.');
-  
-  event.notification.close();
+  event.notification.close(); // Close the notification
 
-  const urlToOpen = event.notification.data.url;
+  const urlToOpen = event.notification.data?.url || '/';
 
+  // This looks for an existing window and focuses it, otherwise opens a new one
   event.waitUntil(
-    clients.matchAll({
-      type: "window"
-    }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url === urlToOpen && 'focus' in client) {
-          return client.focus();
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      if (clientList.length > 0) {
+        let client = clientList[0];
+        for (let i = 0; i < clientList.length; i++) {
+            if (clientList[i].focused) {
+                client = clientList[i];
+            }
         }
+        return client.focus().then(c => c.navigate(urlToOpen));
       }
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
+      return clients.openWindow(urlToOpen);
     })
   );
 });
