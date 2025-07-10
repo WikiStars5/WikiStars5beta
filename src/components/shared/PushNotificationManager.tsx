@@ -17,41 +17,48 @@ export function PushNotificationManager() {
   // It's responsible for getting and saving the FCM token if permission is already granted.
   useEffect(() => {
     const setupMessagingForUser = async (user: User | null) => {
-      if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') {
-        // Do nothing if permissions are not already granted.
-        // The user will grant them through the NotificationPrompt component.
-        return;
-      }
+      // We need to wait for the service worker to be ready before getting the token
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        try {
+          // The service worker is registered by the browser automatically from the public directory.
+          // We wait for it to be ready before proceeding.
+          await navigator.serviceWorker.ready;
 
-      try {
-        const messaging = getMessaging(firebaseApp);
-        const VAPID_KEY = "BLgyZLePKEpMgnpd_0J9q-wVPR2_qH3gA-z-XikU4y2PjHnEPF2M5f0G4RkG3kZ_6_a2jYp-0t_Z-5C4Z-f9B2c";
-        const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
-        
-        if (currentToken && user && !user.isAnonymous) {
-          const userDocRef = doc(db, 'registered_users', user.uid);
-          const userDocSnap = await getDoc(userDocRef);
+          if (Notification.permission !== 'granted') {
+            // Do nothing if permissions are not already granted.
+            // The user will grant them through the NotificationPrompt component.
+            return;
+          }
+
+          const messaging = getMessaging(firebaseApp);
+          const VAPID_KEY = "BLgyZLePKEpMgnpd_0J9q-wVPR2_qH3gA-z-XikU4y2PjHnEPF2M5f0G4RkG3kZ_6_a2jYp-0t_Z-5C4Z-f9B2c";
+          const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
           
-          if (!userDocSnap.exists() || userDocSnap.data()?.fcmToken !== currentToken) {
-              await updateDoc(userDocRef, { 
-                  fcmToken: currentToken,
-                  lastTokenUpdate: serverTimestamp()
-              }, { merge: true });
+          if (currentToken && user && !user.isAnonymous) {
+            const userDocRef = doc(db, 'registered_users', user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            
+            if (!userDocSnap.exists() || userDocSnap.data()?.fcmToken !== currentToken) {
+                await updateDoc(userDocRef, { 
+                    fcmToken: currentToken,
+                    lastTokenUpdate: serverTimestamp()
+                }, { merge: true });
+            }
           }
+
+          onMessage(messaging, (payload) => {
+            console.log('Message received while app is in foreground: ', payload);
+            if (payload.notification) {
+              toast({
+                title: payload.notification.title,
+                description: payload.notification.body,
+              });
+            }
+          });
+
+        } catch (error) {
+          console.error('An error occurred while retrieving token or setting up messaging.', error);
         }
-
-        onMessage(messaging, (payload) => {
-          console.log('Message received while app is in foreground: ', payload);
-          if (payload.notification) {
-            toast({
-              title: payload.notification.title,
-              description: payload.notification.body,
-            });
-          }
-        });
-
-      } catch (error) {
-        console.error('An error occurred while retrieving token or setting up messaging.', error);
       }
     };
 
