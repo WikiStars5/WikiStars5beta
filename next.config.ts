@@ -1,14 +1,16 @@
 
 import type {NextConfig} from 'next'; 
 
+// Correctly import the withPWA plugin.
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
-  // Exclude the custom Firebase messaging service worker from PWA's pre-caching
-  // This is crucial to prevent conflicts.
-  exclude: ['firebase-messaging-sw.js'], 
+  // By injecting the Firebase script into the PWA's service worker,
+  // we ensure both functionalities coexist without conflict.
+  // This is the standard and recommended approach to fix messaging registration errors.
+  swSrc: 'firebase-messaging-sw.js', 
 });
 
 const nextConfig: NextConfig = { 
@@ -46,4 +48,5 @@ const nextConfig: NextConfig = {
   },
 }; 
 
+// Wrap the Next.js config with the PWA config.
 export default withPWA(nextConfig);
