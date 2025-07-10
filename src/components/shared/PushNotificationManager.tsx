@@ -18,20 +18,18 @@ export function PushNotificationManager() {
   useEffect(() => {
     const setupMessagingForUser = async (user: User | null) => {
       // We need to wait for the service worker to be ready before getting the token
-      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.serwist !== undefined) {
         try {
-          // The service worker is registered by the browser automatically from the public directory.
-          // We wait for it to be ready before proceeding.
-          await navigator.serviceWorker.ready;
+          // The service worker is registered by next-pwa. We wait for it to be ready.
+          await window.serwist.ready;
 
           if (Notification.permission !== 'granted') {
             // Do nothing if permissions are not already granted.
-            // The user will grant them through the NotificationPrompt component.
+            // The user will grant them through the NotificationPrompt or another component.
             return;
           }
 
           const messaging = getMessaging(firebaseApp);
-          // Correct VAPID key from Firebase project settings
           const VAPID_KEY = "BLgyZLePKEpMgnpd_0J9q-wVPR2_qH3gA-z-XikU4y2PjHnEPF2M5f0G4RkG3kZ_6_a2jYp-0t_Z-5C4Z-f9B2c";
           const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
           
@@ -39,6 +37,7 @@ export function PushNotificationManager() {
             const userDocRef = doc(db, 'registered_users', user.uid);
             const userDocSnap = await getDoc(userDocRef);
             
+            // Only update Firestore if the token is new or doesn't exist
             if (!userDocSnap.exists() || userDocSnap.data()?.fcmToken !== currentToken) {
                 await updateDoc(userDocRef, { 
                     fcmToken: currentToken,
@@ -47,6 +46,7 @@ export function PushNotificationManager() {
             }
           }
 
+          // Handle foreground messages
           onMessage(messaging, (payload) => {
             console.log('Message received while app is in foreground: ', payload);
             if (payload.notification) {
@@ -59,12 +59,14 @@ export function PushNotificationManager() {
 
         } catch (error) {
           console.error('An error occurred while retrieving token or setting up messaging.', error);
+          if (String(error).includes("token-subscribe-failed")) {
+             console.error("Token subscribe failed. This often points to an issue with VAPID key validation or API key restrictions. Double-check your setup in the Google Cloud Console.");
+          }
         }
       }
     };
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      // Setup messaging for the current user (registered or null)
       setupMessagingForUser(user);
     });
 
