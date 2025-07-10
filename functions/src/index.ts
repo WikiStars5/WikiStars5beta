@@ -67,19 +67,17 @@ export const sendPushNotification = onDocumentCreated("notifications/{notificati
     return;
   }
   
+  // By sending a "data-only" payload, we ensure the service worker always
+  // receives the message and has full control over displaying the notification.
+  // This is the most reliable way to handle push notifications.
   const payload = {
     token: fcmToken,
-    webpush: {
-      notification: {
-        title: notificationTitle,
-        body: notificationBody,
-        icon: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194",
-        // The data field is where you put custom information for the service worker.
-        data: {
-            url: `https://wikistars5-2yctr.web.app/figures/${notificationData.figureId}#comment-${notificationData.replyId || notificationData.commentId}`
-        }
-      },
-    },
+    data: {
+      title: notificationTitle,
+      body: notificationBody,
+      icon: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194",
+      url: `https://wikistars5-2yctr.web.app/figures/${notificationData.figureId}#comment-${notificationData.replyId || notificationData.commentId}`
+    }
   };
 
   // 3. Send the message
