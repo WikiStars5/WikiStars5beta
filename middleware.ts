@@ -1,43 +1,14 @@
+
 import {NextRequest, NextResponse} from 'next/server';
 
-const locales = ['es', 'en', 'pt'];
-const defaultLocale = 'es';
-
-function getLocale(request: NextRequest): string {
-  const acceptLanguage = request.headers.get('accept-language');
-  if (acceptLanguage) {
-    const languages = acceptLanguage
-      .split(',')
-      .map(lang => lang.split(';')[0].trim());
-    for (const lang of languages) {
-      if (locales.includes(lang)) {
-        return lang;
-      }
-      const langPrefix = lang.split('-')[0];
-      if (locales.includes(langPrefix)) {
-        return langPrefix;
-      }
-    }
-  }
-  return defaultLocale;
-}
-
+// Internationalization has been disabled to fix routing issues.
+// This middleware is currently inactive and just passes requests through.
 export function middleware(request: NextRequest) {
-  const {pathname} = request.nextUrl;
-  const pathnameHasLocale = locales.some(
-    locale => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
-  );
-
-  if (pathnameHasLocale) return;
-
-  const locale = getLocale(request);
-  request.nextUrl.pathname = `/${locale}${pathname}`;
-  return NextResponse.redirect(request.nextUrl);
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    // Skip all internal paths (_next)
-    '/((?!_next|api|favicon.ico).*)',
-  ],
+  // By removing the matcher, this middleware will not run on any path.
+  // This is the safest way to disable it and avoid any routing conflicts.
+  matcher: [],
 };
