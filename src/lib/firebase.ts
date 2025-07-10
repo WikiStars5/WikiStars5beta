@@ -24,38 +24,36 @@ const firebaseConfig = {
 El error "Request is missing required authentication credential" o "403 Forbidden"
 al intentar obtener el token de notificación (FCM) se debe a que la clave de API
 (apiKey de arriba) tiene restricciones de "referentes HTTP". Esto significa que la
-clave solo puede ser usada desde dominios autorizados. El dominio de desarrollo
-actual no está en la lista.
+clave solo puede ser usada desde dominios autorizados.
+
+**BASADO EN TU CAPTURA DE PANTALLA, SOLO FALTA UN DOMINIO.**
 
 SIGUE ESTOS PASOS PARA SOLUCIONARLO:
 
 1.  **ABRE ESTE ENLACE EN UNA NUEVA PESTAÑA:**
     https://console.cloud.google.com/apis/credentials?project=wikistars5-2yctr
 
-2.  **ENCUENTRA LA CLAVE DE API:**
-    Busca en la lista una clave llamada "Browser key (auto created by Firebase)" o similar.
-    La clave correcta terminará en `...m5qCLCmYm0` (la misma que `apiKey` en este archivo).
+2.  **ENCUENTRA Y EDITA LA CLAVE DE API:**
+    Busca la clave "Browser key (auto created by Firebase)" y haz clic en el icono del lápiz (Editar).
 
-3.  **EDITA LA CLAVE:**
-    Haz clic en el nombre de la clave o en el icono del lápiz (Editar) a la derecha.
-
-4.  **AÑADE LOS DOMINIOS PERMITIDOS:**
-    - Dentro de la sección "Restricciones de la aplicación", asegúrate de que "Referentes HTTP (sitios web)" esté seleccionado.
+3.  **AÑADE EL DOMINIO DE PRODUCCIÓN QUE FALTA:**
     - En la sección "Restricciones de sitios web", haz clic en "**AÑADIR UN ELEMENTO**".
-    - Añade los siguientes cuatro (4) referentes, uno por uno:
+    - Añade el siguiente referente EXACTAMENTE como está escrito:
 
-      - **Referente 1:** `localhost`
-      - **Referente 2:** `*.google.com`
-      - **Referente 3 (CRÍTICO):** `*.cloudworkstations.dev`
-      - **Referente 4:** `wikistars5-2yctr.web.app` (Tu dominio de producción)
+      - **Referente a añadir:** `wikistars5-2yctr.web.app`
 
-    *Nota: El asterisco (*) es un comodín. `*.cloudworkstations.dev` permitirá que cualquier subdominio de desarrollo funcione.*
+    - Tu lista final debería tener estos 5 elementos:
+      - `*.cloudworkstations.dev`
+      - `*.google.com`
+      - `localhost`
+      - `wikistars5.com`
+      - `wikistars5-2yctr.web.app`
 
-5.  **GUARDA LOS CAMBIOS:**
-    Haz clic en el botón azul "Guardar" en la parte inferior. Los cambios pueden tardar hasta 5 minutos en propagarse.
+4.  **GUARDA LOS CAMBIOS:**
+    Haz clic en el botón azul "Guardar". Los cambios pueden tardar hasta 5 minutos en aplicarse.
 
-6.  **PRUEBA DE NUEVO:**
-    Vuelve a tu aplicación, recarga la página completamente y trata de activar las notificaciones. El error 403 debería haber desaparecido.
+5.  **PRUEBA DE NUEVO:**
+    Vuelve a tu aplicación (tanto en el editor como en la página de producción), recarga la página completamente y trata de activar las notificaciones. El error 403 debería haber desaparecido.
 */
 
 
