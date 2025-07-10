@@ -18,13 +18,16 @@ export function NotificationPrompt() {
   const { toast } = useToast();
 
   useEffect(() => {
+    // This effect runs only once on the client to check for notification support
+    // and decide if the prompt should be shown after a delay.
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setIsSupported(true);
       const timer = setTimeout(() => {
+        // Show the prompt only if the user hasn't made a decision yet.
         if (Notification.permission === 'default') {
           setIsVisible(true);
         }
-      }, 5000); 
+      }, 5000); // 5-second delay
 
       return () => clearTimeout(timer);
     }
@@ -38,46 +41,56 @@ export function NotificationPrompt() {
 
     try {
       const permission = await Notification.requestPermission();
-      setIsVisible(false);
+      setIsVisible(false); // Hide the prompt regardless of the outcome
 
       if (permission === 'granted') {
         toast({ title: "¡Permisos Concedidos!", description: "Ahora recibirás notificaciones." });
         
         const authInstance = getAuth(firebaseApp);
-        let currentUser: User | null = authInstance.currentUser;
 
-        if (!currentUser) {
-          currentUser = await new Promise<User | null>((resolve) => {
-            const unsubscribe = onAuthStateChanged(authInstance, (user) => {
-              unsubscribe();
-              resolve(user);
-            });
-          });
-        }
-        
-        if (!currentUser || currentUser.isAnonymous) {
-          console.log("Usuario no registrado o es anónimo. No se guardará el token de FCM.");
-          return;
-        }
+        // Crucially, wait for the auth state to be resolved before getting the token.
+        // This prevents race conditions where auth.currentUser might be null initially.
+        onAuthStateChanged(authInstance, async (user) => {
+          if (user) {
+            // User is signed in (registered or anonymous).
+            // Do not save the token for anonymous users.
+            if (user.isAnonymous) {
+              console.log("Usuario es anónimo. No se guardará el token de FCM.");
+              return;
+            }
 
-        const messaging = getMessaging(firebaseApp);
-        const VAPID_KEY = "BLgyZLePKEpMgnpd_0J9q-wVPR2_qH3gA-z-XikU4y2PjHnEPF2M5f0G4RkG3kZ_6_a2jYp-0t_Z-5C4Z-f9B2c";
+            // Now it's safe to get the token.
+            const messaging = getMessaging(firebaseApp);
+            const VAPID_KEY = "BLgyZLePKEpMgnpd_0J9q-wVPR2_qH3gA-z-XikU4y2PjHnEPF2M5f0G4RkG3kZ_6_a2jYp-0t_Z-5C4Z-f9B2c";
 
-        const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
-
-        if (currentToken) {
-          const userDocRef = doc(db, 'registered_users', currentUser.uid);
-           await updateDoc(userDocRef, {
-              fcmToken: currentToken,
-              lastTokenUpdate: serverTimestamp()
-            }, { merge: true });
-        }
+            try {
+              const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
+              if (currentToken) {
+                const userDocRef = doc(db, 'registered_users', user.uid);
+                await updateDoc(userDocRef, {
+                    fcmToken: currentToken,
+                    lastTokenUpdate: serverTimestamp()
+                }, { merge: true });
+                console.log("FCM token successfully saved for user:", user.uid);
+              } else {
+                 console.log('No se pudo obtener el token de registro. Permiso denegado por el usuario en getToken.');
+                 toast({ title: "Registro de Token Fallido", description: "No se pudo obtener el token de notificación. Inténtalo de nuevo desde tu perfil.", variant: "destructive" });
+              }
+            } catch (err) {
+              console.error('An error occurred while retrieving token.', err);
+              toast({ title: "Error al Obtener Token", description: "Hubo un problema al registrar tu dispositivo para notificaciones.", variant: "destructive" });
+            }
+          } else {
+            // No user is signed in.
+            console.log("Usuario no autenticado, no se puede guardar el token de FCM.");
+          }
+        });
 
       } else {
-        toast({ title: "Permisos Denegados", description: "No podrás recibir notificaciones.", variant: "destructive" });
+        toast({ title: "Permisos Denegados", description: "No podrás recibir notificaciones. Puedes cambiarlas en la configuración de tu navegador.", variant: "destructive" });
       }
     } catch (error) {
-      console.error('Error durante la solicitud de permiso:', error);
+      console.error('Error durante la solicitud de permiso de notificación:', error);
       toast({ title: "Error Inesperado", description: "Ocurrió un error al intentar activar las notificaciones.", variant: "destructive" });
     }
   };
