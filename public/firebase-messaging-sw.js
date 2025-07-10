@@ -1,2 +1,4 @@
-// This file is no longer needed as its logic has been merged into the main service-worker.js
-// to resolve conflicts with next-pwa. It can be safely deleted.
+// This file is no longer needed.
+// The logic has been integrated into `public/service-worker.js`
+// to resolve conflicts between next-pwa and Firebase Cloud Messaging.
+// This file can be safely deleted.
