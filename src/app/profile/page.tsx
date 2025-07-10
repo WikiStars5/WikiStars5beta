@@ -66,15 +66,16 @@ export default function ProfilePage() {
     }
 
     try {
+      // The PushNotificationManager will handle token registration automatically.
+      // This button just triggers the browser's permission prompt.
       const permission = await Notification.requestPermission();
       setNotificationPermission(permission);
 
       if (permission === 'granted') {
         toast({
           title: "¡Permiso Concedido!",
-          description: "Todo listo para recibir notificaciones. El sistema registrará tu dispositivo en segundo plano.",
+          description: "Todo listo para recibir notificaciones. El sistema registrará tu dispositivo.",
         });
-        // The PushNotificationManager will handle token registration automatically.
       } else {
         toast({
           title: "Permiso Denegado",
