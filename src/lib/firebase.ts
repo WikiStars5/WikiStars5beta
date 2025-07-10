@@ -1,4 +1,3 @@
-
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
@@ -17,6 +16,47 @@ const firebaseConfig = {
   appId: "1:939359993461:web:c8aab67046db949495823c",
   measurementId: "G-XCFCPXNP56"
 };
+
+// =======================================================================================
+// === ¡¡¡ATENCIÓN: SOLUCIÓN AL ERROR DE NOTIFICACIONES "403 Forbidden"!!! ===
+// =======================================================================================
+/*
+El error "403 Forbidden" al intentar obtener el token de notificación (FCM)
+se debe a que la clave de API (apiKey de arriba) tiene restricciones de "referentes HTTP".
+Esto significa que la clave solo puede ser usada desde dominios autorizados.
+El dominio de desarrollo actual no está en la lista.
+
+SIGUE ESTOS PASOS PARA SOLUCIONARLO:
+
+1.  **ABRE ESTE ENLACE EN UNA NUEVA PESTAÑA:**
+    https://console.cloud.google.com/apis/credentials?project=wikistars5-2yctr
+
+2.  **ENCUENTRA LA CLAVE DE API:**
+    Busca en la lista una clave llamada "Browser key (auto created by Firebase)" o similar.
+    La clave correcta terminará en `...m5qCLCmYm0` (la misma que `apiKey` en este archivo).
+
+3.  **EDITA LA CLAVE:**
+    Haz clic en el nombre de la clave o en el icono del lápiz (Editar) a la derecha.
+
+4.  **AÑADE LOS DOMINIOS PERMITIDOS:**
+    - Dentro de la sección "Restricciones de la aplicación", asegúrate de que "Referentes HTTP (sitios web)" esté seleccionado.
+    - En la sección "Restricciones de sitios web", haz clic en "**AÑADIR UN ELEMENTO**".
+    - Añade los siguientes dos (2) referentes, uno por uno:
+
+      - **Referente 1:** `localhost`
+      - **Referente 2:** `*.google.com`
+      - **Referente 3 (CRÍTICO):** `*.cloudworkstations.dev`
+      - **Referente 4:** `wikistars5-2yctr.web.app` (Tu dominio de producción)
+
+    *Nota: El asterisco (*) es un comodín. `*.cloudworkstations.dev` permitirá que cualquier subdominio de desarrollo funcione.*
+
+5.  **GUARDA LOS CAMBIOS:**
+    Haz clic en el botón azul "Guardar" en la parte inferior. Los cambios pueden tardar hasta 5 minutos en propagarse.
+
+6.  **PRUEBA DE NUEVO:**
+    Vuelve a tu aplicación, recarga la página completamente y trata de activar las notificaciones. El error 403 debería haber desaparecido.
+*/
+
 
 let app: FirebaseApp;
 try {
