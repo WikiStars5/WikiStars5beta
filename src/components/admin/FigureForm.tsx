@@ -1,3 +1,4 @@
+
 // === src/components/admin/FigureForm.tsx ===
 // Este componente ha sido modificado para incluir la lógica de subida de archivos a Firebase Storage
 // y con depuración adicional para el proceso de subida.
@@ -11,24 +12,21 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Users2 } from 'lucide-react';
+import { Terminal, Sparkles, Loader2 } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey, StarValueAsString } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
+import { enrichFigureInfo } from '@/ai/flows/enrich-figure-info-flow';
+import { useToast } from '@/hooks/use-toast';
 
 interface FigureFormProps {
   initialData?: Figure;
 }
 
 const defaultPerceptionCounts: Record<EmotionKey, number> = {
-  alegria: 0,
-  envidia: 0,
-  tristeza: 0,
-  miedo: 0,
-  desagrado: 0,
-  furia: 0,
+  alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
 };
 
 const defaultAttitudeCounts: Record<AttitudeKey, number> = {
@@ -41,9 +39,11 @@ const defaultStarRatingCounts: Record<StarValueAsString, number> = {
 
 const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
+  const { toast } = useToast();
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl || '');
+  const [categories, setCategories] = useState(initialData?.categories || []);
   
   // Basic info
   const [occupation, setOccupation] = useState(initialData?.occupation || '');
@@ -70,9 +70,40 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [attitudeCounts, setAttitudeCounts] = useState(initialData?.attitudeCounts || { ...defaultAttitudeCounts });
   const [starRatingCounts, setStarRatingCounts] = useState(initialData?.starRatingCounts || { ...defaultStarRatingCounts });
   
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const handleEnrich = async () => {
+    if (!name.trim()) {
+      toast({
+        title: "Nombre Requerido",
+        description: "Por favor, introduce un nombre para la figura antes de autocompletar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsEnriching(true);
+    setError(null);
+    try {
+      const result = await enrichFigureInfo({ name, description });
+      setDescription(result.description);
+      setOccupation(result.occupation);
+      setNationality(result.nationality);
+      setGender(result.gender);
+      setCategories(result.categories);
+      toast({
+        title: "¡Información Autocompletada!",
+        description: "Los campos han sido rellenados con la IA. Revisa y guarda los cambios.",
+      });
+    } catch (e: any) {
+      console.error("Error enriching data:", e);
+      setError("No se pudo autocompletar la información. " + e.message);
+    } finally {
+      setIsEnriching(false);
+    }
+  };
 
 
   useEffect(() => {
@@ -80,6 +111,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setName(initialData.name);
       setDescription(initialData.description || ''); 
       setPhotoUrl(initialData.photoUrl || '');
+      setCategories(initialData.categories || []);
       setOccupation(initialData.occupation || '');
       setGender(initialData.gender || '');
       setNationality(initialData.nationality || '');
@@ -107,6 +139,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setName('');
       setDescription('');
       setPhotoUrl('');
+      setCategories([]);
       setOccupation('');
       setGender('');
       setNationality('');
@@ -132,7 +165,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSaving(true);
     setError(null);
     setSuccess(null);
 
@@ -143,7 +176,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     }
     if (!figureDocId) {
       setError('No se pudo generar un ID para la figura. Asegúrate de que el nombre no esté vacío.');
-      setIsLoading(false);
+      setIsSaving(false);
       return;
     }
 
@@ -159,6 +192,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         nameLower: name.trim().toLowerCase(),
         description: description.trim() || initialData?.description || "", 
         photoUrl: finalPhotoUrlToSave,
+        categories: categories || [],
         nationality: nationality.trim(),
         occupation: occupation.trim(),
         gender: gender.trim(),
@@ -203,7 +237,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       console.error("[FigureForm handleSubmit] ERROR en handleSubmit:", err);
       setError(err.message || 'Error al guardar la figura. Revisa la consola del navegador para más detalles.');
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -256,22 +290,36 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Escribe una breve descripción de la figura."
+          placeholder="Escribe una breve descripción o usa la IA para autocompletar."
           rows={4}
         />
+      </div>
+
+      <div>
+          <Label htmlFor="categories">Categorías (separadas por comas)</Label>
+          <Input
+            id="categories"
+            type="text"
+            value={categories.join(', ')}
+            onChange={(e) => setCategories(e.target.value.split(',').map(c => c.trim()))}
+            placeholder="Ej: Futbolista, Deportista, Celebridad"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Usa la IA para generar categorías o ingrésalas manualmente.
+          </p>
       </div>
       
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Información Detallada</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><Label htmlFor="occupation">Ocupación/Profesión</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
+        <div><Label htmlFor="nationality">Nacionalidad</Label><Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ej: Estadounidense, Peruano" /></div>
+        <div><Label htmlFor="gender">Género</Label><Input id="gender" value={gender} onChange={(e) => setGender(e.target.value)} placeholder="Ej: Masculino, Femenino" /></div>
         <div><Label htmlFor="alias">Alias / Apodos</Label><Input id="alias" value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Ej: El Sabio, Princesa de Fuego" /></div>
         <div><Label htmlFor="species">Especie / Raza</Label><Input id="species" value={species} onChange={(e) => setSpecies(e.target.value)} placeholder="Ej: Demonio, Humano" /></div>
         <div><Label htmlFor="firstAppearance">Primera Aparición</Label><Input id="firstAppearance" value={firstAppearance} onChange={(e) => setFirstAppearance(e.target.value)} placeholder="Ej: High School DxD, Novela Ligera, 2008" /></div>
         <div><Label htmlFor="birthDateOrAge">Fecha de Nacimiento / Edad</Label><Input id="birthDateOrAge" value={birthDateOrAge} onChange={(e) => setBirthDateOrAge(e.target.value)} placeholder="Ej: Desconocida / Apariencia de 18 años" /></div>
         <div><Label htmlFor="birthPlace">Lugar de Nacimiento</Label><Input id="birthPlace" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} placeholder="Ej: Inframundo, Japón" /></div>
-        <div><Label htmlFor="nationality">Nacionalidad</Label><Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ej: Estadounidense, Peruano" /></div>
-        <div><Label htmlFor="occupation">Ocupación/Profesión</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
-        <div><Label htmlFor="gender">Género</Label><Input id="gender" value={gender} onChange={(e) => setGender(e.target.value)} placeholder="Ej: Masculino, Femenino" /></div>
         <div><Label htmlFor="statusLiveOrDead">Estado (Vivo/Muerto)</Label><Input id="statusLiveOrDead" value={statusLiveOrDead} onChange={(e) => setStatusLiveOrDead(e.target.value)} placeholder="Ej: Vivo, Fallecido, Inmortal" /></div>
         <div><Label htmlFor="maritalStatus">Estado Civil</Label><Input id="maritalStatus" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} placeholder="Ej: Soltero/a, Casado/a" /></div>
       </div>
@@ -291,7 +339,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
             id="isFeatured"
             checked={isFeatured}
             onCheckedChange={(checked) => setIsFeatured(checked as boolean)}
-            disabled={isLoading}
+            disabled={isSaving}
           />
           <Label htmlFor="isFeatured" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
             Marcar como Figura Destacada
@@ -302,10 +350,20 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         </p>
       </div>
 
-
-      <Button type="submit" className="w-full mt-6" disabled={isLoading}>
-        {isLoading ? 'Guardando...' : 'Actualizar Figura'}
-      </Button>
+      <div className="flex flex-col sm:flex-row gap-2 mt-6">
+        <Button 
+          type="button" 
+          variant="outline"
+          onClick={handleEnrich} 
+          disabled={isEnriching || isSaving}
+        >
+          {isEnriching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+          {isEnriching ? 'Analizando...' : 'Autocompletar con IA'}
+        </Button>
+        <Button type="submit" className="flex-grow" disabled={isSaving || isEnriching}>
+          {isSaving ? 'Guardando...' : initialData ? 'Actualizar Figura' : 'Crear Figura'}
+        </Button>
+      </div>
     </form>
   );
 };

@@ -25,6 +25,7 @@ export interface Figure {
   nationality?: string;
   occupation?: string;
   gender?: string;
+  categories?: string[]; // New field for AI-generated categories
 
   // Detailed fields (previously distinct, now integrated)
   alias?: string;
@@ -46,7 +47,7 @@ export interface Figure {
   commentCount?: number; 
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
-  isFeatured?: boolean; // New field for featured figures
+  isFeatured?: boolean;
 }
 
 export interface UserPerception {
