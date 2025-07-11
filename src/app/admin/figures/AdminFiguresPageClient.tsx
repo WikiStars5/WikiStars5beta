@@ -266,11 +266,13 @@ export default function AdminFiguresPageClient() {
   const [figures, setFigures] = useState<Figure[]>([]);
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
 
-  const handleEnrichmentUpdate = (figureId: string, updatedData: Partial<Figure>) => {
-    setFigures(prevFigures =>
-      prevFigures.map(f => (f.id === figureId ? { ...f, ...updatedData } : f))
-    );
-  };
+  // This function is no longer needed here as the enrichment logic
+  // is now handled on the main admin dashboard page.
+  // const handleEnrichmentUpdate = (figureId: string, updatedData: Partial<Figure>) => {
+  //   setFigures(prevFigures =>
+  //     prevFigures.map(f => (f.id === figureId ? { ...f, ...updatedData } : f))
+  //   );
+  // };
   
   return (
     <Suspense>

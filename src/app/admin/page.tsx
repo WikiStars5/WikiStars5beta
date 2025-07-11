@@ -17,6 +17,7 @@ export default function AdminDashboardPage() {
   const [figures, setFigures] = useState<Figure[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -121,6 +122,7 @@ export default function AdminDashboardPage() {
            <BatchEnrichButton 
              figures={figures} 
              onUpdate={handleEnrichmentUpdate}
+             setEnrichingId={setEnrichingId}
            />
         </CardContent>
       </Card>
