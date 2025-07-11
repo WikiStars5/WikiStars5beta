@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, writeBatch, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure } from '@/lib/types';
 import { useRouter } from 'next/navigation';
@@ -37,7 +37,9 @@ export function BatchEnrichButton() {
 
     try {
       const figuresCollectionRef = collection(db, 'figures');
-      const querySnapshot = await getDocs(figuresCollectionRef);
+      // Se añade orderBy('name') para procesar en orden alfabético.
+      const figuresQuery = query(figuresCollectionRef, orderBy('name'));
+      const querySnapshot = await getDocs(figuresQuery);
       
       if (querySnapshot.empty) {
         toast({ title: "Proceso Terminado", description: "No se encontraron figuras para procesar." });
