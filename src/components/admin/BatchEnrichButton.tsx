@@ -16,125 +16,93 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { collection, doc, getDocs, writeBatch, query, orderBy } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure } from '@/lib/types';
-import { useRouter } from 'next/navigation';
 import { enrichAndSaveFigureData } from '@/app/actions/enrichFigureAction';
 
-export function BatchEnrichButton() {
+interface BatchEnrichButtonProps {
+  figures: Figure[];
+  onUpdate: (figureId: string, updatedData: Partial<Figure>) => void;
+  setEnrichingId: (id: string | null) => void;
+}
+
+export function BatchEnrichButton({ figures, onUpdate, setEnrichingId }: BatchEnrichButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
 
   const handleUpdate = async () => {
     setIsLoading(true);
     toast({
       title: "Iniciando Enriquecimiento Masivo...",
       description: "Este proceso puede tardar varios minutos. No cierres esta ventana.",
-      duration: 10000
+      duration: 5000
     });
 
-    try {
-      const figuresCollectionRef = collection(db, 'figures');
-      // Se añade orderBy('name') para procesar en orden alfabético.
-      const figuresQuery = query(figuresCollectionRef, orderBy('name'));
-      const querySnapshot = await getDocs(figuresQuery);
-      
-      if (querySnapshot.empty) {
-        toast({ title: "Proceso Terminado", description: "No se encontraron figuras para procesar." });
-        setIsLoading(false);
-        return;
+    let updatedCount = 0;
+    const figuresToProcess = [...figures].sort((a, b) => a.name.localeCompare(b.name));
+
+    for (const figure of figuresToProcess) {
+      if (figure.categories && figure.categories.length > 0) {
+        continue;
       }
 
-      const batch = writeBatch(db);
-      let updatedCount = 0;
-      const figuresToProcess = querySnapshot.docs.map(d => ({id: d.id, ...d.data()})) as (Figure & {id: string})[];
+      setEnrichingId(figure.id); // Set current enriching ID for live feedback
 
-      for (const figure of figuresToProcess) {
-        // Skip if categories array is not empty
-        if (figure.categories && figure.categories.length > 0) {
-          continue;
+      try {
+        const result = await enrichAndSaveFigureData({ name: figure.name, existingDescription: figure.description });
+        
+        if (result.success && result.data) {
+          const figureRef = doc(db, 'figures', figure.id);
+          const updatePayload = { 
+            description: result.data.description,
+            categories: result.data.categories,
+            occupation: result.data.occupation,
+            gender: result.data.gender,
+            nationality: result.data.nationality,
+          };
+          await updateDoc(figureRef, updatePayload);
+          onUpdate(figure.id, updatePayload); // Update parent component state
+          updatedCount++;
+        } else {
+           console.warn(`Could not enrich data for ${figure.name} (ID: ${figure.id}). Error: ${result.error}`);
         }
-
-        try {
-          const result = await enrichAndSaveFigureData({ name: figure.name, existingDescription: figure.description });
-          
-          if (result.success && result.data) {
-            const figureRef = doc(db, 'figures', figure.id);
-            batch.update(figureRef, { 
-              description: result.data.description,
-              categories: result.data.categories,
-              occupation: result.data.occupation,
-              gender: result.data.gender,
-              nationality: result.data.nationality,
-            });
-            updatedCount++;
-          } else {
-             console.warn(`Could not enrich data for ${figure.name} (ID: ${figure.id}). Error: ${result.error}`);
-          }
-        } catch (e) {
-            console.warn(`Could not enrich data for ${figure.name} (ID: ${figure.id}). Skipping. Error:`, e);
-            // Continue with the next figure
-        }
+      } catch (e) {
+          console.warn(`Could not enrich data for ${figure.name} (ID: ${figure.id}). Skipping. Error:`, e);
+      } finally {
+        setEnrichingId(null); // Clear enriching ID
       }
-
-
-      if (updatedCount > 0) {
-        await batch.commit();
-        toast({
-          title: "¡Proceso Completado!",
-          description: `Se enriquecieron ${updatedCount} perfiles con nuevas categorías y datos. La página se actualizará.`,
-        });
-        router.refresh(); 
-      } else {
-        toast({
-          title: "Proceso Terminado",
-          description: "No se encontraron perfiles que necesitaran enriquecimiento (todos ya tenían categorías).",
-        });
-      }
-    } catch (error: any) {
-      console.error("Failed to run batch enrichment:", error);
-      let errorMessage = "No se pudo completar la operación masiva.";
-      if (error.code === 'permission-denied') {
-        errorMessage = "Error de permisos. Asegúrate de que las reglas de Firestore permiten escribir al administrador.";
-      } else {
-        errorMessage = `Error: ${error.message}`;
-      }
-      toast({
-        title: "Error Inesperado",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
+    setEnrichingId(null);
+    toast({
+      title: "¡Proceso Completado!",
+      description: `Se enriquecieron ${updatedCount} perfiles con nuevas categorías y datos.`,
+    });
   };
 
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="outline">
-            <Sparkles className="mr-2 h-4 w-4" />
-            Enriquecer Perfiles con IA
+        <Button variant="outline" disabled={isLoading}>
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            {isLoading ? 'Enriqueciendo...' : 'Enriquecer Perfiles con IA'}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>¿Confirmar Enriquecimiento Masivo?</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta acción escaneará todos los perfiles en la base de datos y usará la IA para añadir/actualizar la descripción, categorías, ocupación y más.
+            Esta acción escaneará los perfiles en orden alfabético y usará la IA para añadir/actualizar la descripción, categorías, ocupación y más.
             <br/><br/>
-            El proceso se saltará los perfiles que ya tengan categorías asignadas para evitar sobrescribir datos. Esta operación puede tardar varios minutos y no se puede deshacer. ¿Deseas continuar?
+            El proceso se saltará los perfiles que ya tengan categorías asignadas. Esta operación puede tardar varios minutos y no se puede deshacer. ¿Deseas continuar?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={handleUpdate} disabled={isLoading}>
-            {isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            {isLoading ? 'Procesando...' : 'Sí, Enriquecer Todos'}
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={handleUpdate}>
+            Sí, Enriquecer
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

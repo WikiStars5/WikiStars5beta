@@ -1,3 +1,4 @@
+
 "use client"; // Convert to client component
 
 import { useState, useEffect } from "react";
@@ -36,6 +37,12 @@ export default function AdminDashboardPage() {
 
     fetchData();
   }, []);
+  
+  const handleEnrichmentUpdate = (figureId: string, updatedData: Partial<Figure>) => {
+      setFigures(prevFigures =>
+          prevFigures.map(f => (f.id === figureId ? { ...f, ...updatedData } : f))
+      );
+  };
 
   const totalFigures = figures.length;
 
@@ -111,7 +118,10 @@ export default function AdminDashboardPage() {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
            <BatchUpdateImagesButton />
-           <BatchEnrichButton />
+           <BatchEnrichButton 
+             figures={figures} 
+             onUpdate={handleEnrichmentUpdate}
+           />
         </CardContent>
       </Card>
     </div>

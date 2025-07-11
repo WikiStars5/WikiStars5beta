@@ -20,12 +20,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
 
-function AdminFiguresPageComponent() {
+function AdminFiguresPageComponent({ enrichingId, setFigures }: { enrichingId: string | null, setFigures: React.Dispatch<React.SetStateAction<Figure[]>> }) {
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [figures, setFigures] = useState<Figure[]>([]);
+  const [localFigures, setLocalFigures] = useState<Figure[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +46,8 @@ function AdminFiguresPageComponent() {
           startAfter: startAfter ?? undefined,
           endBefore: endBefore ?? undefined,
         });
-        setFigures(result.figures);
+        setLocalFigures(result.figures);
+        setFigures(result.figures); // Update parent state
         setHasPrevPage(result.hasPrevPage);
         setHasNextPage(result.hasNextPage);
         setStartCursor(result.startCursor);
@@ -64,24 +65,25 @@ function AdminFiguresPageComponent() {
     };
 
     fetchFigures();
-  }, [startAfter, endBefore]);
+  }, [startAfter, endBefore, setFigures]);
 
   const filteredFigures = useMemo(() => {
     if (!searchTerm) {
-      return figures;
+      return localFigures;
     }
-    return figures.filter((figure) =>
+    return localFigures.filter((figure) =>
       figure.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [figures, searchTerm]);
+  }, [localFigures, searchTerm]);
 
   const handleToggleFeatured = async (figureId: string) => {
-    const originalFigures = [...figures];
-    setFigures(prevFigures =>
+    const originalFigures = [...localFigures];
+    const updateFunc = (prevFigures: Figure[]) =>
       prevFigures.map(f =>
         f.id === figureId ? { ...f, isFeatured: !(f.isFeatured || false) } : f
-      )
-    );
+      );
+    setLocalFigures(updateFunc);
+    setFigures(updateFunc); // Update parent state
 
     const result = await toggleFigureFeaturedStatus(figureId);
 
@@ -91,7 +93,8 @@ function AdminFiguresPageComponent() {
         description: result.message,
       });
     } else {
-      setFigures(originalFigures);
+      setLocalFigures(originalFigures);
+      setFigures(originalFigures); // Revert parent state
       toast({
         title: "Error",
         description: result.message || "No se pudo actualizar el estado.",
@@ -175,7 +178,7 @@ function AdminFiguresPageComponent() {
               </TableHeader>
               <TableBody>
                 {filteredFigures.map((figure) => (
-                  <TableRow key={figure.id}>
+                  <TableRow key={figure.id} className={enrichingId === figure.id ? 'bg-primary/10' : ''}>
                     <TableCell className="p-3">
                       <AdminFigureImage
                         figure={{
@@ -186,11 +189,12 @@ function AdminFiguresPageComponent() {
                     </TableCell>
                     <TableCell className="font-medium p-3">{figure.name}</TableCell>
                     <TableCell className="p-3 max-w-xs">
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1 items-center">
+                        {enrichingId === figure.id && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                         {figure.categories && figure.categories.length > 0 ? (
                           figure.categories.map(cat => <Badge key={cat} variant="secondary" className="text-xs">{cat}</Badge>)
                         ) : (
-                          <span className="text-xs text-muted-foreground">Vacío</span>
+                          <span className="text-xs text-muted-foreground">{enrichingId === figure.id ? 'Analizando...' : 'Vacío'}</span>
                         )}
                       </div>
                     </TableCell>
@@ -256,11 +260,21 @@ function AdminFiguresPageComponent() {
   );
 }
 
-// Wrap the component that uses useSearchParams in a Suspense boundary
+// This component now manages the state that needs to be shared
+// between the dashboard and the figures table.
 export default function AdminFiguresPageClient() {
-    return (
-      <Suspense>
-        <AdminFiguresPageComponent />
-      </Suspense>
-    )
+  const [figures, setFigures] = useState<Figure[]>([]);
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
+
+  const handleEnrichmentUpdate = (figureId: string, updatedData: Partial<Figure>) => {
+    setFigures(prevFigures =>
+      prevFigures.map(f => (f.id === figureId ? { ...f, ...updatedData } : f))
+    );
+  };
+  
+  return (
+    <Suspense>
+      <AdminFiguresPageComponent enrichingId={enrichingId} setFigures={setFigures}/>
+    </Suspense>
+  );
 }
