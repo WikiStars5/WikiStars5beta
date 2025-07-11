@@ -40,9 +40,9 @@ export function RatingSummaryDisplay({ starRatingCounts, figureName }: RatingSum
         {totalVotes > 0 && (
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
             <div className="flex flex-col items-center sm:items-start">
-              <p className="text-5xl font-bold text-primary">{averageRating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</p>
+              <p className="text-5xl font-bold text-primary">{averageRating.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</p>
               <StarRating rating={averageRating} size={24} readOnly />
-              <p className="text-sm text-muted-foreground mt-1">{totalVotes} {totalVotes === 1 ? 'calificación' : 'calificaciones'}</p>
+              <p className="text-sm text-muted-foreground mt-1">{totalVotes.toLocaleString('es-ES')} {totalVotes === 1 ? 'calificación' : 'calificaciones'}</p>
             </div>
 
             <div className="w-full flex-1 space-y-2">
@@ -56,7 +56,7 @@ export function RatingSummaryDisplay({ starRatingCounts, figureName }: RatingSum
                       <Star className="h-3 w-3 text-yellow-400" />
                     </div>
                     <Progress value={percentage} className="w-full h-2" aria-label={`${percentage.toFixed(0)}% para ${level} estrellas`} />
-                    <span className="text-xs text-muted-foreground w-8 text-right">{countForLevel}</span>
+                    <span className="text-xs text-muted-foreground w-16 text-right">{countForLevel.toLocaleString('es-ES')}</span>
                   </div>
                 );
               })}
