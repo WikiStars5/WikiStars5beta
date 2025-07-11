@@ -43,12 +43,11 @@ export function BatchEnrichButton({ figures, onUpdate, setEnrichingId }: BatchEn
     const figuresToProcess = [...figures].sort((a, b) => a.name.localeCompare(b.name));
 
     for (const figure of figuresToProcess) {
-      // Corrected logic: only process if categories are missing or the array is empty.
-      if (figure.categories && figure.categories.length > 0) {
+      if (Array.isArray(figure.categories) && figure.categories.length > 0) {
         continue;
       }
 
-      setEnrichingId(figure.id); // Set current enriching ID for live feedback
+      setEnrichingId(figure.id); 
 
       try {
         const result = await enrichAndSaveFigureData({ name: figure.name, existingDescription: figure.description });
@@ -59,7 +58,7 @@ export function BatchEnrichButton({ figures, onUpdate, setEnrichingId }: BatchEn
             categories: result.data.categories,
           };
           await updateDoc(figureRef, updatePayload);
-          onUpdate(figure.id, updatePayload); // Update parent component state
+          onUpdate(figure.id, updatePayload);
           updatedCount++;
         } else {
            console.warn(`Could not enrich data for ${figure.name} (ID: ${figure.id}). Error: ${result.error}`);
@@ -67,7 +66,7 @@ export function BatchEnrichButton({ figures, onUpdate, setEnrichingId }: BatchEn
       } catch (e) {
           console.warn(`Could not enrich data for ${figure.name} (ID: ${figure.id}). Skipping. Error:`, e);
       } finally {
-        setEnrichingId(null); // Clear enriching ID
+        setEnrichingId(null); 
       }
     }
 

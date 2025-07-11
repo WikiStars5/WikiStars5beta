@@ -86,14 +86,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       const result = await enrichAndSaveFigureData({ name, existingDescription: description });
       
       if (result.success && result.data) {
-        setDescription(result.data.description);
         setCategories(result.data.categories);
-        setOccupation(result.data.occupation);
-        setGender(result.data.gender);
-        setNationality(result.data.nationality);
         toast({
-          title: "¡Información Enriquecida!",
-          description: "La IA ha rellenado los campos. Revisa y guarda los cambios.",
+          title: "¡Categorías Generadas!",
+          description: "La IA ha rellenado las categorías. Revisa y guarda los cambios.",
         });
       } else {
         throw new Error(result.error || "An unknown error occurred");
@@ -197,7 +193,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         nameLower: name.trim().toLowerCase(),
         description: description.trim() || initialData?.description || "", 
         photoUrl: finalPhotoUrlToSave,
-        categories: categories || [],
+        categories: categories.filter(cat => cat.trim() !== '') || [], // Ensure it's always an array
         nationality: nationality.trim(),
         occupation: occupation.trim(),
         gender: gender.trim(),
@@ -363,7 +359,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           disabled={isEnriching || isSaving}
         >
           {isEnriching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-          {isEnriching ? 'Analizando...' : 'Autocompletar con IA'}
+          {isEnriching ? 'Analizando...' : 'Generar Categorías con IA'}
         </Button>
         <Button type="submit" className="flex-grow" disabled={isSaving || isEnriching}>
           {isSaving ? 'Guardando...' : initialData ? 'Actualizar Figura' : 'Crear Figura'}
