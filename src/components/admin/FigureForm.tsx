@@ -1,9 +1,4 @@
 
-
-// === src/components/admin/FigureForm.tsx ===
-// Este componente ha sido modificado para incluir la lógica de subida de archivos a Firebase Storage
-// y con depuración adicional para el proceso de subida.
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -77,8 +72,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
   const handleEnrich = async () => {
     toast({
-      title: "Función de IA no disponible",
-      description: "La funcionalidad para autocompletar con IA está temporalmente desactivada.",
+      title: "Función no disponible",
+      description: "La funcionalidad de IA para enriquecimiento está temporalmente desactivada.",
       variant: "destructive"
     });
   };

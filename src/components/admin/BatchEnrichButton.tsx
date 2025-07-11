@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState } from 'react';
@@ -28,13 +27,11 @@ export function BatchEnrichButton() {
   const router = useRouter();
 
   const handleUpdate = async () => {
-    setIsLoading(true);
     toast({
       title: "Función no disponible",
       description: "La funcionalidad de IA para enriquecimiento masivo está temporalmente desactivada.",
       variant: "destructive"
     });
-    setIsLoading(false);
   };
 
   return (
