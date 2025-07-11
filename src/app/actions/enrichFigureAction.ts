@@ -12,11 +12,7 @@ interface EnrichFigureInfoInput {
 }
 
 interface EnrichFigureInfoOutput {
-  description: string;
   categories: string[];
-  occupation: string;
-  gender: string;
-  nationality: string;
 }
 
 // This server action is now a wrapper that calls the Firebase Function.

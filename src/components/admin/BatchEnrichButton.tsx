@@ -55,11 +55,7 @@ export function BatchEnrichButton({ figures, onUpdate, setEnrichingId }: BatchEn
         if (result.success && result.data) {
           const figureRef = doc(db, 'figures', figure.id);
           const updatePayload = { 
-            description: result.data.description,
             categories: result.data.categories,
-            occupation: result.data.occupation,
-            gender: result.data.gender,
-            nationality: result.data.nationality,
           };
           await updateDoc(figureRef, updatePayload);
           onUpdate(figure.id, updatePayload); // Update parent component state
@@ -78,7 +74,7 @@ export function BatchEnrichButton({ figures, onUpdate, setEnrichingId }: BatchEn
     setEnrichingId(null);
     toast({
       title: "¡Proceso Completado!",
-      description: `Se enriquecieron ${updatedCount} perfiles con nuevas categorías y datos.`,
+      description: `Se categorizaron ${updatedCount} perfiles.`,
     });
   };
 
@@ -94,7 +90,7 @@ export function BatchEnrichButton({ figures, onUpdate, setEnrichingId }: BatchEn
         <AlertDialogHeader>
           <AlertDialogTitle>¿Confirmar Enriquecimiento Masivo?</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta acción escaneará los perfiles en orden alfabético y usará la IA para añadir/actualizar la descripción, categorías, ocupación y más.
+            Esta acción escaneará los perfiles en orden alfabético y usará la IA para añadir categorías.
             <br/><br/>
             El proceso se saltará los perfiles que ya tengan categorías asignadas. Esta operación puede tardar varios minutos y no se puede deshacer. ¿Deseas continuar?
           </AlertDialogDescription>

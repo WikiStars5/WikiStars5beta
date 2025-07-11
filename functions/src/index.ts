@@ -25,15 +25,11 @@ setGlobalOptions({maxInstances: 10, region: "us-central1"});
 // Define the input and output schemas for our AI flow using Zod
 const EnrichFigureInfoInputSchema = z.object({
   name: z.string().describe("The full name of the public figure."),
-  existingDescription: z.string().optional().describe("An optional existing description to provide context or be refined."),
+  existingDescription: z.string().optional().describe("An optional existing description to provide context."),
 });
 
 const EnrichFigureInfoOutputSchema = z.object({
-  description: z.string().describe("A detailed and objective description of the public figure, suitable for a wiki. If an existing description was provided, refine and expand upon it. If not, generate a new one from scratch."),
   categories: z.array(z.string()).describe("An array of 3 to 5 relevant categories for the figure (e.g., 'Actor', 'Scientist', 'Historical Figure', 'Musician')."),
-  occupation: z.string().describe("The primary occupation of the figure (e.g., 'Physicist', 'Actor', 'Singer')."),
-  gender: z.string().describe("The gender of the figure (e.g., 'Masculino', 'Femenino')."),
-  nationality: z.string().describe("The nationality of the figure (e.g., 'Estadounidense', 'Alemán')."),
 });
 
 // Define the Genkit prompt
@@ -43,20 +39,16 @@ const enrichPrompt = genkit.definePrompt({
   output: {schema: EnrichFigureInfoOutputSchema},
   prompt: `
       You are a biographical data enrichment specialist for a wiki.
-      Your task is to provide structured data about a public figure based on their name.
-      Please provide the information in Spanish.
+      Your task is to provide a list of relevant categories for a public figure based on their name.
+      Provide the information in Spanish.
 
       Figure Name: {{{name}}}
       {{#if existingDescription}}
-      Existing Description (for context/refinement): {{{existingDescription}}}
+      Context (Existing Description): {{{existingDescription}}}
       {{/if}}
 
-      Generate the following information:
-      1.  **description**: A comprehensive, neutral, and encyclopedic description of the person. If an existing description is provided, enhance it; otherwise, create a new one.
-      2.  **categories**: A list of 3-5 relevant categories.
-      3.  **occupation**: Their main profession.
-      4.  **gender**: Their gender.
-      5.  **nationality**: Their nationality.
+      Generate only the following information:
+      1.  **categories**: A list of 3-5 relevant categories for the person.
     `,
   config: {
     temperature: 0.3, // Lower temperature for more factual, less creative output
@@ -97,7 +89,7 @@ export const enrichFigureInfo = onCall(
     if (!validatedInput.success) {
       throw new HttpsError(
         "invalid-argument",
-        "The function must be called with a valid 'name' and optional 'existingDescription'."
+        "The function must be called with a valid 'name'."
       );
     }
     
