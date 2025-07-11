@@ -47,23 +47,30 @@ export function SignupForm() {
     setIsLoading(true);
     
     try {
-      // 1. Create user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // 2. Update the Auth user's profile (this is separate from Firestore)
-      await updateProfile(user, {
-        displayName: values.displayName,
+      await updateProfile(user, { displayName: values.displayName });
+      
+      // We must get the ID token *after* creating the user and before creating the session
+      const idToken = await user.getIdToken(true); // `true` forces a refresh
+
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken, additionalData: { countryCode: values.countryCode, gender: values.gender } }),
       });
 
-      // 3. User profile document in Firestore is no longer created here.
-      // It will be created on first login or when visiting the profile page to avoid bugs.
+      if (!response.ok) {
+        throw new Error('Failed to create session during signup.');
+      }
       
       toast({
         title: "¡Cuenta Creada!",
         description: `¡Bienvenido a WikiStars5, ${user.displayName || user.email}!`,
       });
-      router.push('/home'); 
+      router.push('/home');
+      router.refresh();
 
     } catch (error: any) {
       console.error("SignupForm onSubmit error:", error);

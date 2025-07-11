@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User as FirebaseUser, onAuthStateChanged, signOut as firebaseSignOut, signInAnonymously } from 'firebase/auth';
+import { User as FirebaseUser, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, Loader2, UserCircle, Ghost } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
@@ -32,27 +32,27 @@ export function UserNav() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
-        setIsLoading(false);
       } else {
-        // No user, try to sign in anonymously
-        try {
-          await signInAnonymously(auth);
-          // onAuthStateChanged will be called again with the anonymous user
-        } catch (error) {
-          console.error("Error signing in anonymously: ", error);
-          setCurrentUser(null); // Explicitly set to null if anonymous sign-in fails
-          setIsLoading(false);
-        }
+        setCurrentUser(null);
       }
+      setIsLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
   const handleLogout = async () => {
     try {
+      // Sign out from Firebase Auth on the client
       await firebaseSignOut(auth);
+      
+      // Call the API route to clear the session cookie
+      const response = await fetch('/api/auth/session', { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error("Failed to clear session.");
+      }
+
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
-      router.push('/login'); // Or home, consider where to redirect
+      router.push('/home');
       router.refresh(); 
     } catch (error) {
       console.error("Error logging out: ", error);
@@ -68,7 +68,9 @@ export function UserNav() {
     );
   }
 
-  if (currentUser && !currentUser.isAnonymous) {
+  // The UserNav should now reflect the signed-in user state.
+  // We no longer need the anonymous user concept on the client-side UI logic.
+  if (currentUser) {
     const isAdmin = currentUser.uid === ADMIN_UID;
     const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || "Usuario";
     const photoURL = currentUser.photoURL;
@@ -122,33 +124,16 @@ export function UserNav() {
     );
   }
 
-  // For anonymous users or no user (fallback if anonymous sign-in fails)
+  // Fallback for when there is no user logged in.
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="h-9 w-9">
-          {currentUser && currentUser.isAnonymous ? (
-            <Ghost className="h-6 w-6 text-foreground/70" /> 
-          ) : (
-            <UserCircle className="h-6 w-6 text-foreground/70" />
-          )}
+          <UserCircle className="h-6 w-6 text-foreground/70" />
           <span className="sr-only">Abrir menú de usuario</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-48" align="end" forceMount>
-        {currentUser && currentUser.isAnonymous && (
-          <>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">Modo Invitado</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  Interactúa y luego crea una cuenta.
-                </p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-          </>
-        )}
         <Link href="/login">
           <DropdownMenuItem>
             <LogIn className="mr-2 h-4 w-4" />

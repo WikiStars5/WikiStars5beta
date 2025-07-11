@@ -1,3 +1,4 @@
+
 "use client";
 
 import { AuthFormCard } from "@/components/auth/AuthFormCard";
@@ -18,18 +19,26 @@ export default function SignupPage() {
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      // 1. Sign in with Google popup
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+      const idToken = await user.getIdToken();
 
-      // 2. The user's profile document will be created on their first login or when they visit their profile page.
-      // The call to create the document here has been removed to fix a bug.
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create session via Google Sign-In.');
+      }
 
       toast({
         title: "¡Cuenta Creada y Sesión Iniciada!",
         description: `¡Bienvenido a WikiStars5, ${user.displayName || user.email}!`,
       });
       router.push('/home'); 
+      router.refresh();
 
     } catch (error: any) {
       console.error("Google sign-up/sign-in error:", error, "Code:", error.code, "Message:", error.message);

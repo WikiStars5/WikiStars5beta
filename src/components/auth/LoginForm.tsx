@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation'; 
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { ensureUserProfileExists } from '@/lib/userData';
 import { useToast } from "@/hooks/use-toast";
 
 import { Label } from '@/components/ui/label';
@@ -30,23 +29,26 @@ export function LoginForm() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      const idToken = await user.getIdToken();
+
+      // Create a session cookie by calling our new API route
+      const response = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+      });
+
+      if (!response.ok) {
+          throw new Error('Failed to create session.');
+      }
       
       toast({
         title: "Inicio de Sesión Exitoso",
         description: `¡Bienvenido de nuevo, ${user.displayName || user.email}!`,
       });
-      router.push('/home'); 
+      router.push('/home');
+      router.refresh(); // Refresh to apply server-side logic with the new cookie
 
-      if (user) {
-        try {
-          await ensureUserProfileExists(user);
-        } catch (profileError: any) {
-          console.error(
-            "LoginForm: Error during ensureUserProfileExists after successful Firebase Auth login:",
-            profileError.message
-          );
-        }
-      }
     } catch (authError: any) {
       console.error(
         "LoginForm: Firebase Authentication error:",
