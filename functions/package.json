@@ -1,3 +1,4 @@
+
 {
   "name": "functions",
   "scripts": {
@@ -15,8 +16,11 @@
   },
   "main": "lib/index.js",
   "dependencies": {
+    "@genkit/google-ai": "^0.1.5",
     "firebase-admin": "^12.0.0",
-    "firebase-functions": "^5.0.1"
+    "firebase-functions": "^5.0.1",
+    "genkit": "^0.6.2",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.62.0",

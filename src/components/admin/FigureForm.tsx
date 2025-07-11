@@ -15,6 +15,7 @@ import type { Figure, EmotionKey, AttitudeKey, StarValueAsString } from '@/lib/t
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { enrichAndSaveFigureData } from '@/app/actions/enrichFigureAction';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -71,11 +72,42 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [success, setSuccess] = useState<string | null>(null);
 
   const handleEnrich = async () => {
-    toast({
-      title: "Función no disponible",
-      description: "La funcionalidad de IA para enriquecimiento está temporalmente desactivada.",
-      variant: "destructive"
-    });
+    if (!name) {
+      toast({
+        title: "Nombre Requerido",
+        description: "Por favor, introduce un nombre para la figura antes de usar la IA.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsEnriching(true);
+    setError(null);
+    try {
+      const result = await enrichAndSaveFigureData({ name, existingDescription: description });
+      
+      if (result.success && result.data) {
+        setDescription(result.data.description);
+        setCategories(result.data.categories);
+        setOccupation(result.data.occupation);
+        setGender(result.data.gender);
+        setNationality(result.data.nationality);
+        toast({
+          title: "¡Información Enriquecida!",
+          description: "La IA ha rellenado los campos. Revisa y guarda los cambios.",
+        });
+      } else {
+        throw new Error(result.error || "An unknown error occurred");
+      }
+    } catch (e: any) {
+      console.error("Error enriching figure data:", e);
+      let errorMessage = "No se pudo obtener información de la IA. Inténtalo de nuevo más tarde.";
+      if (e.message) {
+          errorMessage = e.message;
+      }
+      setError(errorMessage);
+    } finally {
+      setIsEnriching(false);
+    }
   };
 
 
