@@ -14,8 +14,6 @@ import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey, StarValueAsString } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
-import { enrichAndSaveFigureData } from '@/app/actions/enrichFigureAction';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -35,11 +33,9 @@ const defaultStarRatingCounts: Record<StarValueAsString, number> = {
 
 const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
-  const { toast } = useToast();
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl || '');
-  const [categories, setCategories] = useState(initialData?.categories || []);
   
   // Basic info
   const [occupation, setOccupation] = useState(initialData?.occupation || '');
@@ -67,44 +63,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [starRatingCounts, setStarRatingCounts] = useState(initialData?.starRatingCounts || { ...defaultStarRatingCounts });
   
   const [isSaving, setIsSaving] = useState(false);
-  const [isEnriching, setIsEnriching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  const handleEnrich = async () => {
-    if (!name) {
-      toast({
-        title: "Nombre Requerido",
-        description: "Por favor, introduce un nombre para la figura antes de usar la IA.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setIsEnriching(true);
-    setError(null);
-    try {
-      const result = await enrichAndSaveFigureData({ name, existingDescription: description });
-      
-      if (result.success && result.data) {
-        setCategories(result.data.categories);
-        toast({
-          title: "¡Categorías Generadas!",
-          description: "La IA ha rellenado las categorías. Revisa y guarda los cambios.",
-        });
-      } else {
-        throw new Error(result.error || "An unknown error occurred");
-      }
-    } catch (e: any) {
-      console.error("Error enriching figure data:", e);
-      let errorMessage = "No se pudo obtener información de la IA. Inténtalo de nuevo más tarde.";
-      if (e.message) {
-          errorMessage = e.message;
-      }
-      setError(errorMessage);
-    } finally {
-      setIsEnriching(false);
-    }
-  };
 
 
   useEffect(() => {
@@ -112,7 +72,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setName(initialData.name);
       setDescription(initialData.description || ''); 
       setPhotoUrl(initialData.photoUrl || '');
-      setCategories(initialData.categories || []);
       setOccupation(initialData.occupation || '');
       setGender(initialData.gender || '');
       setNationality(initialData.nationality || '');
@@ -140,7 +99,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setName('');
       setDescription('');
       setPhotoUrl('');
-      setCategories([]);
       setOccupation('');
       setGender('');
       setNationality('');
@@ -193,7 +151,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         nameLower: name.trim().toLowerCase(),
         description: description.trim() || initialData?.description || "", 
         photoUrl: finalPhotoUrlToSave,
-        categories: categories.filter(cat => cat.trim() !== '') || [], // Ensure it's always an array
         nationality: nationality.trim(),
         occupation: occupation.trim(),
         gender: gender.trim(),
@@ -291,23 +248,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Escribe una breve descripción o usa la IA para autocompletar."
+          placeholder="Escribe una breve descripción."
           rows={4}
         />
-      </div>
-
-      <div>
-          <Label htmlFor="categories">Categorías (separadas por comas)</Label>
-          <Input
-            id="categories"
-            type="text"
-            value={categories.join(', ')}
-            onChange={(e) => setCategories(e.target.value.split(',').map(c => c.trim()))}
-            placeholder="Ej: Futbolista, Deportista, Celebridad"
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Usa la IA para generar categorías o ingrésalas manualmente.
-          </p>
       </div>
       
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Información Detallada</h3>
@@ -352,16 +295,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 mt-6">
-        <Button 
-          type="button" 
-          variant="outline"
-          onClick={handleEnrich} 
-          disabled={isEnriching || isSaving}
-        >
-          {isEnriching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-          {isEnriching ? 'Analizando...' : 'Generar Categorías con IA'}
-        </Button>
-        <Button type="submit" className="flex-grow" disabled={isSaving || isEnriching}>
+        <Button type="submit" className="flex-grow" disabled={isSaving}>
+          {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           {isSaving ? 'Guardando...' : initialData ? 'Actualizar Figura' : 'Crear Figura'}
         </Button>
       </div>

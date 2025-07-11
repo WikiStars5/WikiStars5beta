@@ -11,13 +11,11 @@ import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import type { Figure } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
-import { BatchEnrichButton } from "@/components/admin/BatchEnrichButton";
 
 export default function AdminDashboardPage() {
   const [figures, setFigures] = useState<Figure[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [enrichingId, setEnrichingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,12 +37,6 @@ export default function AdminDashboardPage() {
     fetchData();
   }, []);
   
-  const handleEnrichmentUpdate = (figureId: string, updatedData: Partial<Figure>) => {
-      setFigures(prevFigures =>
-          prevFigures.map(f => (f.id === figureId ? { ...f, ...updatedData } : f))
-      );
-  };
-
   const totalFigures = figures.length;
 
   return (
@@ -119,11 +111,6 @@ export default function AdminDashboardPage() {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
            <BatchUpdateImagesButton />
-           <BatchEnrichButton 
-             figures={figures} 
-             onUpdate={handleEnrichmentUpdate}
-             setEnrichingId={setEnrichingId}
-           />
         </CardContent>
       </Card>
     </div>

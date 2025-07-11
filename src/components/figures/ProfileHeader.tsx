@@ -59,15 +59,7 @@ export function ProfileHeader({
                 <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
               </div>
             </div>
-            {figure.categories && figure.categories.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2 justify-center md:justify-start">
-                {figure.categories.map((category) => (
-                  <Badge key={category} variant="secondary" className="text-xs">
-                    {category}
-                  </Badge>
-                ))}
-              </div>
-            )}
+            
           </div>
         </div>
     </div>

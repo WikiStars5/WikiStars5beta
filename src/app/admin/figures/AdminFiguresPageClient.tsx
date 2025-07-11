@@ -20,7 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
 
-function AdminFiguresPageComponent({ enrichingId, setFigures }: { enrichingId: string | null, setFigures: React.Dispatch<React.SetStateAction<Figure[]>> }) {
+function AdminFiguresPageComponent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
@@ -47,7 +47,6 @@ function AdminFiguresPageComponent({ enrichingId, setFigures }: { enrichingId: s
           endBefore: endBefore ?? undefined,
         });
         setLocalFigures(result.figures);
-        setFigures(result.figures); // Update parent state
         setHasPrevPage(result.hasPrevPage);
         setHasNextPage(result.hasNextPage);
         setStartCursor(result.startCursor);
@@ -65,7 +64,7 @@ function AdminFiguresPageComponent({ enrichingId, setFigures }: { enrichingId: s
     };
 
     fetchFigures();
-  }, [startAfter, endBefore, setFigures]);
+  }, [startAfter, endBefore]);
 
   const filteredFigures = useMemo(() => {
     if (!searchTerm) {
@@ -83,7 +82,6 @@ function AdminFiguresPageComponent({ enrichingId, setFigures }: { enrichingId: s
         f.id === figureId ? { ...f, isFeatured: !(f.isFeatured || false) } : f
       );
     setLocalFigures(updateFunc);
-    setFigures(updateFunc); // Update parent state
 
     const result = await toggleFigureFeaturedStatus(figureId);
 
@@ -94,7 +92,6 @@ function AdminFiguresPageComponent({ enrichingId, setFigures }: { enrichingId: s
       });
     } else {
       setLocalFigures(originalFigures);
-      setFigures(originalFigures); // Revert parent state
       toast({
         title: "Error",
         description: result.message || "No se pudo actualizar el estado.",
@@ -170,7 +167,6 @@ function AdminFiguresPageComponent({ enrichingId, setFigures }: { enrichingId: s
                 <TableRow>
                   <TableHead className="w-[80px] p-3">Imagen</TableHead>
                   <TableHead className="p-3">Nombre</TableHead>
-                  <TableHead className="p-3">Categorías</TableHead>
                   <TableHead className="w-[130px] text-center p-3">Destacada</TableHead>
                   <TableHead className="w-[130px] text-center p-3">Comentarios</TableHead>
                   <TableHead className="text-right w-[100px] p-3">Acciones</TableHead>
@@ -178,7 +174,7 @@ function AdminFiguresPageComponent({ enrichingId, setFigures }: { enrichingId: s
               </TableHeader>
               <TableBody>
                 {filteredFigures.map((figure) => (
-                  <TableRow key={figure.id} className={enrichingId === figure.id ? 'bg-primary/10' : ''}>
+                  <TableRow key={figure.id}>
                     <TableCell className="p-3">
                       <AdminFigureImage
                         figure={{
@@ -188,16 +184,6 @@ function AdminFiguresPageComponent({ enrichingId, setFigures }: { enrichingId: s
                       />
                     </TableCell>
                     <TableCell className="font-medium p-3">{figure.name}</TableCell>
-                    <TableCell className="p-3 max-w-xs">
-                      <div className="flex flex-wrap gap-1 items-center">
-                        {enrichingId === figure.id && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                        {figure.categories && figure.categories.length > 0 ? (
-                          figure.categories.map(cat => <Badge key={cat} variant="secondary" className="text-xs">{cat}</Badge>)
-                        ) : (
-                          <span className="text-xs text-muted-foreground">{enrichingId === figure.id ? 'Analizando...' : 'Vacío'}</span>
-                        )}
-                      </div>
-                    </TableCell>
                     <TableCell className="text-center p-3">
                       <div className="flex items-center justify-center">
                         <Switch
@@ -263,20 +249,9 @@ function AdminFiguresPageComponent({ enrichingId, setFigures }: { enrichingId: s
 // This component now manages the state that needs to be shared
 // between the dashboard and the figures table.
 export default function AdminFiguresPageClient() {
-  const [figures, setFigures] = useState<Figure[]>([]);
-  const [enrichingId, setEnrichingId] = useState<string | null>(null);
-
-  // This function is no longer needed here as the enrichment logic
-  // is now handled on the main admin dashboard page.
-  // const handleEnrichmentUpdate = (figureId: string, updatedData: Partial<Figure>) => {
-  //   setFigures(prevFigures =>
-  //     prevFigures.map(f => (f.id === figureId ? { ...f, ...updatedData } : f))
-  //   );
-  // };
-  
   return (
     <Suspense>
-      <AdminFiguresPageComponent enrichingId={enrichingId} setFigures={setFigures}/>
+      <AdminFiguresPageComponent />
     </Suspense>
   );
 }
