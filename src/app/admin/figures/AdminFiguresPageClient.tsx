@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { toggleFigureFeaturedStatus } from "@/app/actions/adminActions";
 import { getAdminFiguresList } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
 
 function AdminFiguresPageComponent() {
@@ -166,7 +167,7 @@ function AdminFiguresPageComponent() {
                 <TableRow>
                   <TableHead className="w-[80px] p-3">Imagen</TableHead>
                   <TableHead className="p-3">Nombre</TableHead>
-                  <TableHead className="p-3 max-w-xs">Descripción</TableHead>
+                  <TableHead className="p-3">Categorías</TableHead>
                   <TableHead className="w-[130px] text-center p-3">Destacada</TableHead>
                   <TableHead className="w-[130px] text-center p-3">Comentarios</TableHead>
                   <TableHead className="text-right w-[100px] p-3">Acciones</TableHead>
@@ -184,7 +185,15 @@ function AdminFiguresPageComponent() {
                       />
                     </TableCell>
                     <TableCell className="font-medium p-3">{figure.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground truncate max-w-xs p-3">{figure.description}</TableCell>
+                    <TableCell className="p-3 max-w-xs">
+                      <div className="flex flex-wrap gap-1">
+                        {figure.categories && figure.categories.length > 0 ? (
+                          figure.categories.map(cat => <Badge key={cat} variant="secondary" className="text-xs">{cat}</Badge>)
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Vacío</span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-center p-3">
                       <div className="flex items-center justify-center">
                         <Switch

@@ -30,8 +30,9 @@ export function BatchEnrichButton() {
   const handleUpdate = async () => {
     setIsLoading(true);
     toast({
-      title: "Iniciando Enriquecimiento Masivo",
+      title: "Iniciando Enriquecimiento Masivo...",
       description: "Este proceso puede tardar varios minutos. No cierres esta ventana.",
+      duration: 10000
     });
 
     try {
@@ -39,7 +40,7 @@ export function BatchEnrichButton() {
       const querySnapshot = await getDocs(figuresCollectionRef);
       
       if (querySnapshot.empty) {
-        toast({ title: "Proceso Exitoso", description: "No se encontraron figuras para procesar." });
+        toast({ title: "Proceso Terminado", description: "No se encontraron figuras para procesar." });
         setIsLoading(false);
         return;
       }
@@ -49,7 +50,7 @@ export function BatchEnrichButton() {
       const figuresToProcess = querySnapshot.docs.map(d => ({id: d.id, ...d.data()})) as (Figure & {id: string})[];
 
       for (const figure of figuresToProcess) {
-        // Skip if categories already exist to avoid overwriting manual entries
+        // Skip if categories array is not empty
         if (figure.categories && figure.categories.length > 0) {
           continue;
         }
@@ -80,14 +81,14 @@ export function BatchEnrichButton() {
       if (updatedCount > 0) {
         await batch.commit();
         toast({
-          title: "Proceso Completado",
-          description: `Se enriquecieron ${updatedCount} perfiles con IA.`,
+          title: "¡Proceso Completado!",
+          description: `Se enriquecieron ${updatedCount} perfiles con nuevas categorías y datos. La página se actualizará.`,
         });
         router.refresh(); 
       } else {
         toast({
-          title: "Proceso Exitoso",
-          description: "No se encontraron perfiles que necesitaran enriquecimiento (todos tenían categorías).",
+          title: "Proceso Terminado",
+          description: "No se encontraron perfiles que necesitaran enriquecimiento (todos ya tenían categorías).",
         });
       }
     } catch (error: any) {
