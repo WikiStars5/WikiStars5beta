@@ -71,7 +71,7 @@ export const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot
 };
 
 export const ADMIN_FIGURES_PER_PAGE = 50;
-export const PUBLIC_FIGURES_PER_PAGE = 50;
+export const PUBLIC_FIGURES_PER_PAGE = 12;
 
 export async function getAdminFiguresList(options: {
   startAfter?: string;
@@ -126,6 +126,7 @@ export async function getAdminFiguresList(options: {
 export async function getPublicFiguresList(options: {
   startAfter?: string;
   endBefore?: string;
+  limit?: number;
 }): Promise<{
   figures: Figure[];
   hasPrevPage: boolean;
@@ -137,7 +138,7 @@ export async function getPublicFiguresList(options: {
   const figuresCollectionRef = collection(db, 'figures');
 
   const isPrev = !!endBefore;
-  const limitSize = PUBLIC_FIGURES_PER_PAGE;
+  const limitSize = options.limit || PUBLIC_FIGURES_PER_PAGE;
   const order = isPrev ? 'desc' : 'asc';
   const cursorId = isPrev ? endBefore : startAfter;
 
