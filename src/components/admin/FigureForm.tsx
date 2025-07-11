@@ -1,4 +1,5 @@
 
+
 // === src/components/admin/FigureForm.tsx ===
 // Este componente ha sido modificado para incluir la lógica de subida de archivos a Firebase Storage
 // y con depuración adicional para el proceso de subida.
@@ -18,7 +19,6 @@ import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey, StarValueAsString } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
-import { enrichFigureInfo } from '@/ai/flows/enrich-figure-info-flow';
 import { useToast } from '@/hooks/use-toast';
 
 interface FigureFormProps {
@@ -76,33 +76,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [success, setSuccess] = useState<string | null>(null);
 
   const handleEnrich = async () => {
-    if (!name.trim()) {
-      toast({
-        title: "Nombre Requerido",
-        description: "Por favor, introduce un nombre para la figura antes de autocompletar.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setIsEnriching(true);
-    setError(null);
-    try {
-      const result = await enrichFigureInfo({ name, description });
-      setDescription(result.description);
-      setOccupation(result.occupation);
-      setNationality(result.nationality);
-      setGender(result.gender);
-      setCategories(result.categories);
-      toast({
-        title: "¡Información Autocompletada!",
-        description: "Los campos han sido rellenados con la IA. Revisa y guarda los cambios.",
-      });
-    } catch (e: any) {
-      console.error("Error enriching data:", e);
-      setError("No se pudo autocompletar la información. " + e.message);
-    } finally {
-      setIsEnriching(false);
-    }
+    toast({
+      title: "Función de IA no disponible",
+      description: "La funcionalidad para autocompletar con IA está temporalmente desactivada.",
+      variant: "destructive"
+    });
   };
 
 
