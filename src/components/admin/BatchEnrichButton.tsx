@@ -43,6 +43,7 @@ export function BatchEnrichButton({ figures, onUpdate, setEnrichingId }: BatchEn
     const figuresToProcess = [...figures].sort((a, b) => a.name.localeCompare(b.name));
 
     for (const figure of figuresToProcess) {
+      // Corrected logic: only process if categories are missing or the array is empty.
       if (figure.categories && figure.categories.length > 0) {
         continue;
       }
