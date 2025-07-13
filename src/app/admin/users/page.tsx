@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { getAllUsersFromFirestore } from "@/lib/userData";
+import { getAllUsers } from "@/app/actions/userActions"; // Updated import
 import AdminUsersPageClient from "@/components/admin/AdminUsersPageClient";
 import type { UserProfile } from "@/lib/types";
 import { Loader2, ShieldCheck } from "lucide-react";
@@ -17,15 +17,19 @@ export default function AdminUsersPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const usersData = await getAllUsersFromFirestore();
-        setUsers(usersData);
+        const result = await getAllUsers(); // Updated function call
+        if (result.success && result.users) {
+          setUsers(result.users);
+        } else {
+          let errorMessage = result.error || "No se pudieron cargar los usuarios. Asegúrate de que las reglas de seguridad de Firestore permitan al administrador listar usuarios.";
+          if (errorMessage.toLowerCase().includes("permission")) {
+              errorMessage = "Error de permisos de Firestore. Revisa las reglas de seguridad para la colección 'registered_users' y asegúrate de que tu cuenta de administrador tenga permisos de 'list'.";
+          }
+          setError(errorMessage);
+        }
       } catch (err: any) {
         console.error("Failed to fetch users in AdminUsersPage:", err);
-        let errorMessage = "No se pudieron cargar los usuarios. Asegúrate de que las reglas de seguridad de Firestore permitan al administrador listar usuarios.";
-        if (err.message && String(err.message).toLowerCase().includes("permission")) {
-            errorMessage = "Error de permisos de Firestore. Revisa las reglas de seguridad para la colección 'registered_users' y asegúrate de que tu cuenta de administrador tenga permisos de 'list'.";
-        }
-        setError(errorMessage);
+        setError(err.message || "Un error inesperado ocurrió.");
       } finally {
         setIsLoading(false);
       }

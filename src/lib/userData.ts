@@ -12,34 +12,6 @@ const USER_COLLECTION = 'registered_users';
 
 const db = adminDb; // Use the admin instance of Firestore
 
-const convertTimestampToString = (timestamp: any): string | undefined => {
-  if (!timestamp) return undefined;
-  if (typeof timestamp.toDate === 'function') {
-    return timestamp.toDate().toISOString();
-  }
-  if (typeof timestamp === 'string') {
-    return timestamp;
-  }
-  return undefined;
-};
-
-const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
-  const createdAt = convertTimestampToString(data.createdAt) || new Date().toISOString();
-
-  return {
-    uid,
-    email: data.email || null,
-    username: data.username || '',
-    country: data.country || '',
-    countryCode: data.countryCode || '',
-    gender: data.gender || '', 
-    photoURL: data.photoURL || null,
-    role: data.role || 'user',
-    createdAt: createdAt,
-    lastLoginAt: convertTimestampToString(data.lastLoginAt),
-    fcmToken: data.fcmToken || undefined,
-  };
-};
 
 export async function ensureUserProfileExists(
   user: FirebaseUser, 
@@ -75,7 +47,8 @@ export async function ensureUserProfileExists(
 
       await userDocRef.update(updates);
       const updatedDocSnap = await userDocRef.get();
-      return mapDocToUserProfile(user.uid, updatedDocSnap.data()!);
+      // We are not returning a UserProfile here as it is not needed on the client for this flow.
+      // This function now just ensures the data exists.
     } else {
       const selectedCountry = additionalData?.countryCode ? COUNTRIES.find(c => c.code === additionalData.countryCode) : null;
       
@@ -93,58 +66,31 @@ export async function ensureUserProfileExists(
         fcmToken: '',
       };
       await userDocRef.set(newProfileData);
-      const createdDocSnap = await userDocRef.get();
-      return mapDocToUserProfile(user.uid, createdDocSnap.data()!);
     }
 
   } catch (error: any) {
     console.error(`[ensureUserProfileExists] Firestore error for UID ${user.uid}: Message: ${error.message}, Code: ${error.code}`, error);
     throw new Error(`Failed to create or update the user profile due to a server error.`);
   }
+
+  // The return value is not used in the final implementation, so we return a placeholder.
+  // The primary goal is to write data to Firestore.
+  const finalDoc = await userDocRef.get();
+  const convertTimestampToString = (timestamp: any): string => {
+      if (timestamp && typeof timestamp.toDate === 'function') {
+          return timestamp.toDate().toISOString();
+      }
+      return new Date().toISOString();
+  };
+  return {
+      uid: user.uid,
+      email: finalDoc.data()?.email || null,
+      username: finalDoc.data()?.username || '',
+      role: 'user',
+      createdAt: convertTimestampToString(finalDoc.data()?.createdAt),
+  };
 }
 
-
-export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
-  try {
-    const usersCollectionRef = db.collection(USER_COLLECTION);
-    const q = usersCollectionRef;
-    const querySnapshot = await q.get();
-
-    const users: UserProfile[] = [];
-    if (querySnapshot.empty) {
-      console.log("No users found in Firestore.");
-    } else {
-      querySnapshot.forEach((docSnap) => {
-        users.push(mapDocToUserProfile(docSnap.id, docSnap.data()));
-      });
-    }
-    users.sort((a, b) => a.username.localeCompare(b.username));
-    return users;
-  } catch (error: any) {
-    console.error("Error fetching all users from Firestore:", error);
-    if (error.code === 'permission-denied' || String(error.message).toLowerCase().includes("permission")) {
-        throw new Error(
-`**ACCIÓN MANUAL REQUERIDA: Permisos de Firestore**
-
-Este no es un error en el código de la aplicación. Es un problema de configuración en tu proyecto de Firebase que debes solucionar manualmente.
-
-La aplicación no tiene permiso para leer la lista de usuarios.
-
-**Sigue estos pasos EXACTAMENTE para solucionarlo:**
-
-1.  **Abre el archivo \`src/lib/firebase.ts\` en el editor de código.**
-2.  **Copia TODO el bloque de código de reglas que empieza con \`rules_version = '2';\`**
-3.  **Ve a la página web de la Consola de Firebase en tu navegador.** (https://console.firebase.google.com/)
-4.  Selecciona tu proyecto: **wikistars5-2yctr**.
-5.  En el menú de la izquierda, ve a **Compilación -> Firestore Database**.
-6.  Haz clic en la pestaña **"Reglas"** en la parte superior.
-7.  **BORRA TODO** el texto que está en el editor de reglas.
-8.  **PEGA** las reglas que copiaste en el paso 2.
-9.  Haz clic en el botón azul **"Publicar"**.
-
-El panel de administración no funcionará y seguirá mostrando este error hasta que completes estos pasos.`
-        );
-    }
-    throw error;
-  }
-}
+// The getAllUsersFromFirestore function has been moved to a server action in `src/app/actions/userActions.ts`
+// to resolve build issues with 'firebase-admin'. This file now only contains the `ensureUserProfileExists`
+// function which is used during authentication flows.
