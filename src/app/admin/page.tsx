@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Users, ListOrdered, PlusCircle, AlertTriangle, ImageUp, Loader2 } from "lucide-react";
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
-// La importación de getAllUsersFromFirestore y UserProfile se ha eliminado para evitar el error de permisos.
+// La importación de getAllUsers se ha eliminado para resolver el error de compilación.
 import type { Figure } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
@@ -22,13 +22,12 @@ export default function AdminDashboardPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        // Ahora solo obtenemos los datos de las figuras, ya que la obtención de usuarios se ha desactivado.
+        // Ahora solo obtenemos los datos de las figuras.
         const figuresData = await getAllFiguresFromFirestore();
         setFigures(figuresData);
       } catch (error: any) {
         console.error("Error fetching admin dashboard data:", error);
-        // Este error ahora solo se activará si falla la obtención de figuras.
-        setFetchError(error.message || 'Ocurrió un error inesperado al cargar los datos.');
+        setFetchError(error.message || 'Ocurrió un error inesperado al cargar los datos de las figuras.');
       } finally {
         setIsLoading(false);
       }
@@ -44,7 +43,7 @@ export default function AdminDashboardPage() {
       {fetchError && (
         <Alert variant="destructive" className="mb-6 whitespace-pre-wrap">
           <AlertTriangle className="h-5 w-5" />
-          <AlertTitle>Error Crítico de Configuración</AlertTitle>
+          <AlertTitle>Error de Carga</AlertTitle>
           <AlertDescription>{fetchError}</AlertDescription>
         </Alert>
       )}
@@ -71,9 +70,8 @@ export default function AdminDashboardPage() {
                   <p className="text-xs text-muted-foreground">perfiles gestionados en Firestore</p>
                 </CardContent>
               </Card>
-              {/* La tarjeta "Total de Usuarios" ha sido eliminada para evitar el error de permisos.
-                  Para reactivarla, primero debes arreglar las reglas de seguridad de Firestore para permitir
-                  al administrador 'listar' la colección 'registered_users'. */}
+              {/* La tarjeta "Total de Usuarios" ha sido eliminada para evitar el error de compilación.
+                  Para reactivarla, asegúrate de que la obtención de datos se realice de manera segura para el entorno de compilación. */}
             </div>
           )}
         </CardContent>
