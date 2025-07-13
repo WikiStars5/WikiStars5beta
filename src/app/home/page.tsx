@@ -5,6 +5,13 @@ import { getFeaturedFiguresFromFirestore } from "@/lib/placeholder-data";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Lightbulb, Users, MessageSquareText, Share2 } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/home",
+  },
+};
 
 export const revalidate = 60; // Revalidate every 60 seconds
 

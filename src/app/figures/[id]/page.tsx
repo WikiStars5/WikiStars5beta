@@ -32,6 +32,9 @@ export async function generateMetadata(
   return {
     title: `Perfil de ${figure.name} - WikiStars5`,
     description: description,
+    alternates: {
+      canonical: `/figures/${id}`,
+    },
     openGraph: {
       title: `Perfil de ${figure.name} - WikiStars5`,
       description: description,

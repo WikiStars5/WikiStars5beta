@@ -6,6 +6,9 @@ import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Explorar Figuras - WikiStars5",
   description: "Explora todos los perfiles de figuras públicas en WikiStars5, obtenidos de Firestore.",
+  alternates: {
+    canonical: "/figures",
+  },
 };
 
 export const revalidate = 60; // Revalidate every 60 seconds
