@@ -8,7 +8,15 @@ import { useRouter } from 'next/navigation';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
+import type { Metadata } from 'next';
 
+export const metadata: Metadata = {
+  title: "Crear Cuenta - WikiStars5",
+  description: "Únete a WikiStars5 para calificar, discutir y personalizar tu perfil.",
+  alternates: {
+    canonical: "/signup",
+  },
+};
 
 export default function SignupPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
