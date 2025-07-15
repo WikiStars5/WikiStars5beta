@@ -16,6 +16,7 @@ import slugify from 'slugify';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CATEGORY_OPTIONS } from '@/config/categories';
+import { GENDER_OPTIONS } from '@/config/genderOptions';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -279,7 +280,23 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         </div>
         <div><Label htmlFor="occupation">Ocupación/Profesión</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
         <div><Label htmlFor="nationality">Nacionalidad</Label><Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ej: Estadounidense, Peruano" /></div>
-        <div><Label htmlFor="gender">Género</Label><Input id="gender" value={gender} onChange={(e) => setGender(e.target.value)} placeholder="Ej: Masculino, Femenino" /></div>
+        <div>
+          <Label htmlFor="gender">Género</Label>
+          <Select onValueChange={setGender} value={gender}>
+            <SelectTrigger id="gender">
+              <SelectValue placeholder="Selecciona un género" />
+            </SelectTrigger>
+            <SelectContent>
+              {GENDER_OPTIONS.map((option) => (
+                (option.value === 'male' || option.value === 'female') && (
+                  <SelectItem key={option.value} value={option.label}>
+                    {option.label}
+                  </SelectItem>
+                )
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div><Label htmlFor="alias">Alias / Apodos</Label><Input id="alias" value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Ej: El Sabio, Princesa de Fuego" /></div>
         <div><Label htmlFor="species">Especie / Raza</Label><Input id="species" value={species} onChange={(e) => setSpecies(e.target.value)} placeholder="Ej: Demonio, Humano" /></div>
         <div><Label htmlFor="firstAppearance">Primera Aparición</Label><Input id="firstAppearance" value={firstAppearance} onChange={(e) => setFirstAppearance(e.target.value)} placeholder="Ej: High School DxD, Novela Ligera, 2008" /></div>

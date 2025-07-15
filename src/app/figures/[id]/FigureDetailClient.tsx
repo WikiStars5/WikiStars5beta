@@ -1021,7 +1021,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     <div><Label htmlFor={idField} className="font-semibold text-foreground/90">{label}</Label><Textarea id={idField} value={value} onChange={onChange} placeholder={placeholder || `Añade ${label.toLowerCase()}...`} rows={rows || 3} className="mt-1" /></div>
   );
 
-  const renderEditSelect = (idField: string, label: string, value: string, onChange: (value: string) => void, options: {value: string; label: string}[], placeholder: string) => (
+  const renderEditSelect = (idField: string, label: string, value: string, onChange: (value: string) => void, options: readonly {value: string; label: string}[], placeholder: string) => (
     <div>
         <Label htmlFor={idField} className="font-semibold text-foreground/90">{label}</Label>
         <Select onValueChange={onChange} value={value}>
@@ -1223,7 +1223,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                       {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center"><Image src={correctMalformedUrl(editedPhotoUrl)} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground"><ImageOff className="h-10 w-10" /></div>}
                       {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                        {renderEditSelect("category", "Categoría", editedCategory, setEditedCategory, CATEGORY_OPTIONS, "Selecciona una categoría")}
+                        {renderEditSelect("category", "Categoría", editedCategory, setEditedCategory, CATEGORY_OPTIONS.map(c => ({value: c.label, label: c.label})), "Selecciona una categoría")}
                         {renderEditInput("occupation", "Ocupación", editedOccupation, (e) => setEditedOccupation(e.target.value))}
                         {renderEditInput("alias", "Alias", editedAlias, (e) => setEditedAlias(e.target.value))}
                         {renderEditInput("species", "Especie", editedSpecies, (e) => setEditedSpecies(e.target.value))}
@@ -1231,7 +1231,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                         {renderEditInput("birthDateOrAge", "Nacimiento/Edad", editedBirthDateOrAge, (e) => setEditedBirthDateOrAge(e.target.value))}
                         {renderEditInput("birthPlace", "Lugar Nacimiento", editedBirthPlace, (e) => setEditedBirthPlace(e.target.value))}
                         {renderEditInput("nationality", "Nacionalidad", editedNationality, (e) => setEditedNationality(e.target.value))}
-                        {renderEditInput("gender", "Género", editedGender, (e) => setEditedGender(e.target.value))}
+                        {renderEditSelect("gender", "Género", editedGender, setEditedGender, GENDER_OPTIONS.filter(g => g.value === 'male' || g.value === 'female').map(g => ({value: g.label, label: g.label})), "Selecciona un género")}
                         {renderEditInput("statusLiveOrDead", "Estado (Vivo/Muerto)", editedStatusLiveOrDead, (e) => setEditedStatusLiveOrDead(e.target.value))}
                         {renderEditInput("maritalStatus", "Estado Civil", editedMaritalStatus, (e) => setEditedMaritalStatus(e.target.value))}
                         {renderEditInput("height", "Altura", editedHeight, (e) => setEditedHeight(e.target.value))}
