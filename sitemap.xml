@@ -1,5 +1,4 @@
 <!-- 
-This static sitemap.xml file is deprecated.
+This static sitemap.xml file is deprecated and has been intentionally left empty to resolve a build conflict.
 The application now uses src/app/sitemap.ts to generate a dynamic sitemap based on data from Firestore.
-This file can be safely deleted.
 -->
