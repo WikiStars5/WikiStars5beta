@@ -6,7 +6,8 @@ import {
   Terminal, Info, UserCircle, Globe, Briefcase, Users2 as FamilyIcon, Edit, Save, X, Loader2, LogIn, MessageSquare, SmilePlus, 
   ImageOff, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
-  MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight
+  MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight,
+  Archive
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
@@ -44,6 +45,7 @@ import { updateCommentLikes } from "@/app/actions/commentRatingActions";
 import { cn, correctMalformedUrl } from "@/lib/utils";
 import { countryCodeToNameMap } from "@/config/countries";
 import { GENDER_OPTIONS, type GenderOption } from "@/config/genderOptions";
+import { CATEGORY_OPTIONS } from "@/config/categories";
 import { ShareButton } from "@/components/shared/ShareButton";
 import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile } from "@/lib/types";
 import { updateFigureInFirestore } from "@/lib/placeholder-data";
@@ -80,6 +82,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [editedNationality, setEditedNationality] = React.useState("");
   const [editedOccupation, setEditedOccupation] = React.useState("");
   const [editedGender, setEditedGender] = React.useState("");
+  const [editedCategory, setEditedCategory] = React.useState("");
   const [editedPhotoUrl, setEditedPhotoUrl] = React.useState("");
   const [editedAlias, setEditedAlias] = React.useState("");
   const [editedSpecies, setEditedSpecies] = React.useState("");
@@ -287,6 +290,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       setEditedNationality(currentFigure.nationality || "");
       setEditedOccupation(currentFigure.occupation || "");
       setEditedGender(currentFigure.gender || "");
+      setEditedCategory(currentFigure.category || "");
       setEditedPhotoUrl(currentFigure.photoUrl || "");
       setEditedAlias(currentFigure.alias || "");
       setEditedSpecies(currentFigure.species || "");
@@ -471,6 +475,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         nationality: editedNationality,
         occupation: editedOccupation,
         gender: editedGender,
+        category: editedCategory,
         photoUrl: correctMalformedUrl(editedPhotoUrl.trim() || 'https://placehold.co/400x600.png'),
         alias: editedAlias,
         species: editedSpecies,
@@ -1016,6 +1021,24 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     <div><Label htmlFor={idField} className="font-semibold text-foreground/90">{label}</Label><Textarea id={idField} value={value} onChange={onChange} placeholder={placeholder || `Añade ${label.toLowerCase()}...`} rows={rows || 3} className="mt-1" /></div>
   );
 
+  const renderEditSelect = (idField: string, label: string, value: string, onChange: (value: string) => void, options: {value: string; label: string}[], placeholder: string) => (
+    <div>
+        <Label htmlFor={idField} className="font-semibold text-foreground/90">{label}</Label>
+        <Select onValueChange={onChange} value={value}>
+            <SelectTrigger id={idField} className="mt-1">
+                <SelectValue placeholder={placeholder} />
+            </SelectTrigger>
+            <SelectContent>
+                {options.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    </div>
+  );
+
   const toggleCommentExpansion = (commentId: string) => {
     setExpandedComments(prev => ({
       ...prev,
@@ -1200,13 +1223,14 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                       {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center"><Image src={correctMalformedUrl(editedPhotoUrl)} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground"><ImageOff className="h-10 w-10" /></div>}
                       {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                        {renderEditSelect("category", "Categoría", editedCategory, setEditedCategory, CATEGORY_OPTIONS, "Selecciona una categoría")}
+                        {renderEditInput("occupation", "Ocupación", editedOccupation, (e) => setEditedOccupation(e.target.value))}
                         {renderEditInput("alias", "Alias", editedAlias, (e) => setEditedAlias(e.target.value))}
                         {renderEditInput("species", "Especie", editedSpecies, (e) => setEditedSpecies(e.target.value))}
                         {renderEditInput("firstAppearance", "Primera Aparición", editedFirstAppearance, (e) => setEditedFirstAppearance(e.target.value))}
                         {renderEditInput("birthDateOrAge", "Nacimiento/Edad", editedBirthDateOrAge, (e) => setEditedBirthDateOrAge(e.target.value))}
                         {renderEditInput("birthPlace", "Lugar Nacimiento", editedBirthPlace, (e) => setEditedBirthPlace(e.target.value))}
                         {renderEditInput("nationality", "Nacionalidad", editedNationality, (e) => setEditedNationality(e.target.value))}
-                        {renderEditInput("occupation", "Ocupación", editedOccupation, (e) => setEditedOccupation(e.target.value))}
                         {renderEditInput("gender", "Género", editedGender, (e) => setEditedGender(e.target.value))}
                         {renderEditInput("statusLiveOrDead", "Estado (Vivo/Muerto)", editedStatusLiveOrDead, (e) => setEditedStatusLiveOrDead(e.target.value))}
                         {renderEditInput("maritalStatus", "Estado Civil", editedMaritalStatus, (e) => setEditedMaritalStatus(e.target.value))}
@@ -1225,6 +1249,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                     <>
                       {figure!.description && <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{figure!.description}</p>}
                       <div className="space-y-3 pt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                        {figure!.category && renderDetailItem(Archive, "Categoría", figure!.category)}
+                        {figure!.occupation && renderDetailItem(Briefcase, "Ocupación", figure!.occupation)}
                         {figure!.alias && renderDetailItem(NotepadText, "Alias", figure!.alias)}
                         {figure!.gender && renderDetailItem(FamilyIcon, "Género", figure!.gender)}
                         {figure!.species && renderDetailItem(Zap, "Especie", figure!.species)}
@@ -1232,7 +1258,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                         {figure!.birthDateOrAge && renderDetailItem(Cake, "Nacimiento/Edad", figure!.birthDateOrAge)}
                         {figure!.birthPlace && renderDetailItem(MapPin, "Lugar de Nacimiento", figure!.birthPlace)}
                         {figure!.nationality && renderDetailItem(Globe, "Nacionalidad", figure!.nationality)}
-                        {figure!.occupation && renderDetailItem(Briefcase, "Ocupación", figure!.occupation)}
                         {figure!.statusLiveOrDead && renderDetailItem(Activity, "Estado (Vivo/Muerto)", figure!.statusLiveOrDead)}
                         {figure!.maritalStatus && renderDetailItem(HeartHandshake, "Estado Civil", figure!.maritalStatus)}
                         {figure!.height && renderDetailItem(StretchVertical, "Altura", figure!.height)}

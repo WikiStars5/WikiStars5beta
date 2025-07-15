@@ -14,6 +14,8 @@ import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey, StarValueAsString } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CATEGORY_OPTIONS } from '@/config/categories';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -41,6 +43,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [occupation, setOccupation] = useState(initialData?.occupation || '');
   const [gender, setGender] = useState(initialData?.gender || '');
   const [nationality, setNationality] = useState(initialData?.nationality || '');
+  const [category, setCategory] = useState(initialData?.category || '');
 
   // New detailed fields
   const [alias, setAlias] = useState(initialData?.alias || '');
@@ -75,6 +78,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setOccupation(initialData.occupation || '');
       setGender(initialData.gender || '');
       setNationality(initialData.nationality || '');
+      setCategory(initialData.category || '');
       
       setAlias(initialData.alias || '');
       setSpecies(initialData.species || '');
@@ -102,6 +106,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setOccupation('');
       setGender('');
       setNationality('');
+      setCategory('');
       setAlias('');
       setSpecies('');
       setFirstAppearance('');
@@ -154,6 +159,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         nationality: nationality.trim(),
         occupation: occupation.trim(),
         gender: gender.trim(),
+        category: category.trim(),
         alias: alias.trim(),
         species: species.trim(),
         firstAppearance: firstAppearance.trim(),
@@ -256,6 +262,21 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Información Detallada</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="category">Categoría</Label>
+          <Select onValueChange={setCategory} value={category}>
+            <SelectTrigger id="category">
+              <SelectValue placeholder="Selecciona una categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORY_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div><Label htmlFor="occupation">Ocupación/Profesión</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
         <div><Label htmlFor="nationality">Nacionalidad</Label><Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ej: Estadounidense, Peruano" /></div>
         <div><Label htmlFor="gender">Género</Label><Input id="gender" value={gender} onChange={(e) => setGender(e.target.value)} placeholder="Ej: Masculino, Femenino" /></div>

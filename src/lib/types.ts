@@ -25,6 +25,7 @@ export interface Figure {
   nationality?: string;
   occupation?: string;
   gender?: string;
+  category?: string; // Added category field
 
   // Detailed fields (previously distinct, now integrated)
   alias?: string;
@@ -132,4 +133,9 @@ export interface Notification {
   commentId: string; // ID of the comment that was replied to or liked
   replyId?: string; // ID of the reply itself, if applicable
   createdAt: Timestamp;
+}
+
+export interface CategoryOption {
+  value: string;
+  label: string;
 }

@@ -1,0 +1,25 @@
+import type { CategoryOption } from '@/lib/types';
+
+export const CATEGORY_OPTIONS: CategoryOption[] = [
+  { value: 'futbolista', label: 'Futbolista' },
+  { value: 'cantante', label: 'Cantante' },
+  { value: 'politico', label: 'Político' },
+  { value: 'actor_actriz', label: 'Actor/Actriz' },
+  { value: 'cientifico', label: 'Científico' },
+  { value: 'escritor', label: 'Escritor' },
+  { value: 'empresario', label: 'Empresario' },
+  { value: 'militar', label: 'Militar' },
+  { value: 'deportista', label: 'Deportista' },
+  { value: 'periodista', label: 'Periodista' },
+  { value: 'chef', label: 'Chef' },
+  { value: 'disenador', label: 'Diseñador' },
+  { value: 'artista_plastico', label: 'Artista Plástico' },
+  { value: 'musico', label: 'Músico' },
+  { value: 'activista_social', label: 'Activista Social' },
+  { value: 'filosofo', label: 'Filósofo' },
+  { value: 'inventor', label: 'Inventor' },
+  { value: 'monarca', label: 'Royalty/Monarca' },
+  { value: 'figura_religiosa', label: 'Figura Religiosa' },
+  { value: 'explorador', label: 'Explorador' },
+  { value: 'otro', label: 'Otro' },
+].sort((a, b) => a.label.localeCompare(b.label));
