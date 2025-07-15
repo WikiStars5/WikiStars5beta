@@ -7,7 +7,7 @@ import {
   ImageOff, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
   MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight,
-  Archive
+  Archive, Bike
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
@@ -83,6 +83,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [editedOccupation, setEditedOccupation] = React.useState("");
   const [editedGender, setEditedGender] = React.useState("");
   const [editedCategory, setEditedCategory] = React.useState("");
+  const [editedSportSubcategory, setEditedSportSubcategory] = React.useState("");
   const [editedPhotoUrl, setEditedPhotoUrl] = React.useState("");
   const [editedAlias, setEditedAlias] = React.useState("");
   const [editedSpecies, setEditedSpecies] = React.useState("");
@@ -291,6 +292,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       setEditedOccupation(currentFigure.occupation || "");
       setEditedGender(currentFigure.gender || "");
       setEditedCategory(currentFigure.category || "");
+      setEditedSportSubcategory(currentFigure.sportSubcategory || "");
       setEditedPhotoUrl(currentFigure.photoUrl || "");
       setEditedAlias(currentFigure.alias || "");
       setEditedSpecies(currentFigure.species || "");
@@ -405,6 +407,14 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       resetEditFields(figure);
     }
   }, [figure, isEditing, resetEditFields]);
+  
+  React.useEffect(() => {
+    if (isEditing) {
+      if (editedCategory !== 'Deportista') {
+        setEditedSportSubcategory('');
+      }
+    }
+  }, [isEditing, editedCategory]);
 
   React.useEffect(() => {
     const handleHighlighting = async () => {
@@ -476,6 +486,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         occupation: editedOccupation,
         gender: editedGender,
         category: editedCategory,
+        sportSubcategory: editedCategory === 'Deportista' ? editedSportSubcategory : '',
         photoUrl: correctMalformedUrl(editedPhotoUrl.trim() || 'https://placehold.co/400x600.png'),
         alias: editedAlias,
         species: editedSpecies,
@@ -1223,7 +1234,14 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                       {editedPhotoUrl ? (isValidEditedPhotoUrl ? <div className="mt-2 relative w-32 h-40 border rounded-md overflow-hidden bg-muted flex items-center justify-center"><Image src={correctMalformedUrl(editedPhotoUrl)} alt="Preview" layout="fill" objectFit="contain" /></div> : <p className="mt-1 text-xs text-destructive">URL no válida/permitida.</p>) : <div className="mt-2 w-32 h-40 border rounded-md bg-muted flex items-center justify-center text-muted-foreground"><ImageOff className="h-10 w-10" /></div>}
                       {renderEditTextarea("description", "Descripción", editedDescription, (e) => setEditedDescription(e.target.value), "Añade una descripción...", 5)}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                        {renderEditSelect("category", "Categoría", editedCategory, setEditedCategory, CATEGORY_OPTIONS.map(c => ({value: c.label, label: c.label})), "Selecciona una categoría")}
+                        <div>
+                          {renderEditSelect("category", "Categoría", editedCategory, setEditedCategory, CATEGORY_OPTIONS.map(c => ({value: c.label, label: c.label})), "Selecciona una categoría")}
+                        </div>
+                        {editedCategory === 'Deportista' && (
+                          <div>
+                            {renderEditInput("sportSubcategory", "Subcategoría de Deporte", editedSportSubcategory, (e) => setEditedSportSubcategory(e.target.value), "Ej: Fútbol, Tenis")}
+                          </div>
+                        )}
                         {renderEditInput("occupation", "Ocupación", editedOccupation, (e) => setEditedOccupation(e.target.value))}
                         {renderEditInput("alias", "Alias", editedAlias, (e) => setEditedAlias(e.target.value))}
                         {renderEditInput("species", "Especie", editedSpecies, (e) => setEditedSpecies(e.target.value))}
@@ -1250,6 +1268,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                       {figure!.description && <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{figure!.description}</p>}
                       <div className="space-y-3 pt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                         {figure!.category && renderDetailItem(Archive, "Categoría", figure!.category)}
+                        {figure!.category === 'Deportista' && figure.sportSubcategory && renderDetailItem(Bike, "Deporte", figure.sportSubcategory)}
                         {figure!.occupation && renderDetailItem(Briefcase, "Ocupación", figure!.occupation)}
                         {figure!.alias && renderDetailItem(NotepadText, "Alias", figure!.alias)}
                         {figure!.gender && renderDetailItem(FamilyIcon, "Género", figure!.gender)}
@@ -1446,5 +1465,3 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
-
-    

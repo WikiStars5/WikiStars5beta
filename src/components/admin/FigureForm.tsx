@@ -37,14 +37,15 @@ const defaultStarRatingCounts: Record<StarValueAsString, number> = {
 const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
   const [name, setName] = useState(initialData?.name || '');
-  const [description, setDescription] = useState(initialData?.description || '');
   const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl || '');
+  const [description, setDescription] = useState(initialData?.description || '');
   
   // Basic info
   const [occupation, setOccupation] = useState(initialData?.occupation || '');
   const [gender, setGender] = useState(initialData?.gender || '');
   const [nationality, setNationality] = useState(initialData?.nationality || '');
   const [category, setCategory] = useState(initialData?.category || '');
+  const [sportSubcategory, setSportSubcategory] = useState(initialData?.sportSubcategory || '');
 
   // New detailed fields
   const [alias, setAlias] = useState(initialData?.alias || '');
@@ -80,6 +81,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setGender(initialData.gender || '');
       setNationality(initialData.nationality || '');
       setCategory(initialData.category || '');
+      setSportSubcategory(initialData.sportSubcategory || '');
       
       setAlias(initialData.alias || '');
       setSpecies(initialData.species || '');
@@ -108,6 +110,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setGender('');
       setNationality('');
       setCategory('');
+      setSportSubcategory('');
       setAlias('');
       setSpecies('');
       setFirstAppearance('');
@@ -126,6 +129,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setStarRatingCounts({ ...defaultStarRatingCounts });
     }
   }, [initialData]);
+
+  useEffect(() => {
+    // If category is not 'Deportista', clear the sport subcategory
+    if (category !== 'Deportista') {
+      setSportSubcategory('');
+    }
+  }, [category]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -161,6 +171,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         occupation: occupation.trim(),
         gender: gender.trim(),
         category: category.trim(),
+        sportSubcategory: category === 'Deportista' ? sportSubcategory.trim() : '',
         alias: alias.trim(),
         species: species.trim(),
         firstAppearance: firstAppearance.trim(),
@@ -278,6 +289,19 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
             </SelectContent>
           </Select>
         </div>
+        
+        {category === 'Deportista' && (
+          <div>
+            <Label htmlFor="sportSubcategory">Subcategoría de Deporte</Label>
+            <Input
+              id="sportSubcategory"
+              value={sportSubcategory}
+              onChange={(e) => setSportSubcategory(e.target.value)}
+              placeholder="Ej: Fútbol, Tenis, Baloncesto"
+            />
+          </div>
+        )}
+        
         <div><Label htmlFor="occupation">Ocupación/Profesión</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
         <div><Label htmlFor="nationality">Nacionalidad</Label><Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ej: Estadounidense, Peruano" /></div>
         <div>

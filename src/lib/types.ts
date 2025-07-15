@@ -25,7 +25,8 @@ export interface Figure {
   nationality?: string;
   occupation?: string;
   gender?: string;
-  category?: string; // Added category field
+  category?: string;
+  sportSubcategory?: string; // New field for sport details
 
   // Detailed fields (previously distinct, now integrated)
   alias?: string;
