@@ -1,6 +1,6 @@
 
 import { ForYouSection } from "@/components/foryou/ForYouSection";
-import { getForYouRecommendations }d from "@/app/actions/recommendationsActions";
+import { getForYouRecommendations } from "@/app/actions/recommendationsActions";
 import { auth } from "@/lib/firebase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Lightbulb } from "lucide-react";
