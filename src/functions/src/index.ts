@@ -11,6 +11,9 @@ import * as admin from "firebase-admin";
 import type { UserProfile } from "../../lib/types"; // Adjust path as necessary
 import type { DocumentData } from "firebase-admin/firestore";
 
+// Centralized Admin UID for security checks.
+const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+
 // Initialize Firebase Admin SDK if not already initialized
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -51,17 +54,17 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
   };
 };
 
-// Callable function to get all users
+// Callable function to get all users, now with admin check
 export const getAllUsers = onCall(async (request) => {
-    // Optional: Add authentication check to ensure only admins can call this
-    // const uid = request.auth?.uid;
-    // if (!uid) {
-    //     throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
-    // }
-    // const adminUser = await admin.auth().getUser(uid);
-    // if (adminUser.customClaims?.admin !== true) {
-    //     throw new HttpsError('permission-denied', 'Only admins can call this function.');
-    // }
+    // Authentication check to ensure only admins can call this
+    const uid = request.auth?.uid;
+    if (!uid) {
+        throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
+    }
+    // Check if the caller is the designated admin
+    if (uid !== ADMIN_UID) {
+        throw new HttpsError('permission-denied', 'Only admins can call this function.');
+    }
 
     try {
         const usersCollectionRef = db.collection('registered_users');

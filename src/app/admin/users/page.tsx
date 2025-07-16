@@ -6,22 +6,44 @@ import type { UserProfile } from "@/lib/types";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '@/lib/firebase';
+import { app, auth } from '@/lib/firebase';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { ADMIN_UID } from '@/config/admin';
 
 // This is the new, robust way to fetch user data by calling a Firebase Function.
-const getAllUsers = httpsCallable(getFunctions(app), 'getAllUsers');
+const getAllUsersCallable = httpsCallable(getFunctions(app), 'getAllUsers');
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (!user) {
+        setIsLoading(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const fetchUsers = async () => {
+      // Ensure there's a logged-in user and they are the admin before fetching
+      if (!currentUser || currentUser.uid !== ADMIN_UID) {
+        setIsLoading(false);
+        if (currentUser) {
+           setError("Acceso denegado. Solo los administradores pueden ver esta página.");
+        }
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
       try {
-        const result = await getAllUsers();
+        const result = await getAllUsersCallable();
         const data = result.data as { success: boolean, users?: UserProfile[], error?: string };
         
         if (data.success && data.users) {
@@ -35,20 +57,26 @@ export default function AdminUsersPage() {
         }
       } catch (err: any) {
         console.error("Failed to call 'getAllUsers' function:", err);
-        setError(`Error al llamar a la función de Firebase: ${err.message || "Un error inesperado ocurrió."}`);
+        let errorMessage = `Error al llamar a la función de Firebase: ${err.message || "Un error inesperado ocurrió."}`;
+        if (err.code === 'functions/permission-denied') {
+          errorMessage = "Permiso denegado por la función. Asegúrate de que estás llamando como administrador.";
+        }
+        setError(errorMessage);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUsers();
-  }, []);
+    if (currentUser) {
+      fetchUsers();
+    }
+  }, [currentUser]);
 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-4 text-muted-foreground">Cargando lista de usuarios desde la función...</p>
+        <p className="ml-4 text-muted-foreground">Verificando permisos y cargando usuarios...</p>
       </div>
     );
   }
@@ -59,6 +87,16 @@ export default function AdminUsersPage() {
         <ShieldCheck className="h-4 w-4" />
         <AlertTitle>Error de Carga</AlertTitle>
         <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!currentUser || currentUser.uid !== ADMIN_UID) {
+    return (
+      <Alert variant="destructive">
+        <ShieldCheck className="h-4 w-4" />
+        <AlertTitle>Acceso Denegado</AlertTitle>
+        <AlertDescription>No tienes permisos para ver esta sección.</AlertDescription>
       </Alert>
     );
   }
