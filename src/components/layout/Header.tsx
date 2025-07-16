@@ -35,6 +35,9 @@ export function Header() {
             <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">
               Explorar
             </Link>
+             <Link href="/foryou" className="text-foreground/70 hover:text-foreground transition-colors">
+              Para Ti
+            </Link>
           </nav>
 
           <InstallPwaButton />
