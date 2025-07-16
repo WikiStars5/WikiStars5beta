@@ -5,16 +5,14 @@ import { ForYouSection } from "@/components/foryou/ForYouSection";
 import type { Figure } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Lightbulb, Loader2 } from "lucide-react";
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '@/lib/firebase';
+import { getFeaturedFiguresFromFirestore, getPublicFiguresList } from "@/lib/placeholder-data";
+
 
 interface RecommendationSection {
   title: string;
   description: string;
   figures: Figure[];
 }
-
-const getRecommendationsCallable = httpsCallable<void, { success: boolean, recommendations: RecommendationSection[], error?: string }>(getFunctions(app), 'getForYouRecommendations');
 
 export default function ForYouPage() {
   const [recommendations, setRecommendations] = useState<RecommendationSection[]>([]);
@@ -26,17 +24,38 @@ export default function ForYouPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const result = await getRecommendationsCallable();
-        const data = result.data;
-        
-        if (data.success) {
-          setRecommendations(data.recommendations);
-        } else {
-          setError(data.error || "No se pudieron cargar las recomendaciones.");
+        // Fetch featured and recent figures directly instead of using a complex function
+        const [featuredFigures, recentFiguresResult] = await Promise.all([
+          getFeaturedFiguresFromFirestore(10),
+          getPublicFiguresList({ limit: 10 }) // Fetches the most recent by name
+        ]);
+
+        const sections: RecommendationSection[] = [];
+        const includedIds = new Set<string>();
+
+        if (featuredFigures.length > 0) {
+          sections.push({
+            title: "Selección Destacada",
+            description: "Figuras populares y relevantes seleccionadas por nuestro equipo.",
+            figures: featuredFigures,
+          });
+          featuredFigures.forEach(f => includedIds.add(f.id));
         }
+
+        const recentFigures = recentFiguresResult.figures.filter(f => !includedIds.has(f.id));
+        if (recentFigures.length > 0) {
+           sections.push({
+            title: "Añadidos Recientemente",
+            description: "Descubre los perfiles más nuevos en la plataforma.",
+            figures: recentFigures,
+          });
+        }
+        
+        setRecommendations(sections);
+
       } catch (err: any) {
-        console.error("Error calling getForYouRecommendations function:", err);
-        setError(`Error al llamar a la función de Firebase: ${err.message}`);
+        console.error("Error fetching recommendations data:", err);
+        setError(`Error al cargar datos: ${err.message}`);
       } finally {
         setIsLoading(false);
       }
@@ -70,7 +89,7 @@ export default function ForYouPage() {
           <Lightbulb className="h-4 w-4" />
           <AlertTitle>¡Aún no hay recomendaciones para ti!</AlertTitle>
           <AlertDescription>
-            A medida que explores y califiques más figuras, podremos ofrecerte mejores sugerencias. ¡Empieza a explorar para personalizar tu experiencia!
+            Añade figuras o márcalas como destacadas en el panel de administración para que aparezcan aquí.
           </AlertDescription>
         </Alert>
       ) : (
