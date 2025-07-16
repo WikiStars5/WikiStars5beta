@@ -13,13 +13,11 @@ import {
 
 interface ForYouSectionProps {
   title: string;
-  description: string;
   figures: Figure[];
 }
 
 export function ForYouSection({
   title,
-  description,
   figures,
 }: ForYouSectionProps) {
   if (!figures || figures.length === 0) {
@@ -30,7 +28,6 @@ export function ForYouSection({
     <section className="w-full space-y-4">
       <div>
         <h2 className="text-2xl font-bold font-headline">{title}</h2>
-        <p className="text-md text-muted-foreground">{description}</p>
       </div>
       <Carousel
         opts={{
@@ -41,9 +38,9 @@ export function ForYouSection({
       >
         <CarouselContent className="-ml-4">
           {figures.map((figure, index) => (
-            <CarouselItem key={index} className="pl-4 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
+            <CarouselItem key={index} className="pl-4 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
               <div className="h-full">
-                <FigureListItem figure={figure} />
+                <FigureListItem figure={figure} cardStyle="playstore" />
               </div>
             </CarouselItem>
           ))}
