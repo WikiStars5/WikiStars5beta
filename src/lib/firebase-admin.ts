@@ -1,13 +1,5 @@
-
-import * as admin from 'firebase-admin';
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    // Since we are in a Google Cloud environment, we don't need to provide a service account key.
-    // The Functions runtime will automatically use the default service account credentials.
-    // You might need to add specific databaseURL or storageBucket if you use those services.
-  });
-}
-
-export const db = admin.firestore();
-export const auth = admin.auth();
+// This file is intentionally left blank.
+// The use of 'firebase-admin' within the Next.js application was causing
+// persistent build and runtime errors in the deployment environment.
+// All logic requiring admin privileges has been migrated to Firebase Functions (`functions/src/index.ts`)
+// which is the recommended and more stable architectural pattern.
