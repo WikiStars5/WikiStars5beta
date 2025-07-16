@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { getAllUsers } from "@/app/actions/userActions"; // Updated import
 import AdminUsersPageClient from "@/components/admin/AdminUsersPageClient";
 import type { UserProfile } from "@/lib/types";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '@/lib/firebase';
+
+// This is the new, robust way to fetch user data by calling a Firebase Function.
+const getAllUsers = httpsCallable(getFunctions(app), 'getAllUsers');
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -17,19 +21,21 @@ export default function AdminUsersPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const result = await getAllUsers(); // Updated function call
-        if (result.success && result.users) {
-          setUsers(result.users);
+        const result = await getAllUsers();
+        const data = result.data as { success: boolean, users?: UserProfile[], error?: string };
+        
+        if (data.success && data.users) {
+          setUsers(data.users);
         } else {
-          let errorMessage = result.error || "No se pudieron cargar los usuarios. Asegúrate de que las reglas de seguridad de Firestore permitan al administrador listar usuarios.";
-          if (errorMessage.toLowerCase().includes("permission")) {
-              errorMessage = "Error de permisos de Firestore. Revisa las reglas de seguridad para la colección 'registered_users' y asegúrate de que tu cuenta de administrador tenga permisos de 'list'.";
+          let errorMessage = data.error || "No se pudieron cargar los usuarios. Revisa los logs de la función 'getAllUsers'.";
+           if (errorMessage.toLowerCase().includes("permission")) {
+              errorMessage = "Error de permisos en la Cloud Function. Asegúrate de que la cuenta de servicio tenga los roles necesarios y que el usuario que llama tenga permiso para invocar la función.";
           }
           setError(errorMessage);
         }
       } catch (err: any) {
-        console.error("Failed to fetch users in AdminUsersPage:", err);
-        setError(err.message || "Un error inesperado ocurrió.");
+        console.error("Failed to call 'getAllUsers' function:", err);
+        setError(`Error al llamar a la función de Firebase: ${err.message || "Un error inesperado ocurrió."}`);
       } finally {
         setIsLoading(false);
       }
@@ -42,7 +48,7 @@ export default function AdminUsersPage() {
     return (
       <div className="flex justify-center items-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-4 text-muted-foreground">Cargando lista de usuarios...</p>
+        <p className="ml-4 text-muted-foreground">Cargando lista de usuarios desde la función...</p>
       </div>
     );
   }
