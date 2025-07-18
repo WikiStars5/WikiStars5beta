@@ -52,6 +52,7 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     createdAt: createdAt,
     lastLoginAt: convertTimestampToString(data.lastLoginAt),
     fcmToken: data.fcmToken || undefined,
+    achievements: data.achievements || [], // Ensure achievements array exists
   };
 };
 
@@ -107,6 +108,7 @@ export const getAllUsers = onCall(async (request) => {
     }
 
     try {
+        // CORRECTED: Reading from the 'registered_users' collection, where profiles are actually stored.
         const usersCollectionRef = db.collection('registered_users');
         const querySnapshot = await usersCollectionRef.get();
 
