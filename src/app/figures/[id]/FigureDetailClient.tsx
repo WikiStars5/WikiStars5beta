@@ -51,6 +51,7 @@ import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile } f
 import { updateFigureInFirestore } from "@/lib/placeholder-data";
 import { markAllNotificationsAsRead, markNotificationAsRead } from '@/app/actions/notificationActions';
 import { ADMIN_UID } from '@/config/admin';
+import { grantFirstGlanceAchievement } from '@/app/actions/achievementActions';
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -240,6 +241,15 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                 setGuestGender(savedGuestGender);
                 setIsGuestGenderSet(true);
             }
+        } else {
+            // This is a registered user, check for achievement
+            const result = await grantFirstGlanceAchievement(user.uid);
+            if (result.unlocked && result.message) {
+              toast({
+                title: '¡Logro Desbloqueado!',
+                description: result.message,
+              });
+            }
         }
 
         if (figure?.id) {
@@ -261,7 +271,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       }
     });
     return () => unsubscribe();
-  }, [figure?.id]); 
+  }, [figure?.id, toast]); 
 
   React.useEffect(() => {
     const fetchCountryCode = async () => {

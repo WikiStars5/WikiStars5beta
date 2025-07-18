@@ -113,6 +113,7 @@ export interface UserProfile {
   createdAt: string; 
   lastLoginAt?: string;
   fcmToken?: string; // Field to store the Firebase Cloud Messaging token
+  achievements?: string[]; // Array of unlocked achievement IDs
 }
 
 export interface GenderOption {

@@ -4,19 +4,34 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, BellRing } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, BellRing, Award, Eye } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
 import { Separator } from '@/components/ui/separator';
+import type { UserProfile } from '@/lib/types';
+import { doc, getDoc } from 'firebase/firestore';
+
+const achievementDetails = {
+  first_glance: {
+    icon: Eye,
+    title: "Primer Vistazo",
+    description: "Visitaste tu primer perfil.",
+  },
+  // ... add other achievements here as they are implemented
+};
+
+type AchievementId = keyof typeof achievementDetails;
+
 
 export default function ProfilePage() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
@@ -27,9 +42,15 @@ export default function ProfilePage() {
       setNotificationPermission(Notification.permission);
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && !user.isAnonymous) {
         setCurrentUser(user);
+        // Fetch the full user profile from Firestore
+        const userDocRef = doc(db, 'registered_users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          setUserProfile(userDocSnap.data() as UserProfile);
+        }
       } else {
         toast({
           title: "Acceso Requerido",
@@ -110,7 +131,7 @@ export default function ProfilePage() {
   }
 
   const isAdmin = currentUser.uid === ADMIN_UID;
-  const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || "Usuario";
+  const displayName = userProfile?.username || currentUser.displayName || currentUser.email?.split('@')[0] || "Usuario";
   
   return (
     <div className="flex justify-center items-start pt-10">
@@ -158,6 +179,35 @@ export default function ProfilePage() {
             )}
           </div>
           
+          <Separator />
+          
+          <div className="space-y-4">
+            <h3 className="text-base font-medium">Logros Desbloqueados</h3>
+            {userProfile?.achievements && userProfile.achievements.length > 0 ? (
+              <div className="space-y-3">
+                {userProfile.achievements.map((achId) => {
+                  const details = achievementDetails[achId as AchievementId];
+                  if (!details) return null;
+                  const Icon = details.icon;
+                  return (
+                    <div key={achId} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md">
+                      <Icon className="h-8 w-8 text-primary flex-shrink-0" />
+                      <div>
+                        <p className="font-semibold text-foreground">{details.title}</p>
+                        <p className="text-sm text-muted-foreground">{details.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground text-center p-4 border-dashed border-2 rounded-md">
+                <Award className="mx-auto h-8 w-8 mb-2" />
+                <p>Aún no has desbloqueado ningún logro. ¡Empieza a explorar para ganar el primero!</p>
+              </div>
+            )}
+          </div>
+
           <Separator />
 
           <p className="text-sm text-center text-muted-foreground">
