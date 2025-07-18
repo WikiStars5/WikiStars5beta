@@ -1,26 +1,25 @@
 
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/firebase-admin';
+import { authAdmin } from '@/lib/firebase-admin'; // Corrected to use firebase-admin
 import { ensureUserProfileExists } from '@/lib/userData';
 
 export async function POST(request: NextRequest) {
-  const { idToken } = await request.json();
+  const { idToken, additionalData } = await request.json();
 
   const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
 
   try {
-    const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
-    const decodedToken = await auth.verifyIdToken(idToken);
+    const decodedToken = await authAdmin.verifyIdToken(idToken);
     
-    // Ensure user profile exists in Firestore after login
-    // This is important for new sign-ups to have their data available for recommendations.
-    const user = await auth.getUser(decodedToken.uid);
+    // Ensure user profile exists in Firestore after login/signup
+    // This is the critical step that was missing.
+    const user = await authAdmin.getUser(decodedToken.uid);
     if (user) {
-        // We pass an empty object as we don't have country/gender info here.
-        // It will be populated on first visit to the signup form or profile page if needed.
-        await ensureUserProfileExists(user, {});
+        await ensureUserProfileExists(user, additionalData || {});
     }
+
+    const sessionCookie = await authAdmin.createSessionCookie(idToken, { expiresIn });
 
     cookies().set('__session', sessionCookie, {
       maxAge: expiresIn,
@@ -43,8 +42,8 @@ export async function DELETE(request: NextRequest) {
     if (sessionCookie) {
         cookies().delete('__session');
         try {
-            const decodedClaims = await auth.verifySessionCookie(sessionCookie);
-            await auth.revokeRefreshTokens(decodedClaims.sub);
+            const decodedClaims = await authAdmin.verifySessionCookie(sessionCookie);
+            await authAdmin.revokeRefreshTokens(decodedClaims.sub);
         } catch (error) {
             // Session cookie is invalid or expired.
             // No need to throw an error, just clear the cookie.

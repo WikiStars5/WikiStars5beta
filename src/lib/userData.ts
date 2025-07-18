@@ -1,22 +1,20 @@
 
-
 "use server";
 
-import { db as adminDb } from '@/lib/firebase-admin';
+import { dbAdmin } from '@/lib/firebase-admin';
 import type { UserProfile } from '@/lib/types';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type DocumentData, collection, query, getDocs, orderBy, where, deleteDoc } from 'firebase/firestore';
-import type { User as FirebaseUser } from 'firebase-auth';
+import { serverTimestamp } from 'firebase/firestore';
+import type { UserRecord } from 'firebase-admin/auth';
 import { COUNTRIES } from '@/config/countries'; 
 
 const USER_COLLECTION = 'registered_users';
 
-const db = adminDb; // Use the admin instance of Firestore
-
+const db = dbAdmin; // Use the admin instance of Firestore
 
 export async function ensureUserProfileExists(
-  user: FirebaseUser, 
+  user: UserRecord, 
   additionalData: { countryCode?: string; gender?: string }
-): Promise<UserProfile> {
+): Promise<void> {
   if (!user || !user.uid) {
     throw new Error("Valid Firebase user object is required.");
   }
@@ -29,30 +27,33 @@ export async function ensureUserProfileExists(
     if (userDocSnap.exists) {
       const existingProfileData = userDocSnap.data()!;
       const updates: { [key: string]: any } = {
-        lastLoginAt: serverTimestamp(),
+        lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      if (user.photoURL !== undefined && user.photoURL !== existingProfileData.photoURL) {
+      if (user.photoURL && user.photoURL !== existingProfileData.photoURL) {
         updates.photoURL = user.photoURL;
       }
-      if (user.email !== undefined && user.email !== existingProfileData.email) {
+      if (user.email && user.email !== existingProfileData.email) {
         updates.email = user.email;
       }
       const currentUsername = existingProfileData.username;
       const authDisplayName = user.displayName;
-      const isDefaultUsername = !currentUsername || currentUsername === (existingProfileData.email?.split('@')[0]) || currentUsername.startsWith('user_');
-      if (authDisplayName && (authDisplayName !== currentUsername || isDefaultUsername)) {
+
+      // Only update username if it's different and not the default one.
+      if (authDisplayName && authDisplayName !== currentUsername) {
         updates.username = authDisplayName;
       }
 
-      await userDocRef.update(updates);
-      const updatedDocSnap = await userDocRef.get();
-      // We are not returning a UserProfile here as it is not needed on the client for this flow.
-      // This function now just ensures the data exists.
+      if (Object.keys(updates).length > 1) { // more than just lastLoginAt
+          await userDocRef.update(updates);
+      } else {
+          await userDocRef.update({ lastLoginAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
+
     } else {
       const selectedCountry = additionalData?.countryCode ? COUNTRIES.find(c => c.code === additionalData.countryCode) : null;
       
-      const newProfileData = {
+      const newProfileData: Omit<UserProfile, 'createdAt' | 'lastLoginAt' | 'achievements'> & { createdAt: any; lastLoginAt: any; } = {
         uid: user.uid,
         email: user.email || null,
         username: user.displayName || user.email?.split('@')[0] || `user_${user.uid.substring(0, 6)}`,
@@ -61,8 +62,8 @@ export async function ensureUserProfileExists(
         countryCode: additionalData?.countryCode || '',
         gender: additionalData?.gender || '', 
         role: 'user',
-        createdAt: serverTimestamp(),
-        lastLoginAt: serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
         fcmToken: '',
       };
       await userDocRef.set(newProfileData);
@@ -72,25 +73,4 @@ export async function ensureUserProfileExists(
     console.error(`[ensureUserProfileExists] Firestore error for UID ${user.uid}: Message: ${error.message}, Code: ${error.code}`, error);
     throw new Error(`Failed to create or update the user profile due to a server error.`);
   }
-
-  // The return value is not used in the final implementation, so we return a placeholder.
-  // The primary goal is to write data to Firestore.
-  const finalDoc = await userDocRef.get();
-  const convertTimestampToString = (timestamp: any): string => {
-      if (timestamp && typeof timestamp.toDate === 'function') {
-          return timestamp.toDate().toISOString();
-      }
-      return new Date().toISOString();
-  };
-  return {
-      uid: user.uid,
-      email: finalDoc.data()?.email || null,
-      username: finalDoc.data()?.username || '',
-      role: 'user',
-      createdAt: convertTimestampToString(finalDoc.data()?.createdAt),
-  };
 }
-
-// The getAllUsersFromFirestore function has been moved to a server action in `src/app/actions/userActions.ts`
-// to resolve build issues with 'firebase-admin'. This file now only contains the `ensureUserProfileExists`
-// function which is used during authentication flows.
