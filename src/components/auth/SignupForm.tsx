@@ -58,7 +58,14 @@ export function SignupForm() {
       const response = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken, additionalData: { countryCode: values.countryCode, gender: values.gender } }),
+        body: JSON.stringify({ 
+          idToken, 
+          additionalData: { 
+            countryCode: values.countryCode, 
+            gender: values.gender,
+            displayName: values.displayName 
+          } 
+        }),
       });
 
       if (!response.ok) {

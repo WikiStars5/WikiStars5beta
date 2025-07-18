@@ -13,7 +13,7 @@ const db = dbAdmin; // Use the admin instance of Firestore
 
 export async function ensureUserProfileExists(
   user: UserRecord, 
-  additionalData: { countryCode?: string; gender?: string }
+  additionalData: { countryCode?: string; gender?: string, displayName?: string }
 ): Promise<void> {
   if (!user || !user.uid) {
     throw new Error("Valid Firebase user object is required.");
@@ -54,7 +54,7 @@ export async function ensureUserProfileExists(
       const newProfileData: Omit<UserProfile, 'createdAt' | 'lastLoginAt'> & { createdAt: any; lastLoginAt: any; } = {
         uid: user.uid,
         email: user.email || null,
-        username: user.displayName || user.email?.split('@')[0] || `user_${user.uid.substring(0, 6)}`,
+        username: additionalData.displayName || user.displayName || user.email?.split('@')[0] || `user_${user.uid.substring(0, 6)}`,
         photoURL: user.photoURL || null,
         country: selectedCountry ? selectedCountry.name : '',
         countryCode: additionalData?.countryCode || '',
