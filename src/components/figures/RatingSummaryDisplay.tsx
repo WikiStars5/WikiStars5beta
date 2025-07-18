@@ -40,7 +40,7 @@ export function RatingSummaryDisplay({ starRatingCounts, figureName }: RatingSum
         {totalVotes > 0 && (
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
             <div className="flex flex-col items-center sm:items-start">
-              <p className="text-5xl font-bold text-primary">{averageRating.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</p>
+              <p className="text-5xl font-bold text-primary">{averageRating.toFixed(1)}</p>
               <StarRating rating={averageRating} size={24} readOnly />
               <p className="text-sm text-muted-foreground mt-1">{totalVotes.toLocaleString('es-ES')} {totalVotes === 1 ? 'calificación' : 'calificaciones'}</p>
             </div>
