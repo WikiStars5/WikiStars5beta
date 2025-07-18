@@ -6,6 +6,7 @@ import type { UserProfile } from '@/lib/types';
 import type { UserRecord } from 'firebase-admin/auth';
 import { COUNTRIES } from '@/config/countries'; 
 
+// Correct collection name
 const USER_COLLECTION = 'registered_users';
 
 const db = dbAdmin; // Use the admin instance of Firestore
@@ -38,8 +39,10 @@ export async function ensureUserProfileExists(
       if (user.email && user.email !== existingProfileData.email) {
         updates.email = user.email;
       }
+      
       const currentUsername = existingProfileData.username;
-      const authDisplayName = user.displayName;
+      // Use the displayName from the form if provided, otherwise from the Auth record
+      const authDisplayName = additionalData?.displayName || user.displayName;
 
       if (authDisplayName && authDisplayName !== currentUsername) {
         updates.username = authDisplayName;
