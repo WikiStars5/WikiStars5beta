@@ -14,14 +14,10 @@ export async function POST(request: NextRequest) {
     
     // This is the critical step: get the full user record from Auth
     const user = await authAdmin.getUser(decodedToken.uid);
-    if (user) {
-        // Now, ensure the profile exists in Firestore, passing any extra data from sign-up form
-        await ensureUserProfileExists(user, additionalData || {});
-    } else {
-        // This case is unlikely if verifyIdToken succeeds, but it's good practice
-        throw new Error('User not found in Firebase Auth despite valid token.');
-    }
 
+    // Now, ensure the profile exists in Firestore, passing any extra data from sign-up form
+    await ensureUserProfileExists(user, additionalData || {});
+   
     const sessionCookie = await authAdmin.createSessionCookie(idToken, { expiresIn });
 
     cookies().set('__session', sessionCookie, {
@@ -34,9 +30,9 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ status: 'success' }, { status: 200 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Session login error:", error);
-    return NextResponse.json({ status: 'error', message: 'Failed to create session' }, { status: 401 });
+    return NextResponse.json({ status: 'error', message: `Failed to create session: ${error.message}` }, { status: 401 });
   }
 }
 

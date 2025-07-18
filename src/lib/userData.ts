@@ -6,14 +6,13 @@ import type { UserProfile } from '@/lib/types';
 import type { UserRecord } from 'firebase-admin/auth';
 import { COUNTRIES } from '@/config/countries'; 
 
-// CORRECTED: This constant now correctly points to the 'registered_users' collection.
 const USER_COLLECTION = 'registered_users';
 
 const db = dbAdmin; // Use the admin instance of Firestore
 
 export async function ensureUserProfileExists(
   user: UserRecord, 
-  additionalData: { countryCode?: string; gender?: string, displayName?: string }
+  additionalData: { countryCode?: string; gender?: string; displayName?: string }
 ): Promise<void> {
   if (!user || !user.uid) {
     throw new Error("Valid Firebase user object is required.");
@@ -45,7 +44,11 @@ export async function ensureUserProfileExists(
         updates.username = authDisplayName;
       }
       
-      await userDocRef.update(updates);
+      if (Object.keys(updates).length > 1) {
+        await userDocRef.update(updates);
+      } else {
+        await userDocRef.update({ lastLoginAt: updates.lastLoginAt });
+      }
 
     } else {
       // User profile does not exist, create it.

@@ -69,7 +69,8 @@ export function SignupForm() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create session during signup.');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create session during signup.');
       }
       
       toast({
