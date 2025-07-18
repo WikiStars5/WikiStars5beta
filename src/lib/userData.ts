@@ -7,7 +7,7 @@ import { serverTimestamp } from 'firebase/firestore';
 import type { UserRecord } from 'firebase-admin/auth';
 import { COUNTRIES } from '@/config/countries'; 
 
-const USER_COLLECTION = 'registered_users';
+const USER_COLLECTION = 'users';
 
 const db = dbAdmin; // Use the admin instance of Firestore
 
