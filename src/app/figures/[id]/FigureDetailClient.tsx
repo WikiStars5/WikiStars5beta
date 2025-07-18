@@ -779,14 +779,39 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     })();
 };
 
-  const formatDate = (timestamp: any): string => {
-    if (!timestamp || typeof timestamp.toDate !== 'function') return 'Fecha desconocida';
+  const timeSince = (timestamp: any): string => {
+    if (!timestamp || typeof timestamp.toDate !== 'function') return '';
     try {
       const date = timestamp.toDate();
-      if (isNaN(date.getTime())) return 'Fecha inválida';
-      return `${date.toLocaleDateString()} a las ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+      let interval = seconds / 31536000;
+      if (interval > 1) {
+        const years = Math.floor(interval);
+        return `hace ${years} ${years === 1 ? 'año' : 'años'}`;
+      }
+      interval = seconds / 2592000;
+      if (interval > 1) {
+        const months = Math.floor(interval);
+        return `hace ${months} ${months === 1 ? 'mes' : 'meses'}`;
+      }
+      interval = seconds / 86400;
+      if (interval > 1) {
+        const days = Math.floor(interval);
+        return `hace ${days} ${days === 1 ? 'día' : 'días'}`;
+      }
+      interval = seconds / 3600;
+      if (interval > 1) {
+        const hours = Math.floor(interval);
+        return `hace ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+      }
+      interval = seconds / 60;
+      if (interval > 1) {
+        const minutes = Math.floor(interval);
+        return `hace ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
+      }
+      return "hace unos segundos";
     } catch (error) {
-      return "Error al formatear fecha";
+      return "";
     }
   };
 
@@ -1107,7 +1132,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                 )}
               </div>
               <div className="flex items-center space-x-2">
-                <p className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</p>
+                <p className="text-xs text-muted-foreground">{timeSince(comment.createdAt)}</p>
                 {currentUser && (currentUser.uid === comment.userId || (currentUser.uid === ADMIN_UID)) && (
                   <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/comment:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => openDeleteDialog(comment.id)}>
                     <Trash2 className="h-4 w-4" />
