@@ -12,7 +12,8 @@ const db = dbAdmin; // Use the admin instance of Firestore
 
 export async function ensureUserProfileExists(
   user: UserRecord, 
-  additionalData: { countryCode?: string; gender?: string; displayName?: string }
+  // Ensure additionalData is always an object, even if empty.
+  additionalData: { countryCode?: string; gender?: string; displayName?: string } = {}
 ): Promise<void> {
   if (!user || !user.uid) {
     throw new Error("Valid Firebase user object is required.");
@@ -44,11 +45,7 @@ export async function ensureUserProfileExists(
         updates.username = authDisplayName;
       }
       
-      if (Object.keys(updates).length > 1) {
-        await userDocRef.update(updates);
-      } else {
-        await userDocRef.update({ lastLoginAt: updates.lastLoginAt });
-      }
+      await userDocRef.update(updates);
 
     } else {
       // User profile does not exist, create it. This typically happens on signup.

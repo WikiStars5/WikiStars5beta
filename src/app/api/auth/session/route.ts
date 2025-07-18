@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
     const user = await authAdmin.getUser(decodedToken.uid);
 
     // Now, ensure the profile exists in Firestore, passing any extra data from sign-up form
+    // The empty object `{}` is a fallback to prevent errors if additionalData is null or undefined.
     await ensureUserProfileExists(user, additionalData || {});
    
     const sessionCookie = await authAdmin.createSessionCookie(idToken, { expiresIn });
