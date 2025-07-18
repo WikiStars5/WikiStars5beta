@@ -51,13 +51,13 @@ export async function ensureUserProfileExists(
       }
 
     } else {
-      // User profile does not exist, create it.
+      // User profile does not exist, create it. This typically happens on signup.
       const selectedCountry = additionalData?.countryCode ? COUNTRIES.find(c => c.code === additionalData.countryCode) : null;
       
       const newProfileData: Omit<UserProfile, 'createdAt' | 'lastLoginAt'> & { createdAt: any; lastLoginAt: any; } = {
         uid: user.uid,
         email: user.email || null,
-        username: additionalData.displayName || user.displayName || user.email?.split('@')[0] || `user_${user.uid.substring(0, 6)}`,
+        username: additionalData?.displayName || user.displayName || user.email?.split('@')[0] || `user_${user.uid.substring(0, 6)}`,
         photoURL: user.photoURL || null,
         country: selectedCountry ? selectedCountry.name : '',
         countryCode: additionalData?.countryCode || '',
