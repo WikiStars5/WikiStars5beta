@@ -30,12 +30,6 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: '**.pinimg.com', port: '', pathname: '/**', },
       { protocol: 'https', hostname: 'flagcdn.com', port: '', pathname: '/**', },
     ], 
-  }, 
-  devIndicators: { 
-    allowedDevOrigins: [ 
-      'https://9000-firebase-studio-1749775328349.cluster-vpxjqdstfzgs6qeiaf7rdlsqrc.cloudworkstations.dev', 
-      'https://6000-firebase-studio-1749775328349.cluster-vpxjqdstfzgs6qeiaf7rdlsqrc.cloudworkstations.dev', 
-    ], 
   },
   async redirects() {
     return [
