@@ -6,8 +6,8 @@ import type { UserProfile } from '@/lib/types';
 import type { UserRecord } from 'firebase-admin/auth';
 import { COUNTRIES } from '@/config/countries'; 
 
-// Correct collection name
-const USER_COLLECTION = 'users';
+// Correct collection name as per the database structure.
+const USER_COLLECTION = 'registered_users';
 
 const db = dbAdmin; // Use the admin instance of Firestore
 
