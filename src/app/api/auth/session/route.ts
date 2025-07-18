@@ -1,7 +1,7 @@
 
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { authAdmin } from '@/lib/firebase-admin'; // Corrected to use firebase-admin
+import { authAdmin } from '@/lib/firebase-admin'; 
 import { ensureUserProfileExists } from '@/lib/userData';
 
 export async function POST(request: NextRequest) {
@@ -12,11 +12,14 @@ export async function POST(request: NextRequest) {
   try {
     const decodedToken = await authAdmin.verifyIdToken(idToken);
     
-    // Ensure user profile exists in Firestore after login/signup
-    // This is the critical step that was missing.
+    // This is the critical step: get the full user record from Auth
     const user = await authAdmin.getUser(decodedToken.uid);
     if (user) {
+        // Now, ensure the profile exists in Firestore, passing any extra data from sign-up form
         await ensureUserProfileExists(user, additionalData || {});
+    } else {
+        // This case is unlikely if verifyIdToken succeeds, but it's good practice
+        throw new Error('User not found in Firebase Auth despite valid token.');
     }
 
     const sessionCookie = await authAdmin.createSessionCookie(idToken, { expiresIn });

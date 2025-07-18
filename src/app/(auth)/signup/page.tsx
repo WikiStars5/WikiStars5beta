@@ -25,11 +25,14 @@ export default function SignupPage() {
       const response = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
+        // For Google Sign-In, we don't have additional form data, 
+        // the backend function will pull displayName and photoURL directly from the Auth record.
+        body: JSON.stringify({ idToken, additionalData: {} }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create session via Google Sign-In.');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create session via Google Sign-In.');
       }
 
       toast({

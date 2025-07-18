@@ -3,10 +3,10 @@
 
 import { dbAdmin } from '@/lib/firebase-admin';
 import type { UserProfile } from '@/lib/types';
-import { serverTimestamp } from 'firebase/firestore';
 import type { UserRecord } from 'firebase-admin/auth';
 import { COUNTRIES } from '@/config/countries'; 
 
+// Correct collection name
 const USER_COLLECTION = 'users';
 
 const db = dbAdmin; // Use the admin instance of Firestore
@@ -25,11 +25,13 @@ export async function ensureUserProfileExists(
     const userDocSnap = await userDocRef.get();
 
     if (userDocSnap.exists) {
+      // User profile already exists, just update last login time and any changed info
       const existingProfileData = userDocSnap.data()!;
       const updates: { [key: string]: any } = {
         lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
+      // Sync data from Auth provider (e.g., if user changed their Google profile pic)
       if (user.photoURL && user.photoURL !== existingProfileData.photoURL) {
         updates.photoURL = user.photoURL;
       }
@@ -39,21 +41,17 @@ export async function ensureUserProfileExists(
       const currentUsername = existingProfileData.username;
       const authDisplayName = user.displayName;
 
-      // Only update username if it's different and not the default one.
       if (authDisplayName && authDisplayName !== currentUsername) {
         updates.username = authDisplayName;
       }
-
-      if (Object.keys(updates).length > 1) { // more than just lastLoginAt
-          await userDocRef.update(updates);
-      } else {
-          await userDocRef.update({ lastLoginAt: admin.firestore.FieldValue.serverTimestamp() });
-      }
+      
+      await userDocRef.update(updates);
 
     } else {
+      // User profile does not exist, create it.
       const selectedCountry = additionalData?.countryCode ? COUNTRIES.find(c => c.code === additionalData.countryCode) : null;
       
-      const newProfileData: Omit<UserProfile, 'createdAt' | 'lastLoginAt' | 'achievements'> & { createdAt: any; lastLoginAt: any; } = {
+      const newProfileData: Omit<UserProfile, 'createdAt' | 'lastLoginAt'> & { createdAt: any; lastLoginAt: any; } = {
         uid: user.uid,
         email: user.email || null,
         username: user.displayName || user.email?.split('@')[0] || `user_${user.uid.substring(0, 6)}`,
@@ -65,6 +63,7 @@ export async function ensureUserProfileExists(
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
         fcmToken: '',
+        achievements: [], // Start with an empty list of achievements
       };
       await userDocRef.set(newProfileData);
     }
