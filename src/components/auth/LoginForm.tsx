@@ -31,7 +31,6 @@ export function LoginForm() {
       const user = userCredential.user;
       const idToken = await user.getIdToken();
 
-      // Create a session cookie by calling our new API route
       const response = await fetch('/api/auth/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -39,7 +38,8 @@ export function LoginForm() {
       });
 
       if (!response.ok) {
-          throw new Error('Failed to create session.');
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to create session.');
       }
       
       toast({
@@ -47,7 +47,7 @@ export function LoginForm() {
         description: `¡Bienvenido de nuevo, ${user.displayName || user.email}!`,
       });
       router.push('/home');
-      router.refresh(); // Refresh to apply server-side logic with the new cookie
+      router.refresh(); 
 
     } catch (authError: any) {
       console.error(
