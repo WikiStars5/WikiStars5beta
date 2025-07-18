@@ -38,15 +38,18 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
     const sessionCookie = cookies().get('__session')?.value
+    cookies().delete('__session');
+    
     if (sessionCookie) {
-        cookies().delete('__session');
         try {
-            const decodedClaims = await authAdmin.verifySessionCookie(sessionCookie);
+            const decodedClaims = await authAdmin.verifySessionCookie(sessionCookie, true); // true checks for revocation
             await authAdmin.revokeRefreshTokens(decodedClaims.sub);
         } catch (error) {
             // Session cookie is invalid or expired.
-            // No need to throw an error, just clear the cookie.
+            // This is an expected case, so we can just log it and continue.
+            console.log("Could not revoke session cookie, it was likely already invalid:", error);
         }
     }
+    // Always return success on logout to ensure a smooth user experience.
     return NextResponse.json({ status: 'success' }, { status: 200 });
 }
