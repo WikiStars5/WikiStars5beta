@@ -59,3 +59,4 @@ export async function DELETE(request: NextRequest) {
     // Always return a success response to ensure a smooth logout experience for the user.
     return NextResponse.json({ status: 'success' }, { status: 200 });
 }
+
