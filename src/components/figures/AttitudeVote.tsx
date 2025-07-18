@@ -14,6 +14,7 @@ import { Loader2, LogIn } from 'lucide-react';
 import Link from 'next/link';
 import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
+import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
 
 interface AttitudeVoteProps {
   figureId: string;
@@ -155,6 +156,12 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
             duration: 8000,
             action: <ShareButton figureName={figureName} figureId={figureId} showText />,
           });
+          if (!currentUser.isAnonymous) {
+            const achievementResult = await grantActitudDefinidaAchievement(currentUser.uid);
+            if (achievementResult.unlocked) {
+              toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
+            }
+          }
         } else {
           await deleteDoc(userAttitudeDocRef);
           toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });

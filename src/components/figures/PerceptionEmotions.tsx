@@ -14,6 +14,7 @@ import { Loader2, LogIn } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ShareButton } from '../shared/ShareButton';
+import { grantEmocionAlDescubiertoAchievement } from '@/app/actions/achievementActions';
 
 interface PerceptionEmotionsProps {
   figureId: string;
@@ -151,6 +152,12 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
             duration: 8000,
             action: <ShareButton figureName={figureName} figureId={figureId} showText />,
           });
+          if (!currentUser.isAnonymous) {
+            const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
+            if (achievementResult.unlocked) {
+              toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
+            }
+          }
         } else {
           await deleteDoc(userPerceptionDocRef);
           toast({ title: "Voto Eliminado", description: "Tu percepción ha sido eliminada." });

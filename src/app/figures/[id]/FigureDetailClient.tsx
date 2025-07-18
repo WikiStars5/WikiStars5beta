@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment, writeBatch, type DocumentSnapshot } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment, writeBatch, type DocumentSnapshot } from 'firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarRating } from "@/components/shared/StarRating";
 import {
@@ -51,7 +51,12 @@ import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile } f
 import { updateFigureInFirestore } from "@/lib/placeholder-data";
 import { markAllNotificationsAsRead, markNotificationAsRead } from '@/app/actions/notificationActions';
 import { ADMIN_UID } from '@/config/admin';
-import { grantFirstGlanceAchievement } from '@/app/actions/achievementActions';
+import { 
+  grantFirstGlanceAchievement,
+  grantEstrellaBrillanteAchievement,
+  grantMiPrimeraContribucionAchievement,
+  grantDialogoAbiertoAchievement
+} from '@/app/actions/achievementActions';
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -677,6 +682,16 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           <ShareButton figureName={figure.name} figureId={figure.id} showText />
         ),
       });
+      
+      if (!currentUser.isAnonymous) {
+        if (newCommentStars) {
+            const achResult1 = await grantEstrellaBrillanteAchievement(currentUser.uid);
+            if (achResult1.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult1.message });
+        }
+        const achResult2 = await grantMiPrimeraContribucionAchievement(currentUser.uid);
+        if (achResult2.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult2.message });
+      }
+
 
       setNewComment("");
       fetchComments(); 
@@ -998,6 +1013,10 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       });
 
       toast({ title: "Respuesta Enviada", description: "Tu respuesta ha sido guardada." });
+      if (!currentUser.isAnonymous) {
+          const achResult = await grantDialogoAbiertoAchievement(currentUser.uid);
+          if (achResult.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult.message });
+      }
       setReplyText("");
       setReplyingTo(null);
       handleToggleReplies(parentId, true); // Force refresh replies

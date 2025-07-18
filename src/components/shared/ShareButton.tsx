@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -12,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Share2, Link as LinkIcon, Facebook, Twitter, Linkedin, MessageCircle, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { auth } from '@/lib/firebase';
+import { grantCompartiendoLaVerdadAchievement } from '@/app/actions/achievementActions';
 
 // Simple inline SVG component for Reddit Icon
 const RedditIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -61,6 +64,20 @@ export function ShareButton({ figureName, figureId, showText = false }: ShareBut
 
   const buttonSize = showText ? "default" : "icon";
 
+  const triggerAchievement = async () => {
+    const user = auth.currentUser;
+    if (user && !user.isAnonymous) {
+      const result = await grantCompartiendoLaVerdadAchievement(user.uid);
+      if (result.unlocked) {
+        toast({
+          title: "¡Logro Desbloqueado!",
+          description: result.message
+        });
+      }
+    }
+  };
+
+
   if (!currentUrl) {
     // Return a disabled button or a placeholder while URL is not available
     return (
@@ -82,6 +99,7 @@ export function ShareButton({ figureName, figureId, showText = false }: ShareBut
           text: shareText,
           url: currentUrl,
         });
+        triggerAchievement();
       } catch (error) {
         // This can happen if the user cancels the share dialog. We don't need to show an error for that.
         console.log("Web Share API was cancelled or failed:", error);
@@ -152,6 +170,7 @@ export function ShareButton({ figureName, figureId, showText = false }: ShareBut
   ];
 
   const handleShareOptionClick = async (option: SocialShareOption) => {
+    triggerAchievement();
     if (option.url === "#copy") {
       try {
         await navigator.clipboard.writeText(currentUrl);

@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, BellRing, Award, Eye } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, BellRing, Award, Eye, Star, Heart, MessageSquare, Reply, Share2 } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -23,7 +23,36 @@ const achievementDetails = {
     title: "Primer Vistazo",
     description: "Visitaste tu primer perfil.",
   },
-  // ... add other achievements here as they are implemented
+  actitud_definida: {
+    icon: Heart,
+    title: "Actitud Definida",
+    description: "Votaste por primera vez tu Actitud (Fan, Hater, etc).",
+  },
+  estrella_brillante: {
+    icon: Star,
+    title: "Estrella Brillante",
+    description: "Emitiste tu primera calificación de estrellas.",
+  },
+  emocion_descubierta: {
+    icon: Heart, // Placeholder, can be changed
+    title: "Emoción al Descubierto",
+    description: "Votaste por primera vez una Emoción.",
+  },
+  compartiendo_verdad: {
+    icon: Share2,
+    title: "Compartiendo la Verdad",
+    description: "Compartiste un perfil por primera vez.",
+  },
+  primera_contribucion: {
+    icon: MessageSquare,
+    title: "Mi Primera Contribución",
+    description: "Dejaste tu primer comentario.",
+  },
+  dialogo_abierto: {
+    icon: Reply,
+    title: "Diálogo Abierto",
+    description: "Respondiste a un comentario por primera vez.",
+  },
 };
 
 type AchievementId = keyof typeof achievementDetails;
