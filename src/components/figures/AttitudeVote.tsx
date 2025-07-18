@@ -189,7 +189,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   return (
     <Card className="border border-white/20 bg-black">
       <CardHeader>
-        <CardTitle>¿Qué te consideras con respecto a {figureName}?</CardTitle>
+        <CardTitle>¿Qué te consideras?</CardTitle>
         <CardDescription>
           {currentUser
             ? "Selecciona una opción para compartir tu postura."
