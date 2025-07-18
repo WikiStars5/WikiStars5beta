@@ -175,9 +175,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           return b.createdAt.toMillis() - a.createdAt.toMillis();
         });
         break;
-      case 'oldest':
-        commentsToDisplay.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
-        break;
       case 'myComment':
         if (!currentUser || currentUser.isAnonymous) {
           commentsToDisplay = [];
@@ -1132,7 +1129,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                 )}
               </div>
               <div className="flex items-center space-x-2">
-                <p className="text-xs text-muted-foreground">{timeSince(comment.createdAt)}</p>
+                 <p className="text-xs text-muted-foreground">{timeSince(comment.createdAt)}</p>
                 {currentUser && (currentUser.uid === comment.userId || (currentUser.uid === ADMIN_UID)) && (
                   <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/comment:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => openDeleteDialog(comment.id)}>
                     <Trash2 className="h-4 w-4" />
@@ -1434,7 +1431,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                       <h4 className="text-lg font-medium">Comentarios ({displayedComments.length})</h4>
                       <TabsList className="flex h-auto w-full flex-wrap justify-center gap-1 sm:w-auto">
                         <TabsTrigger value="newest" className="text-xs sm:text-sm">Más Nuevos</TabsTrigger>
-                        <TabsTrigger value="oldest" className="text-xs sm:text-sm">Más Antiguos</TabsTrigger>
                         <TabsTrigger value="mostVoted" className="text-xs sm:text-sm">Más Votados</TabsTrigger>
                         {currentUser && !currentUser.isAnonymous && (
                           <TabsTrigger value="myComment" className="text-xs sm:text-sm">Mi Comentario</TabsTrigger>
