@@ -3,8 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, app } from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
+// This is the new, robust way to ensure user profile exists by calling a Firebase Function.
+const ensureUserProfileCallable = httpsCallable(getFunctions(app), 'ensureUserProfile');
 
 export function useAuthWithGoogle() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -17,20 +21,10 @@ export function useAuthWithGoogle() {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      const idToken = await user.getIdToken();
-
-      const response = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // For Google Sign-In, we don't have additional form data,
-        // the backend function will pull displayName and photoURL directly from the Auth record.
-        body: JSON.stringify({ idToken, additionalData: {} }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create session via Google Sign-In.');
-      }
+      
+      // Call the cloud function to ensure the user profile exists or is created.
+      // We no longer need a separate API route.
+      await ensureUserProfileCallable();
 
       toast({
         title: "¡Sesión Iniciada!",
