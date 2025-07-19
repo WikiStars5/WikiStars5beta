@@ -10,12 +10,11 @@ import { Loader2 } from "lucide-react";
 interface AuthFormCardProps {
   title: string;
   description: string;
-  children: ReactNode;
   footerLinkHref: string;
   footerLinkText: string;
   footerText: string;
-  onGoogleSignIn?: () => Promise<void>; 
-  isGoogleLoading?: boolean;
+  onGoogleSignIn: () => Promise<void>; 
+  isGoogleLoading: boolean;
 }
 
 const GoogleIcon = () => (
@@ -24,9 +23,7 @@ const GoogleIcon = () => (
   </svg>
 );
 
-export function AuthFormCard({ title, description, children, footerLinkHref, footerLinkText, footerText, onGoogleSignIn, isGoogleLoading }: AuthFormCardProps) {
-  // Removed client-side theme detection to prevent hydration errors.
-  // The Logo component now handles theme changes internally via CSS.
+export function AuthFormCard({ title, description, footerLinkHref, footerLinkText, footerText, onGoogleSignIn, isGoogleLoading }: AuthFormCardProps) {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] py-12">
@@ -37,36 +34,21 @@ export function AuthFormCard({ title, description, children, footerLinkHref, foo
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {children}
-          {onGoogleSignIn && ( 
-            <>
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">
-                    O continuar con
-                  </span>
-                </div>
-              </div>
-              <div className="mt-4">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={onGoogleSignIn}
-                  disabled={isGoogleLoading}
-                >
-                  {isGoogleLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <GoogleIcon />
-                  )}
-                  Continuar con Google
-                </Button>
-              </div>
-            </>
-          )}
+           <div className="mt-4">
+              <Button
+                variant="outline"
+                className="w-full text-base py-6"
+                onClick={onGoogleSignIn}
+                disabled={isGoogleLoading}
+              >
+                {isGoogleLoading ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <GoogleIcon />
+                )}
+                Continuar con Google
+              </Button>
+            </div>
         </CardContent>
         <CardFooter className="flex justify-center text-sm">
           <p className="text-muted-foreground">
