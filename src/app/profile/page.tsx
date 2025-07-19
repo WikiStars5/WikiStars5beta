@@ -98,7 +98,7 @@ export default function ProfilePage() {
     try {
       await firebaseSignOut(auth);
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
-      router.push('/home');
+      router.push('/');
     } catch (error) {
       console.error("Error logging out from profile:", error);
       toast({ title: "Error", description: "No se pudo cerrar la sesión.", variant: "destructive" });

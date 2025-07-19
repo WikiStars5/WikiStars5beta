@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -30,7 +31,7 @@ export function useAuthWithGoogle() {
         title: "¡Sesión Iniciada!",
         description: `¡Bienvenido a WikiStars5, ${user.displayName || user.email}!`,
       });
-      router.push('/home');
+      router.push('/');
       router.refresh();
 
     } catch (error: any) {

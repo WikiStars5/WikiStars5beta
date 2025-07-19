@@ -29,7 +29,7 @@ export function Header() {
         
         <div className={`flex items-center gap-1 md:gap-2 lg:gap-3 transition-opacity duration-300 ${isHeaderSearchFocused && !isHeaderSearchFocused ? 'opacity-0 md:opacity-100' : 'opacity-100'}`}>
           <nav className={`hidden md:flex items-center gap-3 text-sm transition-opacity duration-300 ${isHeaderSearchFocused ? 'lg:flex opacity-0 lg:opacity-100' : 'flex opacity-100'}`}>
-            <Link href="/home" className="text-foreground/70 hover:text-foreground transition-colors">
+            <Link href="/" className="text-foreground/70 hover:text-foreground transition-colors">
               Hogar
             </Link>
             <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">

@@ -1,3 +1,4 @@
+
 import { MetadataRoute } from 'next';
 import { getAllFiguresFromFirestore } from '@/lib/placeholder-data';
 import type { Figure } from '@/lib/types';
@@ -19,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Add static routes
   const staticUrls = [
     {
-      url: `${baseUrl}/home`,
+      url: `${baseUrl}/`,
       lastModified: new Date(),
       changeFrequency: 'monthly' as const,
       priority: 1.0,
