@@ -19,6 +19,12 @@ export function useAuthWithGoogle() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
+    // SOLUCIÓN DEFINITIVA: Forzar el authDomain para evitar errores de dominio no autorizado.
+    // Esto es crucial en entornos de desarrollo anidados como los de Firebase Studio.
+    provider.setCustomParameters({
+      'auth_domain': 'wikistars5-2yctr.firebaseapp.com'
+    });
+
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
@@ -39,6 +45,9 @@ export function useAuthWithGoogle() {
       let errorMessage = "No se pudo iniciar sesión con Google. Intenta de nuevo más tarde.";
       
       switch (error.code) {
+        case 'auth/unauthorized-domain':
+          errorMessage = "El dominio no está autorizado. Asegúrate de haberlo añadido en la consola de Firebase.";
+          break;
         case 'auth/popup-closed-by-user':
           errorMessage = "El proceso con Google fue cancelado por el usuario.";
           break;
