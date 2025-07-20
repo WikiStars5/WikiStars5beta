@@ -3,19 +3,30 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, BellRing, Award, Eye, Star, Heart, MessageSquare, Reply, Share2 } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, BellRing, Award, Eye, Star, Heart, MessageSquare, Reply, Share2, Edit, Save, BarChart3, Map, VenusMars } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
 import { Separator } from '@/components/ui/separator';
 import type { UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { CountryCombobox } from '@/components/shared/CountryCombobox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { GENDER_OPTIONS } from '@/config/genderOptions';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '@/lib/firebase';
 
 const achievementDetails = {
   first_glance: {
@@ -34,7 +45,7 @@ const achievementDetails = {
     description: "Emitiste tu primera calificación de estrellas.",
   },
   emocion_descubierta: {
-    icon: Heart, // Placeholder, can be changed
+    icon: Heart,
     title: "Emoción al Descubierto",
     description: "Votaste por primera vez una Emoción.",
   },
@@ -57,18 +68,48 @@ const achievementDetails = {
 
 type AchievementId = keyof typeof achievementDetails;
 
+const profileFormSchema = z.object({
+  username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres.").max(30, "El nombre de usuario no puede exceder los 30 caracteres."),
+  countryCode: z.string().optional(),
+  gender: z.string().optional(),
+});
+
+type ProfileFormValues = z.infer<typeof profileFormSchema>;
+
+interface UserStats {
+  comments: number;
+  ratings: number;
+  attitudes: number;
+}
+
+const updateUserProfileCallable = httpsCallable(getFunctions(app), 'updateUserProfile');
+const getUserStatsCallable = httpsCallable(getFunctions(app), 'getUserStats');
 
 export default function ProfilePage() {
-  const { user: currentUser, isLoading } = useAuth();
+  const { user: currentUser, isLoading, firebaseUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [notificationPermission, setNotificationPermission] = useState('default');
+  const [isEditing, setIsEditing] = useState(false);
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: {
+      username: '',
+      countryCode: '',
+      gender: '',
+    },
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setNotificationPermission(Notification.permission);
     }
+  }, []);
 
+  useEffect(() => {
     if (!isLoading && !currentUser) {
         toast({
           title: "Acceso Requerido",
@@ -77,7 +118,47 @@ export default function ProfilePage() {
         });
         router.replace('/login?redirect=/profile');
     }
-  }, [isLoading, currentUser, router, toast]);
+    
+    if (currentUser) {
+      reset({
+        username: currentUser.username,
+        countryCode: currentUser.countryCode || '',
+        gender: currentUser.gender || '',
+      });
+      fetchUserStats();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, currentUser, router, toast, reset]);
+
+  const fetchUserStats = async () => {
+    if (!firebaseUser) return;
+    setIsLoadingStats(true);
+    try {
+      const result = await getUserStatsCallable();
+      const data = result.data as { success: boolean, stats?: UserStats, error?: string };
+      if (data.success && data.stats) {
+        setUserStats(data.stats);
+      } else {
+        console.error("Error fetching stats:", data.error);
+      }
+    } catch (error) {
+      console.error("Failed to call getUserStats function:", error);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
+  
+  const onSubmit = async (data: ProfileFormValues) => {
+    try {
+      await updateUserProfileCallable(data);
+      toast({ title: "Perfil Actualizado", description: "Tus cambios han sido guardados." });
+      setIsEditing(false);
+      // The onSnapshot listener in useAuth will automatically update the UI.
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      toast({ title: "Error", description: error.message || "No se pudo actualizar tu perfil.", variant: "destructive" });
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -148,7 +229,7 @@ export default function ProfilePage() {
   
   return (
     <div className="flex justify-center items-start pt-10">
-      <Card className="w-full max-w-lg shadow-xl">
+      <Card className="w-full max-w-2xl shadow-xl">
         <CardHeader className="items-center text-center">
           <Avatar className="h-24 w-24 mb-4">
             <AvatarImage src={correctMalformedUrl(currentUser.photoURL) || undefined} alt={displayName} />
@@ -166,32 +247,86 @@ export default function ProfilePage() {
           </CardTitle>
           <CardDescription>{currentUser.email}</CardDescription>
         </CardHeader>
-        <CardContent className="p-6 border-t space-y-6">
-          <div className="space-y-2">
-            <h3 className="text-base font-medium">Notificaciones Push</h3>
-            <p className="text-sm text-muted-foreground">
-              Recibe alertas en tu dispositivo incluso cuando no estés en la web.
-            </p>
-            {notificationPermission === 'granted' && (
-              <div className="text-sm text-green-600 flex items-center gap-2 p-2 bg-green-500/10 rounded-md border border-green-500/20">
-                <BellRing className="h-4 w-4" />
-                <p>Las notificaciones push están activadas.</p>
-              </div>
-            )}
-            {notificationPermission === 'denied' && (
-              <div className="text-sm text-destructive flex items-center gap-2 p-2 bg-destructive/10 rounded-md border border-destructive/20">
-                <BellRing className="h-4 w-4" />
-                <p>Bloqueaste las notificaciones. Para activarlas, ve a la configuración de tu navegador.</p>
-              </div>
-            )}
-            {notificationPermission === 'default' && (
-              <Button onClick={handleRequestNotificationPermission} variant="outline" className="w-full">
-                <BellRing className="mr-2 h-4 w-4" />
-                Activar Notificaciones
-              </Button>
+        <CardContent className="p-6 border-t space-y-8">
+        
+          {/* User Stats Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2"><BarChart3 className="h-5 w-5"/>Tus Estadísticas</h3>
+             {isLoadingStats ? (
+                <div className="flex justify-center items-center h-24"><Loader2 className="h-6 w-6 animate-spin"/></div>
+            ) : userStats ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="p-4 bg-muted/50 rounded-lg text-center">
+                        <MessageSquare className="mx-auto h-6 w-6 mb-2 text-primary"/>
+                        <p className="text-2xl font-bold">{userStats.comments}</p>
+                        <p className="text-xs text-muted-foreground">Comentarios</p>
+                    </div>
+                    <div className="p-4 bg-muted/50 rounded-lg text-center">
+                        <Star className="mx-auto h-6 w-6 mb-2 text-primary"/>
+                        <p className="text-2xl font-bold">{userStats.ratings}</p>
+                        <p className="text-xs text-muted-foreground">Calificaciones</p>
+                    </div>
+                    <div className="p-4 bg-muted/50 rounded-lg text-center">
+                        <Heart className="mx-auto h-6 w-6 mb-2 text-primary"/>
+                        <p className="text-2xl font-bold">{userStats.attitudes}</p>
+                        <p className="text-xs text-muted-foreground">Votos de Actitud</p>
+                    </div>
+                </div>
+            ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No se pudieron cargar tus estadísticas.</p>
             )}
           </div>
-          
+
+          <Separator />
+        
+          {/* Profile Edit Section */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold flex items-center gap-2"><User className="h-5 w-5"/>Tu Perfil</h3>
+              {!isEditing && (
+                <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
+                  <Edit className="mr-2 h-4 w-4"/>Editar
+                </Button>
+              )}
+            </div>
+            {isEditing ? (
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 animate-in fade-in-50">
+                <div>
+                  <Label htmlFor="username">Nombre de Usuario</Label>
+                  <Controller name="username" control={control} render={({ field }) => <Input id="username" {...field} />} />
+                  {errors.username && <p className="text-xs text-destructive mt-1">{errors.username.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="countryCode">País</Label>
+                  <Controller name="countryCode" control={control} render={({ field }) => <CountryCombobox value={field.value || ''} onChange={field.onChange} />} />
+                </div>
+                <div>
+                  <Label htmlFor="gender">Sexo</Label>
+                  <Controller name="gender" control={control} render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger id="gender"><SelectValue placeholder="Selecciona tu sexo" /></SelectTrigger>
+                        <SelectContent>
+                          {GENDER_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                  )} />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="ghost" onClick={() => { setIsEditing(false); reset({ username: currentUser.username, countryCode: currentUser.countryCode, gender: currentUser.gender }); }}>Cancelar</Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                    Guardar Cambios
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2"><Map className="h-4 w-4"/>País: <span className="font-medium text-foreground">{currentUser.country || 'No especificado'}</span></div>
+                <div className="flex items-center gap-2"><VenusMars className="h-4 w-4"/>Sexo: <span className="font-medium text-foreground">{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</span></div>
+              </div>
+            )}
+          </div>
+
           <Separator />
           
           <div className="space-y-4">
@@ -223,9 +358,6 @@ export default function ProfilePage() {
 
           <Separator />
 
-          <p className="text-sm text-center text-muted-foreground">
-            ¡Bienvenido a tu perfil! Más funcionalidades próximamente.
-          </p>
           <Button onClick={handleLogout} className="w-full">
             <LogOut className="mr-2 h-4 w-4" />
             Cerrar Sesión

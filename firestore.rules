@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -7,8 +8,8 @@ service cloud.firestore {
     // Helper Functions
     // =====================================================================
     function isAdmin() {
-      // UID del administrador.
-      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+      // Check if the user is authenticated and their profile document has the 'admin' role.
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
     function isAuthenticated() {
@@ -25,18 +26,19 @@ service cloud.firestore {
 
     match /figures/{figureId} {
       allow get, list: if true;
-      allow update: if isAuthenticated();
-      allow create, delete: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
-    // --- CORRECCIÓN CRÍTICA ---
-    // La colección se llama 'users', no 'registered_users'.
-    // `allow create: if true;` permite que cualquiera (un usuario no logueado) pueda crear una cuenta.
-    // get, list, update y delete siguen protegidos.
     match /users/{userId} {
-      allow create: if true;
-      allow get, list: if isAdmin();
-      allow update: if isOwner(userId) || isAdmin();
+      // Anyone can create their own user document during signup.
+      allow create: if true; 
+      // Only the owner or an admin can view a user profile.
+      allow get: if isOwner(userId) || isAdmin();
+      // Only the owner or an admin can list all users.
+      allow list: if isAdmin();
+      // Only the owner can update their own profile.
+      allow update: if isOwner(userId);
+      // Only an admin can delete a user.
       allow delete: if isAdmin();
     }
 
@@ -46,15 +48,15 @@ service cloud.firestore {
 
     match /userComments/{commentId} {
       allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated(); // Para likes/dislikes
+      allow create, update: if isAuthenticated();
       allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
     
     match /notifications/{notificationId} {
-      allow create: if isAuthenticated();
-      allow read, update: if isOwner(resource.data.userId) || isAdmin();
-      allow list, delete: if isOwner(resource.data.userId) || isAdmin();
+      // The backend function creates notifications, not the client directly
+      allow create: if false; 
+      allow list, read, update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
   }
 }
