@@ -5,13 +5,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { AtSign, KeyRound, Eye, EyeOff, Loader2, UserPlus, UserCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-
-const registerUserCallable = httpsCallable(getFunctions(app), 'registerUser');
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -36,19 +34,37 @@ export default function SignupPage() {
     setIsSubmitting(true);
 
     try {
-      const result = await registerUserCallable({ email, password, username });
-      const data = result.data as { success: boolean; userId?: string; error?: string };
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Update the user's profile with the username
+      await updateProfile(userCredential.user, {
+        displayName: username
+      });
+      
+      // The Cloud Function 'createProfileOnRegister' will handle creating the Firestore document.
 
-      if (data.success) {
-        toast({ title: "¡Cuenta Creada!", description: "Tu cuenta ha sido creada. Ahora, inicia sesión." });
-        router.push('/login');
-      } else {
-        throw new Error(data.error || 'No se pudo crear la cuenta.');
-      }
+      toast({ title: "¡Cuenta Creada!", description: "Tu cuenta ha sido creada. Ahora, inicia sesión." });
+      router.push('/login');
     } catch (error: any) {
+      console.error("Firebase Auth Error:", error);
+      let errorMessage = "Ocurrió un error. Por favor, intenta de nuevo.";
+       switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'Este correo electrónico ya está registrado.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'El formato del correo electrónico no es válido.';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
+          break;
+        default:
+          errorMessage = error.message;
+          break;
+      }
       toast({
         title: "Error en el Registro",
-        description: error.message || "Ocurrió un error. Por favor, intenta de nuevo.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -80,7 +96,7 @@ export default function SignupPage() {
               <label className="text-sm font-bold text-muted-foreground mb-2 block">Contraseña</label>
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
-                <Input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 pr-10" placeholder="••••••••" required />
+                <Input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 pr-10" placeholder="Mínimo 6 caracteres" required />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>

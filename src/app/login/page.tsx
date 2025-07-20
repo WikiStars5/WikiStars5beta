@@ -5,13 +5,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { AtSign, KeyRound, Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-
-const loginUserCallable = httpsCallable(getFunctions(app), 'loginUser');
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -30,28 +28,29 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const result = await loginUserCallable({ email, password });
-      const data = result.data as { success: boolean; token?: string; error?: string };
-
-      if (data.success && data.token) {
-        // The token is now an HTTP-only cookie, so we don't need to store it manually.
-        // We just need to tell the server to set it.
-        await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: data.token }),
-        });
-        
-        toast({ title: "¡Bienvenido de vuelta!", description: "Has iniciado sesión correctamente." });
-        router.push('/profile');
-        router.refresh(); // This is important to re-fetch server components with the new auth state
-      } else {
-        throw new Error(data.error || 'Correo o contraseña incorrectos.');
-      }
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({ title: "¡Bienvenido de vuelta!", description: "Has iniciado sesión correctamente." });
+      router.push('/profile');
+      router.refresh(); 
     } catch (error: any) {
+      console.error("Firebase Auth Error:", error);
+      let errorMessage = "Ocurrió un error. Por favor, intenta de nuevo.";
+      switch (error.code) {
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+          errorMessage = 'Correo o contraseña incorrectos.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'El formato del correo electrónico no es válido.';
+          break;
+        default:
+          errorMessage = error.message;
+          break;
+      }
       toast({
         title: "Error al Iniciar Sesión",
-        description: error.message || "Ocurrió un error. Por favor, intenta de nuevo.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
