@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth, app } from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -16,65 +16,58 @@ export function useAuthWithGoogle() {
   const router = useRouter();
   const { toast } = useToast();
 
+  // This effect will run on page load to handle the result of a redirect.
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      // Set loading true when we detect a potential redirect flow
+      setIsGoogleLoading(true);
+      try {
+        const result = await getRedirectResult(auth);
+        // If result is not null, the user has just signed in via redirect.
+        if (result) {
+          const user = result.user;
+          
+          await ensureUserProfileCallable();
+
+          toast({
+            title: "¡Sesión Iniciada!",
+            description: `¡Bienvenido de nuevo, ${user.displayName || user.email}!`,
+          });
+          router.push('/');
+          router.refresh();
+        } else {
+          // No redirect result, so we're not in a login flow. Stop loading.
+          setIsGoogleLoading(false);
+        }
+      } catch (error: any) {
+        // Handle errors from the redirect result, e.g., if the user canceled.
+        console.error("Google sign-in redirect error:", error);
+        let errorMessage = "Ocurrió un error durante el inicio de sesión con Google.";
+        // You can add specific error handling here if needed.
+        toast({
+          title: "Error con Google",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        setIsGoogleLoading(false);
+      }
+    };
+    
+    handleRedirectResult();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on component mount
+
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
-    // SOLUCIÓN DEFINITIVA: Forzar el authDomain para evitar errores de dominio no autorizado.
-    // Esto es crucial en entornos de desarrollo anidados como los de Firebase Studio.
     provider.setCustomParameters({
       'auth_domain': 'wikistars5-2yctr.firebaseapp.com'
     });
 
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      
-      // Call the cloud function to ensure the user profile exists or is created.
-      // We no longer need a separate API route.
-      await ensureUserProfileCallable();
-
-      toast({
-        title: "¡Sesión Iniciada!",
-        description: `¡Bienvenido a WikiStars5, ${user.displayName || user.email}!`,
-      });
-      router.push('/');
-      router.refresh();
-
-    } catch (error: any) {
-      console.error("Google sign-in error:", error, "Code:", error.code, "Message:", error.message);
-      let errorMessage = "No se pudo iniciar sesión con Google. Intenta de nuevo más tarde.";
-      
-      switch (error.code) {
-        case 'auth/unauthorized-domain':
-          errorMessage = "El dominio no está autorizado. Asegúrate de haberlo añadido en la consola de Firebase.";
-          break;
-        case 'auth/popup-closed-by-user':
-          errorMessage = "El proceso con Google fue cancelado por el usuario.";
-          break;
-        case 'auth/account-exists-with-different-credential':
-          errorMessage = "Ya existe una cuenta con este correo electrónico usando un método de inicio de sesión diferente. Intenta iniciar sesión con ese método.";
-          break;
-        case 'auth/operation-not-allowed':
-          errorMessage = "El inicio de sesión con Google no está habilitado. Por favor, verifica la configuración en Firebase Console.";
-          break;
-        case 'auth/popup-blocked':
-          errorMessage = "El navegador bloqueó la ventana emergente de Google. Por favor, permite las ventanas emergentes para este sitio e inténtalo de nuevo.";
-          break;
-        default:
-          if (error.message) {
-            errorMessage = `Error: ${error.message}`;
-          }
-          break;
-      }
-      
-      toast({
-        title: "Error con Google",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsGoogleLoading(false);
-    }
+    // Instead of opening a popup, this will redirect the user to Google's sign-in page.
+    await signInWithRedirect(auth, provider);
+    // The code execution stops here. The useEffect hook will handle the result
+    // when the user is redirected back to the app.
   };
 
   return { handleGoogleSignIn, isGoogleLoading };
