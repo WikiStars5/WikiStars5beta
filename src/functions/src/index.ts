@@ -61,6 +61,14 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
   };
 };
 
+// Define a type for the data stored in the 'users' collection
+type UserDocument = Omit<UserProfile, 'createdAt' | 'lastLoginAt'> & {
+    createdAt: admin.firestore.FieldValue;
+    hashedPassword: string;
+    salt: string;
+};
+
+
 export const registerUser = onCall(async (request) => {
     const { email, password, username } = request.data;
     if (!email || !password || !username) {
@@ -78,7 +86,9 @@ export const registerUser = onCall(async (request) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const newUserRef = usersRef.doc();
-    const newUserProfile: Omit<UserProfile, 'createdAt' | 'lastLoginAt' | 'role' | 'uid'> & { createdAt: any, hashedPassword: string, salt: string, role: string, uid: string } = {
+    
+    // Use the UserDocument type to ensure the object is correctly structured
+    const newUserDoc: UserDocument = {
         uid: newUserRef.id,
         email: email,
         username: username,
@@ -89,7 +99,8 @@ export const registerUser = onCall(async (request) => {
         photoURL: `https://i.pravatar.cc/150?u=${newUserRef.id}`, // Placeholder avatar
         achievements: [],
     };
-    await newUserRef.set(newUserProfile);
+    
+    await newUserRef.set(newUserDoc);
 
     return { success: true, userId: newUserRef.id };
 });
@@ -178,4 +189,3 @@ export { sendPushNotification } from './notifications';
 export const ensureUserProfile = onCall(async () => {
     return { success: true, message: "This function is obsolete with custom authentication." };
 });
-
