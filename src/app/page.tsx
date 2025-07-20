@@ -1,56 +1,29 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { getFeaturedFiguresFromFirestore } from '@/lib/placeholder-data';
-import type { Figure } from '@/lib/types';
-import { Loader2 } from 'lucide-react';
-import { ForYouSection } from '@/components/foryou/ForYouSection';
+import React from 'react';
 import { SearchBar } from '@/components/shared/SearchBar';
 
 export default function HomePage() {
-  const [featuredFigures, setFeaturedFigures] = useState<Figure[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchFigures = async () => {
-      try {
-        const figures = await getFeaturedFiguresFromFirestore(10); 
-        setFeaturedFigures(figures);
-      } catch (err: any) {
-        console.error("Error fetching featured figures:", err);
-        setError("No se pudieron cargar las figuras destacadas.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchFigures();
-  }, []);
 
   return (
-    <div className="space-y-12">
-      <section className="text-center py-10">
-        <h1 className="text-5xl font-bold font-headline mb-4 tracking-tight">
-          La Percepción del Mundo, en tus Manos
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-20rem)] text-center px-4">
+      <div 
+        className="w-full max-w-3xl p-8 rounded-lg"
+      >
+        <h1 className="text-5xl md:text-6xl font-bold font-headline mb-4 tracking-tight">
+          Bienvenido a <span className="text-yellow-400">WikiStars5</span>
         </h1>
         <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-          Explora, califica y debate sobre las figuras públicas que moldean nuestra realidad. Tu opinión cuenta.
+          La plataforma interactiva para explorar, calificar y debatir sobre la percepción pública de tus figuras favoritas. Descubre perfiles detallados, vota sobre tu actitud y emociones, y únete a la conversación global.
         </p>
         <div className="max-w-xl mx-auto">
           <SearchBar />
+           <p className="text-sm text-muted-foreground mt-2">
+            Escribe un nombre y presiona enter o haz clic en buscar.
+          </p>
         </div>
-      </section>
-
-      {isLoading ? (
-        <div className="flex justify-center items-center py-20">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        </div>
-      ) : error ? (
-        <div className="text-center text-destructive py-10">{error}</div>
-      ) : (
-        <ForYouSection title="Figuras Destacadas" figures={featuredFigures} />
-      )}
+      </div>
     </div>
   );
 }

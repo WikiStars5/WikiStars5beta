@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   title: 'WikiStars5 - Percepción de Figuras Públicas',
   description: 'Califica y discute sobre figuras públicas en WikiStars5.',
-  themeColor: '#FFD700',
+  themeColor: '#111827', // Dark theme color
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -50,12 +50,12 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased">
+      <body className="font-body antialiased bg-background text-foreground">
         <ClientProviders>
           <PushNotificationManager />
           <div className="flex flex-col min-h-screen">
             <Header />
-            <main className="flex-grow w-full max-w-6xl mx-auto py-8 px-4">
+            <main className="flex-grow container mx-auto px-4 py-8">
               {children}
             </main>
             <Footer />
