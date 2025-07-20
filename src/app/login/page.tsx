@@ -10,6 +10,10 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { AtSign, KeyRound, Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '@/lib/firebase';
+
+const loginUserCallable = httpsCallable(getFunctions(app), 'loginUser');
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -28,29 +32,35 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: "¡Bienvenido de vuelta!", description: "Has iniciado sesión correctamente." });
-      router.push('/profile');
-      router.refresh(); 
-    } catch (error: any) {
-      console.error("Firebase Auth Error:", error);
-      let errorMessage = "Ocurrió un error. Por favor, intenta de nuevo.";
-      switch (error.code) {
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-        case 'auth/invalid-credential':
-          errorMessage = 'Correo o contraseña incorrectos.';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'El formato del correo electrónico no es válido.';
-          break;
-        case 'auth/operation-not-allowed':
-          errorMessage = 'El inicio de sesión por correo y contraseña no está habilitado. Actívalo en tu consola de Firebase.';
-          break;
-        default:
-          errorMessage = "No se pudo iniciar sesión. Revisa tus credenciales y conexión.";
-          break;
+      const result = await loginUserCallable({ email, password });
+      const data = result.data as { success: boolean; token?: string; error?: string; user?: any };
+
+      if (data.success && data.token) {
+        // Call the API route to set the session cookie
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: data.token }),
+        });
+
+        toast({ title: "¡Bienvenido de vuelta!", description: "Has iniciado sesión correctamente." });
+        router.push('/profile');
+        router.refresh();
+      } else {
+        throw new Error(data.error || 'Credenciales inválidas.');
       }
+    } catch (error: any) {
+      console.error("Login Error:", error);
+      let errorMessage = "Ocurrió un error. Por favor, intenta de nuevo.";
+      // Handle specific callable function errors
+      if (error.code === 'functions/not-found' || error.message.includes('not-found')) {
+        errorMessage = 'Credenciales inválidas.';
+      } else if (error.code === 'functions/unauthenticated' || error.message.includes('unauthenticated')) {
+        errorMessage = 'Credenciales inválidas.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error al Iniciar Sesión",
         description: errorMessage,

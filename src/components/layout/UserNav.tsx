@@ -18,8 +18,6 @@ import { useRouter } from 'next/navigation';
 import { correctMalformedUrl } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { ADMIN_UID } from '@/config/admin';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 
 export function UserNav() {
   const { user, isLoading } = useAuth();
@@ -28,10 +26,10 @@ export function UserNav() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await fetch('/api/auth/session', { method: 'DELETE' });
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       router.push('/');
-      router.refresh(); 
+      router.refresh();
     } catch (error) {
       console.error("Error logging out: ", error);
       toast({ title: "Cierre de Sesión Fallido", description: "No se pudo cerrar tu sesión.", variant: "destructive" });
