@@ -145,8 +145,13 @@ export const getAllUsers = onCall(async (request) => {
     if (!uid) {
         throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
     }
-    // Check if the caller is the designated admin
-    if (uid !== ADMIN_UID) {
+
+    // To get the user's custom claims, we first need to get the user record from Auth
+    const userRecord = await getAuth().getUser(uid);
+    const userRole = userRecord.customClaims?.role;
+
+    // Check if the caller is an admin via custom claims or is the hardcoded admin UID
+    if (userRole !== 'admin' && uid !== ADMIN_UID) {
         throw new HttpsError('permission-denied', 'Only admins can call this function.');
     }
 
