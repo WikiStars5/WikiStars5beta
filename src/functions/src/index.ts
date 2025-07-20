@@ -10,7 +10,7 @@ import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {setGlobalOptions} from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 // Corrected: Import types from the local file to ensure function isolation.
-import type { Figure, UserProfile } from "./types";
+import type { Figure, UserProfile, UserDocument } from "./types";
 import type { DocumentData, QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import * as bcrypt from 'bcryptjs';
@@ -78,7 +78,8 @@ export const registerUser = onCall(async (request) => {
 
     const newUserRef = usersRef.doc();
     
-    const newUserProfile: Omit<UserProfile, 'createdAt' | 'lastLoginAt'> & { createdAt: admin.firestore.FieldValue, hashedPassword: string, salt: string } = {
+    // Use the UserDocument type which is designed for what's stored in Firestore
+    const newUserDocument: UserDocument = {
         uid: newUserRef.id,
         email: email,
         username: username,
@@ -92,9 +93,10 @@ export const registerUser = onCall(async (request) => {
         countryCode: '',
         gender: '',
         fcmToken: '',
+        lastLoginAt: null,
     };
     
-    await newUserRef.set(newUserProfile);
+    await newUserRef.set(newUserDocument);
 
     return { success: true, userId: newUserRef.id };
 });
@@ -113,7 +115,7 @@ export const loginUser = onCall(async (request) => {
     }
 
     const userDoc = userQuery.docs[0];
-    const userData = userDoc.data();
+    const userData = userDoc.data() as UserDocument;
 
     const isPasswordValid = await bcrypt.compare(password, userData.hashedPassword);
 
@@ -183,3 +185,4 @@ export { sendPushNotification } from './notifications';
 export const ensureUserProfile = onCall(async () => {
     return { success: true, message: "This function is obsolete with custom authentication." };
 });
+

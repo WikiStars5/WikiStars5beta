@@ -3,7 +3,7 @@
 // It is a copy of the relevant types from the main application's /lib/types.ts
 // to ensure the functions directory is completely isolated and has no external dependencies.
 
-import type { Timestamp } from 'firebase-admin/firestore';
+import type { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
@@ -45,6 +45,7 @@ export interface Figure {
   isFeatured?: boolean;
 }
 
+// Represents the data sent to the client (no sensitive info)
 export interface UserProfile {
   uid: string;
   email: string | null;
@@ -58,4 +59,22 @@ export interface UserProfile {
   lastLoginAt?: string;
   fcmToken?: string;
   achievements?: string[];
+}
+
+// Represents the full user document stored in Firestore, including sensitive fields
+export interface UserDocument {
+    uid: string;
+    email: string;
+    username: string;
+    hashedPassword: string;
+    salt: string;
+    role: 'user' | 'admin';
+    createdAt: FieldValue;
+    lastLoginAt: FieldValue | null;
+    photoURL?: string;
+    country?: string;
+    countryCode?: string;
+    gender?: string;
+    fcmToken?: string;
+    achievements?: string[];
 }
