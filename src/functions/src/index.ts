@@ -76,18 +76,15 @@ export const registerUser = onCall(async (request) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const newUserRef = usersRef.doc(); // Let Firestore generate the ID
+    const newUserRef = usersRef.doc();
     
-    // Determine role based on the generated ID
-    const userRole = newUserRef.id === ADMIN_UID ? 'admin' : 'user';
-
-    const newUserProfile = {
+    const newUserProfile: Omit<UserProfile, 'createdAt' | 'lastLoginAt'> & { createdAt: admin.firestore.FieldValue, hashedPassword: string, salt: string } = {
         uid: newUserRef.id,
         email: email,
         username: username,
         hashedPassword: hashedPassword,
         salt: salt,
-        role: userRole,
+        role: newUserRef.id === ADMIN_UID ? 'admin' : 'user',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         photoURL: `https://i.pravatar.cc/150?u=${newUserRef.id}`, // Placeholder avatar
         achievements: [],
@@ -96,15 +93,8 @@ export const registerUser = onCall(async (request) => {
         gender: '',
         fcmToken: '',
     };
+    
     await newUserRef.set(newUserProfile);
-
-    // If you want to force the first user to be an admin, you could do this:
-    // This is a common pattern for initial setup.
-    // However, for this project, we'll stick to the hardcoded ADMIN_UID check.
-    // const snapshot = await usersRef.limit(1).get();
-    // if (snapshot.empty) {
-    //   newUserProfile.role = 'admin';
-    // }
 
     return { success: true, userId: newUserRef.id };
 });
