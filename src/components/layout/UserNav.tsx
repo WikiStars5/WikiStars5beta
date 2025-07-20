@@ -12,47 +12,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User as FirebaseUser, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, Loader2, UserCircle, Ghost } from 'lucide-react';
+import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, Loader2, UserCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation'; 
 import { correctMalformedUrl } from '@/lib/utils';
+import type { UserProfile } from '@/lib/types';
+import { useAuth } from '@/hooks/useAuth';
 
 const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
 
 export function UserNav() {
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setCurrentUser(user);
-      } else {
-        setCurrentUser(null);
-      }
-      setIsLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
   const handleLogout = async () => {
     try {
-      // Sign out from Firebase Auth on the client
-      await firebaseSignOut(auth);
-      
-      // Call the API route to clear the session cookie
-      const response = await fetch('/api/auth/session', { method: 'DELETE' });
-      if (!response.ok) {
-        throw new Error("Failed to clear session.");
-      }
-
+      await fetch('/api/auth/session', { method: 'DELETE' });
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
-      router.push('/home');
+      // We don't need to manually clear the user state, the page refresh will do it
+      // by getting an empty session from the middleware.
       router.refresh(); 
     } catch (error) {
       console.error("Error logging out: ", error);
@@ -68,13 +48,11 @@ export function UserNav() {
     );
   }
 
-  // The UserNav should now reflect the signed-in user state.
-  // We no longer need the anonymous user concept on the client-side UI logic.
-  if (currentUser) {
-    const isAdmin = currentUser.uid === ADMIN_UID;
-    const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || "Usuario";
-    const photoURL = currentUser.photoURL;
-    const email = currentUser.email;
+  if (user) {
+    const isAdmin = user.uid === ADMIN_UID || user.role === 'admin';
+    const displayName = user.username || "Usuario";
+    const photoURL = user.photoURL;
+    const email = user.email;
 
     return (
       <DropdownMenu>

@@ -1,3 +1,4 @@
+
 /**
  * This file is the new home for all server-side logic that requires admin privileges.
  * By using onCall functions, we ensure a secure and stable separation between
@@ -8,9 +9,12 @@
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {setGlobalOptions} from "firebase-functions/v2";
 import * as admin from "firebase-admin";
-import type { Figure, UserProfile, AttitudeKey, StarValueAsString, EmotionKey } from "../../lib/types"; // Adjust path as necessary
+// Corrected: Import types from the local file to ensure function isolation.
+import type { Figure, UserProfile } from "./types";
 import type { DocumentData, QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
+import * as bcrypt from 'bcryptjs';
+import * as jose from 'jose';
 
 // Centralized Admin UID for security checks.
 const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
@@ -56,52 +60,75 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
   };
 };
 
-export const ensureUserProfile = onCall(async (request) => {
-    const uid = request.auth?.uid;
-    if (!uid) {
-        throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
+export const registerUser = onCall(async (request) => {
+    const { email, password, username } = request.data;
+    if (!email || !password || !username) {
+        throw new HttpsError('invalid-argument', 'Email, password, and username are required.');
     }
 
-    try {
-        const userRecord = await getAuth().getUser(uid);
-        const userDocRef = db.collection('registered_users').doc(uid);
-        const userDocSnap = await userDocRef.get();
+    const usersRef = db.collection('users');
+    const existingUser = await usersRef.where('email', '==', email).get();
 
-        if (userDocSnap.exists) {
-            // User exists, update last login and any changed info
-            const updates: { [key: string]: any } = {
-                lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
-            };
-            const existingData = userDocSnap.data()!;
-            if (userRecord.photoURL && userRecord.photoURL !== existingData.photoURL) {
-                updates.photoURL = userRecord.photoURL;
-            }
-            if (userRecord.displayName && userRecord.displayName !== existingData.username) {
-                updates.username = userRecord.displayName;
-            }
-            if (userRecord.email && userRecord.email !== existingData.email) {
-                updates.email = userRecord.email;
-            }
-            await userDocRef.update(updates);
-        } else {
-            // User does not exist, create a new profile
-            const newUserProfile: Omit<UserProfile, 'createdAt' | 'lastLoginAt'> & { createdAt: any; lastLoginAt: any; } = {
-                uid: userRecord.uid,
-                email: userRecord.email || null,
-                username: userRecord.displayName || userRecord.email?.split('@')[0] || `user_${uid.substring(0, 6)}`,
-                photoURL: userRecord.photoURL || null,
-                role: 'user',
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
-                achievements: [],
-            };
-            await userDocRef.set(newUserProfile);
-        }
-        return { success: true };
-    } catch (error: any) {
-        console.error(`Error in ensureUserProfile for UID ${uid}:`, error);
-        throw new HttpsError('internal', 'Failed to create or update user profile.', error.message);
+    if (!existingUser.empty) {
+        throw new HttpsError('already-exists', 'This email is already registered.');
     }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUserRef = usersRef.doc();
+    const newUserProfile: Omit<UserProfile, 'createdAt' | 'lastLoginAt' | 'role' | 'uid'> & { createdAt: any, hashedPassword: string, salt: string, role: string, uid: string } = {
+        uid: newUserRef.id,
+        email: email,
+        username: username,
+        hashedPassword: hashedPassword,
+        salt: salt,
+        role: 'user',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        photoURL: `https://i.pravatar.cc/150?u=${newUserRef.id}`, // Placeholder avatar
+        achievements: [],
+    };
+    await newUserRef.set(newUserProfile);
+
+    return { success: true, userId: newUserRef.id };
+});
+
+export const loginUser = onCall(async (request) => {
+    const { email, password } = request.data;
+    if (!email || !password) {
+        throw new HttpsError('invalid-argument', 'Email and password are required.');
+    }
+
+    const usersRef = db.collection('users');
+    const userQuery = await usersRef.where('email', '==', email).limit(1).get();
+
+    if (userQuery.empty) {
+        throw new HttpsError('not-found', 'Invalid email or password.');
+    }
+
+    const userDoc = userQuery.docs[0];
+    const userData = userDoc.data();
+
+    const isPasswordValid = await bcrypt.compare(password, userData.hashedPassword);
+
+    if (!isPasswordValid) {
+        throw new HttpsError('unauthenticated', 'Invalid email or password.');
+    }
+
+    // Update last login
+    await userDoc.ref.update({ lastLoginAt: admin.firestore.FieldValue.serverTimestamp() });
+
+    const { hashedPassword, salt, ...userProfile } = userData;
+    
+    // Create a session token (JWT)
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'default-secret-key-for-wikistars5-app-please-change');
+    const token = await new jose.SignJWT({ ...userProfile, uid: userDoc.id })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('24h')
+        .sign(secret);
+        
+    return { success: true, token, user: { ...userProfile, uid: userDoc.id } };
 });
 
 
@@ -118,8 +145,8 @@ export const getAllUsers = onCall(async (request) => {
     }
 
     try {
-        // CORRECTED: Reading from the 'registered_users' collection, where profiles are actually stored.
-        const usersCollectionRef = db.collection('registered_users');
+        // CORRECTED: Reading from the 'users' collection for custom auth
+        const usersCollectionRef = db.collection('users');
         const querySnapshot = await usersCollectionRef.get();
 
         const users: UserProfile[] = [];
@@ -145,3 +172,8 @@ export const getAllUsers = onCall(async (request) => {
 // The push notification function has been moved to its own file in `src/functions/src/notifications.ts`
 // for better organization, but for simplicity here we keep it. If you need more functions, split them.
 export { sendPushNotification } from './notifications';
+
+// This function is now obsolete with the custom auth system.
+export const ensureUserProfile = onCall(async () => {
+    return { success: true, message: "This function is obsolete with custom authentication." };
+});

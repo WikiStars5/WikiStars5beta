@@ -17,12 +17,15 @@
   "main": "lib/index.js",
   "dependencies": {
     "@genkit/google-ai": "^0.1.5",
+    "bcryptjs": "^2.4.3",
     "firebase-admin": "^12.0.0",
     "firebase-functions": "^5.0.1",
     "genkit": "^0.6.2",
+    "jose": "^5.6.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "eslint": "^8.9.0",
