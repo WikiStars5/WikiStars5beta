@@ -61,14 +61,6 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
   };
 };
 
-// Define a type for the data stored in the 'users' collection
-type UserDocument = Omit<UserProfile, 'createdAt' | 'lastLoginAt'> & {
-    createdAt: admin.firestore.FieldValue;
-    hashedPassword: string;
-    salt: string;
-};
-
-
 export const registerUser = onCall(async (request) => {
     const { email, password, username } = request.data;
     if (!email || !password || !username) {
@@ -86,9 +78,7 @@ export const registerUser = onCall(async (request) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const newUserRef = usersRef.doc();
-    
-    // Use the UserDocument type to ensure the object is correctly structured
-    const newUserDoc: UserDocument = {
+    const newUserProfile = {
         uid: newUserRef.id,
         email: email,
         username: username,
@@ -98,9 +88,13 @@ export const registerUser = onCall(async (request) => {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         photoURL: `https://i.pravatar.cc/150?u=${newUserRef.id}`, // Placeholder avatar
         achievements: [],
+        lastLoginAt: null,
+        country: '',
+        countryCode: '',
+        gender: '',
+        fcmToken: '',
     };
-    
-    await newUserRef.set(newUserDoc);
+    await newUserRef.set(newUserProfile);
 
     return { success: true, userId: newUserRef.id };
 });
