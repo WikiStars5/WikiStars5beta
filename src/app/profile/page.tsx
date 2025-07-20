@@ -3,8 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -15,7 +13,7 @@ import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
 import { Separator } from '@/components/ui/separator';
 import type { UserProfile } from '@/lib/types';
-import { doc, getDoc } from 'firebase/firestore';
+import { useAuth } from '@/hooks/useAuth';
 
 const achievementDetails = {
   first_glance: {
@@ -59,9 +57,7 @@ type AchievementId = keyof typeof achievementDetails;
 
 
 export default function ProfilePage() {
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user: currentUser, isLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [notificationPermission, setNotificationPermission] = useState('default');
@@ -71,34 +67,22 @@ export default function ProfilePage() {
       setNotificationPermission(Notification.permission);
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && !user.isAnonymous) {
-        setCurrentUser(user);
-        // Fetch the full user profile from Firestore
-        const userDocRef = doc(db, 'registered_users', user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-          setUserProfile(userDocSnap.data() as UserProfile);
-        }
-      } else {
+    if (!isLoading && !currentUser) {
         toast({
           title: "Acceso Requerido",
           description: "Debes iniciar sesión para ver tu perfil.",
           variant: "destructive"
         });
         router.replace('/login?redirect=/profile');
-      }
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [router, toast]);
+    }
+  }, [isLoading, currentUser, router, toast]);
 
   const handleLogout = async () => {
     try {
-      await firebaseSignOut(auth);
+      await fetch('/api/auth/session', { method: 'DELETE' });
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       router.push('/');
+      router.refresh();
     } catch (error) {
       console.error("Error logging out from profile:", error);
       toast({ title: "Error", description: "No se pudo cerrar la sesión.", variant: "destructive" });
@@ -159,8 +143,8 @@ export default function ProfilePage() {
     );
   }
 
-  const isAdmin = currentUser.uid === ADMIN_UID;
-  const displayName = userProfile?.username || currentUser.displayName || currentUser.email?.split('@')[0] || "Usuario";
+  const isAdmin = currentUser.uid === ADMIN_UID || currentUser.role === 'admin';
+  const displayName = currentUser.username || currentUser.email?.split('@')[0] || "Usuario";
   
   return (
     <div className="flex justify-center items-start pt-10">
@@ -212,9 +196,9 @@ export default function ProfilePage() {
           
           <div className="space-y-4">
             <h3 className="text-base font-medium">Logros Desbloqueados</h3>
-            {userProfile?.achievements && userProfile.achievements.length > 0 ? (
+            {currentUser.achievements && currentUser.achievements.length > 0 ? (
               <div className="space-y-3">
-                {userProfile.achievements.map((achId) => {
+                {currentUser.achievements.map((achId) => {
                   const details = achievementDetails[achId as AchievementId];
                   if (!details) return null;
                   const Icon = details.icon;

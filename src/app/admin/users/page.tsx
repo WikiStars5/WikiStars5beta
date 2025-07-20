@@ -6,9 +6,8 @@ import type { UserProfile } from "@/lib/types";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app, auth } from '@/lib/firebase';
-import { onAuthStateChanged, type User } from 'firebase/auth';
-import { ADMIN_UID } from '@/config/admin';
+import { app } from '@/lib/firebase'; // Removed auth import
+import { useAuth } from '@/hooks/useAuth'; // Use our custom hook
 
 // This is the new, robust way to fetch user data by calling a Firebase Function.
 const getAllUsersCallable = httpsCallable(getFunctions(app), 'getAllUsers');
@@ -17,22 +16,12 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      if (!user) {
-        setIsLoading(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+  const { user: currentUser } = useAuth();
 
   useEffect(() => {
     const fetchUsers = async () => {
       // Ensure there's a logged-in user and they are the admin before fetching
-      if (!currentUser || currentUser.uid !== ADMIN_UID) {
+      if (!currentUser || (currentUser.uid !== ADMIN_UID && currentUser.role !== 'admin')) {
         setIsLoading(false);
         if (currentUser) {
            setError("Acceso denegado. Solo los administradores pueden ver esta página.");
@@ -69,6 +58,8 @@ export default function AdminUsersPage() {
 
     if (currentUser) {
       fetchUsers();
+    } else {
+      setIsLoading(false); // If no user, stop loading
     }
   }, [currentUser]);
 
@@ -91,7 +82,7 @@ export default function AdminUsersPage() {
     );
   }
 
-  if (!currentUser || currentUser.uid !== ADMIN_UID) {
+  if (!currentUser || (currentUser.uid !== ADMIN_UID && currentUser.role !== 'admin')) {
     return (
       <Alert variant="destructive">
         <ShieldCheck className="h-4 w-4" />
