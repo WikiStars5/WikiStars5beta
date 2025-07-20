@@ -100,28 +100,6 @@ export function UserNav() {
     );
   }
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-9 w-9">
-          <UserCircle className="h-6 w-6 text-foreground/70" />
-          <span className="sr-only">Abrir menú de usuario</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-48" align="end" forceMount>
-        <Link href="/login">
-          <DropdownMenuItem>
-            <LogIn className="mr-2 h-4 w-4" />
-            <span>Iniciar Sesión</span>
-          </DropdownMenuItem>
-        </Link>
-        <Link href="/signup">
-          <DropdownMenuItem>
-            <UserPlus className="mr-2 h-4 w-4" />
-            <span>Registrarse</span>
-          </DropdownMenuItem>
-        </Link>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+  // Si no hay usuario, no se muestra nada.
+  return null;
 }
