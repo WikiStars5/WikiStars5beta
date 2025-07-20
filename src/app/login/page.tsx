@@ -44,8 +44,11 @@ export default function LoginPage() {
         case 'auth/invalid-email':
           errorMessage = 'El formato del correo electrónico no es válido.';
           break;
+        case 'auth/operation-not-allowed':
+          errorMessage = 'El inicio de sesión por correo y contraseña no está habilitado. Actívalo en tu consola de Firebase.';
+          break;
         default:
-          errorMessage = error.message;
+          errorMessage = "No se pudo iniciar sesión. Revisa tus credenciales y conexión.";
           break;
       }
       toast({
