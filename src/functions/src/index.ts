@@ -1,5 +1,4 @@
 
-
 /**
  * This file is the new home for all server-side logic that requires admin privileges.
  * By using onCall functions, we ensure a secure and stable separation between
@@ -61,6 +60,94 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
   };
 };
 
+export const registerUser = onCall(async (request) => {
+    const { email, password, username } = request.data;
+    if (!email || !password || !username) {
+        throw new HttpsError('invalid-argument', 'Email, password, and username are required.');
+    }
+
+    const usersRef = db.collection('users');
+    const existingUser = await usersRef.where('email', '==', email).get();
+
+    if (!existingUser.empty) {
+        throw new HttpsError('already-exists', 'This email is already registered.');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUserRef = usersRef.doc(); // Let Firestore generate the ID
+    
+    // Determine role based on the generated ID
+    const userRole = newUserRef.id === ADMIN_UID ? 'admin' : 'user';
+
+    const newUserProfile = {
+        uid: newUserRef.id,
+        email: email,
+        username: username,
+        hashedPassword: hashedPassword,
+        salt: salt,
+        role: userRole,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        photoURL: `https://i.pravatar.cc/150?u=${newUserRef.id}`, // Placeholder avatar
+        achievements: [],
+        country: '',
+        countryCode: '',
+        gender: '',
+        fcmToken: '',
+    };
+    await newUserRef.set(newUserProfile);
+
+    // If you want to force the first user to be an admin, you could do this:
+    // This is a common pattern for initial setup.
+    // However, for this project, we'll stick to the hardcoded ADMIN_UID check.
+    // const snapshot = await usersRef.limit(1).get();
+    // if (snapshot.empty) {
+    //   newUserProfile.role = 'admin';
+    // }
+
+    return { success: true, userId: newUserRef.id };
+});
+
+export const loginUser = onCall(async (request) => {
+    const { email, password } = request.data;
+    if (!email || !password) {
+        throw new HttpsError('invalid-argument', 'Email and password are required.');
+    }
+
+    const usersRef = db.collection('users');
+    const userQuery = await usersRef.where('email', '==', email).limit(1).get();
+
+    if (userQuery.empty) {
+        throw new HttpsError('not-found', 'Invalid email or password.');
+    }
+
+    const userDoc = userQuery.docs[0];
+    const userData = userDoc.data();
+
+    const isPasswordValid = await bcrypt.compare(password, userData.hashedPassword);
+
+    if (!isPasswordValid) {
+        throw new HttpsError('unauthenticated', 'Invalid email or password.');
+    }
+
+    // Update last login
+    await userDoc.ref.update({ lastLoginAt: admin.firestore.FieldValue.serverTimestamp() });
+
+    const { hashedPassword, salt, ...userProfile } = userData;
+    
+    // Create a session token (JWT)
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'default-secret-key-for-wikistars5-app-please-change');
+    const token = await new jose.SignJWT({ ...userProfile, uid: userDoc.id })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('24h')
+        .sign(secret);
+        
+    return { success: true, token, user: { ...userProfile, uid: userDoc.id } };
+});
+
+
 // Callable function to get all users, now with admin check
 export const getAllUsers = onCall(async (request) => {
     // Authentication check to ensure only admins can call this
@@ -68,18 +155,13 @@ export const getAllUsers = onCall(async (request) => {
     if (!uid) {
         throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
     }
-
-    // To get the user's custom claims, we first need to get the user record from Auth
-    const userRecord = await getAuth().getUser(uid);
-    const userRole = userRecord.customClaims?.role;
-
-    // Check if the caller is an admin via custom claims or is the hardcoded admin UID
-    if (userRole !== 'admin' && uid !== ADMIN_UID) {
+    // Check if the caller is the designated admin
+    if (uid !== ADMIN_UID) {
         throw new HttpsError('permission-denied', 'Only admins can call this function.');
     }
 
     try {
-        // Reading from the 'users' collection for custom auth
+        // CORRECTED: Reading from the 'users' collection for custom auth
         const usersCollectionRef = db.collection('users');
         const querySnapshot = await usersCollectionRef.get();
 

@@ -5,9 +5,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/hooks/useAuth'; // Import the custom hook
 import { ADMIN_UID } from '@/config/admin';
 
 export default function AdminLayout({
@@ -16,29 +15,21 @@ export default function AdminLayout({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoading } = useAuth(); // Use our custom hook
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        if (user.uid === ADMIN_UID) {
-          setIsAdmin(true);
-        } else {
-          toast({ title: "Acceso Denegado", description: "No tienes permiso para acceder al panel de administración.", variant: "destructive"});
-          router.replace('/'); 
-          setIsAdmin(false);
-        }
+    if (!isLoading) {
+      if (user && (user.role === 'admin' || user.uid === ADMIN_UID)) {
+        setIsAdmin(true);
       } else {
-        router.replace('/login?redirect=/admin'); 
+        toast({ title: "Acceso Denegado", description: "No tienes permiso para acceder al panel de administración.", variant: "destructive"});
+        router.replace('/'); 
         setIsAdmin(false);
       }
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe(); 
-  }, [router, toast]);
+    }
+  }, [user, isLoading, router, toast]);
 
   if (isLoading) {
     return (
@@ -50,7 +41,7 @@ export default function AdminLayout({
   }
 
   if (!isAdmin) {
-    return null; 
+    return null; // Don't render anything if the user is not an admin or is still loading
   }
 
   return (
