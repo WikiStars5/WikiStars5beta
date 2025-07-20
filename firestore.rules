@@ -1,0 +1,64 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Reglas para la colección 'users'
+    match /users/{userId} {
+      // Cualquiera puede crear un nuevo documento de usuario (registro).
+      allow create: if true;
+      
+      // Solo el usuario autenticado puede leer o actualizar su propio perfil.
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      
+      // Nadie puede borrar su propio perfil directamente desde el cliente por ahora.
+      allow delete: if false;
+    }
+
+    // Reglas para la colección 'figures'
+    match /figures/{figureId} {
+      // Cualquier usuario autenticado puede leer la lista de figuras o un perfil específico.
+      allow read: if request.auth != null;
+
+      // Solo un administrador puede crear, actualizar o eliminar figuras.
+      // Se verifica si el UID del solicitante está en una lista de administradores (o un campo en su perfil).
+      // Por ahora, usamos un UID de administrador específico para mayor seguridad.
+      allow create, update, delete: if request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+    }
+
+    // Reglas para comentarios de usuarios
+    match /userComments/{commentId} {
+        // Cualquiera puede leer comentarios
+        allow read: if true;
+        // Solo usuarios autenticados pueden crear comentarios o respuestas
+        allow create: if request.auth != null;
+        // Solo el autor del comentario o un admin puede actualizarlo o borrarlo
+        allow update, delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // Reglas para notificaciones
+    match /notifications/{notificationId} {
+        // El usuario solo puede acceder a sus propias notificaciones
+        allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+        // Las notificaciones son creadas por el backend (Cloud Functions), no por el cliente
+        allow create: if false;
+    }
+
+    // Reglas más específicas para colecciones de votos
+    match /userAttitudes/{docId} {
+      // Un usuario solo puede leer/escribir su propio voto de actitud
+      allow read, write: if request.auth != null && request.auth.uid == docId.split('_')[0];
+    }
+
+    match /userPerceptions/{docId} {
+       // Un usuario solo puede leer/escribir su propio voto de percepción
+      allow read, write: if request.auth != null && request.auth.uid == docId.split('_')[0];
+    }
+
+    match /userStarRatings/{docId} {
+       // Un usuario solo puede leer/escribir su propia calificación de estrellas
+      allow read, write: if request.auth != null && request.auth.uid == docId.split('_')[0];
+    }
+  }
+}
