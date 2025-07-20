@@ -1,64 +1,63 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Reglas para la colección 'users'
-    match /users/{userId} {
-      // Cualquiera puede crear un nuevo documento de usuario (registro).
-      allow create: if true;
-      
-      // Solo el usuario autenticado puede leer o actualizar su propio perfil.
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      
-      // Nadie puede borrar su propio perfil directamente desde el cliente por ahora.
-      allow delete: if false;
+    // =====================================================================
+    // Helper Functions
+    // =====================================================================
+    function isAdmin() {
+      // Este UID debe coincidir con tu cuenta de administrador.
+      // Se obtiene del panel de Autenticación de Firebase una vez que te registras.
+      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+    }
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Reglas para la colección 'figures'
+    // =====================================================================
+    // Collection Rules
+    // =====================================================================
+
     match /figures/{figureId} {
-      // Cualquier usuario autenticado puede leer la lista de figuras o un perfil específico.
-      allow read: if request.auth != null;
-
-      // Solo un administrador puede crear, actualizar o eliminar figuras.
-      // Se verifica si el UID del solicitante está en una lista de administradores (o un campo en su perfil).
-      // Por ahora, usamos un UID de administrador específico para mayor seguridad.
-      allow create, update, delete: if request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+      allow get, list: if true;
+      allow update: if isAuthenticated();
+      allow create, delete: if isAdmin();
     }
 
-    // Reglas para comentarios de usuarios
+    // REGLA CORREGIDA PARA USUARIOS
+    // - Cualquiera puede CREAR un usuario (necesario para el registro).
+    // - Solo el dueño puede ACTUALIZAR su propio perfil.
+    // - Solo el dueño o un admin pueden LEER el perfil.
+    // - Solo un admin puede BORRAR un perfil.
+    match /users/{userId} {
+      allow create: if true;
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow update: if isOwner(userId);
+      allow delete: if isAdmin();
+    }
+
+    match /userPerceptions/{docId} { allow read, write: if isAuthenticated(); }
+    match /userAttitudes/{docId} { allow read, write: if isAuthenticated(); }
+    match /userStarRatings/{docId} { allow read, write: if isAuthenticated(); }
+
     match /userComments/{commentId} {
-        // Cualquiera puede leer comentarios
-        allow read: if true;
-        // Solo usuarios autenticados pueden crear comentarios o respuestas
-        allow create: if request.auth != null;
-        // Solo el autor del comentario o un admin puede actualizarlo o borrarlo
-        allow update, delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated(); // Permite likes/dislikes
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
-
-    // Reglas para notificaciones
+    
     match /notifications/{notificationId} {
-        // El usuario solo puede acceder a sus propias notificaciones
-        allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-        // Las notificaciones son creadas por el backend (Cloud Functions), no por el cliente
-        allow create: if false;
-    }
-
-    // Reglas más específicas para colecciones de votos
-    match /userAttitudes/{docId} {
-      // Un usuario solo puede leer/escribir su propio voto de actitud
-      allow read, write: if request.auth != null && request.auth.uid == docId.split('_')[0];
-    }
-
-    match /userPerceptions/{docId} {
-       // Un usuario solo puede leer/escribir su propio voto de percepción
-      allow read, write: if request.auth != null && request.auth.uid == docId.split('_')[0];
-    }
-
-    match /userStarRatings/{docId} {
-       // Un usuario solo puede leer/escribir su propia calificación de estrellas
-      allow read, write: if request.auth != null && request.auth.uid == docId.split('_')[0];
+      allow create: if isAuthenticated();
+      allow list, get, update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
   }
 }
