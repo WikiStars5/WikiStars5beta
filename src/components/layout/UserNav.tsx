@@ -13,12 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, Loader2, UserCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation'; 
 import { correctMalformedUrl } from '@/lib/utils';
-import type { UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
+import { auth } from '@/lib/firebase';
 
 const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
 
@@ -29,10 +28,9 @@ export function UserNav() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/session', { method: 'DELETE' });
+      await auth.signOut();
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
-      // We don't need to manually clear the user state, the page refresh will do it
-      // by getting an empty session from the middleware.
+      router.push('/');
       router.refresh(); 
     } catch (error) {
       console.error("Error logging out: ", error);
@@ -102,7 +100,6 @@ export function UserNav() {
     );
   }
 
-  // Fallback for when there is no user logged in.
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
