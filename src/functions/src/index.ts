@@ -76,9 +76,9 @@ export const registerUser = onCall(async (request) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const newUserRef = usersRef.doc();
+    const newUserRef = usersRef.doc(); // Create a reference with a new unique ID
     
-    // Use the UserDocument type which is designed for what's stored in Firestore
+    // Construct the document with the correct structure and the new ID
     const newUserDocument: UserDocument = {
         uid: newUserRef.id,
         email: email,
@@ -96,7 +96,7 @@ export const registerUser = onCall(async (request) => {
         lastLoginAt: null,
     };
     
-    await newUserRef.set(newUserDocument);
+    await newUserRef.set(newUserDocument); // Set the data for the new document reference
 
     return { success: true, userId: newUserRef.id };
 });
