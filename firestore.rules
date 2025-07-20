@@ -7,8 +7,7 @@ service cloud.firestore {
     // Helper Functions
     // =====================================================================
     function isAdmin() {
-      // Este UID debe coincidir con tu cuenta de administrador.
-      // Se obtiene del panel de Autenticación de Firebase una vez que te registras.
+      // UID del administrador.
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
     
@@ -30,16 +29,14 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
     }
 
-    // REGLA CORREGIDA PARA USUARIOS
-    // - Cualquiera puede CREAR un usuario (necesario para el registro).
-    // - Solo el dueño puede ACTUALIZAR su propio perfil.
-    // - Solo el dueño o un admin pueden LEER el perfil.
-    // - Solo un admin puede BORRAR un perfil.
+    // --- CORRECCIÓN CRÍTICA ---
+    // La colección se llama 'users', no 'registered_users'.
+    // `allow create: if true;` permite que cualquiera (un usuario no logueado) pueda crear una cuenta.
+    // get, list, update y delete siguen protegidos.
     match /users/{userId} {
       allow create: if true;
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-      allow update: if isOwner(userId);
+      allow get, list: if isAdmin();
+      allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -50,14 +47,14 @@ service cloud.firestore {
     match /userComments/{commentId} {
       allow read: if true;
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated(); // Permite likes/dislikes
+      allow update: if isAuthenticated(); // Para likes/dislikes
       allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
     
     match /notifications/{notificationId} {
       allow create: if isAuthenticated();
-      allow list, get, update: if isOwner(resource.data.userId) || isAdmin();
-      allow delete: if isOwner(resource.data.userId) || isAdmin();
+      allow read, update: if isOwner(resource.data.userId) || isAdmin();
+      allow list, delete: if isOwner(resource.data.userId) || isAdmin();
     }
   }
 }
