@@ -10,45 +10,59 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
-  rawUser: User | null; // Raw firebase user
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
-  rawUser: null,
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [rawUser, setRawUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setRawUser(firebaseUser);
       if (firebaseUser) {
-        // For now, we don't have a users collection, so we create a mock profile
-        const userProfile: UserProfile = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            username: firebaseUser.displayName || 'Usuario',
-            photoURL: firebaseUser.photoURL,
-            role: 'user', // default role
-            createdAt: new Date().toISOString(),
-        };
-        setUser(userProfile);
+        const userRef = doc(db, 'users', firebaseUser.uid);
+        // Use onSnapshot to listen for real-time updates to the user's profile
+        const unsubProfile = onSnapshot(userRef, (doc) => {
+          if (doc.exists()) {
+            const userData = doc.data() as UserProfile;
+            setUser({
+              ...userData,
+              uid: doc.id,
+              // Ensure timestamps are handled correctly if they exist
+              createdAt: userData.createdAt ? new Date(userData.createdAt).toISOString() : new Date().toISOString(),
+              lastLoginAt: userData.lastLoginAt ? new Date(userData.lastLoginAt).toISOString() : undefined,
+            });
+          } else {
+            // This case might happen if the user is in auth but not in firestore.
+            // For this app's logic, we log them out.
+            setUser(null);
+          }
+          setIsLoading(false);
+        }, (error) => {
+          console.error("Error listening to user profile:", error);
+          setUser(null);
+          setIsLoading(false);
+        });
+        
+        // Return the unsubscribe function for the profile listener
+        return () => unsubProfile();
+
       } else {
         setUser(null);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
+    // Return the unsubscribe function for the auth state listener
     return () => unsubscribe();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, rawUser, isLoading }}>
+    <AuthContext.Provider value={{ user, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

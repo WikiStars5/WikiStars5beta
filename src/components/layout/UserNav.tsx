@@ -12,14 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, LogIn, UserPlus, LogOut, ShieldCheck, Settings, Loader2, UserCircle } from 'lucide-react';
+import { User, LogIn, UserPlus, LogOut, ShieldCheck, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation'; 
 import { correctMalformedUrl } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { auth } from '@/lib/firebase';
-
-const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+import { ADMIN_UID } from '@/config/admin';
 
 export function UserNav() {
   const { user, isLoading } = useAuth();
@@ -28,7 +26,8 @@ export function UserNav() {
 
   const handleLogout = async () => {
     try {
-      await auth.signOut();
+      // Calling the DELETE endpoint clears the session cookie
+      await fetch('/api/auth/session', { method: 'DELETE' });
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       router.push('/');
       router.refresh(); 
@@ -100,6 +99,21 @@ export function UserNav() {
     );
   }
 
-  // Si no hay usuario, no se muestra nada.
-  return null;
+  // If there is no user, show login/signup buttons
+  return (
+    <div className="flex items-center gap-2">
+      <Button asChild>
+          <Link href="/login">
+            <LogIn className="mr-2 h-4 w-4"/>
+            Iniciar Sesión
+          </Link>
+      </Button>
+      <Button variant="secondary" asChild>
+        <Link href="/signup">
+           <UserPlus className="mr-2 h-4 w-4"/>
+           Registrarse
+        </Link>
+      </Button>
+    </div>
+  );
 }
