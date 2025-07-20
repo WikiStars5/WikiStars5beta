@@ -9,7 +9,7 @@ export default function HomePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-20rem)] text-center px-4">
       <div 
-        className="w-full max-w-3xl p-8 rounded-lg"
+        className="w-full max-w-4xl p-8 md:p-12 rounded-lg bg-gradient-to-br from-card to-background shadow-lg border border-border/20"
       >
         <h1 className="text-5xl md:text-6xl font-bold font-headline mb-4 tracking-tight">
           Bienvenido a <span className="text-yellow-400">WikiStars5</span>
