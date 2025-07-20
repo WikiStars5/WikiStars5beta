@@ -14,6 +14,8 @@ import { ADMIN_UID } from '@/config/admin';
 import { Separator } from '@/components/ui/separator';
 import type { UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 
 const achievementDetails = {
   first_glance: {
@@ -79,7 +81,7 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/session', { method: 'DELETE' });
+      await signOut(auth);
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       router.push('/');
       router.refresh();
@@ -100,8 +102,6 @@ export default function ProfilePage() {
     }
 
     try {
-      // The PushNotificationManager will handle token registration automatically.
-      // This button just triggers the browser's permission prompt.
       const permission = await Notification.requestPermission();
       setNotificationPermission(permission);
 

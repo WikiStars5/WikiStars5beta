@@ -3,7 +3,7 @@ import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import type { ReactNode } from 'react';
-import { LanguageSwitcher as ClientProviders } from '@/components/layout/LanguageSwitcher';
+import { ClientProviders } from '@/components/layout/ClientProviders';
 import type { Metadata } from 'next';
 import { PushNotificationManager } from '@/components/shared/PushNotificationManager';
 import { NotificationPrompt } from '@/components/shared/NotificationPrompt';

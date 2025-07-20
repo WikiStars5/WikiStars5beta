@@ -18,15 +18,17 @@ import { useRouter } from 'next/navigation';
 import { correctMalformedUrl } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { ADMIN_UID } from '@/config/admin';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 export function UserNav() {
-  const { user, isLoading } = useAuth();
+  const { user: currentUser, isLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/session', { method: 'DELETE' });
+      await signOut(auth);
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       router.push('/');
       router.refresh();
@@ -44,11 +46,11 @@ export function UserNav() {
     );
   }
 
-  if (user) {
-    const isAdmin = user.uid === ADMIN_UID || user.role === 'admin';
-    const displayName = user.username || "Usuario";
-    const photoURL = user.photoURL;
-    const email = user.email;
+  if (currentUser) {
+    const isAdmin = currentUser.uid === ADMIN_UID || currentUser.role === 'admin';
+    const displayName = currentUser.username || "Usuario";
+    const photoURL = currentUser.photoURL;
+    const email = currentUser.email;
 
     return (
       <DropdownMenu>

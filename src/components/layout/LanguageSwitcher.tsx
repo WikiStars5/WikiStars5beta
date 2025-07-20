@@ -1,23 +1,9 @@
 
 "use client";
 
-import { ThemeProvider } from 'next-themes';
-import { Toaster } from "@/components/ui/toaster";
-import type { ReactNode } from 'react';
-import { AuthProvider } from '@/hooks/useAuth';
+// El nombre de este archivo ya no es preciso. Se ha renombrado a ClientProviders.tsx
+// Este archivo puede ser eliminado, pero se mantiene vacío por ahora para evitar errores de importación.
 
-// This file is being repurposed to act as the main client-side provider component.
-export function LanguageSwitcher({ children }: { children: ReactNode }) {
-  return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="dark"
-      enableSystem={false}
-    >
-      <AuthProvider>
-        {children}
-        <Toaster />
-      </AuthProvider>
-    </ThemeProvider>
-  );
+export function LanguageSwitcher() {
+    return null;
 }
