@@ -154,8 +154,12 @@ function LoginView({ onAuthSuccess, setView, db, appId }: AuthFormProps) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password || !db) {
+    if (!email || !password) {
       setModal({ type: 'error', message: 'Por favor, completa todos los campos.' });
+      return;
+    }
+    if (!db) {
+      setModal({ type: 'error', message: 'La base de datos no está lista. Inténtalo de nuevo en unos segundos.' });
       return;
     }
     setIsSubmitting(true);
@@ -240,7 +244,7 @@ function LoginView({ onAuthSuccess, setView, db, appId }: AuthFormProps) {
         </div>
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !db}
           className="w-full flex items-center justify-center bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 px-4 rounded-lg transition-colors duration-300 disabled:bg-yellow-800 disabled:cursor-not-allowed"
         >
           {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <LogIn className="mr-2 h-5 w-5" />}
@@ -269,8 +273,12 @@ function RegisterView({ onAuthSuccess, setView, db, appId }: AuthFormProps) {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !username || !password || !confirmPassword || !db) {
+    if (!email || !username || !password || !confirmPassword) {
       setModal({ type: 'error', message: 'Por favor, completa todos los campos.' });
+      return;
+    }
+    if (!db) {
+      setModal({ type: 'error', message: 'La base de datos no está lista. Inténtalo de nuevo en unos segundos.' });
       return;
     }
     if (password !== confirmPassword) {
@@ -355,7 +363,7 @@ function RegisterView({ onAuthSuccess, setView, db, appId }: AuthFormProps) {
         <div className="text-xs text-gray-500 text-center bg-gray-900 p-2 rounded-md">
            <span className="font-bold text-yellow-500">ADVERTENCIA:</span> Las contraseñas se guardan sin encriptar. Este sistema es solo para demostración y no es seguro para producción.
         </div>
-        <button type="submit" disabled={isSubmitting} className="w-full flex items-center justify-center bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 px-4 rounded-lg transition-colors duration-300 disabled:bg-yellow-800 disabled:cursor-not-allowed">
+        <button type="submit" disabled={isSubmitting || !db} className="w-full flex items-center justify-center bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 px-4 rounded-lg transition-colors duration-300 disabled:bg-yellow-800 disabled:cursor-not-allowed">
           {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
           {isSubmitting ? 'Registrando...' : 'Crear Cuenta'}
         </button>
