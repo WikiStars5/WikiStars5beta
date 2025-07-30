@@ -9,6 +9,7 @@ import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
 import type { UserProfile } from "./types";
+import { COUNTRIES } from "./countries";
 import type { DocumentData } from "firebase-admin/firestore";
 
 // Centralized Admin UID for security checks.
@@ -52,8 +53,68 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
     console.log(`Successfully created profile for user: ${uid}`);
   } catch (error) {
     console.error(`Error creating user profile for ${uid}:`, error);
-    // Optionally, you could add logic here to delete the auth user if profile creation fails,
-    // to prevent orphaned auth accounts.
+  }
+});
+
+export const updateUserProfile = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'You must be logged in to update your profile.');
+    }
+    const uid = request.auth.uid;
+    const { username, countryCode, gender } = request.data;
+
+    // Basic validation
+    if (!username || username.length < 3 || username.length > 30) {
+        throw new HttpsError('invalid-argument', 'Username must be between 3 and 30 characters.');
+    }
+
+    const userRef = db.collection('users').doc(uid);
+    // Ensure countryCode is a string before searching, default to empty string if undefined/null
+    const safeCountryCode = countryCode || '';
+    const countryName = COUNTRIES.find(c => c.code === safeCountryCode)?.name || '';
+
+    try {
+        await userRef.update({
+            username,
+            country: countryName,
+            countryCode: safeCountryCode,
+            gender: gender || '' // Ensure gender is always a string
+        });
+        return { success: true, message: 'Profile updated successfully.' };
+    } catch (error) {
+        console.error("Error updating user profile:", error);
+        throw new HttpsError('internal', 'Could not update profile.');
+    }
+});
+
+
+export const getUserStats = onCall(async (request) => {
+  if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'You must be logged in to view stats.');
+  }
+  const uid = request.auth.uid;
+
+  try {
+    const commentsQuery = db.collection('userComments').where('userId', '==', uid);
+    const ratingsQuery = db.collection('userStarRatings').where('userId', '==', uid);
+    const attitudesQuery = db.collection('userAttitudes').where('userId', '==', uid);
+
+    const [commentsSnapshot, ratingsSnapshot, attitudesSnapshot] = await Promise.all([
+      commentsQuery.count().get(),
+      ratingsQuery.count().get(),
+      attitudesQuery.count().get()
+    ]);
+
+    const stats = {
+      comments: commentsSnapshot.data().count,
+      ratings: ratingsSnapshot.data().count,
+      attitudes: attitudesSnapshot.data().count,
+    };
+
+    return { success: true, stats };
+  } catch (error) {
+    console.error("Error getting user stats:", error);
+    throw new HttpsError('internal', 'Could not retrieve user statistics.');
   }
 });
 
@@ -83,13 +144,11 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     createdAt: createdAt,
     lastLoginAt: convertTimestampToString(data.lastLoginAt),
     fcmToken: data.fcmToken || undefined,
-    achievements: data.achievements || [], // Ensure achievements array exists
+    achievements: data.achievements || [],
   };
 };
 
-// Callable function to get all users, now with admin check
 export const getAllUsers = onCall(async (request) => {
-    // Authentication check to ensure only admins can call this
     const uid = request.auth?.uid;
     if (!uid) {
         throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
@@ -124,6 +183,4 @@ export const getAllUsers = onCall(async (request) => {
     }
 });
 
-// The push notification function has been moved to its own file in `src/functions/src/notifications.ts`
-// for better organization, but for simplicity here we keep it. If you need more functions, split them.
 export { sendPushNotification } from './notifications';
