@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, BellRing, Award, Eye, Star, Heart, MessageSquare, Reply, Share2, Edit, Save, BarChart3, Map, VenusMars } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, BellRing, Award, Eye, Star, Heart, MessageSquare, Reply, Share2, Edit, Save, BarChart3, Map, VenusAndMars } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -322,7 +322,7 @@ export default function ProfilePage() {
             ) : (
               <div className="space-y-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2"><Map className="h-4 w-4"/>País: <span className="font-medium text-foreground">{currentUser.country || 'No especificado'}</span></div>
-                <div className="flex items-center gap-2"><VenusMars className="h-4 w-4"/>Sexo: <span className="font-medium text-foreground">{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</span></div>
+                <div className="flex items-center gap-2"><VenusAndMars className="h-4 w-4"/>Sexo: <span className="font-medium text-foreground">{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</span></div>
               </div>
             )}
           </div>
