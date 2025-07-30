@@ -78,22 +78,13 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
-interface UserStats {
-  comments: number;
-  ratings: number;
-  attitudes: number;
-}
-
 const updateUserProfileCallable = httpsCallable(getFunctions(app), 'updateUserProfile');
-const getUserStatsCallable = httpsCallable(getFunctions(app), 'getUserStats');
 
 export default function ProfilePage() {
   const { user: currentUser, isLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [userStats, setUserStats] = useState<UserStats | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -120,29 +111,10 @@ export default function ProfilePage() {
         countryCode: currentUser.countryCode ?? '',
         gender: currentUser.gender ?? '',
       });
-      fetchUserStats();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, currentUser, router, toast, reset]);
 
-  const fetchUserStats = async () => {
-    if (!currentUser) return;
-    setIsLoadingStats(true);
-    try {
-      const result = await getUserStatsCallable();
-      const data = result.data as { success: boolean, stats?: UserStats, error?: string };
-      if (data.success && data.stats) {
-        setUserStats(data.stats);
-      } else {
-        console.error("Error fetching stats:", data.error);
-      }
-    } catch (error) {
-      console.error("Failed to call getUserStats function:", error);
-    } finally {
-      setIsLoadingStats(false);
-    }
-  };
-  
   const onSubmit = async (data: ProfileFormValues) => {
     try {
       await updateUserProfileCallable(data);
@@ -220,39 +192,9 @@ export default function ProfilePage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Tu Información</CardTitle>
-                        <CardDescription>Estadísticas de tu actividad y datos de tu perfil.</CardDescription>
+                        <CardDescription>Edita los datos de tu perfil.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-8">
-                        {/* User Stats Section */}
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-semibold flex items-center gap-2"><BarChart3 className="h-5 w-5"/>Tus Estadísticas</h3>
-                            {isLoadingStats ? (
-                                <div className="flex justify-center items-center h-24"><Loader2 className="h-6 w-6 animate-spin"/></div>
-                            ) : userStats ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <div className="p-4 bg-muted/50 rounded-lg text-center">
-                                        <MessageSquare className="mx-auto h-6 w-6 mb-2 text-primary"/>
-                                        <p className="text-2xl font-bold">{userStats.comments}</p>
-                                        <p className="text-xs text-muted-foreground">Comentarios</p>
-                                    </div>
-                                    <div className="p-4 bg-muted/50 rounded-lg text-center">
-                                        <Award className="mx-auto h-6 w-6 mb-2 text-primary"/>
-                                        <p className="text-2xl font-bold">{userStats.ratings}</p>
-                                        <p className="text-xs text-muted-foreground">Calificaciones</p>
-                                    </div>
-                                    <div className="p-4 bg-muted/50 rounded-lg text-center">
-                                        <Heart className="mx-auto h-6 w-6 mb-2 text-primary"/>
-                                        <p className="text-2xl font-bold">{userStats.attitudes}</p>
-                                        <p className="text-xs text-muted-foreground">Votos de Actitud</p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground text-center py-4">No se pudieron cargar tus estadísticas.</p>
-                            )}
-                        </div>
-
-                        <Separator />
-
                         {/* Profile Edit Section */}
                         <div className="space-y-4">
                             <div className="flex justify-between items-center">
@@ -383,5 +325,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
