@@ -30,8 +30,8 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: "¡Bienvenido de vuelta!", description: "Has iniciado sesión correctamente." });
-      // CORRECTED: Redirect to profile page. The useAuth hook will handle the state update.
-      router.push('/profile');
+      // CORRECTED: Redirect to home page for a consistent user experience.
+      router.push('/');
     } catch (error: any) {
       console.error("Login Error:", error);
       let errorMessage = "Ocurrió un error. Por favor, intenta de nuevo.";

@@ -44,8 +44,8 @@ export default function SignupPage() {
       });
 
       toast({ title: "¡Cuenta Creada!", description: "¡Bienvenido! Has sido registrado y conectado." });
-      // CORRECTED: Redirect to profile page. The useAuth hook will handle the state update.
-      router.push('/profile');
+      // CORRECTED: Redirect to the HOME page for a smoother user flow.
+      router.push('/');
 
     } catch (error: any) {
       console.error("Signup Error:", error);
