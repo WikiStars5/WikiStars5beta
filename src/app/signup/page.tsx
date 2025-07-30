@@ -5,13 +5,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { AtSign, KeyRound, Eye, EyeOff, Loader2, UserPlus, UserCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-
-const registerUserCallable = httpsCallable(getFunctions(app), 'registerUser');
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -36,22 +34,27 @@ export default function SignupPage() {
     setIsSubmitting(true);
 
     try {
-      const result = await registerUserCallable({ email, password, username });
-      const data = result.data as { success: boolean, error?: string };
+      // Use the standard Firebase Auth SDK to create the user
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // After creation, update the user's profile in Firebase Auth with the username
+      // This will trigger the `createProfileOnRegister` Cloud Function
+      await updateProfile(userCredential.user, {
+        displayName: username
+      });
+      
+      toast({ title: "¡Cuenta Creada!", description: "Tu cuenta ha sido creada. Ahora, inicia sesión." });
+      router.push('/login');
 
-      if (data.success) {
-        toast({ title: "¡Cuenta Creada!", description: "Tu cuenta ha sido creada. Ahora, inicia sesión." });
-        router.push('/login');
-      } else {
-        throw new Error(data.error || 'Ocurrió un error desconocido.');
-      }
     } catch (error: any) {
       console.error("Signup Error:", error);
       let errorMessage = "Ocurrió un error. Por favor, intenta de nuevo.";
-      if (error.code === 'functions/already-exists' || (error.message && error.message.includes('already-exists'))) {
+      if (error.code === 'auth/email-already-in-use') {
           errorMessage = 'Este correo electrónico ya está registrado.';
+      } else if (error.code === 'auth/weak-password') {
+          errorMessage = 'La contraseña debe tener al menos 6 caracteres.';
       } else if (error.message) {
-          errorMessage = error.message;
+          errorMessage = `Error: ${error.message}`;
       }
       toast({
         title: "Error en el Registro",

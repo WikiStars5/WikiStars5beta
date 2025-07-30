@@ -6,6 +6,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { onUserCreate } from "firebase-functions/v2/auth";
 
 import type { UserProfile } from "./types";
 import { COUNTRIES } from "./countries";
@@ -25,56 +26,37 @@ const db = admin.firestore();
 // running at the same time.
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
+/**
+ * This function triggers automatically whenever a new user is created in Firebase Authentication.
+ * Its purpose is to create a corresponding user profile document in Firestore.
+ */
+export const createProfileOnRegister = onUserCreate(async (event) => {
+  const user = event.data; // The user record created in Firebase Auth
+  const { uid, email, displayName, photoURL } = user;
 
-export const registerUser = onCall(async (request) => {
-  const { email, password, username } = request.data;
-
-  if (!email || !password || !username) {
-    throw new HttpsError('invalid-argument', 'Missing fields. Please provide email, password, and username.');
-  }
-  if (password.length < 6) {
-    throw new HttpsError('invalid-argument', 'Password must be at least 6 characters long.');
-  }
+  const userProfile: UserProfile = {
+    uid: uid,
+    email: email || null,
+    // Use displayName if available, otherwise fallback to a generic username
+    username: displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`,
+    country: '',
+    countryCode: '',
+    gender: '',
+    // Handle potentially null photoURL gracefully
+    photoURL: photoURL || null,
+    role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
+    createdAt: new Date().toISOString(),
+    achievements: [],
+  };
 
   try {
-    // Step 1: Create user in Firebase Authentication
-    const userRecord = await admin.auth().createUser({
-      email,
-      password,
-      displayName: username,
-    });
-
-    // Step 2: Create a corresponding user profile in Firestore
-    const userProfile: UserProfile = {
-      uid: userRecord.uid,
-      email: email,
-      username: username,
-      country: '',
-      countryCode: '',
-      gender: '',
-      photoURL: userRecord.photoURL || null,
-      role: userRecord.uid === ADMIN_UID ? 'admin' : 'user',
-      createdAt: new Date().toISOString(),
-      achievements: [],
-    };
-
-    await db.collection('users').doc(userRecord.uid).set(userProfile);
-    
-    return { success: true, uid: userRecord.uid };
-
-  } catch (error: any) {
-    // Handle specific auth errors
-    if (error.code === 'auth/email-already-exists') {
-      throw new HttpsError('already-exists', 'This email address is already in use by another account.');
-    }
-    if (error.code === 'auth/invalid-password') {
-       throw new HttpsError('invalid-argument', 'The password must be a string with at least six characters.');
-    }
-    console.error("Error creating new user:", error);
-    throw new HttpsError('internal', 'An unexpected error occurred while creating the user.');
+    // Set the document in the 'users' collection with the user's UID as the document ID.
+    await db.collection('users').doc(uid).set(userProfile);
+    console.log(`Successfully created profile for user: ${uid}`);
+  } catch (error) {
+    console.error(`Error creating user profile for ${uid}:`, error);
   }
 });
-
 
 export const updateUserProfile = onCall(async (request) => {
     if (!request.auth) {
@@ -83,11 +65,13 @@ export const updateUserProfile = onCall(async (request) => {
     const uid = request.auth.uid;
     const { username, countryCode, gender } = request.data;
 
+    // Basic validation
     if (!username || username.length < 3 || username.length > 30) {
         throw new HttpsError('invalid-argument', 'Username must be between 3 and 30 characters.');
     }
 
     const userRef = db.collection('users').doc(uid);
+    // Ensure countryCode is a string before searching, default to empty string if undefined/null
     const safeCountryCode = countryCode || '';
     const countryName = COUNTRIES.find(c => c.code === safeCountryCode)?.name || '';
 
@@ -96,12 +80,8 @@ export const updateUserProfile = onCall(async (request) => {
             username,
             country: countryName,
             countryCode: safeCountryCode,
-            gender: gender || ''
+            gender: gender || '' // Ensure gender is always a string
         });
-
-        // Also update the displayName in Firebase Auth for consistency
-        await admin.auth().updateUser(uid, { displayName: username });
-
         return { success: true, message: 'Profile updated successfully.' };
     } catch (error) {
         console.error("Error updating user profile:", error);
