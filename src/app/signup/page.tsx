@@ -43,8 +43,9 @@ export default function SignupPage() {
         displayName: username,
       });
 
-      toast({ title: "¡Cuenta Creada!", description: "Tu cuenta ha sido creada. Ahora, inicia sesión." });
-      router.push('/login');
+      toast({ title: "¡Cuenta Creada!", description: "¡Bienvenido! Has sido registrado y conectado." });
+      // CORRECTED: Redirect to profile page instead of login page.
+      router.push('/profile');
 
     } catch (error: any) {
       console.error("Signup Error:", error);
