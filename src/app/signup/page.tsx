@@ -44,6 +44,7 @@ export default function SignupPage() {
       });
 
       toast({ title: "¡Cuenta Creada!", description: "¡Bienvenido! Has sido registrado y conectado." });
+      
       // Redirect to the home page for a smoother user flow.
       router.push('/');
 
