@@ -124,11 +124,17 @@ export const getUserStats = onCall(async (request) => {
 
 const convertTimestampToString = (timestamp: any): string | undefined => {
   if (!timestamp) return undefined;
+  // Handle Firestore Timestamp
   if (typeof timestamp.toDate === 'function') {
     return timestamp.toDate().toISOString();
   }
+  // Handle ISO string
   if (typeof timestamp === 'string') {
     return timestamp;
+  }
+  // Handle Date object
+  if (timestamp instanceof Date) {
+    return timestamp.toISOString();
   }
   return undefined;
 };
