@@ -83,6 +83,10 @@ export const updateUserProfile = onCall(async (request) => {
     try {
         // Use set with merge:true to create the document if it doesn't exist, or update it if it does.
         await userRef.set(updateData, { merge: true });
+        
+        // Also update the displayName in Firebase Auth for consistency
+        await admin.auth().updateUser(uid, { displayName: username });
+
         return { success: true, message: 'Profile updated successfully.' };
     } catch (error) {
         console.error("Error updating user profile:", error);
