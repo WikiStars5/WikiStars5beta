@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, BellRing, Award, Eye, Star, Heart, MessageSquare, Reply, Share2, Edit, Save, BarChart3, Map, VenusAndMars } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Award, Eye, Star, Heart, MessageSquare, Reply, Share2, Edit, Save, BarChart3, Map, VenusAndMars } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -89,7 +89,6 @@ export default function ProfilePage() {
   const { user: currentUser, isLoading, firebaseUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [notificationPermission, setNotificationPermission] = useState('default');
   const [isEditing, setIsEditing] = useState(false);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -104,12 +103,6 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setNotificationPermission(Notification.permission);
-    }
-  }, []);
-
-  useEffect(() => {
     if (!isLoading && !currentUser) {
         toast({
           title: "Acceso Requerido",
@@ -121,7 +114,7 @@ export default function ProfilePage() {
     
     if (currentUser) {
       reset({
-        username: currentUser.username,
+        username: currentUser.username || '',
         countryCode: currentUser.countryCode || '',
         gender: currentUser.gender || '',
       });
@@ -169,42 +162,6 @@ export default function ProfilePage() {
     } catch (error) {
       console.error("Error logging out from profile:", error);
       toast({ title: "Error", description: "No se pudo cerrar la sesión.", variant: "destructive" });
-    }
-  };
-
-  const handleRequestNotificationPermission = async () => {
-    if (!('Notification' in window)) {
-      toast({
-        title: "No Soportado",
-        description: "Tu navegador no soporta notificaciones push.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
-
-      if (permission === 'granted') {
-        toast({
-          title: "¡Permiso Concedido!",
-          description: "Todo listo para recibir notificaciones. El sistema registrará tu dispositivo.",
-        });
-      } else {
-        toast({
-          title: "Permiso Denegado",
-          description: "Has bloqueado las notificaciones. Puedes cambiarlas en la configuración de tu navegador.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Error durante la solicitud de permiso:', error);
-      toast({
-        title: "Error Inesperado",
-        description: "Ocurrió un error al intentar activar las notificaciones.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -303,7 +260,7 @@ export default function ProfilePage() {
                 <div>
                   <Label htmlFor="gender">Sexo</Label>
                   <Controller name="gender" control={control} render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
                         <SelectTrigger id="gender"><SelectValue placeholder="Selecciona tu sexo" /></SelectTrigger>
                         <SelectContent>
                           {GENDER_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
