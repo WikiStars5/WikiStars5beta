@@ -1,50 +1,17 @@
-
 "use client"; 
 
-import { ShieldCheck, Loader2 } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, ReactNode } from 'react';
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from '@/hooks/useAuth'; // Import the custom hook
-import { ADMIN_UID } from '@/config/admin';
+import type { ReactNode } from 'react';
 
+// NOTE: The authentication logic has been temporarily removed to allow access
+// while the new authentication system is being built.
 export default function AdminLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  const router = useRouter();
-  const { user, isLoading } = useAuth(); // Use our custom hook
-  const [isAdmin, setIsAdmin] = useState(false);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (!isLoading) {
-      if (user && (user.role === 'admin' || user.uid === ADMIN_UID)) {
-        setIsAdmin(true);
-      } else {
-        toast({ title: "Acceso Denegado", description: "No tienes permiso para acceder al panel de administración.", variant: "destructive"});
-        router.replace('/'); 
-        setIsAdmin(false);
-      }
-    }
-  }, [user, isLoading, router, toast]);
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col min-h-screen items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Verificando acceso...</p>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return null; // Don't render anything if the user is not an admin or is still loading
-  }
-
   return (
     <>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 pb-4 border-b gap-4">
