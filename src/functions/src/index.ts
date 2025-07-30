@@ -41,7 +41,7 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
     country: '',
     countryCode: '',
     gender: '',
-    photoURL: photoURL || null,
+    photoURL: photoURL || null, // Ensure photoURL is always defined as string or null
     role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
     createdAt: new Date().toISOString(),
     lastLoginAt: new Date().toISOString(), // Set initial login time

@@ -41,9 +41,10 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
     country: '',
     countryCode: '',
     gender: '',
-    photoURL: photoURL || `https://i.pravatar.cc/150?u=${uid}`,
+    photoURL: photoURL || null, // Ensure photoURL is always defined as string or null
     role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
     createdAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString(), // Set initial login time
     achievements: [],
   };
 
@@ -63,23 +64,25 @@ export const updateUserProfile = onCall(async (request) => {
     const uid = request.auth.uid;
     const { username, countryCode, gender } = request.data;
 
-    // Basic validation
     if (!username || username.length < 3 || username.length > 30) {
         throw new HttpsError('invalid-argument', 'Username must be between 3 and 30 characters.');
     }
 
     const userRef = db.collection('users').doc(uid);
-    // Ensure countryCode is a string before searching, default to empty string if undefined/null
     const safeCountryCode = countryCode || '';
     const countryName = COUNTRIES.find(c => c.code === safeCountryCode)?.name || '';
 
+    const updateData = {
+        username,
+        country: countryName,
+        countryCode: safeCountryCode,
+        gender: gender || '',
+        lastLoginAt: new Date().toISOString(),
+    };
+
     try {
-        await userRef.update({
-            username,
-            country: countryName,
-            countryCode: safeCountryCode,
-            gender: gender || '' // Ensure gender is always a string
-        });
+        // Use set with merge:true to create the document if it doesn't exist, or update it if it does.
+        await userRef.set(updateData, { merge: true });
         return { success: true, message: 'Profile updated successfully.' };
     } catch (error) {
         console.error("Error updating user profile:", error);
@@ -121,11 +124,17 @@ export const getUserStats = onCall(async (request) => {
 
 const convertTimestampToString = (timestamp: any): string | undefined => {
   if (!timestamp) return undefined;
+  // Handle Firestore Timestamp
   if (typeof timestamp.toDate === 'function') {
     return timestamp.toDate().toISOString();
   }
+  // Handle ISO string
   if (typeof timestamp === 'string') {
     return timestamp;
+  }
+  // Handle Date object
+  if (timestamp instanceof Date) {
+    return timestamp.toISOString();
   }
   return undefined;
 };
