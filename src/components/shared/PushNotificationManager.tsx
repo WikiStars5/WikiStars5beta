@@ -36,6 +36,7 @@ export function PushNotificationManager() {
           const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
           
           if (currentToken && user && !user.isAnonymous) {
+            // Standardizing collection name to 'users'
             const userDocRef = doc(db, 'users', user.uid);
             const userDocSnap = await getDoc(userDocRef);
             

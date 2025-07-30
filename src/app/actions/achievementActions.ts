@@ -28,6 +28,7 @@ async function grantAchievement(
     return { unlocked: false, message: 'User ID and Achievement ID are required.' };
   }
 
+  // Standardizing collection name to 'users'
   const userDocRef = doc(db, 'users', userId);
 
   try {

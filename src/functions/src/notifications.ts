@@ -21,7 +21,7 @@ export const sendPushNotification = onDocumentCreated("notifications/{notificati
     return;
   }
 
-  // 1. Get the user's profile to find their FCM token
+  // 1. Get the user's profile to find their FCM token, using the standardized 'users' collection
   const userDocRef = admin.firestore().collection("users").doc(userId);
   const userDoc = await userDocRef.get();
 

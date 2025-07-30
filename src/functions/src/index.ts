@@ -41,7 +41,7 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
     country: '',
     countryCode: '',
     gender: '',
-    photoURL: photoURL || null, // Use null for consistency
+    photoURL: photoURL || null, // Ensure photoURL is always present, even if null
     role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
     createdAt: new Date().toISOString(),
     achievements: [],
@@ -140,7 +140,7 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     country: data.country || '',
     countryCode: data.countryCode || '',
     gender: data.gender || '', 
-    photoURL: data.photoURL || null, // Safely handle missing photoURL
+    photoURL: data.photoURL || null, // Safely handle missing photoURL by defaulting to null
     role: data.role || 'user',
     createdAt: createdAt,
     lastLoginAt: convertTimestampToString(data.lastLoginAt),
@@ -183,5 +183,9 @@ export const getAllUsers = onCall(async (request) => {
         return { success: false, error: error.message || 'Un error desconocido ocurrió en la Cloud Function.' };
     }
 });
+
+
+// This function has been removed because it was replaced by onUserCreate
+// to handle user registration through Firebase Auth directly.
 
 export { sendPushNotification } from './notifications';
