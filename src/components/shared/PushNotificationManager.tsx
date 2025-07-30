@@ -36,7 +36,7 @@ export function PushNotificationManager() {
           const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
           
           if (currentToken && user && !user.isAnonymous) {
-            const userDocRef = doc(db, 'registered_users', user.uid);
+            const userDocRef = doc(db, 'users', user.uid);
             const userDocSnap = await getDoc(userDocRef);
             
             // Only update Firestore if the token is new or doesn't exist on the document

@@ -28,7 +28,7 @@ async function grantAchievement(
     return { unlocked: false, message: 'User ID and Achievement ID are required.' };
   }
 
-  const userDocRef = doc(db, 'registered_users', userId);
+  const userDocRef = doc(db, 'users', userId);
 
   try {
     const userDocSnap = await getDoc(userDocRef);
