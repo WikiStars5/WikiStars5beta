@@ -366,10 +366,10 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     } catch (error: any) {
       console.error("Error fetching comments:", error); 
       let errorMessage = "No se pudieron cargar los comentarios.";
-      if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('deadline'))) {
+      if (error.code === 'unavailable' || (error.message && (error.message.toLowerCase().includes('deadline') || error.message.toLowerCase().includes('could not reach')))) {
         errorMessage = "La conexión con la base de datos ha tardado demasiado. Esto puede ser por una conexión lenta o por la falta de un índice en Firestore. Revisa la consola del navegador (F12) para ver si hay un enlace para crear el índice.";
-      } else if (error.message && error.message.includes("firestore/failed-precondition")) {
-          errorMessage = "Error al cargar comentarios: Es posible que falte un índice en Firestore. Revisa la consola del navegador (F12) para un enlace de creación de índice.";
+      } else if (error.message && (error.message.includes("firestore/failed-precondition") || error.message.toLowerCase().includes('index')) ) {
+          errorMessage = "Error al cargar comentarios: Falta un índice en Firestore. Revisa la consola del navegador (F12) para un enlace que te permita crearlo.";
       } else if (error.message) {
           errorMessage = `No se pudieron cargar los comentarios. Detalles: ${error.message}`;
       }
@@ -1478,5 +1478,3 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
-
-    
