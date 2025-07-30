@@ -21,6 +21,7 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
+const auth = admin.auth();
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
@@ -81,8 +82,11 @@ export const updateUserProfile = onCall(async (request) => {
     };
 
     try {
+        // Also update the displayName in Firebase Auth for consistency
+        await auth.updateUser(uid, { displayName: username });
         // Use set with merge:true to create the document if it doesn't exist, or update it if it does.
         await userRef.set(updateData, { merge: true });
+        
         return { success: true, message: 'Profile updated successfully.' };
     } catch (error) {
         console.error("Error updating user profile:", error);
