@@ -69,14 +69,16 @@ export const updateUserProfile = onCall(async (request) => {
     }
 
     const userRef = db.collection('users').doc(uid);
-    const countryName = COUNTRIES.find(c => c.code === countryCode)?.name || '';
+    // Ensure countryCode is a string before searching, default to empty string if undefined/null
+    const safeCountryCode = countryCode || '';
+    const countryName = COUNTRIES.find(c => c.code === safeCountryCode)?.name || '';
 
     try {
         await userRef.update({
             username,
             country: countryName,
-            countryCode,
-            gender
+            countryCode: safeCountryCode,
+            gender: gender || '' // Ensure gender is always a string
         });
         return { success: true, message: 'Profile updated successfully.' };
     } catch (error) {
