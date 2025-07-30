@@ -99,21 +99,31 @@ export function UserNav() {
     );
   }
 
-  // If there is no user, show login/signup buttons
+  // If there is no user, show a single dropdown menu
   return (
-    <div className="flex items-center gap-2">
-      <Button asChild>
-          <Link href="/login">
-            <LogIn className="mr-2 h-4 w-4"/>
-            Iniciar Sesión
-          </Link>
-      </Button>
-      <Button variant="secondary" asChild>
-        <Link href="/signup">
-           <UserPlus className="mr-2 h-4 w-4"/>
-           Registrarse
-        </Link>
-      </Button>
-    </div>
+    <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+                <User className="mr-2 h-4 w-4" />
+                Acceder
+            </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel>Menú de Usuario</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <Link href="/login">
+                <DropdownMenuItem>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    <span>Iniciar Sesión</span>
+                </DropdownMenuItem>
+            </Link>
+            <Link href="/signup">
+                <DropdownMenuItem>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    <span>Registrarse</span>
+                </DropdownMenuItem>
+            </Link>
+        </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
