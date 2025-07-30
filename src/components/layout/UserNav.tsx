@@ -31,7 +31,6 @@ export function UserNav() {
       await signOut(auth);
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       router.push('/');
-      router.refresh();
     } catch (error) {
       console.error("Error logging out: ", error);
       toast({ title: "Cierre de Sesión Fallido", description: "No se pudo cerrar tu sesión.", variant: "destructive" });
