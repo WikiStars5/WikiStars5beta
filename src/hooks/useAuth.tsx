@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
         // User is signed in, now get their profile from Firestore
@@ -36,13 +36,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             setUser(docSnap.data() as UserProfile);
+            setIsLoading(false);
           } else {
-            // This case might happen if profile creation fails,
-            // or if the user is somehow authenticated without a profile.
-            console.warn("User is authenticated, but no profile document found in Firestore.");
-            setUser(null);
+            // This is the critical part. If the user is authenticated but the profile
+            // doesn't exist, it might be due to creation lag. We wait a bit.
+            setTimeout(async () => {
+              const freshSnap = await getDoc(userDocRef);
+              if (freshSnap.exists()) {
+                setUser(freshSnap.data() as UserProfile);
+              } else {
+                 // After waiting, if it's still not there, we assume no profile.
+                console.warn("User is authenticated, but no profile document found in Firestore after delay.");
+                setUser(null);
+              }
+              setIsLoading(false);
+            }, 2500); // Wait 2.5 seconds for the backend function to run.
           }
-          setIsLoading(false);
         }, (error) => {
             console.error("Error listening to user profile:", error);
             setUser(null);
