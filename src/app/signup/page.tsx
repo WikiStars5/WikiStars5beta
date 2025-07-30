@@ -5,17 +5,24 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { AtSign, KeyRound, Eye, EyeOff, Loader2, UserPlus, UserCircle2 } from 'lucide-react';
+import { AtSign, KeyRound, Eye, EyeOff, Loader2, UserPlus, UserCircle2, Map, VenusMars } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '@/lib/firebase';
+import { CountryCombobox } from '@/components/shared/CountryCombobox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { GENDER_OPTIONS } from '@/config/genderOptions';
+
+const registerUserCallable = httpsCallable(getFunctions(app), 'registerUser');
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [countryCode, setCountryCode] = useState('');
+  const [gender, setGender] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
@@ -23,7 +30,7 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !username || !password || !confirmPassword) {
+    if (!email || !username || !password || !confirmPassword || !countryCode || !gender) {
       toast({ title: "Campos Requeridos", description: "Por favor, completa todos los campos.", variant: "destructive" });
       return;
     }
@@ -34,14 +41,7 @@ export default function SignupPage() {
     setIsSubmitting(true);
 
     try {
-      // Use the standard Firebase Auth SDK to create the user
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // After creation, update the user's profile in Firebase Auth with the username
-      // This will trigger the `createProfileOnRegister` Cloud Function
-      await updateProfile(userCredential.user, {
-        displayName: username
-      });
+      await registerUserCallable({ email, password, username, countryCode, gender });
       
       toast({ title: "¡Cuenta Creada!", description: "Tu cuenta ha sido creada. Ahora, inicia sesión." });
       router.push('/login');
@@ -49,12 +49,15 @@ export default function SignupPage() {
     } catch (error: any) {
       console.error("Signup Error:", error);
       let errorMessage = "Ocurrió un error. Por favor, intenta de nuevo.";
-      if (error.code === 'auth/email-already-in-use') {
+      // Firebase callable functions wrap errors, so we look at error.message
+      if (error.message) {
+        if (error.message.includes('auth/email-already-in-use') || error.message.includes('EMAIL_EXISTS')) {
           errorMessage = 'Este correo electrónico ya está registrado.';
-      } else if (error.code === 'auth/weak-password') {
+        } else if (error.message.includes('auth/weak-password') || error.message.includes('WEAK_PASSWORD')) {
           errorMessage = 'La contraseña debe tener al menos 6 caracteres.';
-      } else if (error.message) {
+        } else {
           errorMessage = `Error: ${error.message}`;
+        }
       }
       toast({
         title: "Error en el Registro",
@@ -67,7 +70,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-20rem)] items-center justify-center">
+    <div className="flex min-h-[calc(100vh-20rem)] items-center justify-center py-12">
       <div className="w-full max-w-md mx-auto">
         <div className="bg-card border border-border p-8 rounded-lg shadow-2xl">
           <h2 className="text-3xl font-bold text-center text-foreground mb-6">Crear Cuenta</h2>
@@ -87,6 +90,27 @@ export default function SignupPage() {
                 <Input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="pl-10" placeholder="TuNombreDeUsuario" required />
               </div>
             </div>
+
+            <div>
+              <label className="text-sm font-bold text-muted-foreground mb-2 block">País</label>
+               <CountryCombobox value={countryCode} onChange={setCountryCode} />
+            </div>
+
+             <div>
+              <label className="text-sm font-bold text-muted-foreground mb-2 block">Sexo</label>
+              <Select onValueChange={setGender} value={gender}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona tu sexo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GENDER_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+
             <div>
               <label className="text-sm font-bold text-muted-foreground mb-2 block">Contraseña</label>
               <div className="relative">

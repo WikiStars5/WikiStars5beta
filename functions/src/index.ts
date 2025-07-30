@@ -6,7 +6,6 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
-import { onUserCreate } from "firebase-functions/v2/auth";
 
 import type { UserProfile } from "./types";
 import { COUNTRIES } from "./countries";
@@ -27,36 +26,56 @@ const auth = admin.auth();
 // running at the same time.
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
-/**
- * This function triggers automatically whenever a new user is created in Firebase Authentication.
- * Its purpose is to create a corresponding user profile document in Firestore.
- */
-export const createProfileOnRegister = onUserCreate(async (event) => {
-  const user = event.data; // The user record created in Firebase Auth
-  const { uid, email, displayName, photoURL } = user;
 
-  const userProfile: UserProfile = {
-    uid: uid,
-    email: email || null,
-    username: displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`,
-    country: '',
-    countryCode: '',
-    gender: '',
-    photoURL: photoURL || null, // Ensure photoURL is always defined as string or null
-    role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
-    createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(), // Set initial login time
-    achievements: [],
-  };
+export const registerUser = onCall(async (request) => {
+    const { email, password, username, countryCode, gender } = request.data;
 
-  try {
-    // Set the document in the 'users' collection with the user's UID as the document ID.
-    await db.collection('users').doc(uid).set(userProfile);
-    console.log(`Successfully created profile for user: ${uid}`);
-  } catch (error) {
-    console.error(`Error creating user profile for ${uid}:`, error);
-  }
+    if (!email || !password || !username || !countryCode || !gender) {
+        throw new HttpsError('invalid-argument', 'Todos los campos (email, contraseña, nombre de usuario, país y sexo) son obligatorios.');
+    }
+    if (password.length < 6) {
+        throw new HttpsError('invalid-argument', 'La contraseña debe tener al menos 6 caracteres.');
+    }
+
+    try {
+        const userRecord = await auth.createUser({
+            email,
+            password,
+            displayName: username,
+        });
+
+        const { uid, photoURL } = userRecord;
+        const countryName = COUNTRIES.find(c => c.code === countryCode)?.name || '';
+
+        const userProfile: UserProfile = {
+            uid: uid,
+            email: email,
+            username: username,
+            country: countryName,
+            countryCode: countryCode,
+            gender: gender,
+            photoURL: photoURL || null,
+            role: uid === ADMIN_UID ? 'admin' : 'user',
+            createdAt: new Date().toISOString(),
+            lastLoginAt: new Date().toISOString(),
+            achievements: [],
+        };
+
+        await db.collection('users').doc(uid).set(userProfile);
+        
+        return { success: true, uid: userRecord.uid };
+    } catch (error: any) {
+        console.error("Error al registrar usuario:", error);
+        if (error.code === 'auth/email-already-exists') {
+            throw new HttpsError('already-exists', 'Este correo electrónico ya está registrado.');
+        }
+        if (error.code === 'auth/weak-password') {
+             throw new HttpsError('invalid-argument', 'La contraseña debe tener al menos 6 caracteres.');
+        }
+        throw new HttpsError('internal', 'No se pudo crear la cuenta. Por favor, inténtalo de nuevo.');
+    }
 });
+
 
 export const updateUserProfile = onCall(async (request) => {
     if (!request.auth) {
