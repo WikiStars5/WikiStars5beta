@@ -82,7 +82,6 @@ export const updateUserProfile = onCall(async (request) => {
 
     try {
         // Use set with merge:true to create the document if it doesn't exist, or update it if it does.
-        // This is the definitive fix for the "Internal Error" if the document is missing.
         await userRef.set(updateData, { merge: true });
         return { success: true, message: 'Profile updated successfully.' };
     } catch (error) {
