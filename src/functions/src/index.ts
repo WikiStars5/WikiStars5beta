@@ -37,15 +37,14 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
   const userProfile: UserProfile = {
     uid: uid,
     email: email || null,
-    // Use displayName if available, otherwise fallback to a generic username
     username: displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`,
     country: '',
     countryCode: '',
     gender: '',
-    // Handle potentially null photoURL gracefully
     photoURL: photoURL || null,
     role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
     createdAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString(), // Set initial login time
     achievements: [],
   };
 
@@ -65,23 +64,26 @@ export const updateUserProfile = onCall(async (request) => {
     const uid = request.auth.uid;
     const { username, countryCode, gender } = request.data;
 
-    // Basic validation
     if (!username || username.length < 3 || username.length > 30) {
         throw new HttpsError('invalid-argument', 'Username must be between 3 and 30 characters.');
     }
 
     const userRef = db.collection('users').doc(uid);
-    // Ensure countryCode is a string before searching, default to empty string if undefined/null
     const safeCountryCode = countryCode || '';
     const countryName = COUNTRIES.find(c => c.code === safeCountryCode)?.name || '';
 
+    const updateData = {
+        username,
+        country: countryName,
+        countryCode: safeCountryCode,
+        gender: gender || '',
+        lastLoginAt: new Date().toISOString(),
+    };
+
     try {
-        await userRef.update({
-            username,
-            country: countryName,
-            countryCode: safeCountryCode,
-            gender: gender || '' // Ensure gender is always a string
-        });
+        // Use set with merge:true to create the document if it doesn't exist, or update it if it does.
+        // This is the definitive fix for the "Internal Error" if the document is missing.
+        await userRef.set(updateData, { merge: true });
         return { success: true, message: 'Profile updated successfully.' };
     } catch (error) {
         console.error("Error updating user profile:", error);
