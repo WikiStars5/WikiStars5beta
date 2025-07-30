@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, MessageSquare, Edit, Save, BarChart3, Map, VenusAndMars } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, MessageSquare, Edit, Save, BarChart3, Map, VenusAndMars, Smile } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -181,11 +181,12 @@ export default function ProfilePage() {
         </Card>
 
         <Tabs defaultValue="informacion" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+            <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 h-auto">
                 <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
                 <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
                 <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
                 <TabsTrigger value="actitud"><Heart className="mr-2" />Mi Actitud</TabsTrigger>
+                <TabsTrigger value="emociones"><Smile className="mr-2" />Mis Emociones</TabsTrigger>
             </TabsList>
 
             <TabsContent value="informacion" className="mt-6">
@@ -316,6 +317,24 @@ export default function ProfilePage() {
                             <AlertTitle>Próximamente</AlertTitle>
                             <AlertDescription>
                                 Esta sección está en construcción. ¡Aquí verás un resumen de si eres más Fan, Hater o Neutral!
+                            </AlertDescription>
+                        </Alert>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="emociones" className="mt-6">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Mis Emociones</CardTitle>
+                        <CardDescription>Un resumen de las emociones que más has votado.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                         <Alert>
+                            <Smile className="h-4 w-4" />
+                            <AlertTitle>Próximamente</AlertTitle>
+                            <AlertDescription>
+                                Esta sección está en construcción. ¡Aquí verás un resumen de las emociones que más expresas en la plataforma!
                             </AlertDescription>
                         </Alert>
                     </CardContent>
