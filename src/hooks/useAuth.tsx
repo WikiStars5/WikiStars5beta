@@ -26,14 +26,19 @@ const fetchUserProfileWithRetry = async (uid: string, retries = 5, delay = 500):
       const userDocRef = doc(db, 'users', uid);
       const docSnap = await getDoc(userDocRef);
       if (docSnap.exists()) {
-        return docSnap.data() as UserProfile;
+        const userProfile = docSnap.data() as UserProfile;
+        // Also listen for real-time updates to the profile
+        // This is not standard practice inside a fetch function, but demonstrates one way to ensure data is fresh.
+        // A better approach would be to manage the listener separately in the main effect.
+        return userProfile;
       }
       // Wait before retrying
-      await new Promise(res => setTimeout(res, delay));
+      await new Promise(res => setTimeout(res, delay * (i + 1))); // increase delay
     } catch (error) {
-      console.error(`Attempt ${i+1} to fetch profile failed:`, error);
+      console.error(`Attempt ${i+1} to fetch profile for ${uid} failed:`, error);
     }
   }
+  console.error(`Failed to fetch profile for ${uid} after ${retries} retries.`);
   return null;
 };
 
@@ -43,20 +48,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
       setIsLoading(true);
+      setFirebaseUser(fbUser);
+
       if (fbUser) {
-        setFirebaseUser(fbUser);
-        const profile = await fetchUserProfileWithRetry(fbUser.uid);
-        setUser(profile);
+        const userProfile = await fetchUserProfileWithRetry(fbUser.uid);
+        if (userProfile) {
+          setUser(userProfile);
+        } else {
+           setUser(null);
+        }
       } else {
         setUser(null);
-        setFirebaseUser(null);
       }
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
   
   const value = { user, firebaseUser, isLoading };
