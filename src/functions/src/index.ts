@@ -41,7 +41,7 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
     country: '',
     countryCode: '',
     gender: '',
-    photoURL: photoURL || `https://i.pravatar.cc/150?u=${uid}`,
+    photoURL: photoURL || null, // Use null for consistency
     role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
     createdAt: new Date().toISOString(),
     achievements: [],
@@ -130,6 +130,7 @@ const convertTimestampToString = (timestamp: any): string | undefined => {
   return undefined;
 };
 
+// This mapping function is now more robust against missing fields.
 const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
   const createdAt = convertTimestampToString(data.createdAt) || new Date().toISOString();
   return {
@@ -139,7 +140,7 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     country: data.country || '',
     countryCode: data.countryCode || '',
     gender: data.gender || '', 
-    photoURL: data.photoURL || null,
+    photoURL: data.photoURL || null, // Safely handle missing photoURL
     role: data.role || 'user',
     createdAt: createdAt,
     lastLoginAt: convertTimestampToString(data.lastLoginAt),
