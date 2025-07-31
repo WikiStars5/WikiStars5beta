@@ -31,21 +31,26 @@ export default function SignupPage() {
       toast({ title: "Error de Contraseña", description: "Las contraseñas no coinciden.", variant: "destructive" });
       return;
     }
+    if (password.length < 6) {
+        toast({ title: "Contraseña Débil", description: "La contraseña debe tener al menos 6 caracteres.", variant: "destructive" });
+        return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Step 1: Create user in Firebase Auth
+      // Step 1: Create user directly with Firebase Auth SDK. This is the standard, reliable method.
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
-      // Step 2: Update the user's profile in Firebase Auth with the displayName.
-      // The onUserCreate trigger will handle creating the Firestore document.
+      // Step 2: Update the new user's profile in Firebase Auth with the chosen displayName.
+      // The onUserCreate trigger in the backend will handle creating the Firestore document automatically.
       await updateProfile(userCredential.user, {
         displayName: username,
       });
 
-      toast({ title: "¡Cuenta Creada!", description: "¡Bienvenido! Has sido registrado y conectado." });
+      toast({ title: "¡Cuenta Creada!", description: "¡Bienvenido! Tu cuenta ha sido creada exitosamente." });
       
-      // Redirect to the home page for a smoother user flow.
+      // Redirect to the home page for a smoother user flow. The useAuth hook will pick up the new session.
       router.push('/');
 
     } catch (error: any) {
