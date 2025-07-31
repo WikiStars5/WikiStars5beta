@@ -25,53 +25,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAnonymous, setIsAnonymous] = useState(false);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
-        // Determine anonymity instantly from the Firebase user object
-        const isUserAnonymous = fbUser.isAnonymous;
-        setIsAnonymous(isUserAnonymous);
-
-        const userDocRef = doc(db, 'users', fbUser.uid);
-        const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setUser(docSnap.data() as UserProfile);
-          } else if (isUserAnonymous) {
-            // Build a local guest profile immediately if the Firestore doc doesn't exist yet.
-            // This is crucial for the profile page to load correctly without errors.
-            setUser({
-              uid: fbUser.uid,
-              email: null,
-              username: localStorage.getItem('wikistars5-guestUsername') || `Invitado_${fbUser.uid.substring(0, 5)}`,
-              gender: localStorage.getItem('wikistars5-guestGender') || '',
-              photoURL: null,
-              role: 'user',
-              isAnonymous: true,
-              createdAt: new Date().toISOString(),
-              achievements: [],
-              country: '',
-              countryCode: '',
-            });
-          } else {
-            // This is a registered user without a profile doc.
+        const unsubscribeSnapshot = onSnapshot(
+          doc(db, 'users', fbUser.uid),
+          (docSnap) => {
+            if (docSnap.exists()) {
+              setUser(docSnap.data() as UserProfile);
+            } else if (fbUser.isAnonymous) {
+              const guestUsername = localStorage.getItem('wikistars5-guestUsername') || `Invitado_${fbUser.uid.substring(0, 5)}`;
+              const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
+              setUser({
+                uid: fbUser.uid,
+                email: null,
+                username: guestUsername,
+                gender: guestGender,
+                isAnonymous: true,
+                role: 'user',
+                createdAt: new Date().toISOString(),
+                achievements: [],
+                country: '',
+                countryCode: '',
+                photoURL: null,
+              });
+            }
+            setIsLoading(false);
+          },
+          (error) => {
+            console.error("Error listening to user profile:", error);
             setUser(null);
+            setIsLoading(false);
           }
-          setIsLoading(false);
-        }, (error) => {
-          console.error("Error listening to user profile:", error);
-          setUser(null);
-          setIsLoading(false);
-        });
-
+        );
         return () => unsubscribeSnapshot();
       } else {
-        // No user logged in at all. Reset all states.
+        // No user is signed in.
         setFirebaseUser(null);
         setUser(null);
-        setIsAnonymous(false);
         setIsLoading(false);
       }
     });
@@ -79,6 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
   
+  const isAnonymous = firebaseUser?.isAnonymous ?? false;
   const value = { user, firebaseUser, isLoading, isAnonymous };
 
   return (

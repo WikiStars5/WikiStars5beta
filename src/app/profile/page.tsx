@@ -183,7 +183,6 @@ export default function ProfilePage() {
     );
   }
 
-  // This check is now robust. It only fails if after loading there's truly no user.
   if (!currentUser) {
     return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
