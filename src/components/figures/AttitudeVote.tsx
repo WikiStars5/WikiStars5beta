@@ -119,7 +119,11 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
       // If a new attitude is being set (not just cleared), add it.
       if (newAttitudeToSet) {
-        attitudes.push({ figureId: figureId, attitude: newAttitudeToSet });
+        attitudes.push({ 
+          figureId: figureId, 
+          attitude: newAttitudeToSet,
+          addedAt: new Date().toISOString() // Add the current date
+        });
       }
 
       localStorage.setItem('wikistars5-attitudes', JSON.stringify(attitudes));

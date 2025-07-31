@@ -57,10 +57,8 @@ export default function ProfilePage() {
   const [streaks, setStreaks] = useState<LocalUserStreak[]>([]);
   
   // States for Attitude and Emotion Lists
-  const [fanList, setFanList] = useState<Figure[]>([]);
-  const [haterList, setHaterList] = useState<Figure[]>([]);
-  const [simpList, setSimpList] = useState<Figure[]>([]);
-  const [neutralList, setNeutralList] = useState<Figure[]>([]);
+  const [attitudeFigures, setAttitudeFigures] = useState<Figure[]>([]);
+  const [attitudes, setAttitudes] = useState<Attitude[]>([]);
 
   const [alegriaList, setAlegriaList] = useState<Figure[]>([]);
   const [envidiaList, setEnvidiaList] = useState<Figure[]>([]);
@@ -104,22 +102,12 @@ export default function ProfilePage() {
       // Load attitude data if requested
       if (tabToLoad === 'attitude' || tabToLoad === 'all') {
         const attitudesJSON = localStorage.getItem('wikistars5-attitudes');
-        const attitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
+        const localAttitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
+        setAttitudes(localAttitudes.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()));
         
-        const figureIdsByType = {
-          fan: attitudes.filter(a => a.attitude === 'fan').map(a => a.figureId),
-          hater: attitudes.filter(a => a.attitude === 'hater').map(a => a.figureId),
-          simp: attitudes.filter(a => a.attitude === 'simp').map(a => a.figureId),
-          neutral: attitudes.filter(a => a.attitude === 'neutral').map(a => a.figureId),
-        };
-
-        const [fanFigures, haterFigures, simpFigures, neutralFigures] = await Promise.all([
-            getFiguresByIds(figureIdsByType.fan), getFiguresByIds(figureIdsByType.hater),
-            getFiguresByIds(figureIdsByType.simp), getFiguresByIds(figureIdsByType.neutral)
-        ]);
-
-        setFanList(fanFigures); setHaterList(haterFigures);
-        setSimpList(simpFigures); setNeutralList(neutralFigures);
+        const figureIds = localAttitudes.map(a => a.figureId);
+        const figures = await getFiguresByIds(figureIds);
+        setAttitudeFigures(figures);
       }
 
       // Load emotion data if requested
@@ -219,7 +207,41 @@ export default function ProfilePage() {
   const isAdmin = !isAnonymous && (currentUser.uid === ADMIN_UID || currentUser.role === 'admin');
   const displayName = currentUser.username || (isAnonymous ? "Invitado" : "Usuario");
 
-  const AttitudeList = ({ figures, emptyMessage }: { figures: Figure[], emptyMessage: string }) => (
+  const AttitudeList = ({ figures, attitudeKey, emptyMessage }: { figures: Figure[], attitudeKey: string, emptyMessage: string }) => {
+    const attitudeMap = new Map(attitudes.map(a => [a.figureId, a]));
+    const filteredFigures = figures.filter(f => attitudeMap.get(f.id)?.attitude === attitudeKey);
+
+    return (
+      <div className="space-y-4">
+        {isDataLoading ? (
+           <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : filteredFigures.length > 0 ? (
+          filteredFigures.map(figure => {
+            const attitude = attitudeMap.get(figure.id);
+            const date = attitude ? new Date(attitude.addedAt).toLocaleDateString() : '';
+            return (
+              <Link key={figure.id} href={`/figures/${figure.id}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={correctMalformedUrl(figure.photoUrl) || undefined} alt={figure.name} />
+                  <AvatarFallback>{figure.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-grow">
+                  <p className="font-semibold">{figure.name}</p>
+                  {date && <p className="text-xs text-muted-foreground">Marcado el {date}</p>}
+                </div>
+              </Link>
+            )
+          })
+        ) : (
+          <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
+            <p>{emptyMessage}</p>
+          </div>
+        )}
+      </div>
+    )
+  };
+  
+  const EmotionList = ({ figures, emptyMessage }: { figures: Figure[], emptyMessage: string }) => (
     <div className="space-y-4">
       {isDataLoading ? (
          <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -291,10 +313,10 @@ export default function ProfilePage() {
                                <TabsTrigger value="hater"><span role="img" aria-label="Hater" className="mr-2">😡</span>Haters</TabsTrigger>
                            </TabsList>
                            <div className="mt-4">
-                             <TabsContent value="neutral"><AttitudeList figures={neutralList} emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
-                             <TabsContent value="fan"><AttitudeList figures={fanList} emptyMessage="Aún no has marcado a nadie como 'Fan'."/></TabsContent>
-                             <TabsContent value="simp"><AttitudeList figures={simpList} emptyMessage="No has marcado a nadie como 'Simp'."/></TabsContent>
-                             <TabsContent value="hater"><AttitudeList figures={haterList} emptyMessage="No has marcado a nadie como 'Hater'."/></TabsContent>
+                             <TabsContent value="neutral"><AttitudeList figures={attitudeFigures} attitudeKey="neutral" emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
+                             <TabsContent value="fan"><AttitudeList figures={attitudeFigures} attitudeKey="fan" emptyMessage="Aún no has marcado a nadie como 'Fan'."/></TabsContent>
+                             <TabsContent value="simp"><AttitudeList figures={attitudeFigures} attitudeKey="simp" emptyMessage="No has marcado a nadie como 'Simp'."/></TabsContent>
+                             <TabsContent value="hater"><AttitudeList figures={attitudeFigures} attitudeKey="hater" emptyMessage="No has marcado a nadie como 'Hater'."/></TabsContent>
                            </div>
                        </Tabs>
                     </CardContent>
@@ -318,12 +340,12 @@ export default function ProfilePage() {
                                <TabsTrigger value="furia" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Furia" className="text-lg sm:text-xl mr-1">😡</span>Furia</TabsTrigger>
                            </TabsList>
                            <div className="mt-4">
-                             <TabsContent value="alegria"><AttitudeList figures={alegriaList} emptyMessage="No has votado 'Alegría' por nadie."/></TabsContent>
-                             <TabsContent value="envidia"><AttitudeList figures={envidiaList} emptyMessage="No has votado 'Envidia' por nadie."/></TabsContent>
-                             <TabsContent value="tristeza"><AttitudeList figures={tristezaList} emptyMessage="No has votado 'Tristeza' por nadie."/></TabsContent>
-                             <TabsContent value="miedo"><AttitudeList figures={miedoList} emptyMessage="No has votado 'Miedo' por nadie."/></TabsContent>
-                             <TabsContent value="desagrado"><AttitudeList figures={desagradoList} emptyMessage="No has votado 'Desagrado' por nadie."/></TabsContent>
-                             <TabsContent value="furia"><AttitudeList figures={furiaList} emptyMessage="No has votado 'Furia' por nadie."/></TabsContent>
+                             <TabsContent value="alegria"><EmotionList figures={alegriaList} emptyMessage="No has votado 'Alegría' por nadie."/></TabsContent>
+                             <TabsContent value="envidia"><EmotionList figures={envidiaList} emptyMessage="No has votado 'Envidia' por nadie."/></TabsContent>
+                             <TabsContent value="tristeza"><EmotionList figures={tristezaList} emptyMessage="No has votado 'Tristeza' por nadie."/></TabsContent>
+                             <TabsContent value="miedo"><EmotionList figures={miedoList} emptyMessage="No has votado 'Miedo' por nadie."/></TabsContent>
+                             <TabsContent value="desagrado"><EmotionList figures={desagradoList} emptyMessage="No has votado 'Desagrado' por nadie."/></TabsContent>
+                             <TabsContent value="furia"><EmotionList figures={furiaList} emptyMessage="No has votado 'Furia' por nadie."/></TabsContent>
                            </div>
                        </Tabs>
                     </CardContent>
@@ -416,7 +438,7 @@ export default function ProfilePage() {
         </CardHeader>
       </Card>
       
-      {isAnonymous ? renderProfileContent() : renderProfileForRegisteredUser()}
+      {renderProfileContent()}
 
     </div>
   );

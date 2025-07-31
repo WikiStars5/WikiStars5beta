@@ -76,6 +76,7 @@ export interface UserAttitude {
 export interface Attitude {
   figureId: string;
   attitude: AttitudeKey;
+  addedAt: string; // ISO String for the date
 }
 
 
