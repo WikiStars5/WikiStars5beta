@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, Edit, Save, BarChart3, MapIcon as MapIcon, VenusAndMars, Smile, UserPlus, Link2, ThumbsDown, SmilePlus, Frown, Angry, Hand, MehIcon } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, Edit, Save, BarChart3, MapIcon, VenusAndMars, Smile, UserPlus, Link2, ThumbsDown, SmilePlus, Frown, Angry, Hand, MehIcon } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -372,9 +372,9 @@ export default function ProfilePage() {
                   </CardHeader>
                    <CardContent>
                        <Tabs defaultValue="alegria" className="w-full">
-                           <TabsList className="grid w-full grid-cols-6 h-auto">
+                           <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar p-1 h-auto bg-muted rounded-md text-muted-foreground">
                                {Object.entries(EMOTION_IMAGES).map(([key, {label, imageUrl}]) => (
-                                   <TabsTrigger key={key} value={key} className="text-xs p-1 sm:p-2 flex-col h-auto">
+                                   <TabsTrigger key={key} value={key} className="text-xs p-1 sm:p-2 flex-col h-auto flex-shrink-0">
                                        <Image src={imageUrl} alt={label} width={20} height={20} className="mb-1" />
                                        {label}
                                    </TabsTrigger>
