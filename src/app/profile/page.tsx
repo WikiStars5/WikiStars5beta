@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, Edit, Save, BarChart3, Map as MapIcon, VenusAndMars, Smile, UserPlus, Link2, ThumbsDown, SmilePlus, Frown, Angry, Hand, MehIcon } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, Edit, Save, BarChart3, MapIcon, VenusAndMars, Smile, UserPlus, Link2, ThumbsDown, SmilePlus, Frown, Angry, Hand, MehIcon } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -66,6 +66,7 @@ export default function ProfilePage() {
   const [miedoList, setMiedoList] = useState<Figure[]>([]);
   const [desagradoList, setDesagradoList] = useState<Figure[]>([]);
   const [furiaList, setFuriaList] = useState<Figure[]>([]);
+  const [emotions, setEmotions] = useState<EmotionVote[]>([]);
 
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isLinking, setIsLinking] = useState(false);
@@ -122,15 +123,20 @@ export default function ProfilePage() {
       // Load emotion data if requested
       if (tabToLoad === 'emotion' || tabToLoad === 'all') {
         const emotionsJSON = localStorage.getItem('wikistars5-emotions');
-        const emotions: EmotionVote[] = emotionsJSON ? JSON.parse(emotionsJSON) : [];
+        const localEmotions: EmotionVote[] = emotionsJSON ? JSON.parse(emotionsJSON) : [];
+        setEmotions(localEmotions.sort((a, b) => {
+          const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
+          const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
+          return dateB - dateA;
+        }));
 
         const figureIdsByEmotion = {
-            alegria: emotions.filter(e => e.emotion === 'alegria').map(e => e.figureId),
-            envidia: emotions.filter(e => e.emotion === 'envidia').map(e => e.figureId),
-            tristeza: emotions.filter(e => e.emotion === 'tristeza').map(e => e.figureId),
-            miedo: emotions.filter(e => e.emotion === 'miedo').map(e => e.figureId),
-            desagrado: emotions.filter(e => e.emotion === 'desagrado').map(e => e.figureId),
-            furia: emotions.filter(e => e.emotion === 'furia').map(e => e.figureId),
+            alegria: localEmotions.filter(e => e.emotion === 'alegria').map(e => e.figureId),
+            envidia: localEmotions.filter(e => e.emotion === 'envidia').map(e => e.figureId),
+            tristeza: localEmotions.filter(e => e.emotion === 'tristeza').map(e => e.figureId),
+            miedo: localEmotions.filter(e => e.emotion === 'miedo').map(e => e.figureId),
+            desagrado: localEmotions.filter(e => e.emotion === 'desagrado').map(e => e.figureId),
+            furia: localEmotions.filter(e => e.emotion === 'furia').map(e => e.figureId),
         };
 
         const [alegriaFigures, envidiaFigures, tristezaFigures, miedoFigures, desagradoFigures, furiaFigures] = await Promise.all([
@@ -255,27 +261,40 @@ export default function ProfilePage() {
     )
   };
   
-  const EmotionList = ({ figures, emptyMessage }: { figures: Figure[], emptyMessage: string }) => (
-    <div className="space-y-4">
-      {isDataLoading ? (
-         <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-      ) : figures.length > 0 ? (
-        figures.map(figure => (
-          <Link key={figure.id} href={`/figures/${figure.id}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={correctMalformedUrl(figure.photoUrl) || undefined} alt={figure.name} />
-              <AvatarFallback>{figure.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <p className="font-semibold">{figure.name}</p>
-          </Link>
-        ))
-      ) : (
-        <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
-          <p>{emptyMessage}</p>
-        </div>
-      )}
-    </div>
-  );
+  const EmotionList = ({ figures, emptyMessage }: { figures: Figure[], emptyMessage: string }) => {
+    const emotionMap = new Map(emotions.map(e => [e.figureId, e]));
+    return (
+      <div className="space-y-4">
+        {isDataLoading ? (
+           <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : figures.length > 0 ? (
+          figures.map(figure => {
+            const emotion = emotionMap.get(figure.id);
+            let dateString = '';
+            if (emotion && emotion.addedAt && !isNaN(new Date(emotion.addedAt).getTime())) {
+                dateString = new Date(emotion.addedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
+            return (
+              <Link key={figure.id} href={`/figures/${figure.id}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={correctMalformedUrl(figure.photoUrl) || undefined} alt={figure.name} />
+                  <AvatarFallback>{figure.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-grow">
+                  <p className="font-semibold">{figure.name}</p>
+                  {dateString && <p className="text-xs text-muted-foreground">Votado el {dateString}</p>}
+                </div>
+              </Link>
+            )
+          })
+        ) : (
+          <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
+            <p>{emptyMessage}</p>
+          </div>
+        )}
+      </div>
+    );
+  };
   
   const renderProfileContent = () => (
     <div className="w-full mt-6">
@@ -457,5 +476,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    

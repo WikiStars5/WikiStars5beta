@@ -62,6 +62,7 @@ export interface UserPerception {
 export interface EmotionVote {
   figureId: string;
   emotion: EmotionKey;
+  addedAt: string; // ISO String for the date
 }
 
 

@@ -113,7 +113,11 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         emotions = emotions.filter(e => e.figureId !== figureId);
 
         if (newEmotionToSet) {
-            emotions.push({ figureId: figureId, emotion: newEmotionToSet });
+            emotions.push({ 
+              figureId: figureId, 
+              emotion: newEmotionToSet,
+              addedAt: new Date().toISOString() 
+            });
         }
         localStorage.setItem('wikistars5-emotions', JSON.stringify(emotions));
         setSelectedEmotion(newEmotionToSet);
