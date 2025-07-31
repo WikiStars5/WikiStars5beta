@@ -227,10 +227,11 @@ export default function ProfilePage() {
   
   const renderProfileForGuest = () => (
     <Tabs defaultValue="estadisticas" className="w-full mt-6">
-        <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-3 h-auto">
+        <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-4 h-auto">
             <TabsTrigger value="estadisticas"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
             <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
             <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
+            <TabsTrigger value="actitud"><Heart className="mr-2" />Mi actitud</TabsTrigger>
         </TabsList>
         <TabsContent value="estadisticas" className="mt-6">
             <Card>
@@ -318,6 +319,22 @@ export default function ProfilePage() {
                       </div>
                   )}
                 </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="actitud" className="mt-6">
+             <Card>
+              <CardHeader>
+                <CardTitle>Mis Actitudes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Alert>
+                  <Heart className="h-4 w-4" />
+                  <AlertTitle>Próximamente</AlertTitle>
+                  <AlertDescription>
+                    Aquí podrás ver un resumen de todas tus actitudes hacia los diferentes personajes.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
             </Card>
         </TabsContent>
     </Tabs>
