@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Figure, UserPerception, EmotionKey } from '@/lib/types';
+import type { Figure, UserPerception, EmotionKey, EmotionVote } from '@/lib/types';
 import { db, auth as firebaseAuth } from '@/lib/firebase';
 import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, getDoc, serverTimestamp, type DocumentData, type Unsubscribe } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth'; 
@@ -46,10 +46,13 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
   const [isComponentLoading, setIsComponentLoading] = useState(true);
   const { toast } = useToast();
 
-  const canUserVote = !!currentUser; // Allow anonymous users to vote
+  const canUserVote = !!currentUser;
 
   useEffect(() => {
-    if (!figureId) return;
+    if (!figureId) {
+        setIsComponentLoading(false);
+        return;
+    }
     setIsComponentLoading(true); 
 
     const figureDocRef = doc(db, "figures", figureId);
@@ -63,116 +66,108 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         setFigurePerceptionCounts(defaultPerceptionCountsData);
         setTotalVotes(0);
       }
+      setIsComponentLoading(false);
     }, (error) => {
       console.error("Error fetching figure perception counts:", error);
       toast({ title: "Error", description: "No se pudieron cargar los conteos de emociones.", variant: "destructive" });
       setIsComponentLoading(false); 
     });
 
-    let unsubscribeUserPerception: Unsubscribe | undefined;
-    if (currentUser && figureId) { // currentUser can be anonymous
-      const userPerceptionDocId = `${currentUser.uid}_${figureId}`;
-      const userPerceptionDocRef = doc(db, "userPerceptions", userPerceptionDocId);
-      
-      unsubscribeUserPerception = onSnapshot(userPerceptionDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const userPerceptionData = docSnap.data() as UserPerception;
-          setSelectedEmotion(userPerceptionData.emotion);
-        } else {
-          setSelectedEmotion(null);
+    if (currentUser) {
+        try {
+            const emotionsJSON = localStorage.getItem('wikistars5-emotions');
+            if (emotionsJSON) {
+                const emotions: EmotionVote[] = JSON.parse(emotionsJSON);
+                const userEmotionForFigure = emotions.find(e => e.figureId === figureId);
+                setSelectedEmotion(userEmotionForFigure ? userEmotionForFigure.emotion : null);
+            }
+        } catch (e) {
+            console.error("Error reading emotions from localStorage", e);
+            setSelectedEmotion(null);
         }
-        setIsComponentLoading(false); 
-      }, (error) => {
-        console.error("Error fetching user's perception:", error);
-        setSelectedEmotion(null);
-        setIsComponentLoading(false); 
-      });
     } else {
       setSelectedEmotion(null);
-      setIsComponentLoading(false); 
     }
     
     return () => {
       unsubscribeFigure();
-      if (unsubscribeUserPerception) unsubscribeUserPerception();
     };
   }, [figureId, currentUser, toast]);
 
-  const handleEmotionClick = (emotionKey: EmotionKey) => {
+  const handleEmotionClick = async (emotionKeyClicked: EmotionKey) => {
     if (!canUserVote || !currentUser) {
       toast({ title: "Acción Requerida", description: "Inicia sesión o continúa como invitado para votar." });
       return;
     }
     if (isLoadingEmotionAction) return;
     
-    setIsLoadingEmotionAction(emotionKey);
+    setIsLoadingEmotionAction(emotionKeyClicked);
     
     const previousSelectedEmotion = selectedEmotion;
-    const newEmotionToSet = previousSelectedEmotion === emotionKey ? null : emotionKey;
+    const newEmotionToSet = previousSelectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
 
-    const originalCounts = { ...figurePerceptionCounts };
-    const newOptimisticCounts = { ...originalCounts };
-    if (previousSelectedEmotion) {
-        newOptimisticCounts[previousSelectedEmotion] = Math.max(0, (newOptimisticCounts[previousSelectedEmotion] || 0) - 1);
-    }
-    if (newEmotionToSet) {
-        newOptimisticCounts[newEmotionToSet] = (newOptimisticCounts[newEmotionToSet] || 0) + 1;
-    }
-    setTotalVotes(Object.values(newOptimisticCounts).reduce((sum, count) => sum + count, 0));
-    setSelectedEmotion(newEmotionToSet);
-    setFigurePerceptionCounts(newOptimisticCounts);
-
-    (async () => {
-      const figureDocRef = doc(db, "figures", figureId);
-      const userPerceptionDocId = `${currentUser.uid}_${figureId}`;
-      const userPerceptionDocRef = doc(db, "userPerceptions", userPerceptionDocId);
-
-      try {
-        await runTransaction(db, async (transaction) => {
-          const figureDoc = await transaction.get(figureDocRef);
-          if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
-
-          const serverCounts = figureDoc.data()?.perceptionCounts || { ...defaultPerceptionCountsData };
-          if (previousSelectedEmotion) {
-            serverCounts[previousSelectedEmotion] = Math.max(0, (serverCounts[previousSelectedEmotion] || 0) - 1);
-          }
-          if (newEmotionToSet) {
-            serverCounts[newEmotionToSet] = (serverCounts[newEmotionToSet] || 0) + 1;
-          }
-          transaction.update(figureDocRef, { perceptionCounts: serverCounts });
-        });
+    // --- Start of Local Storage Logic ---
+    try {
+        const emotionsJSON = localStorage.getItem('wikistars5-emotions');
+        let emotions: EmotionVote[] = emotionsJSON ? JSON.parse(emotionsJSON) : [];
+        emotions = emotions.filter(e => e.figureId !== figureId);
 
         if (newEmotionToSet) {
-          await setDoc(userPerceptionDocRef, {
-            userId: currentUser.uid, figureId: figureId, emotion: newEmotionToSet, timestamp: serverTimestamp(),
-          });
-          toast({
-            title: "¡Voto Registrado!",
-            description: `Tu percepción ha sido guardada. ¡Invita a otros a votar!`,
-            duration: 8000,
-            action: <ShareButton figureName={figureName} figureId={figureId} showText />,
-          });
-          if (!currentUser.isAnonymous) {
-            const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
-            if (achievementResult.unlocked) {
-              toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
-            }
-          }
-        } else {
-          await deleteDoc(userPerceptionDocRef);
-          toast({ title: "Voto Eliminado", description: "Tu percepción ha sido eliminada." });
+            emotions.push({ figureId: figureId, emotion: newEmotionToSet });
         }
-      } catch (error: any) {
-        setFigurePerceptionCounts(originalCounts);
-        setSelectedEmotion(previousSelectedEmotion);
-        setTotalVotes(Object.values(originalCounts).reduce((sum, count) => sum + count, 0));
-        
-        console.error("Error voting:", error);
-        toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
-      } finally {
+        localStorage.setItem('wikistars5-emotions', JSON.stringify(emotions));
+        setSelectedEmotion(newEmotionToSet);
+
+    } catch (error) {
+        console.error("Error updating localStorage for emotions", error);
+        toast({ title: "Error Local", description: "No se pudo guardar tu elección de emoción.", variant: "destructive" });
         setIsLoadingEmotionAction(null);
+        return;
+    }
+    // --- End of Local Storage Logic ---
+
+    // --- Start of Firestore Logic for Global Counts ---
+    const figureDocRef = doc(db, "figures", figureId);
+    try {
+      await runTransaction(db, async (transaction) => {
+        const figureDoc = await transaction.get(figureDocRef);
+        if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
+
+        const serverCounts = figureDoc.data()?.perceptionCounts || { ...defaultPerceptionCountsData };
+        if (previousSelectedEmotion) {
+          serverCounts[previousSelectedEmotion] = Math.max(0, (serverCounts[previousSelectedEmotion] || 0) - 1);
+        }
+        if (newEmotionToSet) {
+          serverCounts[newEmotionToSet] = (serverCounts[newEmotionToSet] || 0) + 1;
+        }
+        transaction.update(figureDocRef, { perceptionCounts: serverCounts });
+      });
+      
+      if (!currentUser.isAnonymous && newEmotionToSet) {
+        const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
+        if (achievementResult.unlocked) {
+          toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
+        }
       }
-    })();
+      
+      if (newEmotionToSet) {
+        toast({
+          title: "¡Voto Registrado!",
+          description: `Tu percepción ha sido guardada. ¡Invita a otros a votar!`,
+          duration: 8000,
+          action: <ShareButton figureName={figureName} figureId={figureId} showText />,
+        });
+      } else {
+        toast({ title: "Voto Eliminado", description: "Tu percepción ha sido eliminada." });
+      }
+
+    } catch (error: any) {
+      console.error("Error updating Firestore perception counts:", error);
+      toast({ title: "Error de Sincronización", description: "Tu voto se guardó localmente, pero falló la actualización del contador global.", variant: "destructive" });
+    } finally {
+      setIsLoadingEmotionAction(null);
+    }
+    // --- End of Firestore Logic ---
   };
   
   if (isComponentLoading) { 
@@ -201,7 +196,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {!currentUser && ( // Show if no user at all (e.g., anonymous sign-in failed)
+        {!currentUser && (
           <Alert variant="default" className="mb-4">
             <LogIn className="h-4 w-4" />
             <AlertTitle>Votación</AlertTitle>
@@ -228,7 +223,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
                 ${!canUserVote ? 'cursor-not-allowed opacity-60' : ''} 
               `}
               onClick={() => handleEmotionClick(key)}
-              disabled={!canUserVote || !!isLoadingEmotionAction} // Disabled if no user or loading
+              disabled={!canUserVote || !!isLoadingEmotionAction}
               style={{ minHeight: '120px' }}
             >
               <div className="relative w-10 h-10 mb-1" data-ai-hint={`emoji ${label}`}>

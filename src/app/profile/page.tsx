@@ -16,7 +16,7 @@ import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
 import { Separator } from '@/components/ui/separator';
-import type { UserProfile, LocalUserStreak, Attitude, Figure } from '@/lib/types';
+import type { UserProfile, LocalUserStreak, Attitude, Figure, EmotionVote } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { auth, app, db } from '@/lib/firebase';
 import { signOut, linkWithCredential, EmailAuthProvider, updateProfile } from 'firebase/auth';
@@ -56,10 +56,18 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [streaks, setStreaks] = useState<LocalUserStreak[]>([]);
   
+  // States for Attitude and Emotion Lists
   const [fanList, setFanList] = useState<Figure[]>([]);
   const [haterList, setHaterList] = useState<Figure[]>([]);
   const [simpList, setSimpList] = useState<Figure[]>([]);
   const [neutralList, setNeutralList] = useState<Figure[]>([]);
+
+  const [alegriaList, setAlegriaList] = useState<Figure[]>([]);
+  const [envidiaList, setEnvidiaList] = useState<Figure[]>([]);
+  const [tristezaList, setTristezaList] = useState<Figure[]>([]);
+  const [miedoList, setMiedoList] = useState<Figure[]>([]);
+  const [desagradoList, setDesagradoList] = useState<Figure[]>([]);
+  const [furiaList, setFuriaList] = useState<Figure[]>([]);
 
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isLinking, setIsLinking] = useState(false);
@@ -77,32 +85,25 @@ export default function ProfilePage() {
     defaultValues: { email: '', password: '', username: ''}
   });
   
-  const loadProfileData = useCallback(async (attitudeTabClicked = false) => {
+  const loadProfileData = useCallback(async (tabToLoad: 'attitude' | 'emotion' | 'all') => {
     if (!currentUser) return;
 
-    if (attitudeTabClicked) {
-      setIsDataLoading(true);
-    }
+    setIsDataLoading(true);
 
     try {
-        const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
-        if(streaksJSON) {
-            const localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
-            localStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
-            setStreaks(localStreaks);
-        } else {
-            setStreaks([]);
-        }
+      // Always load streaks
+      const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
+      if(streaksJSON) {
+          const localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
+          localStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
+          setStreaks(localStreaks);
+      } else {
+          setStreaks([]);
+      }
 
+      // Load attitude data if requested
+      if (tabToLoad === 'attitude' || tabToLoad === 'all') {
         const attitudesJSON = localStorage.getItem('wikistars5-attitudes');
-        if (!attitudesJSON) {
-          setFanList([]);
-          setHaterList([]);
-          setSimpList([]);
-          setNeutralList([]);
-          if (attitudeTabClicked) setIsDataLoading(false);
-          return;
-        }
         const attitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
         
         const figureIdsByType = {
@@ -112,32 +113,47 @@ export default function ProfilePage() {
           neutral: attitudes.filter(a => a.attitude === 'neutral').map(a => a.figureId),
         };
 
-        // Fetch all figures in parallel
         const [fanFigures, haterFigures, simpFigures, neutralFigures] = await Promise.all([
-            getFiguresByIds(figureIdsByType.fan),
-            getFiguresByIds(figureIdsByType.hater),
-            getFiguresByIds(figureIdsByType.simp),
-            getFiguresByIds(figureIdsByType.neutral)
+            getFiguresByIds(figureIdsByType.fan), getFiguresByIds(figureIdsByType.hater),
+            getFiguresByIds(figureIdsByType.simp), getFiguresByIds(figureIdsByType.neutral)
         ]);
 
-        setFanList(fanFigures);
-        setHaterList(haterFigures);
-        setSimpList(simpFigures);
-        setNeutralList(neutralFigures);
+        setFanList(fanFigures); setHaterList(haterFigures);
+        setSimpList(simpFigures); setNeutralList(neutralFigures);
+      }
+
+      // Load emotion data if requested
+      if (tabToLoad === 'emotion' || tabToLoad === 'all') {
+        const emotionsJSON = localStorage.getItem('wikistars5-emotions');
+        const emotions: EmotionVote[] = emotionsJSON ? JSON.parse(emotionsJSON) : [];
+
+        const figureIdsByEmotion = {
+            alegria: emotions.filter(e => e.emotion === 'alegria').map(e => e.figureId),
+            envidia: emotions.filter(e => e.emotion === 'envidia').map(e => e.figureId),
+            tristeza: emotions.filter(e => e.emotion === 'tristeza').map(e => e.figureId),
+            miedo: emotions.filter(e => e.emotion === 'miedo').map(e => e.figureId),
+            desagrado: emotions.filter(e => e.emotion === 'desagrado').map(e => e.figureId),
+            furia: emotions.filter(e => e.emotion === 'furia').map(e => e.figureId),
+        };
+
+        const [alegriaFigures, envidiaFigures, tristezaFigures, miedoFigures, desagradoFigures, furiaFigures] = await Promise.all([
+            getFiguresByIds(figureIdsByEmotion.alegria), getFiguresByIds(figureIdsByEmotion.envidia),
+            getFiguresByIds(figureIdsByEmotion.tristeza), getFiguresByIds(figureIdsByEmotion.miedo),
+            getFiguresByIds(figureIdsByEmotion.desagrado), getFiguresByIds(figureIdsByEmotion.furia),
+        ]);
+
+        setAlegriaList(alegriaFigures); setEnvidiaList(envidiaFigures);
+        setTristezaList(tristezaFigures); setMiedoList(miedoFigures);
+        setDesagradoList(desagradoFigures); setFuriaList(furiaFigures);
+      }
         
     } catch (error) {
         console.error("Error loading data from localStorage", error);
-        setStreaks([]);
-        setFanList([]);
-        setHaterList([]);
-        setSimpList([]);
-        setNeutralList([]);
+        toast({ title: "Error", description: "No se pudieron cargar los datos del perfil.", variant: "destructive" });
     } finally {
-        if (attitudeTabClicked) {
-            setIsDataLoading(false);
-        }
+        setIsDataLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, toast]);
 
 
   useEffect(() => {
@@ -147,16 +163,10 @@ export default function ProfilePage() {
         countryCode: currentUser.countryCode ?? '',
         gender: currentUser.gender ?? '',
       });
-      setIsDataLoading(true);
-      loadProfileData().finally(() => setIsDataLoading(false));
+      loadProfileData('all');
     }
   }, [isLoading, currentUser, reset, loadProfileData]);
 
-  useEffect(() => {
-    if (isLinkDialogOpen && currentUser?.username) {
-        resetLink({ username: currentUser.username });
-    }
-  }, [isLinkDialogOpen, currentUser, resetLink]);
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
@@ -172,39 +182,6 @@ export default function ProfilePage() {
     }
   };
   
-  const onLinkAccountSubmit = async (data: LinkAccountFormValues) => {
-    if (!firebaseUser || !isAnonymous) {
-      toast({ title: "Error", description: "Solo las cuentas de invitado pueden ser vinculadas.", variant: "destructive" });
-      return;
-    }
-    setIsLinking(true);
-    try {
-      const credential = EmailAuthProvider.credential(data.email, data.password);
-      await linkWithCredential(firebaseUser, credential);
-      await updateUserProfileCallable({ username: data.username });
-      await updateProfile(firebaseUser, { displayName: data.username });
-
-      toast({
-        title: "¡Cuenta Vinculada!",
-        description: "Tu progreso ha sido guardado de forma segura.",
-      });
-      setIsLinkDialogOpen(false);
-      resetLink();
-    } catch (error: any) {
-      console.error("Error linking account:", error);
-      let message = "No se pudo vincular la cuenta.";
-      if (error.code === 'auth/email-already-in-use') {
-        message = 'Este correo electrónico ya está en uso por otra cuenta.';
-      } else if (error.code === 'auth/credential-already-in-use') {
-         message = 'Esta cuenta ya está vinculada a otro usuario. Intenta iniciar sesión.';
-      } else if (error.code === 'auth/weak-password') {
-         message = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
-      }
-      toast({ title: "Error al Vincular", description: message, variant: "destructive" });
-    } finally {
-      setIsLinking(false);
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -269,8 +246,8 @@ export default function ProfilePage() {
        <Tabs defaultValue="rachas" className="w-full">
             <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20">
                 <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
-                <TabsTrigger value="actitud" onClick={() => loadProfileData(true)}><Heart className="mr-2" />Mi Actitud</TabsTrigger>
-                <TabsTrigger value="emociones"><Smile className="mr-2" />Mis Emociones</TabsTrigger>
+                <TabsTrigger value="actitud" onClick={() => loadProfileData('attitude')}><Heart className="mr-2" />Mi Actitud</TabsTrigger>
+                <TabsTrigger value="emociones" onClick={() => loadProfileData('emotion')}><Smile className="mr-2" />Mis Emociones</TabsTrigger>
             </TabsList>
             
             <TabsContent value="rachas" className="mt-6">
@@ -328,16 +305,28 @@ export default function ProfilePage() {
                 <Card className="border border-white/20 bg-black">
                   <CardHeader>
                     <CardTitle>Mis Emociones</CardTitle>
-                    <CardDescription>Aquí verás los personajes según la emoción que te provocan. ¡Funcionalidad próximamente!</CardDescription>
+                    <CardDescription>Aquí verás los personajes según la emoción que te provocan.</CardDescription>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-6 gap-2">
-                      <Card className="p-2 sm:p-4 flex flex-col items-center justify-center text-center space-y-2"><span className="text-2xl sm:text-3xl" role="img" aria-label="alegria">😂</span><p className="font-semibold text-xs sm:text-sm">Alegría</p></Card>
-                      <Card className="p-2 sm:p-4 flex flex-col items-center justify-center text-center space-y-2"><span className="text-2xl sm:text-3xl" role="img" aria-label="envidia">😒</span><p className="font-semibold text-xs sm:text-sm">Envidia</p></Card>
-                      <Card className="p-2 sm:p-4 flex flex-col items-center justify-center text-center space-y-2"><span className="text-2xl sm:text-3xl" role="img" aria-label="tristeza">😢</span><p className="font-semibold text-xs sm:text-sm">Tristeza</p></Card>
-                      <Card className="p-2 sm:p-4 flex flex-col items-center justify-center text-center space-y-2"><span className="text-2xl sm:text-3xl" role="img" aria-label="miedo">😨</span><p className="font-semibold text-xs sm:text-sm">Miedo</p></Card>
-                      <Card className="p-2 sm:p-4 flex flex-col items-center justify-center text-center space-y-2"><span className="text-2xl sm:text-3xl" role="img" aria-label="desagrado">🤢</span><p className="font-semibold text-xs sm:text-sm">Desagrado</p></Card>
-                      <Card className="p-2 sm:p-4 flex flex-col items-center justify-center text-center space-y-2"><span className="text-2xl sm:text-3xl" role="img" aria-label="furia">😡</span><p className="font-semibold text-xs sm:text-sm">Furia</p></Card>
-                  </CardContent>
+                   <CardContent>
+                       <Tabs defaultValue="alegria" className="w-full">
+                           <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 h-auto">
+                               <TabsTrigger value="alegria" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Alegría" className="text-lg sm:text-xl mr-1">😂</span>Alegría</TabsTrigger>
+                               <TabsTrigger value="envidia" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Envidia" className="text-lg sm:text-xl mr-1">😒</span>Envidia</TabsTrigger>
+                               <TabsTrigger value="tristeza" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Tristeza" className="text-lg sm:text-xl mr-1">😢</span>Tristeza</TabsTrigger>
+                               <TabsTrigger value="miedo" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Miedo" className="text-lg sm:text-xl mr-1">😨</span>Miedo</TabsTrigger>
+                               <TabsTrigger value="desagrado" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Desagrado" className="text-lg sm:text-xl mr-1">🤢</span>Desagrado</TabsTrigger>
+                               <TabsTrigger value="furia" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Furia" className="text-lg sm:text-xl mr-1">😡</span>Furia</TabsTrigger>
+                           </TabsList>
+                           <div className="mt-4">
+                             <TabsContent value="alegria"><AttitudeList figures={alegriaList} emptyMessage="No has votado 'Alegría' por nadie."/></TabsContent>
+                             <TabsContent value="envidia"><AttitudeList figures={envidiaList} emptyMessage="No has votado 'Envidia' por nadie."/></TabsContent>
+                             <TabsContent value="tristeza"><AttitudeList figures={tristezaList} emptyMessage="No has votado 'Tristeza' por nadie."/></TabsContent>
+                             <TabsContent value="miedo"><AttitudeList figures={miedoList} emptyMessage="No has votado 'Miedo' por nadie."/></TabsContent>
+                             <TabsContent value="desagrado"><AttitudeList figures={desagradoList} emptyMessage="No has votado 'Desagrado' por nadie."/></TabsContent>
+                             <TabsContent value="furia"><AttitudeList figures={furiaList} emptyMessage="No has votado 'Furia' por nadie."/></TabsContent>
+                           </div>
+                       </Tabs>
+                    </CardContent>
                 </Card>
             </TabsContent>
         </Tabs>
@@ -347,7 +336,7 @@ export default function ProfilePage() {
   const renderProfileForRegisteredUser = () => (
     <>
       <div className="w-full mt-6">
-          <Card>
+          <Card className="border border-white/20 bg-black">
             <CardHeader className="flex flex-row justify-between items-start">
               <div>
                   <CardTitle>Tu Información</CardTitle>

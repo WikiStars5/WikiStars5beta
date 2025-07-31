@@ -58,6 +58,13 @@ export interface UserPerception {
   timestamp: Timestamp; 
 }
 
+// Type for storing emotion vote in localStorage
+export interface EmotionVote {
+  figureId: string;
+  emotion: EmotionKey;
+}
+
+
 export interface UserAttitude {
   userId: string;
   figureId: string;
