@@ -11,12 +11,14 @@ interface AuthContextType {
   user: UserProfile | null;
   firebaseUser: FirebaseUser | null;
   isLoading: boolean;
+  isAnonymous: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   firebaseUser: null,
   isLoading: true,
+  isAnonymous: true,
 });
 
 
@@ -85,7 +87,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
   
-  const value = { user, firebaseUser, isLoading };
+  const isAnonymous = user?.isAnonymous ?? true;
+  const value = { user, firebaseUser, isLoading, isAnonymous };
 
   return (
     <AuthContext.Provider value={value}>
