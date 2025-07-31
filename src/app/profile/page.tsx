@@ -285,18 +285,18 @@ export default function ProfilePage() {
                         <CardDescription>Aquí se muestran los personajes según la actitud que has votado por ellos.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                       <Tabs defaultValue="fan" className="w-full">
+                       <Tabs defaultValue="neutral" className="w-full">
                            <TabsList className="grid w-full grid-cols-4 h-auto">
-                               <TabsTrigger value="fan"><Heart className="mr-2"/>Fans</TabsTrigger>
-                               <TabsTrigger value="hater"><ThumbsDown className="mr-2"/>Haters</TabsTrigger>
-                               <TabsTrigger value="simp"><SmilePlus className="mr-2"/>Simps</TabsTrigger>
                                <TabsTrigger value="neutral"><MehIcon className="mr-2"/>Neutral</TabsTrigger>
+                               <TabsTrigger value="fan"><Heart className="mr-2"/>Fans</TabsTrigger>
+                               <TabsTrigger value="simp"><SmilePlus className="mr-2"/>Simps</TabsTrigger>
+                               <TabsTrigger value="hater"><ThumbsDown className="mr-2"/>Haters</TabsTrigger>
                            </TabsList>
                            <div className="mt-4">
-                             <TabsContent value="fan"><AttitudeList figures={fanList} emptyMessage="Aún no has marcado a nadie como 'Fan'."/></TabsContent>
-                             <TabsContent value="hater"><AttitudeList figures={haterList} emptyMessage="No has marcado a nadie como 'Hater'."/></TabsContent>
-                             <TabsContent value="simp"><AttitudeList figures={simpList} emptyMessage="No has marcado a nadie como 'Simp'."/></TabsContent>
                              <TabsContent value="neutral"><AttitudeList figures={neutralList} emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
+                             <TabsContent value="fan"><AttitudeList figures={fanList} emptyMessage="Aún no has marcado a nadie como 'Fan'."/></TabsContent>
+                             <TabsContent value="simp"><AttitudeList figures={simpList} emptyMessage="No has marcado a nadie como 'Simp'."/></TabsContent>
+                             <TabsContent value="hater"><AttitudeList figures={haterList} emptyMessage="No has marcado a nadie como 'Hater'."/></TabsContent>
                            </div>
                        </Tabs>
                     </CardContent>
