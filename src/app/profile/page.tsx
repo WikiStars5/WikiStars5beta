@@ -49,6 +49,15 @@ type LinkAccountFormValues = z.infer<typeof linkAccountFormSchema>;
 
 const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
 
+const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
+  alegria: { label: 'Alegría', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414' },
+  envidia: { label: 'Envidia', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fenvidia.png?alt=media&token=940aa136-2235-48db-84d6-2c461730fde5' },
+  tristeza: { label: 'Tristeza', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ftrizteza.png?alt=media&token=0115df4b-55e4-4281-9cff-a8a560c38903' },
+  miedo: { label: 'Miedo', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985' },
+  desagrado: { label: 'Desagrado', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb' },
+  furia: { label: 'Furia', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f' },
+};
+
 export default function ProfilePage() {
   const { user: currentUser, firebaseUser, isLoading } = useAuth();
   const router = useRouter();
@@ -365,12 +374,12 @@ export default function ProfilePage() {
                    <CardContent>
                        <Tabs defaultValue="alegria" className="w-full">
                            <TabsList className="grid w-full grid-cols-6 h-auto">
-                               <TabsTrigger value="alegria" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Alegría" className="text-lg sm:text-xl mr-1">😂</span>Alegría</TabsTrigger>
-                               <TabsTrigger value="envidia" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Envidia" className="text-lg sm:text-xl mr-1">😒</span>Envidia</TabsTrigger>
-                               <TabsTrigger value="tristeza" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Tristeza" className="text-lg sm:text-xl mr-1">😢</span>Tristeza</TabsTrigger>
-                               <TabsTrigger value="miedo" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Miedo" className="text-lg sm:text-xl mr-1">😨</span>Miedo</TabsTrigger>
-                               <TabsTrigger value="desagrado" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Desagrado" className="text-lg sm:text-xl mr-1">🤢</span>Desagrado</TabsTrigger>
-                               <TabsTrigger value="furia" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Furia" className="text-lg sm:text-xl mr-1">😡</span>Furia</TabsTrigger>
+                               {Object.entries(EMOTION_IMAGES).map(([key, {label, imageUrl}]) => (
+                                   <TabsTrigger key={key} value={key} className="text-xs p-1 sm:p-2 flex-col h-auto">
+                                       <Image src={imageUrl} alt={label} width={20} height={20} className="mb-1" />
+                                       {label}
+                                   </TabsTrigger>
+                               ))}
                            </TabsList>
                            <div className="mt-4">
                              <TabsContent value="alegria"><EmotionList figures={alegriaList} emptyMessage="No has votado 'Alegría' por nadie."/></TabsContent>
