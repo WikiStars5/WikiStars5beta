@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -77,6 +77,54 @@ export default function ProfilePage() {
     defaultValues: { email: '', password: '', username: ''}
   });
   
+  const loadProfileData = useCallback(async () => {
+    if (!currentUser) return;
+    setIsDataLoading(true);
+    try {
+        const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
+        if(streaksJSON) {
+            const localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
+            localStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
+            setStreaks(localStreaks);
+        } else {
+            setStreaks([]);
+        }
+
+        const attitudesJSON = localStorage.getItem('wikistars5-attitudes');
+        if (!attitudesJSON) {
+          setFanList([]);
+          setHaterList([]);
+          setSimpList([]);
+          setNeutralList([]);
+          setIsDataLoading(false);
+          return;
+        }
+        const attitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
+        
+        const figureIdsByType = {
+          fan: attitudes.filter(a => a.attitude === 'fan').map(a => a.figureId),
+          hater: attitudes.filter(a => a.attitude === 'hater').map(a => a.figureId),
+          simp: attitudes.filter(a => a.attitude === 'simp').map(a => a.figureId),
+          neutral: attitudes.filter(a => a.attitude === 'neutral').map(a => a.figureId),
+        };
+
+        setFanList(await getFiguresByIds(figureIdsByType.fan));
+        setHaterList(await getFiguresByIds(figureIdsByType.hater));
+        setSimpList(await getFiguresByIds(figureIdsByType.simp));
+        setNeutralList(await getFiguresByIds(figureIdsByType.neutral));
+        
+    } catch (error) {
+        console.error("Error loading data from localStorage", error);
+        setStreaks([]);
+        setFanList([]);
+        setHaterList([]);
+        setSimpList([]);
+        setNeutralList([]);
+    } finally {
+        setIsDataLoading(false);
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     if (!isLoading && currentUser) {
       reset({
@@ -84,54 +132,9 @@ export default function ProfilePage() {
         countryCode: currentUser.countryCode ?? '',
         gender: currentUser.gender ?? '',
       });
-      
-      setIsDataLoading(true);
-      try {
-          const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
-          if(streaksJSON) {
-              const localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
-              localStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
-              setStreaks(localStreaks);
-          } else {
-              setStreaks([]);
-          }
-
-          const attitudesJSON = localStorage.getItem('wikistars5-attitudes');
-          if (!attitudesJSON) {
-            setIsDataLoading(false);
-            return;
-          }
-          const attitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
-          
-          const figureIdsByType = {
-            fan: attitudes.filter(a => a.attitude === 'fan').map(a => a.figureId),
-            hater: attitudes.filter(a => a.attitude === 'hater').map(a => a.figureId),
-            simp: attitudes.filter(a => a.attitude === 'simp').map(a => a.figureId),
-            neutral: attitudes.filter(a => a.attitude === 'neutral').map(a => a.figureId),
-          };
-
-          const fetchAttitudeLists = async () => {
-              setFanList(await getFiguresByIds(figureIdsByType.fan));
-              setHaterList(await getFiguresByIds(figureIdsByType.hater));
-              setSimpList(await getFiguresByIds(figureIdsByType.simp));
-              setNeutralList(await getFiguresByIds(figureIdsByType.neutral));
-          };
-
-          fetchAttitudeLists();
-          
-      } catch (error) {
-          console.error("Error loading data from localStorage", error);
-          setStreaks([]);
-          setFanList([]);
-          setHaterList([]);
-          setSimpList([]);
-          setNeutralList([]);
-      } finally {
-          setIsDataLoading(false);
-      }
-
+      loadProfileData();
     }
-  }, [isLoading, currentUser, reset, isAnonymous]);
+  }, [isLoading, currentUser, reset, loadProfileData]);
 
   useEffect(() => {
     if (isLinkDialogOpen && currentUser?.username) {
@@ -225,7 +228,9 @@ export default function ProfilePage() {
 
   const AttitudeList = ({ figures, emptyMessage }: { figures: Figure[], emptyMessage: string }) => (
     <div className="space-y-4">
-      {figures.length > 0 ? (
+      {isDataLoading ? (
+         <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+      ) : figures.length > 0 ? (
         figures.map(figure => (
           <Link key={figure.id} href={`/figures/${figure.id}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
             <Avatar className="h-12 w-12">
@@ -248,7 +253,7 @@ export default function ProfilePage() {
        <Tabs defaultValue="rachas" className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-auto">
                 <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
-                <TabsTrigger value="actitud"><Heart className="mr-2" />Mi Actitud</TabsTrigger>
+                <TabsTrigger value="actitud" onClick={() => loadProfileData()}><Heart className="mr-2" />Mi Actitud</TabsTrigger>
                 <TabsTrigger value="emociones"><Smile className="mr-2" />Mis Emociones</TabsTrigger>
             </TabsList>
             

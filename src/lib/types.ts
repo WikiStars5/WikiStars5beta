@@ -65,6 +65,13 @@ export interface UserAttitude {
   timestamp: Timestamp; 
 }
 
+// Type for storing attitude in localStorage
+export interface Attitude {
+  figureId: string;
+  attitude: AttitudeKey;
+}
+
+
 export interface UserStarRating {
   userId: string;
   figureId: string;
