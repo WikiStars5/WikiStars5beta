@@ -7,7 +7,7 @@ import {
   ImageOff, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
   MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight,
-  Archive, Bike, UserPlus
+  Archive, Bike, UserPlus, Flame
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
@@ -47,7 +47,7 @@ import { countryCodeToNameMap } from "@/config/countries";
 import { GENDER_OPTIONS, type GenderOption } from "@/config/genderOptions";
 import { CATEGORY_OPTIONS } from "@/config/categories";
 import { ShareButton } from "@/components/shared/ShareButton";
-import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile } from "@/lib/types";
+import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile, LocalUserStreak } from "@/lib/types";
 import { updateFigureInFirestore } from "@/lib/placeholder-data";
 import { markAllNotificationsAsRead, markNotificationAsRead } from '@/app/actions/notificationActions';
 import { ADMIN_UID } from '@/config/admin';
@@ -558,6 +558,60 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     setIsGuestInfoDialogOpen(false);
     toast({ title: "¡Identidad de Invitado Guardada!", description: `Ahora puedes comentar como ${username}.` });
   };
+  
+  const updateLocalStreak = () => {
+    if (!figure) return;
+    try {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+
+        const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
+        let streaks: LocalUserStreak[] = streaksJSON ? JSON.parse(streaksJSON) : [];
+
+        let figureStreak = streaks.find(s => s.figureId === figure.id);
+
+        if (figureStreak) {
+            // Streak exists
+            const lastCommentDate = new Date(figureStreak.lastCommentDate);
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            
+            if (figureStreak.lastCommentDate === todayStr) {
+                // Already commented today, do nothing.
+                return;
+            } else if (lastCommentDate.toDateString() === yesterday.toDateString()) {
+                // It's a consecutive day, increment streak
+                figureStreak.currentStreak += 1;
+            } else {
+                // Streak is broken, reset to 1
+                figureStreak.currentStreak = 1;
+            }
+            figureStreak.lastCommentDate = todayStr;
+        } else {
+            // No existing streak, create a new one.
+            streaks.push({
+                figureId: figure.id,
+                figureName: figure.name,
+                figurePhotoUrl: figure.photoUrl,
+                currentStreak: 1,
+                lastCommentDate: todayStr,
+            });
+        }
+        
+        localStorage.setItem('wikistars5-userStreaks', JSON.stringify(streaks));
+        toast({
+            title: "¡Racha actualizada!",
+            description: `Has comentado en el perfil de ${figure.name}.`,
+            action: (
+              <Button variant="secondary" size="sm" asChild>
+                  <Link href="/profile">Ver mis rachas</Link>
+              </Button>
+            )
+        });
+    } catch (error) {
+        console.error("Error updating local streak:", error);
+    }
+  };
 
 
   const handleSubmitComment = async (e: React.FormEvent) => {
@@ -647,6 +701,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           commentCount: increment(1)
         });
       });
+      
+      updateLocalStreak();
       
       if (newCommentStars) {
         playSoundEffect(newCommentStars);
@@ -989,6 +1045,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           });
         }
       });
+      
+      updateLocalStreak();
 
       toast({ title: "Respuesta Enviada", description: "Tu respuesta ha sido guardada." });
       if (!currentUser.isAnonymous) {
@@ -1455,5 +1513,3 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
-
-    

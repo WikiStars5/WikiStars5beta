@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -15,7 +16,7 @@ import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
 import { Separator } from '@/components/ui/separator';
-import type { UserProfile, UserStreak } from '@/lib/types';
+import type { UserProfile, LocalUserStreak } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { auth, app } from '@/lib/firebase';
 import { signOut, linkWithCredential, EmailAuthProvider, updateProfile } from 'firebase/auth';
@@ -58,19 +59,18 @@ type LinkAccountFormValues = z.infer<typeof linkAccountFormSchema>;
 
 const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
 const getUserStatsCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserStats');
-const getUserStreaksCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserStreaks');
-
 
 export default function ProfilePage() {
-  const { user: currentUser, firebaseUser, isLoading, isAnonymous } = useAuth();
+  const { user: currentUser, firebaseUser, isLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [userStats, setUserStats] = useState<{ comments: number; ratings: number; attitudes: number } | null>(null);
-  const [streaks, setStreaks] = useState<UserStreak[]>([]);
+  const [streaks, setStreaks] = useState<LocalUserStreak[]>([]);
   const [isStreaksLoading, setIsStreaksLoading] = useState(true);
   const [isLinking, setIsLinking] = useState(false);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const isAnonymous = currentUser?.isAnonymous ?? false;
   
   const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -97,22 +97,28 @@ export default function ProfilePage() {
               setUserStats(data.stats);
             }
           }).catch(err => console.error("Error fetching user stats:", err));
-
-          setIsStreaksLoading(true);
-          getUserStreaksCallable().then(result => {
-              const data = result.data as { success: boolean, streaks?: UserStreak[] };
-              if(data.success && data.streaks) {
-                  setStreaks(data.streaks);
-              }
-          }).catch(err => console.error("Error fetching user streaks:", err))
-          .finally(() => setIsStreaksLoading(false));
-
       } else {
-          // For guests, stats are not yet tracked on the server.
           setUserStats(null);
+      }
+      
+      // For both registered and anonymous users, streaks are local.
+      setIsStreaksLoading(true);
+      try {
+          const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
+          if(streaksJSON) {
+              const localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
+              localStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
+              setStreaks(localStreaks);
+          } else {
+              setStreaks([]);
+          }
+      } catch (error) {
+          console.error("Error loading streaks from localStorage", error);
           setStreaks([]);
+      } finally {
           setIsStreaksLoading(false);
       }
+
     }
   }, [isLoading, currentUser, reset, isAnonymous]);
 
@@ -220,13 +226,13 @@ export default function ProfilePage() {
   };
   
   const renderProfileForGuest = () => (
-    <Tabs defaultValue="stats" className="w-full mt-6">
+    <Tabs defaultValue="estadisticas" className="w-full mt-6">
         <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-3 h-auto">
-            <TabsTrigger value="stats"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
+            <TabsTrigger value="estadisticas"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
             <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
             <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
         </TabsList>
-        <TabsContent value="stats" className="mt-6">
+        <TabsContent value="estadisticas" className="mt-6">
             <Card>
               <CardHeader>
                 <CardTitle>Estadísticas de Invitado</CardTitle>
@@ -282,13 +288,35 @@ export default function ProfilePage() {
                     <CardDescription>Tu historial de participación y rachas.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Alert>
-                        <Flame className="h-4 w-4" />
-                        <AlertTitle>Función para Usuarios Registrados</AlertTitle>
-                        <AlertDescription>
-                            Las rachas de actividad se guardan en tu cuenta. ¡Vincula tu cuenta para empezar a registrar tus rachas!
-                        </AlertDescription>
-                    </Alert>
+                  {isStreaksLoading ? (
+                      <div className="flex justify-center items-center py-10">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                  ) : streaks.length > 0 ? (
+                      <div className="space-y-4">
+                          {streaks.map(streak => (
+                              <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
+                                  <Avatar className="h-12 w-12">
+                                      <AvatarImage src={correctMalformedUrl(streak.figurePhotoUrl) || undefined} alt={streak.figureName} />
+                                      <AvatarFallback>{streak.figureName.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-grow">
+                                      <p className="font-semibold">{streak.figureName}</p>
+                                      <p className="text-sm text-muted-foreground">Último comentario: {new Date(streak.lastCommentDate).toLocaleDateString()}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-orange-500 font-bold">
+                                      <Flame className="h-5 w-5"/>
+                                      <span>{streak.currentStreak}</span>
+                                  </div>
+                              </Link>
+                          ))}
+                      </div>
+                  ) : (
+                     <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
+                          <Flame className="mx-auto h-8 w-8 mb-2" />
+                          <p>Aún no tienes ninguna racha. ¡Comenta en el perfil de un personaje para empezar una!</p>
+                      </div>
+                  )}
                 </CardContent>
             </Card>
         </TabsContent>
@@ -356,7 +384,7 @@ export default function ProfilePage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Rachas de Actividad</CardTitle>
-                        <CardDescription>Tu historial de participación y rachas por personaje.</CardDescription>
+                        <CardDescription>Tu historial de participación y rachas.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {isStreaksLoading ? (

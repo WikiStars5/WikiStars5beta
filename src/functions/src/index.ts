@@ -1,3 +1,4 @@
+
 /**
  * This file is the new home for all server-side logic that requires admin privileges.
  */
@@ -6,11 +7,10 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
 
-import type { UserProfile, UserStreak, Figure } from "./types";
+import type { UserProfile } from "./types";
 import { COUNTRIES } from "./countries";
-import type { DocumentData, Timestamp } from "firebase-admin/firestore";
+import type { DocumentData } from "firebase-admin/firestore";
 
 // Centralized Admin UID for security checks.
 const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
@@ -206,136 +206,5 @@ export const getAllUsers = onCall(async (request) => {
             return { success: false, error: 'Error de permisos de Firestore en la Cloud Function. Revisa las reglas de seguridad o los permisos de la cuenta de servicio.' };
         }
         return { success: false, error: error.message || 'Un error desconocido ocurrió en la Cloud Function.' };
-    }
-});
-
-
-/**
- * Cloud Function to update a user's streak when they post a comment.
- * A streak is per user, per figure.
- */
-export const updateStreakOnComment = onDocumentCreated("userComments/{commentId}", async (event) => {
-  const snapshot = event.data;
-  if (!snapshot) return;
-
-  const comment = snapshot.data();
-  const { userId, figureId } = comment;
-
-  if (!userId || !figureId) {
-    console.log("Comment is missing userId or figureId, skipping streak update.");
-    return;
-  }
-  
-  const user = await auth.getUser(userId);
-  if (user.isAnonymous) {
-      console.log(`User ${userId} is anonymous, skipping streak update.`);
-      return;
-  }
-
-  const streakDocRef = db.collection("userStreaks").doc(`${userId}_${figureId}`);
-  const figureDocRef = db.collection("figures").doc(figureId);
-
-  try {
-    await db.runTransaction(async (transaction) => {
-      const streakDoc = await transaction.get(streakDocRef);
-      const figureDoc = await transaction.get(figureDocRef);
-
-      if (!figureDoc.exists) {
-        console.log(`Figure ${figureId} not found, cannot update streak.`);
-        return;
-      }
-      const figureData = figureDoc.data() as Figure;
-
-      // Get today's and yesterday's date in 'YYYY-MM-DD' format
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      
-      const todayStr = today.toISOString().split('T')[0];
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-      if (streakDoc.exists) {
-        const streakData = streakDoc.data() as UserStreak;
-        const lastCommentDateStr = streakData.lastCommentDate;
-
-        if (lastCommentDateStr === todayStr) {
-          // Already commented today, do nothing.
-          return;
-        }
-
-        if (lastCommentDateStr === yesterdayStr) {
-          // It's a consecutive day, increment streak.
-          transaction.update(streakDocRef, {
-            currentStreak: admin.firestore.FieldValue.increment(1),
-            lastCommentDate: todayStr,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        } else {
-          // Streak is broken, reset to 1.
-          transaction.update(streakDocRef, {
-            currentStreak: 1,
-            lastCommentDate: todayStr,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
-      } else {
-        // No existing streak, create a new one.
-        const newStreak: UserStreak = {
-          userId,
-          figureId,
-          figureName: figureData.name,
-          figurePhotoUrl: figureData.photoUrl,
-          currentStreak: 1,
-          lastCommentDate: todayStr,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
-        transaction.set(streakDocRef, newStreak);
-      }
-    });
-  } catch (error) {
-    console.error(`Error updating streak for user ${userId} and figure ${figureId}:`, error);
-  }
-});
-
-
-/**
- * Callable function for a user to fetch their own streaks.
- */
-export const getUserStreaks = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'You must be logged in to view your streaks.');
-    }
-    const uid = request.auth.uid;
-
-    try {
-        const streaksQuery = db.collection('userStreaks')
-            .where('userId', '==', uid)
-            .orderBy('currentStreak', 'desc')
-            .limit(100);
-
-        const snapshot = await streaksQuery.get();
-        if (snapshot.empty) {
-            return { success: true, streaks: [] };
-        }
-
-        const streaks: Omit<UserStreak, 'updatedAt'>[] = snapshot.docs.map(doc => {
-            const data = doc.data();
-            const updatedAt = convertTimestampToString((data.updatedAt as Timestamp)) || new Date().toISOString();
-            return {
-                userId: data.userId,
-                figureId: data.figureId,
-                figureName: data.figureName,
-                figurePhotoUrl: data.figurePhotoUrl,
-                currentStreak: data.currentStreak,
-                lastCommentDate: data.lastCommentDate,
-                updatedAt: updatedAt
-            };
-        });
-
-        return { success: true, streaks };
-    } catch (error) {
-        console.error("Error getting user streaks:", error);
-        throw new HttpsError('internal', 'Could not retrieve your streaks.');
     }
 });

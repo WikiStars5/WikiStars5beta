@@ -1,3 +1,4 @@
+
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -116,15 +117,14 @@ export interface UserProfile {
   isAnonymous?: boolean;
 }
 
-export interface UserStreak {
-  userId: string;
+export interface LocalUserStreak {
   figureId: string;
   figureName: string;
   figurePhotoUrl: string;
   currentStreak: number;
-  lastCommentDate: string; // ISO string date 'YYYY-MM-DD'
-  updatedAt: string; // ISO string full date
+  lastCommentDate: string; // Stored as 'YYYY-MM-DD'
 }
+
 
 export interface GenderOption {
   value: string;
