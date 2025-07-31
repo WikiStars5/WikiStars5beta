@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, LogIn, UserPlus, LogOut, ShieldCheck, Loader2 } from 'lucide-react';
+import { User, LogIn, UserPlus, LogOut, ShieldCheck, Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation'; 
 import { correctMalformedUrl } from '@/lib/utils';
@@ -22,7 +22,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 export function UserNav() {
-  const { user: currentUser, isLoading } = useAuth();
+  const { user: currentUser, isAnonymous, isLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -30,7 +30,8 @@ export function UserNav() {
     try {
       await signOut(auth);
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
-      router.push('/');
+      // The useAuth hook will automatically handle signing the user back in anonymously.
+      router.push('/'); 
     } catch (error) {
       console.error("Error logging out: ", error);
       toast({ title: "Cierre de Sesión Fallido", description: "No se pudo cerrar tu sesión.", variant: "destructive" });
@@ -47,9 +48,9 @@ export function UserNav() {
 
   if (currentUser) {
     const isAdmin = currentUser.uid === ADMIN_UID || currentUser.role === 'admin';
-    const displayName = currentUser.username || "Usuario";
-    const photoURL = currentUser.photoURL;
-    const email = currentUser.email;
+    const displayName = isAnonymous ? "Invitado" : (currentUser.username || "Usuario");
+    const photoURL = isAnonymous ? null : currentUser.photoURL;
+    const email = isAnonymous ? "Sesión de invitado" : currentUser.email;
 
     return (
       <DropdownMenu>
@@ -58,7 +59,7 @@ export function UserNav() {
             <Avatar className="h-9 w-9">
               <AvatarImage src={correctMalformedUrl(photoURL) || undefined} alt={displayName} />
               <AvatarFallback>
-                {displayName ? displayName.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
+                {isAnonymous ? <User className="h-5 w-5"/> : displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </Button>
@@ -75,12 +76,23 @@ export function UserNav() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <Link href="/profile">
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              <span>Mi Perfil</span>
-            </DropdownMenuItem>
-          </Link>
+          
+          {isAnonymous ? (
+            <Link href="/signup">
+              <DropdownMenuItem>
+                <Save className="mr-2 h-4 w-4" />
+                <span>Guardar Progreso (Registrarse)</span>
+              </DropdownMenuItem>
+            </Link>
+          ) : (
+            <Link href="/profile">
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                <span>Mi Perfil</span>
+              </DropdownMenuItem>
+            </Link>
+          )}
+
           {isAdmin && (
             <Link href="/admin">
               <DropdownMenuItem>
@@ -89,41 +101,26 @@ export function UserNav() {
               </DropdownMenuItem>
             </Link>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Cerrar Sesión</span>
-          </DropdownMenuItem>
+
+          {!isAnonymous && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Cerrar Sesión</span>
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     );
   }
 
-  // If there is no user, show a single dropdown menu
+  // Fallback, though with anonymous auth this should rarely be seen
   return (
-    <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-                <User className="mr-2 h-4 w-4" />
-                Acceder
-            </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel>Menú de Usuario</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <Link href="/login">
-                <DropdownMenuItem>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    <span>Iniciar Sesión</span>
-                </DropdownMenuItem>
-            </Link>
-            <Link href="/signup">
-                <DropdownMenuItem>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    <span>Registrarse</span>
-                </DropdownMenuItem>
-            </Link>
-        </DropdownMenuContent>
-    </DropdownMenu>
+    <Button variant="outline" disabled>
+        <User className="mr-2 h-4 w-4" />
+        Acceder
+    </Button>
   );
 }
