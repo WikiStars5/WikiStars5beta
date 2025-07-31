@@ -84,7 +84,8 @@ export const updateUserProfile = onCall(async (request) => {
         lastLoginAt: new Date().toISOString(),
     };
     
-    if (countryCode) {
+    // Only add country if a valid country code is provided
+    if (countryCode && countryName) {
         updateData.country = countryName;
         updateData.countryCode = safeCountryCode;
     }
@@ -93,11 +94,13 @@ export const updateUserProfile = onCall(async (request) => {
         const userRecord = await auth.getUser(uid);
         const isAnonymous = !userRecord.email;
 
-        // Only update the Auth profile if the user is NOT anonymous
+        // Only update the Auth profile if the user is NOT anonymous.
+        // This was the source of the "internal" error.
         if (!isAnonymous) {
              await auth.updateUser(uid, { displayName: username.trim() });
         }
         
+        // This will create or update the document in Firestore.
         await userRef.set(updateData, { merge: true });
         
         return { success: true, message: 'Profile updated successfully.' };
