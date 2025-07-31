@@ -4,9 +4,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, signInAnonymously, type User as FirebaseUser } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, onSnapshot, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
-import { ADMIN_UID } from '@/config/admin';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -44,23 +43,67 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setFirebaseUser(currentUser);
       
-      // Now, listen for profile changes in Firestore
-      const userDocRef = doc(db, 'users', currentUser.uid);
-      const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const profile = docSnap.data() as UserProfile;
-          setUser({ ...profile, isAnonymous: currentUser?.isAnonymous ?? true });
-        }
-        // If doc doesn't exist, we wait for onUserCreate trigger to create it.
-        // The listener will pick up the change.
-        setIsLoading(false);
-      }, (error) => {
-        console.error("Error listening to user profile:", error);
-        setUser(null);
-        setIsLoading(false);
-      });
-
-      return () => unsubscribeSnapshot();
+      // If user is anonymous, build a local profile first for speed and reliability.
+      if (currentUser.isAnonymous) {
+          const guestUsername = localStorage.getItem('wikistars5-guestUsername');
+          const guestGender = localStorage.getItem('wikistars5-guestGender');
+          
+          const guestProfile: UserProfile = {
+              uid: currentUser.uid,
+              email: null,
+              username: guestUsername || `Invitado_${currentUser.uid.substring(0,5)}`,
+              gender: guestGender || '',
+              photoURL: null,
+              role: 'user',
+              createdAt: new Date().toISOString(),
+              isAnonymous: true,
+              achievements: [], // We can still enrich this from Firestore later
+          };
+          setUser(guestProfile);
+          setIsLoading(false); // We have enough to show the profile now.
+          
+          // We can still listen for Firestore updates for achievements etc. in the background
+          const userDocRef = doc(db, 'users', currentUser.uid);
+           const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const firestoreProfile = docSnap.data() as UserProfile;
+                    // Merge local data with Firestore data, giving local precedence for core fields
+                    setUser(prevProfile => ({
+                        ...firestoreProfile, // Base from firestore (achievements, role)
+                        ...prevProfile,      // Overwrite with local state
+                        username: guestUsername || firestoreProfile.username,
+                        gender: guestGender || firestoreProfile.gender,
+                    }));
+                }
+           });
+           return () => unsubscribeSnapshot();
+      } else {
+        // For registered users, fetch from Firestore.
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const profile = docSnap.data() as UserProfile;
+            setUser({ ...profile, isAnonymous: false });
+          } else {
+            // User exists in Auth but not Firestore, might happen with deletions or delays.
+            // Create a temporary profile. onUserCreate should eventually fix this.
+             setUser({
+                uid: currentUser!.uid,
+                email: currentUser!.email,
+                username: currentUser!.displayName || "Usuario",
+                role: 'user',
+                isAnonymous: false,
+                createdAt: new Date().toISOString(),
+             });
+          }
+          setIsLoading(false);
+        }, (error) => {
+          console.error("Error listening to user profile:", error);
+          setUser(null);
+          setIsLoading(false);
+        });
+        return () => unsubscribeSnapshot();
+      }
     });
 
     return () => unsubscribeAuth();

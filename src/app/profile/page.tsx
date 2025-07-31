@@ -175,8 +175,8 @@ export default function ProfilePage() {
     );
   }
 
+  // This condition now only triggers if, after loading, there's definitively no user.
   if (!currentUser) {
-    // This condition now only triggers if, after loading, there's definitively no user.
     return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
             <h2 className="text-2xl font-bold">Error al Cargar Perfil</h2>
