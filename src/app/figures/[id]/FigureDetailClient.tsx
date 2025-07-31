@@ -550,49 +550,13 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
     const username = tempGuestUsername.trim();
     const gender = tempGuestGender;
-
-    // Uniqueness check
-    const normalizedGuestName = username.toLowerCase();
-    try {
-      const commentsCollectionRef = collection(db, 'userComments');
-      const uniquenessQuery = query(
-        commentsCollectionRef,
-        where('figureId', '==', figure!.id),
-        where('guestUsernameLower', '==', normalizedGuestName)
-      );
-      const existingUsernamesSnapshot = await getDocs(uniquenessQuery);
-      if (!existingUsernamesSnapshot.empty) {
-        toast({
-          title: "Nombre en Uso",
-          description: "Este nombre de invitado ya está en uso en esta página. Por favor, elige otro.",
-          variant: "destructive"
-        });
-        return;
-      }
-    } catch (queryError: any) {
-      console.error("Error checking guest username uniqueness:", queryError);
-      let errorMessage = "No se pudo verificar el nombre de invitado. Inténtalo de nuevo.";
-      if (queryError.message && queryError.message.includes("firestore/failed-precondition")) {
-        errorMessage = "Error de base de datos: Falta un índice para buscar nombres de invitado. Revisa la consola (F12) para un enlace de creación de índice."
-      }
-      toast({ title: "Error de Verificación", description: errorMessage, variant: "destructive" });
-      return;
-    }
     
-    try {
-        // Update Firestore profile via Cloud Function
-        await updateUserProfileCallable({ username, gender });
-        // Save to localStorage as a fallback/for speed
-        localStorage.setItem('wikistars5-guestUsername', username);
-        localStorage.setItem('wikistars5-guestGender', gender);
-        setIsGuestInfoSet(true);
-        setIsGuestInfoDialogOpen(false);
-        toast({ title: "¡Identidad de Invitado Guardada!", description: `Ahora puedes comentar como ${username}.` });
-        // The onSnapshot in useAuth will automatically update the profile page.
-    } catch (error: any) {
-        console.error("Error saving guest info to profile:", error);
-        toast({ title: "Error al Guardar", description: `No se pudo guardar tu identidad de invitado: ${error.message}`, variant: "destructive" });
-    }
+    // Save to localStorage as a fallback/for speed
+    localStorage.setItem('wikistars5-guestUsername', username);
+    localStorage.setItem('wikistars5-guestGender', gender);
+    setIsGuestInfoSet(true);
+    setIsGuestInfoDialogOpen(false);
+    toast({ title: "¡Identidad de Invitado Guardada!", description: `Ahora puedes comentar como ${username}.` });
   };
 
 
@@ -612,8 +576,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
     setIsSubmittingComment(true);
     
-    // Uniqueness check for guest username is now handled when setting the guest identity, so not needed here.
-
     const figureDocRef = doc(db, "figures", figure.id);
     const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
     const commentsCollectionRef = collection(db, 'userComments');
@@ -1493,3 +1455,5 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
+
+    
