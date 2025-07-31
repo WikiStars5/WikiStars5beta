@@ -7,16 +7,19 @@ import { ShareButton } from "@/components/shared/ShareButton";
 import { correctMalformedUrl } from "@/lib/utils";
 import type { User } from 'firebase/auth';
 import { Badge } from "@/components/ui/badge";
+import { Flame } from "lucide-react";
 
 interface ProfileHeaderProps {
   figure: Figure;
   currentUser: User | null;
+  currentUserStreak: number | null;
   onImageClick: (imageUrl: string) => void;
 }
 
 export function ProfileHeader({ 
   figure, 
   currentUser,
+  currentUserStreak,
   onImageClick,
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
@@ -55,8 +58,14 @@ export function ProfileHeader({
               <h1 className="text-2xl md:text-4xl font-headline font-bold text-foreground drop-shadow-lg">
                 {figure.name}
               </h1>
-              <div className="mt-3 md:mt-0 flex-shrink-0">
+              <div className="mt-3 md:mt-0 flex-shrink-0 flex flex-col items-center md:items-end gap-2">
                 <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
+                {currentUserStreak && currentUserStreak > 0 && (
+                  <div className="flex items-center gap-2 text-orange-400 font-semibold bg-orange-400/10 px-3 py-1 rounded-full text-sm">
+                    <Flame className="h-5 w-5" />
+                    <span>Racha actual: {currentUserStreak} {currentUserStreak === 1 ? 'día' : 'días'}</span>
+                  </div>
+                )}
               </div>
             </div>
             

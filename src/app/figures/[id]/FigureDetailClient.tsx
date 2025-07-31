@@ -1273,6 +1273,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       <ProfileHeader 
         figure={figure!} 
         currentUser={currentUser}
+        currentUserStreak={currentUserStreak}
         onImageClick={handleOpenProfileImage}
       />
 
@@ -1375,12 +1376,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
             <CardHeader>
                <div className="flex justify-between items-center">
                   <CardTitle className="flex items-center text-2xl font-headline"><MessagesSquare className="mr-3 h-7 w-7 text-primary" />Califica y Comenta sobre {figure!.name}</CardTitle>
-                   {currentUserStreak && currentUserStreak > 0 && (
-                    <div className="flex items-center gap-2 text-orange-400 font-semibold bg-orange-400/10 px-3 py-1 rounded-full">
-                      <Flame className="h-5 w-5" />
-                      <span>Racha actual: {currentUserStreak} {currentUserStreak === 1 ? 'día' : 'días'}</span>
-                    </div>
-                  )}
                 </div>
             </CardHeader>
             <CardContent className="space-y-6">
