@@ -292,10 +292,10 @@ export default function ProfilePage() {
                     <CardContent>
                        <Tabs defaultValue="neutral" className="w-full">
                            <TabsList className="grid w-full grid-cols-4 h-auto">
-                               <TabsTrigger value="neutral"><MehIcon className="mr-2"/>Neutral</TabsTrigger>
-                               <TabsTrigger value="fan"><Heart className="mr-2"/>Fans</TabsTrigger>
-                               <TabsTrigger value="simp"><SmilePlus className="mr-2"/>Simps</TabsTrigger>
-                               <TabsTrigger value="hater"><ThumbsDown className="mr-2"/>Haters</TabsTrigger>
+                               <TabsTrigger value="neutral"><span role="img" aria-label="Neutral" className="mr-2">😐</span>Neutral</TabsTrigger>
+                               <TabsTrigger value="fan"><span role="img" aria-label="Fan" className="mr-2">😍</span>Fans</TabsTrigger>
+                               <TabsTrigger value="simp"><span role="img" aria-label="Simp" className="mr-2">🥰</span>Simps</TabsTrigger>
+                               <TabsTrigger value="hater"><span role="img" aria-label="Hater" className="mr-2">😡</span>Haters</TabsTrigger>
                            </TabsList>
                            <div className="mt-4">
                              <TabsContent value="neutral"><AttitudeList figures={neutralList} emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
@@ -314,13 +314,13 @@ export default function ProfilePage() {
                     <CardTitle>Mis Emociones</CardTitle>
                     <CardDescription>Aquí verás los personajes según la emoción que te provocan. ¡Funcionalidad próximamente!</CardDescription>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-6 gap-4">
-                      <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><Smile className="h-8 w-8 text-yellow-500" /><p className="font-semibold">Alegría</p></Card>
-                      <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><Hand className="h-8 w-8 text-green-500" /><p className="font-semibold">Envidia</p></Card>
-                      <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><Frown className="h-8 w-8 text-blue-500" /><p className="font-semibold">Tristeza</p></Card>
-                      <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><User className="h-8 w-8 text-purple-500" /><p className="font-semibold">Miedo</p></Card>
-                      <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><ThumbsDown className="h-8 w-8 text-lime-500" /><p className="font-semibold">Desagrado</p></Card>
-                      <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><Angry className="h-8 w-8 text-red-500" /><p className="font-semibold">Furia</p></Card>
+                  <CardContent className="grid grid-cols-6 gap-2">
+                      <Card className="p-2 sm:p-4 flex flex-col items-center justify-center text-center space-y-2"><span className="text-2xl sm:text-3xl" role="img" aria-label="alegria">😂</span><p className="font-semibold text-xs sm:text-sm">Alegría</p></Card>
+                      <Card className="p-2 sm:p-4 flex flex-col items-center justify-center text-center space-y-2"><span className="text-2xl sm:text-3xl" role="img" aria-label="envidia">😒</span><p className="font-semibold text-xs sm:text-sm">Envidia</p></Card>
+                      <Card className="p-2 sm:p-4 flex flex-col items-center justify-center text-center space-y-2"><span className="text-2xl sm:text-3xl" role="img" aria-label="tristeza">😢</span><p className="font-semibold text-xs sm:text-sm">Tristeza</p></Card>
+                      <Card className="p-2 sm:p-4 flex flex-col items-center justify-center text-center space-y-2"><span className="text-2xl sm:text-3xl" role="img" aria-label="miedo">😨</span><p className="font-semibold text-xs sm:text-sm">Miedo</p></Card>
+                      <Card className="p-2 sm:p-4 flex flex-col items-center justify-center text-center space-y-2"><span className="text-2xl sm:text-3xl" role="img" aria-label="desagrado">🤢</span><p className="font-semibold text-xs sm:text-sm">Desagrado</p></Card>
+                      <Card className="p-2 sm:p-4 flex flex-col items-center justify-center text-center space-y-2"><span className="text-2xl sm:text-3xl" role="img" aria-label="furia">😡</span><p className="font-semibold text-xs sm:text-sm">Furia</p></Card>
                   </CardContent>
                 </Card>
             </TabsContent>
