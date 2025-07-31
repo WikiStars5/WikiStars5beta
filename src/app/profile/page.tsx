@@ -11,12 +11,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, MessageSquare, Edit, Save, BarChart3, Map, VenusAndMars, Smile, UserPlus, Link2, ThumbsDown, SmilePlus } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, Edit, Save, BarChart3, Map, VenusAndMars, Smile, UserPlus, Link2, ThumbsDown, SmilePlus, Frown, Angry, Hand, MehIcon } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
 import { Separator } from '@/components/ui/separator';
-import type { UserProfile, LocalUserStreak, AttitudeKey, Attitude, Figure } from '@/lib/types';
+import type { UserProfile, LocalUserStreak, Attitude, Figure } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { auth, app, db } from '@/lib/firebase';
 import { signOut, linkWithCredential, EmailAuthProvider, updateProfile } from 'firebase/auth';
@@ -33,18 +33,6 @@ import Image from 'next/image';
 import { StreakAnimation } from '@/components/shared/StreakAnimation';
 import { getFiguresByIds } from '@/lib/placeholder-data';
 
-const achievementDetails = {
-  first_glance: { icon: User, title: "Primer Vistazo", description: "Visitaste tu primer perfil." },
-  actitud_definida: { icon: Heart, title: "Actitud Definida", description: "Votaste por primera vez tu Actitud." },
-  estrella_brillante: { icon: BarChart3, title: "Estrella Brillante", description: "Emitiste tu primera calificación." },
-  emocion_descubierta: { icon: Smile, title: "Emoción al Descubierto", description: "Votaste por primera vez una Emoción." },
-  compartiendo_verdad: { icon: BarChart3, title: "Compartiendo la Verdad", description: "Compartiste un perfil." },
-  primera_contribucion: { icon: MessageSquare, title: "Mi Primera Contribución", description: "Dejaste tu primer comentario." },
-  dialogo_abierto: { icon: BarChart3, title: "Diálogo Abierto", description: "Respondiste a un comentario." },
-};
-
-type AchievementId = keyof typeof achievementDetails;
-
 const profileFormSchema = z.object({
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres.").max(30, "El nombre de usuario no puede exceder los 30 caracteres."),
   countryCode: z.string().optional(),
@@ -60,16 +48,18 @@ const linkAccountFormSchema = z.object({
 type LinkAccountFormValues = z.infer<typeof linkAccountFormSchema>;
 
 const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
-const getUserStatsCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserStats');
 
 export default function ProfilePage() {
   const { user: currentUser, firebaseUser, isLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [userStats, setUserStats] = useState<{ comments: number; ratings: number; attitudes: number } | null>(null);
   const [streaks, setStreaks] = useState<LocalUserStreak[]>([]);
   
+  const [fanList, setFanList] = useState<Figure[]>([]);
+  const [haterList, setHaterList] = useState<Figure[]>([]);
+  const [simpList, setSimpList] = useState<Figure[]>([]);
+  const [neutralList, setNeutralList] = useState<Figure[]>([]);
 
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isLinking, setIsLinking] = useState(false);
@@ -94,17 +84,6 @@ export default function ProfilePage() {
         countryCode: currentUser.countryCode ?? '',
         gender: currentUser.gender ?? '',
       });
-      
-      if (!isAnonymous) {
-          getUserStatsCallable().then(result => {
-            const data = result.data as { success: boolean; stats?: any };
-            if (data.success) {
-              setUserStats(data.stats);
-            }
-          }).catch(err => console.error("Error fetching user stats:", err));
-      } else {
-          setUserStats(null);
-      }
       
       setIsDataLoading(true);
       try {
@@ -132,10 +111,10 @@ export default function ProfilePage() {
           };
 
           const fetchAttitudeLists = async () => {
-              const fanList = await getFiguresByIds(figureIdsByType.fan);
-              const haterList = await getFiguresByIds(figureIdsByType.hater);
-              const simpList = await getFiguresByIds(figureIdsByType.simp);
-              const neutralList = await getFiguresByIds(figureIdsByType.neutral);
+              setFanList(await getFiguresByIds(figureIdsByType.fan));
+              setHaterList(await getFiguresByIds(figureIdsByType.hater));
+              setSimpList(await getFiguresByIds(figureIdsByType.simp));
+              setNeutralList(await getFiguresByIds(figureIdsByType.neutral));
           };
 
           fetchAttitudeLists();
@@ -143,6 +122,10 @@ export default function ProfilePage() {
       } catch (error) {
           console.error("Error loading data from localStorage", error);
           setStreaks([]);
+          setFanList([]);
+          setHaterList([]);
+          setSimpList([]);
+          setNeutralList([]);
       } finally {
           setIsDataLoading(false);
       }
@@ -239,69 +222,36 @@ export default function ProfilePage() {
 
   const isAdmin = !isAnonymous && (currentUser.uid === ADMIN_UID || currentUser.role === 'admin');
   const displayName = currentUser.username || (isAnonymous ? "Invitado" : "Usuario");
-  
-  const StatCard = ({ icon, value, label }: { icon: React.ElementType; value: number | undefined; label: string; }) => {
-    const Icon = icon;
-    return (
-      <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
-        <Icon className="h-8 w-8 text-primary" />
-        <div>
-          <p className="text-2xl font-bold">{typeof value === 'number' ? value : <Loader2 className="h-5 w-5 animate-spin"/>}</p>
-          <p className="text-sm text-muted-foreground">{label}</p>
+
+  const AttitudeList = ({ figures, emptyMessage }: { figures: Figure[], emptyMessage: string }) => (
+    <div className="space-y-4">
+      {figures.length > 0 ? (
+        figures.map(figure => (
+          <Link key={figure.id} href={`/figures/${figure.id}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
+            <Avatar className="h-12 w-12">
+              <AvatarImage src={correctMalformedUrl(figure.photoUrl) || undefined} alt={figure.name} />
+              <AvatarFallback>{figure.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <p className="font-semibold">{figure.name}</p>
+          </Link>
+        ))
+      ) : (
+        <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
+          <p>{emptyMessage}</p>
         </div>
-      </div>
-    );
-  };
-  
-  const renderProfileForGuest = () => (
-    <div className="w-full mt-6">
-       <Card>
-          <CardHeader>
-              <CardTitle>Rachas de Actividad</CardTitle>
-              <CardDescription>Tu historial de participación y rachas. ¡Gana una racha comentando o respondiendo en el perfil de un personaje por días consecutivos!</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isDataLoading ? (
-                <div className="flex justify-center items-center py-10">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            ) : streaks.length > 0 ? (
-                <div className="space-y-4">
-                    {streaks.map(streak => (
-                        <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
-                            <Avatar className="h-12 w-12">
-                                <AvatarImage src={correctMalformedUrl(streak.figurePhotoUrl) || undefined} alt={streak.figureName} />
-                                <AvatarFallback>{streak.figureName.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-grow">
-                                <p className="font-semibold">{streak.figureName}</p>
-                                <p className="text-sm text-muted-foreground">Último comentario: {new Date(streak.lastCommentDate).toLocaleDateString()}</p>
-                            </div>
-                            <div className="flex items-center gap-2 text-orange-500 font-bold">
-                                <Flame className="h-5 w-5"/>
-                                <span>{streak.currentStreak}</span>
-                            </div>
-                        </Link>
-                    ))}
-                </div>
-            ) : (
-               <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
-                    <Flame className="mx-auto h-8 w-8 mb-2" />
-                    <p>Aún no tienes ninguna racha. ¡Comenta en el perfil de un personaje para empezar una!</p>
-                </div>
-            )}
-          </CardContent>
-      </Card>
+      )}
     </div>
   );
-
-  const renderProfileForRegisteredUser = () => (
-       <Tabs defaultValue="informacion" className="w-full mt-6">
-            <TabsList className="grid w-full grid-cols-2 h-auto">
-                <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
+  
+  const renderProfileContent = () => (
+    <div className="w-full mt-6">
+       <Tabs defaultValue="rachas" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 h-auto">
                 <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
+                <TabsTrigger value="actitud"><Heart className="mr-2" />Mi Actitud</TabsTrigger>
+                <TabsTrigger value="emociones"><Smile className="mr-2" />Mis Emociones</TabsTrigger>
             </TabsList>
-
+            
             <TabsContent value="rachas" className="mt-6">
                 <Card>
                     <CardHeader>
@@ -310,91 +260,124 @@ export default function ProfilePage() {
                     </CardHeader>
                     <CardContent>
                         {isDataLoading ? (
-                            <div className="flex justify-center items-center py-10">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            </div>
+                            <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                         ) : streaks.length > 0 ? (
                             <div className="space-y-4">
                                 {streaks.map(streak => (
                                     <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
-                                        <Avatar className="h-12 w-12">
-                                            <AvatarImage src={correctMalformedUrl(streak.figurePhotoUrl) || undefined} alt={streak.figureName} />
-                                            <AvatarFallback>{streak.figureName.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-grow">
-                                            <p className="font-semibold">{streak.figureName}</p>
-                                            <p className="text-sm text-muted-foreground">Último comentario: {new Date(streak.lastCommentDate).toLocaleDateString()}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-orange-500 font-bold">
-                                            <Flame className="h-5 w-5"/>
-                                            <span>{streak.currentStreak}</span>
-                                        </div>
+                                        <Avatar className="h-12 w-12"><AvatarImage src={correctMalformedUrl(streak.figurePhotoUrl) || undefined} alt={streak.figureName} /><AvatarFallback>{streak.figureName.charAt(0)}</AvatarFallback></Avatar>
+                                        <div className="flex-grow"><p className="font-semibold">{streak.figureName}</p><p className="text-sm text-muted-foreground">Último comentario: {new Date(streak.lastCommentDate).toLocaleDateString()}</p></div>
+                                        <div className="flex items-center gap-2 text-orange-500 font-bold"><Flame className="h-5 w-5"/><span>{streak.currentStreak}</span></div>
                                     </Link>
                                 ))}
                             </div>
                         ) : (
-                           <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
-                                <Flame className="mx-auto h-8 w-8 mb-2" />
-                                <p>Aún no tienes ninguna racha. ¡Comenta en el perfil de un personaje para empezar una!</p>
-                            </div>
+                           <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md"><Flame className="mx-auto h-8 w-8 mb-2" /><p>Aún no tienes ninguna racha. ¡Comenta en el perfil de un personaje para empezar una!</p></div>
                         )}
                     </CardContent>
                 </Card>
             </TabsContent>
-
-            <TabsContent value="informacion" className="mt-6">
-                <Card>
-                  <CardHeader className="flex flex-row justify-between items-start">
-                    <div>
-                        <CardTitle>Tu Información</CardTitle>
-                        <CardDescription>Edita los datos públicos de tu perfil.</CardDescription>
-                    </div>
-                    {!isEditing && <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}><Edit className="mr-2 h-4 w-4"/>Editar</Button>}
-                  </CardHeader>
-                  <CardContent className="space-y-8">
-                    {isEditing ? (
-                      <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-4 animate-in fade-in-50">
-                        <div>
-                          <Label htmlFor="username">Nombre de Usuario</Label>
-                          <Controller name="username" control={control} render={({ field }) => <Input id="username" {...field} />} />
-                          {errors.username && <p className="text-xs text-destructive mt-1">{errors.username.message}</p>}
-                        </div>
-                        <div>
-                          <Label htmlFor="countryCode">País</Label>
-                          <Controller name="countryCode" control={control} render={({ field }) => <CountryCombobox value={field.value ?? ''} onChange={field.onChange} />} />
-                        </div>
-                        <div>
-                          <Label htmlFor="gender">Sexo</Label>
-                          <Controller name="gender" control={control} render={({ field }) => (
-                            <Select onValueChange={field.onChange} value={field.value ?? ''}>
-                              <SelectTrigger id="gender"><SelectValue placeholder="Selecciona tu sexo" /></SelectTrigger>
-                              <SelectContent>{GENDER_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
-                            </Select>
-                          )} />
-                        </div>
-                        <div className="flex justify-end gap-2 pt-2">
-                          <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancelar</Button>
-                          <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                            Guardar Cambios
-                          </Button>
-                        </div>
-                      </form>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-4"><User className="h-5 w-5 text-muted-foreground"/><p>{currentUser.username}</p></div>
-                            <div className="flex items-center gap-4"><Map className="h-5 w-5 text-muted-foreground"/><p>{currentUser.country || 'No especificado'}</p></div>
-                            <div className="flex items-center gap-4"><VenusAndMars className="h-5 w-5 text-muted-foreground"/><p>{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</p></div>
-                        </div>
-                    )}
-                    <Separator />
-                    <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
-                  </CardContent>
+            
+            <TabsContent value="actitud" className="mt-6">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Mi Actitud</CardTitle>
+                        <CardDescription>Aquí se muestran los personajes según la actitud que has votado por ellos.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       <Tabs defaultValue="fan" className="w-full">
+                           <TabsList className="grid w-full grid-cols-4 h-auto">
+                               <TabsTrigger value="fan"><Heart className="mr-2"/>Fans</TabsTrigger>
+                               <TabsTrigger value="hater"><ThumbsDown className="mr-2"/>Haters</TabsTrigger>
+                               <TabsTrigger value="simp"><SmilePlus className="mr-2"/>Simps</TabsTrigger>
+                               <TabsTrigger value="neutral"><MehIcon className="mr-2"/>Neutral</TabsTrigger>
+                           </TabsList>
+                           <div className="mt-4">
+                             <TabsContent value="fan"><AttitudeList figures={fanList} emptyMessage="Aún no has marcado a nadie como 'Fan'."/></TabsContent>
+                             <TabsContent value="hater"><AttitudeList figures={haterList} emptyMessage="No has marcado a nadie como 'Hater'."/></TabsContent>
+                             <TabsContent value="simp"><AttitudeList figures={simpList} emptyMessage="No has marcado a nadie como 'Simp'."/></TabsContent>
+                             <TabsContent value="neutral"><AttitudeList figures={neutralList} emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
+                           </div>
+                       </Tabs>
+                    </CardContent>
                 </Card>
             </TabsContent>
 
+            <TabsContent value="emociones" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Mis Emociones</CardTitle>
+                    <CardDescription>Aquí verás los personajes según la emoción que te provocan. ¡Funcionalidad próximamente!</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><Smile className="h-8 w-8 text-yellow-500" /><p className="font-semibold">Alegría</p></Card>
+                      <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><Hand className="h-8 w-8 text-green-500" /><p className="font-semibold">Envidia</p></Card>
+                      <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><Frown className="h-8 w-8 text-blue-500" /><p className="font-semibold">Tristeza</p></Card>
+                      <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><User className="h-8 w-8 text-purple-500" /><p className="font-semibold">Miedo</p></Card>
+                      <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><ThumbsDown className="h-8 w-8 text-lime-500" /><p className="font-semibold">Desagrado</p></Card>
+                      <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><Angry className="h-8 w-8 text-red-500" /><p className="font-semibold">Furia</p></Card>
+                  </CardContent>
+                </Card>
+            </TabsContent>
         </Tabs>
+    </div>
   );
+
+  const renderProfileForRegisteredUser = () => (
+    <>
+      <div className="w-full mt-6">
+          <Card>
+            <CardHeader className="flex flex-row justify-between items-start">
+              <div>
+                  <CardTitle>Tu Información</CardTitle>
+                  <CardDescription>Edita los datos públicos de tu perfil.</CardDescription>
+              </div>
+              {!isEditing && <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}><Edit className="mr-2 h-4 w-4"/>Editar</Button>}
+            </CardHeader>
+            <CardContent className="space-y-8">
+              {isEditing ? (
+                <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-4 animate-in fade-in-50">
+                  <div>
+                    <Label htmlFor="username">Nombre de Usuario</Label>
+                    <Controller name="username" control={control} render={({ field }) => <Input id="username" {...field} />} />
+                    {errors.username && <p className="text-xs text-destructive mt-1">{errors.username.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="countryCode">País</Label>
+                    <Controller name="countryCode" control={control} render={({ field }) => <CountryCombobox value={field.value ?? ''} onChange={field.onChange} />} />
+                  </div>
+                  <div>
+                    <Label htmlFor="gender">Sexo</Label>
+                    <Controller name="gender" control={control} render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                        <SelectTrigger id="gender"><SelectValue placeholder="Selecciona tu sexo" /></SelectTrigger>
+                        <SelectContent>{GENDER_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                      </Select>
+                    )} />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancelar</Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                      Guardar Cambios
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                  <div className="space-y-4">
+                      <div className="flex items-center gap-4"><User className="h-5 w-5 text-muted-foreground"/><p>{currentUser.username}</p></div>
+                      <div className="flex items-center gap-4"><Map className="h-5 w-5 text-muted-foreground"/><p>{currentUser.country || 'No especificado'}</p></div>
+                      <div className="flex items-center gap-4"><VenusAndMars className="h-5 w-5 text-muted-foreground"/><p>{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</p></div>
+                  </div>
+              )}
+              <Separator />
+              <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
+            </CardContent>
+          </Card>
+      </div>
+      {renderProfileContent()}
+    </>
+);
 
   return (
     <div className="space-y-8">
@@ -464,7 +447,7 @@ export default function ProfilePage() {
         )}
       </Card>
       
-      {isAnonymous ? renderProfileForGuest() : renderProfileForRegisteredUser()}
+      {isAnonymous ? renderProfileContent() : renderProfileForRegisteredUser()}
 
     </div>
   );
