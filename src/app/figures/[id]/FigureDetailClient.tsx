@@ -67,6 +67,8 @@ import {
   grantDialogoAbiertoAchievement
 } from '@/app/actions/achievementActions';
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { StreakAnimation } from "@/components/shared/StreakAnimation";
+
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -157,6 +159,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [highlightedCommentId, setHighlightedCommentId] = React.useState<string | null>(null);
   
   const [currentUserStreak, setCurrentUserStreak] = React.useState<number | null>(null);
+  const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
 
 
   const MAX_COMMENT_LENGTH = 1000;
@@ -585,55 +588,45 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const updateLocalStreak = () => {
     if (!figure) return;
     try {
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0]; // 'YYYY-MM-DD'
 
-        const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
-        let streaks: LocalUserStreak[] = streaksJSON ? JSON.parse(streaksJSON) : [];
+      const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
+      let streaks: LocalUserStreak[] = streaksJSON ? JSON.parse(streaksJSON) : [];
+      let figureStreak = streaks.find(s => s.figureId === figure.id);
+      let newStreakValue = 1;
 
-        let figureStreak = streaks.find(s => s.figureId === figure.id);
-
-        if (figureStreak) {
-            // Streak exists
-            const lastCommentDate = new Date(figureStreak.lastCommentDate);
-            const yesterday = new Date(today);
-            yesterday.setDate(today.getDate() - 1);
-            
-            if (figureStreak.lastCommentDate === todayStr) {
-                // Already commented today, do nothing.
-                return;
-            } else if (lastCommentDate.toDateString() === yesterday.toDateString()) {
-                // It's a consecutive day, increment streak
-                figureStreak.currentStreak += 1;
-            } else {
-                // Streak is broken, reset to 1
-                figureStreak.currentStreak = 1;
-            }
-            figureStreak.lastCommentDate = todayStr;
-        } else {
-            // No existing streak, create a new one.
-            streaks.push({
-                figureId: figure.id,
-                figureName: figure.name,
-                figurePhotoUrl: figure.photoUrl,
-                currentStreak: 1,
-                lastCommentDate: todayStr,
-            });
-        }
+      if (figureStreak) {
+        const lastCommentDate = new Date(figureStreak.lastCommentDate);
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
         
-        localStorage.setItem('wikistars5-userStreaks', JSON.stringify(streaks));
-        toast({
-            title: "¡Racha actualizada!",
-            description: `Has comentado en el perfil de ${figure.name}.`,
-            action: (
-              <Button variant="secondary" size="sm" asChild>
-                  <Link href="/profile">Ver mis rachas</Link>
-              </Button>
-            )
+        if (figureStreak.lastCommentDate === todayStr) {
+          // Already commented today, do nothing.
+          return;
+        } else if (lastCommentDate.toDateString() === yesterday.toDateString()) {
+          figureStreak.currentStreak += 1;
+        } else {
+          figureStreak.currentStreak = 1;
+        }
+        figureStreak.lastCommentDate = todayStr;
+        newStreakValue = figureStreak.currentStreak;
+      } else {
+        streaks.push({
+          figureId: figure.id,
+          figureName: figure.name,
+          figurePhotoUrl: figure.photoUrl,
+          currentStreak: 1,
+          lastCommentDate: todayStr,
         });
-        fetchCurrentUserStreak(); // Refresh streak display on the page
+      }
+      
+      localStorage.setItem('wikistars5-userStreaks', JSON.stringify(streaks));
+      fetchCurrentUserStreak(); // Refresh streak display on the page
+      setAnimationStreak(newStreakValue); // Trigger animation
+
     } catch (error) {
-        console.error("Error updating local streak:", error);
+      console.error("Error updating local streak:", error);
     }
   };
 
@@ -1270,6 +1263,12 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
   return (
     <div className="space-y-8 lg:space-y-12">
+      <StreakAnimation 
+        streakCount={animationStreak}
+        isOpen={animationStreak !== null}
+        onClose={() => setAnimationStreak(null)}
+      />
+      
       <ProfileHeader 
         figure={figure!} 
         currentUser={currentUser}
