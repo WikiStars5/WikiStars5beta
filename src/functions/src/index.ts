@@ -38,7 +38,9 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
   const userProfile: UserProfile = {
     uid: uid,
     email: email || null,
-    username: displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`,
+    username: user.isAnonymous 
+      ? `Invitado_${uid.substring(0, 5)}`
+      : (displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`),
     country: '',
     countryCode: '',
     gender: '',
@@ -74,18 +76,22 @@ export const updateUserProfile = onCall(async (request) => {
     const safeCountryCode = countryCode || '';
     const countryName = COUNTRIES.find(c => c.code === safeCountryCode)?.name || '';
 
-    const updateData = {
+    const updateData: any = {
         username,
         country: countryName,
         countryCode: safeCountryCode,
         gender: gender || '',
         lastLoginAt: new Date().toISOString(),
     };
+    
+    // For registered users, also update their Auth profile
+    const user = await auth.getUser(uid);
+    if (!user.isAnonymous) {
+      updateData.isAnonymous = false; // Mark as not anonymous
+      await auth.updateUser(uid, { displayName: username });
+    }
 
     try {
-        // Also update the displayName in Firebase Auth for consistency
-        await auth.updateUser(uid, { displayName: username });
-        // Use set with merge:true to create the document if it doesn't exist, or update it if it does.
         await userRef.set(updateData, { merge: true });
         
         return { success: true, message: 'Profile updated successfully.' };
@@ -94,7 +100,6 @@ export const updateUserProfile = onCall(async (request) => {
         throw new HttpsError('internal', 'Could not update profile.');
     }
 });
-
 
 export const getUserStats = onCall(async (request) => {
   if (!request.auth) {
@@ -159,6 +164,7 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     lastLoginAt: convertTimestampToString(data.lastLoginAt),
     fcmToken: data.fcmToken || undefined,
     achievements: data.achievements || [],
+    isAnonymous: data.isAnonymous ?? true,
   };
 };
 
@@ -196,5 +202,3 @@ export const getAllUsers = onCall(async (request) => {
         return { success: false, error: error.message || 'Un error desconocido ocurrió en la Cloud Function.' };
     }
 });
-
-export { sendPushNotification } from './notifications';

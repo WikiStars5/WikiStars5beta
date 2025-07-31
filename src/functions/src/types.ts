@@ -55,6 +55,7 @@ export interface UserProfile {
   lastLoginAt?: string;
   fcmToken?: string;
   achievements?: string[];
+  isAnonymous?: boolean;
 }
 
 export interface Country {

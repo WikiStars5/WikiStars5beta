@@ -22,35 +22,6 @@ const AuthContext = createContext<AuthContextType>({
   isAnonymous: true,
 });
 
-// Helper function to create a user profile if it doesn't exist
-const createUserProfileIfNeeded = async (user: FirebaseUser): Promise<UserProfile> => {
-  const userDocRef = doc(db, 'users', user.uid);
-  let docSnap = await getDoc(userDocRef);
-
-  if (!docSnap.exists()) {
-    const newUserProfile: UserProfile = {
-      uid: user.uid,
-      email: user.email || null,
-      username: user.isAnonymous 
-        ? `Invitado_${user.uid.substring(0, 5)}`
-        : (user.displayName || user.email?.split('@')[0] || `Usuario_${user.uid.substring(0,5)}`),
-      country: '',
-      countryCode: '',
-      gender: '',
-      photoURL: user.photoURL || null,
-      role: user.uid === ADMIN_UID ? 'admin' : 'user',
-      createdAt: new Date().toISOString(),
-      lastLoginAt: new Date().toISOString(),
-      achievements: [],
-    };
-    await setDoc(userDocRef, newUserProfile);
-    // After writing, refetch the document to get a consistent object
-    docSnap = await getDoc(userDocRef);
-  }
-  
-  return docSnap.data() as UserProfile;
-};
-
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -59,27 +30,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
-      setIsLoading(true);
-      if (fbUser) {
-        // User is signed in (either permanently or anonymously)
-        setFirebaseUser(fbUser);
-        const profile = await createUserProfileIfNeeded(fbUser);
-        setUser(profile);
-      } else {
-        // No user is signed in, so sign them in anonymously.
+      let currentUser = fbUser;
+      if (!currentUser) {
         try {
           const userCredential = await signInAnonymously(auth);
-          setFirebaseUser(userCredential.user);
-          const profile = await createUserProfileIfNeeded(userCredential.user);
-          setUser(profile);
+          currentUser = userCredential.user;
         } catch (error) {
           console.error("Error signing in anonymously:", error);
-          // Handle error case, maybe show a global error message
-          setUser(null);
-          setFirebaseUser(null);
+          setIsLoading(false);
+          return;
         }
       }
-      setIsLoading(false);
+
+      setFirebaseUser(currentUser);
+      
+      // Now, listen for profile changes in Firestore
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const profile = docSnap.data() as UserProfile;
+          setUser({ ...profile, isAnonymous: currentUser?.isAnonymous ?? true });
+        }
+        // If doc doesn't exist, we wait for onUserCreate trigger to create it.
+        // The listener will pick up the change.
+        setIsLoading(false);
+      }, (error) => {
+        console.error("Error listening to user profile:", error);
+        setUser(null);
+        setIsLoading(false);
+      });
+
+      return () => unsubscribeSnapshot();
     });
 
     return () => unsubscribeAuth();
