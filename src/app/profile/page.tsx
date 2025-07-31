@@ -258,7 +258,7 @@ export default function ProfilePage() {
             </TabsList>
             
             <TabsContent value="rachas" className="mt-6">
-                <Card>
+                <Card className="border border-white/20 bg-black">
                     <CardHeader>
                         <CardTitle>Rachas de Actividad</CardTitle>
                         <CardDescription>Tu historial de participación y rachas. ¡Gana una racha comentando o respondiendo en el perfil de un personaje por días consecutivos!</CardDescription>
@@ -284,7 +284,7 @@ export default function ProfilePage() {
             </TabsContent>
             
             <TabsContent value="actitud" className="mt-6">
-                 <Card>
+                 <Card className="border border-white/20 bg-black">
                     <CardHeader>
                         <CardTitle>Mi Actitud</CardTitle>
                         <CardDescription>Aquí se muestran los personajes según la actitud que has votado por ellos.</CardDescription>
@@ -309,7 +309,7 @@ export default function ProfilePage() {
             </TabsContent>
 
             <TabsContent value="emociones" className="mt-6">
-                <Card>
+                <Card className="border border-white/20 bg-black">
                   <CardHeader>
                     <CardTitle>Mis Emociones</CardTitle>
                     <CardDescription>Aquí verás los personajes según la emoción que te provocan. ¡Funcionalidad próximamente!</CardDescription>
