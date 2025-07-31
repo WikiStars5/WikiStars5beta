@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { onAuthStateChanged, signInAnonymously, type User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
@@ -25,20 +25,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        setFirebaseUser(fbUser);
-        const isAnon = fbUser.isAnonymous;
+    const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
+      setIsLoading(true);
+      setFirebaseUser(fbUser);
+      setIsAnonymous(fbUser?.isAnonymous ?? false);
 
+      if (fbUser) {
         const userDocRef = doc(db, 'users', fbUser.uid);
         const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             setUser(docSnap.data() as UserProfile);
-          } else if (isAnon) {
-            // If the doc doesn't exist AND the user is anonymous, create a local profile.
-            // This prevents registered users without a profile doc from being treated as guests.
+          } else if (fbUser.isAnonymous) {
+            // Build a local guest profile immediately if the Firestore doc doesn't exist yet.
             setUser({
               uid: fbUser.uid,
               email: null,
@@ -52,6 +53,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               country: '',
               countryCode: '',
             });
+          } else {
+            // This is a registered user without a profile doc.
+            setUser(null);
           }
           setIsLoading(false);
         }, (error) => {
@@ -62,9 +66,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         return () => unsubscribeSnapshot();
       } else {
-        // User is not logged in at all.
+        // No user logged in at all.
         setUser(null);
-        setFirebaseUser(null);
         setIsLoading(false);
       }
     });
@@ -72,7 +75,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
   
-  const isAnonymous = firebaseUser?.isAnonymous ?? false;
   const value = { user, firebaseUser, isLoading, isAnonymous };
 
   return (
