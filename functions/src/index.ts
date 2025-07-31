@@ -96,37 +96,6 @@ export const updateUserProfile = onCall(async (request) => {
 });
 
 
-export const getUserStats = onCall(async (request) => {
-  if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'You must be logged in to view stats.');
-  }
-  const uid = request.auth.uid;
-
-  try {
-    const commentsQuery = db.collection('userComments').where('userId', '==', uid);
-    const ratingsQuery = db.collection('userStarRatings').where('userId', '==', uid);
-    const attitudesQuery = db.collection('userAttitudes').where('userId', '==', uid);
-
-    const [commentsSnapshot, ratingsSnapshot, attitudesSnapshot] = await Promise.all([
-      commentsQuery.count().get(),
-      ratingsQuery.count().get(),
-      attitudesQuery.count().get()
-    ]);
-
-    const stats = {
-      comments: commentsSnapshot.data().count,
-      ratings: ratingsSnapshot.data().count,
-      attitudes: attitudesSnapshot.data().count,
-    };
-
-    return { success: true, stats };
-  } catch (error) {
-    console.error("Error getting user stats:", error);
-    throw new HttpsError('internal', 'Could not retrieve user statistics.');
-  }
-});
-
-
 const convertTimestampToString = (timestamp: any): string | undefined => {
   if (!timestamp) return undefined;
   // Handle Firestore Timestamp
@@ -196,5 +165,3 @@ export const getAllUsers = onCall(async (request) => {
         return { success: false, error: error.message || 'Un error desconocido ocurrió en la Cloud Function.' };
     }
 });
-
-export { sendPushNotification } from './notifications';
