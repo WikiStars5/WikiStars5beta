@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, Edit, Save, BarChart3, Map, VenusAndMars, Smile, UserPlus, Link2, ThumbsDown, SmilePlus, Frown, Angry, Hand, MehIcon } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, Edit, Save, BarChart3, Map as MapIcon, VenusAndMars, Smile, UserPlus, Link2, ThumbsDown, SmilePlus, Frown, Angry, Hand, MehIcon } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -398,7 +398,7 @@ export default function ProfilePage() {
               ) : (
                   <div className="space-y-4">
                       <div className="flex items-center gap-4"><User className="h-5 w-5 text-muted-foreground"/><p>{currentUser.username}</p></div>
-                      <div className="flex items-center gap-4"><Map className="h-5 w-5 text-muted-foreground"/><p>{currentUser.country || 'No especificado'}</p></div>
+                      <div className="flex items-center gap-4"><MapIcon className="h-5 w-5 text-muted-foreground"/><p>{currentUser.country || 'No especificado'}</p></div>
                       <div className="flex items-center gap-4"><VenusAndMars className="h-5 w-5 text-muted-foreground"/><p>{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</p></div>
                   </div>
               )}
@@ -438,7 +438,7 @@ export default function ProfilePage() {
         </CardHeader>
       </Card>
       
-      {renderProfileContent()}
+      {isAnonymous ? renderProfileContent() : renderProfileForRegisteredUser()}
 
     </div>
   );
