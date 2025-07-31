@@ -27,66 +27,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
-        
-        // If the user is anonymous, immediately construct a profile from localStorage
-        // This ensures the UI has a user object right away and avoids race conditions.
-        if (fbUser.isAnonymous) {
-          const guestUsername = localStorage.getItem('wikistars5-guestUsername') || `Invitado_${fbUser.uid.substring(0, 5)}`;
-          const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
-          const guestCountryCode = localStorage.getItem('wikistars5-guestCountry') || '';
-
-          setUser({
-            uid: fbUser.uid,
-            email: null,
-            username: guestUsername,
-            gender: guestGender,
-            isAnonymous: true,
-            role: 'user',
-            createdAt: new Date().toISOString(),
-            achievements: [],
-            countryCode: guestCountryCode,
-            photoURL: null,
-          });
-        }
-        
-        // Listen for Firestore updates to get roles, achievements, etc.
         const unsubscribeSnapshot = onSnapshot(
           doc(db, 'users', fbUser.uid),
           (docSnap) => {
             if (docSnap.exists()) {
-              // Merge Firestore data with existing state to preserve local data if needed
-              setUser(prevUser => ({...prevUser, ...docSnap.data()} as UserProfile));
+              setUser(docSnap.data() as UserProfile);
+            } else if (fbUser.isAnonymous) {
+              // If the user is anonymous and has no profile, create a default local one.
+              // The createProfileOnRegister function will handle the database entry.
+              setUser({
+                uid: fbUser.uid,
+                email: null,
+                username: `Invitado_${fbUser.uid.substring(0, 5)}`,
+                isAnonymous: true,
+                role: 'user',
+                createdAt: new Date().toISOString(),
+                achievements: [],
+              });
             }
-            // No 'else' needed here for anonymous, as we've already set a profile.
-            // For registered users who might not have a profile yet (due to function delay),
-            // this will eventually update.
+            // We are done loading ONLY when we have a user object (from firestore or local fallback)
             setIsLoading(false);
           },
           (error) => {
             console.error("Error listening to user profile:", error);
-            // Don't nullify user if we already have a guest profile
-            if (!fbUser.isAnonymous) {
-              setUser(null);
-            }
+            setUser(null);
             setIsLoading(false);
           }
         );
         return () => unsubscribeSnapshot();
       } else {
-        // No user is signed in.
-        try {
-          const userCredential = await signInAnonymously(auth);
-          setFirebaseUser(userCredential.user);
-          // The onAuthStateChanged will re-trigger with the new anonymous user
-        } catch (error) {
-          console.error("Anonymous sign-in failed:", error);
+        // No user signed in, attempt anonymous sign-in
+        signInAnonymously(auth).catch((error) => {
+          console.error("Anonymous sign-in failed on initial load:", error);
+          // If even anonymous sign-in fails, we stop loading and show an error state.
           setFirebaseUser(null);
           setUser(null);
           setIsLoading(false);
-        }
+        });
       }
     });
 
