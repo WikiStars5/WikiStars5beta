@@ -204,12 +204,11 @@ export default function ProfilePage() {
   };
   
   const renderProfileForGuest = () => (
-    <Tabs defaultValue="progreso" className="w-full mt-6">
-        <TabsList className="grid w-full grid-cols-4 h-auto">
+    <Tabs defaultValue="stats" className="w-full mt-6">
+        <TabsList className="grid w-full grid-cols-3 h-auto">
             <TabsTrigger value="stats"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
             <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
             <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
-            <TabsTrigger value="progreso"><Save className="mr-2" />Guardar Progreso</TabsTrigger>
         </TabsList>
         <TabsContent value="stats" className="mt-6">
             <Card>
@@ -275,53 +274,6 @@ export default function ProfilePage() {
                         </AlertDescription>
                     </Alert>
                 </CardContent>
-            </Card>
-        </TabsContent>
-        <TabsContent value="progreso" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Guarda Tu Progreso</CardTitle>
-                <CardDescription>Tu actividad como invitado se guarda en este dispositivo. Crea una cuenta para no perderlo.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="w-full" size="lg">
-                      <UserPlus className="mr-2 h-5 w-5"/>
-                      Vincular Cuenta y Guardar Progreso
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Crea una cuenta para guardar tu progreso</DialogTitle>
-                      <DialogDescription>
-                        Vincula tu actividad a una cuenta permanente con correo y contraseña. Tu nombre de invitado se usará por defecto.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
-                      <div>
-                        <Label htmlFor="link-username">Nombre de Usuario</Label>
-                        <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} placeholder="Elige un nombre de usuario"/>} />
-                        {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
-                      </div>
-                      <div>
-                        <Label htmlFor="link-email">Correo Electrónico</Label>
-                        <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} placeholder="tu@correo.com"/>} />
-                         {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
-                      </div>
-                      <div>
-                        <Label htmlFor="link-password">Contraseña</Label>
-                        <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} placeholder="Mínimo 6 caracteres"/>} />
-                         {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
-                      </div>
-                      <Button type="submit" disabled={isLinking} className="w-full">
-                        {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserPlus className="mr-2 h-4 w-4"/>}
-                        Vincular Cuenta
-                      </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardContent>
             </Card>
         </TabsContent>
     </Tabs>
