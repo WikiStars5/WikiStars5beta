@@ -165,6 +165,9 @@ export default function ProfilePage() {
     }
   };
 
+  // **THE FIX**: This logic is now robust. `isLoading` is true until `useAuth`
+  // has a definitive user object (either registered or a locally-built guest).
+  // The `!currentUser` check will now only trigger on a true failure.
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
