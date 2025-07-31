@@ -103,11 +103,20 @@ export default function ProfilePage() {
       if (tabToLoad === 'attitude' || tabToLoad === 'all') {
         const attitudesJSON = localStorage.getItem('wikistars5-attitudes');
         const localAttitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
-        setAttitudes(localAttitudes.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()));
+        setAttitudes(localAttitudes.sort((a, b) => {
+          // Sort by date, but handle cases where addedAt might be missing
+          const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
+          const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
+          return dateB - dateA;
+        }));
         
         const figureIds = localAttitudes.map(a => a.figureId);
-        const figures = await getFiguresByIds(figureIds);
-        setAttitudeFigures(figures);
+        if (figureIds.length > 0) {
+            const figures = await getFiguresByIds(figureIds);
+            setAttitudeFigures(figures);
+        } else {
+            setAttitudeFigures([]);
+        }
       }
 
       // Load emotion data if requested
@@ -218,7 +227,12 @@ export default function ProfilePage() {
         ) : filteredFigures.length > 0 ? (
           filteredFigures.map(figure => {
             const attitude = attitudeMap.get(figure.id);
-            const date = attitude ? new Date(attitude.addedAt).toLocaleDateString() : '';
+            // Robust date check
+            let dateString = '';
+            if (attitude && attitude.addedAt && !isNaN(new Date(attitude.addedAt).getTime())) {
+              dateString = new Date(attitude.addedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
+
             return (
               <Link key={figure.id} href={`/figures/${figure.id}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
                 <Avatar className="h-12 w-12">
@@ -227,7 +241,7 @@ export default function ProfilePage() {
                 </Avatar>
                 <div className="flex-grow">
                   <p className="font-semibold">{figure.name}</p>
-                  {date && <p className="text-xs text-muted-foreground">Marcado el {date}</p>}
+                  {dateString && <p className="text-xs text-muted-foreground">Marcado el {dateString}</p>}
                 </div>
               </Link>
             )
