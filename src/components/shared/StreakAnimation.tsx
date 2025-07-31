@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -42,7 +41,7 @@ export function StreakAnimation({ streakCount, isOpen, onClose }: StreakAnimatio
           priority
           data-ai-hint="fire gif"
         />
-        <div className="mt-[-40px] text-white font-bold drop-shadow-lg">
+        <div className="mt-2 text-orange-400 font-bold drop-shadow-lg">
           <p className="text-2xl">¡Racha de Días!</p>
           <p className="text-6xl font-headline">{streakCount}</p>
         </div>
