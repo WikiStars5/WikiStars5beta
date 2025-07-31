@@ -2,9 +2,9 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, type User as FirebaseUser, signInAnonymously } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
 interface AuthContextType {
@@ -27,45 +27,66 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
+        
+        // If the user is anonymous, immediately construct a profile from localStorage
+        // This ensures the UI has a user object right away and avoids race conditions.
+        if (fbUser.isAnonymous) {
+          const guestUsername = localStorage.getItem('wikistars5-guestUsername') || `Invitado_${fbUser.uid.substring(0, 5)}`;
+          const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
+          const guestCountryCode = localStorage.getItem('wikistars5-guestCountry') || '';
+
+          setUser({
+            uid: fbUser.uid,
+            email: null,
+            username: guestUsername,
+            gender: guestGender,
+            isAnonymous: true,
+            role: 'user',
+            createdAt: new Date().toISOString(),
+            achievements: [],
+            countryCode: guestCountryCode,
+            photoURL: null,
+          });
+        }
+        
+        // Listen for Firestore updates to get roles, achievements, etc.
         const unsubscribeSnapshot = onSnapshot(
           doc(db, 'users', fbUser.uid),
           (docSnap) => {
             if (docSnap.exists()) {
-              setUser(docSnap.data() as UserProfile);
-            } else if (fbUser.isAnonymous) {
-              const guestUsername = localStorage.getItem('wikistars5-guestUsername') || `Invitado_${fbUser.uid.substring(0, 5)}`;
-              const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
-              setUser({
-                uid: fbUser.uid,
-                email: null,
-                username: guestUsername,
-                gender: guestGender,
-                isAnonymous: true,
-                role: 'user',
-                createdAt: new Date().toISOString(),
-                achievements: [],
-                country: '',
-                countryCode: '',
-                photoURL: null,
-              });
+              // Merge Firestore data with existing state to preserve local data if needed
+              setUser(prevUser => ({...prevUser, ...docSnap.data()} as UserProfile));
             }
+            // No 'else' needed here for anonymous, as we've already set a profile.
+            // For registered users who might not have a profile yet (due to function delay),
+            // this will eventually update.
             setIsLoading(false);
           },
           (error) => {
             console.error("Error listening to user profile:", error);
-            setUser(null);
+            // Don't nullify user if we already have a guest profile
+            if (!fbUser.isAnonymous) {
+              setUser(null);
+            }
             setIsLoading(false);
           }
         );
         return () => unsubscribeSnapshot();
       } else {
         // No user is signed in.
-        setFirebaseUser(null);
-        setUser(null);
-        setIsLoading(false);
+        try {
+          const userCredential = await signInAnonymously(auth);
+          setFirebaseUser(userCredential.user);
+          // The onAuthStateChanged will re-trigger with the new anonymous user
+        } catch (error) {
+          console.error("Anonymous sign-in failed:", error);
+          setFirebaseUser(null);
+          setUser(null);
+          setIsLoading(false);
+        }
       }
     });
 

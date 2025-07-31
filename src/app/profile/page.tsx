@@ -173,6 +173,7 @@ export default function ProfilePage() {
     }
   };
 
+  // Main render logic starts here
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
@@ -181,8 +182,8 @@ export default function ProfilePage() {
     );
   }
 
+  // After loading, if there's still no user, it's a genuine error.
   if (!currentUser) {
-    // This case should ideally not be hit if anonymous auth works, but it's a good fallback.
     return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
             <h2 className="text-2xl font-bold">Error al Cargar Perfil</h2>
@@ -211,10 +212,10 @@ export default function ProfilePage() {
   const renderProfileTabs = () => {
     if (isAnonymous) {
       return (
-        <Tabs defaultValue="informacion" className="w-full">
+        <Tabs defaultValue="progreso" className="w-full">
             <TabsList className="grid w-full grid-cols-2 h-auto">
-                <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
                 <TabsTrigger value="progreso"><Flame className="mr-2" />Progreso</TabsTrigger>
+                <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
             </TabsList>
             <TabsContent value="informacion" className="mt-6">
               <Card>
