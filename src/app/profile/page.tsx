@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, Edit, Save, BarChart3, MapIcon, VenusAndMars, Smile, UserPlus, Link2, ThumbsDown, SmilePlus, Frown, Angry, Hand, MehIcon } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, Edit, Save, BarChart3, MapIcon as MapIcon, VenusAndMars, Smile, UserPlus, Link2, ThumbsDown, SmilePlus, Frown, Angry, Hand, MehIcon } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -242,7 +242,6 @@ export default function ProfilePage() {
         ) : filteredFigures.length > 0 ? (
           filteredFigures.map(figure => {
             const attitude = attitudeMap.get(figure.id);
-            // Robust date check
             let dateString = '';
             if (attitude && attitude.addedAt && !isNaN(new Date(attitude.addedAt).getTime())) {
               dateString = new Date(attitude.addedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -349,10 +348,10 @@ export default function ProfilePage() {
                     <CardContent>
                        <Tabs defaultValue="neutral" className="w-full">
                            <TabsList className="grid w-full grid-cols-4 h-auto">
-                               <TabsTrigger value="neutral"><span role="img" aria-label="Neutral" className="mr-2">😐</span>Neutral</TabsTrigger>
-                               <TabsTrigger value="fan"><span role="img" aria-label="Fan" className="mr-2">😍</span>Fans</TabsTrigger>
-                               <TabsTrigger value="simp"><span role="img" aria-label="Simp" className="mr-2">🥰</span>Simps</TabsTrigger>
-                               <TabsTrigger value="hater"><span role="img" aria-label="Hater" className="mr-2">😡</span>Haters</TabsTrigger>
+                               <TabsTrigger value="neutral" className="p-2 text-sm gap-2"><span role="img" aria-label="Neutral" className="mr-2">😐</span>Neutral</TabsTrigger>
+                               <TabsTrigger value="fan" className="p-2 text-sm gap-2"><span role="img" aria-label="Fan" className="mr-2">😍</span>Fans</TabsTrigger>
+                               <TabsTrigger value="simp" className="p-2 text-sm gap-2"><span role="img" aria-label="Simp" className="mr-2">🥰</span>Simps</TabsTrigger>
+                               <TabsTrigger value="hater" className="p-2 text-sm gap-2"><span role="img" aria-label="Hater" className="mr-2">😡</span>Haters</TabsTrigger>
                            </TabsList>
                            <div className="mt-4">
                              <TabsContent value="neutral"><AttitudeList figures={attitudeFigures} attitudeKey="neutral" emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
