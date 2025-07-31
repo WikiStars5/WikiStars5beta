@@ -70,10 +70,6 @@ export default function ProfilePage() {
   const [userStats, setUserStats] = useState<{ comments: number; ratings: number; attitudes: number } | null>(null);
   const [streaks, setStreaks] = useState<LocalUserStreak[]>([]);
   
-  const [fanList, setFanList] = useState<Figure[]>([]);
-  const [haterList, setHaterList] = useState<Figure[]>([]);
-  const [simpList, setSimpList] = useState<Figure[]>([]);
-  const [neutralList, setNeutralList] = useState<Figure[]>([]);
 
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isLinking, setIsLinking] = useState(false);
@@ -122,6 +118,10 @@ export default function ProfilePage() {
           }
 
           const attitudesJSON = localStorage.getItem('wikistars5-attitudes');
+          if (!attitudesJSON) {
+            setIsDataLoading(false);
+            return;
+          }
           const attitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
           
           const figureIdsByType = {
@@ -132,10 +132,10 @@ export default function ProfilePage() {
           };
 
           const fetchAttitudeLists = async () => {
-              setFanList(await getFiguresByIds(figureIdsByType.fan));
-              setHaterList(await getFiguresByIds(figureIdsByType.hater));
-              setSimpList(await getFiguresByIds(figureIdsByType.simp));
-              setNeutralList(await getFiguresByIds(figureIdsByType.neutral));
+              const fanList = await getFiguresByIds(figureIdsByType.fan);
+              const haterList = await getFiguresByIds(figureIdsByType.hater);
+              const simpList = await getFiguresByIds(figureIdsByType.simp);
+              const neutralList = await getFiguresByIds(figureIdsByType.neutral);
           };
 
           fetchAttitudeLists();
@@ -143,10 +143,6 @@ export default function ProfilePage() {
       } catch (error) {
           console.error("Error loading data from localStorage", error);
           setStreaks([]);
-          setFanList([]);
-          setHaterList([]);
-          setSimpList([]);
-          setNeutralList([]);
       } finally {
           setIsDataLoading(false);
       }
@@ -259,9 +255,8 @@ export default function ProfilePage() {
   
   const renderProfileForGuest = () => (
     <Tabs defaultValue="estadisticas" className="w-full mt-6">
-        <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-3 h-auto">
+        <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-2 h-auto">
             <TabsTrigger value="estadisticas"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
-            <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
             <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
         </TabsList>
         <TabsContent value="estadisticas" className="mt-6">
@@ -278,39 +273,6 @@ export default function ProfilePage() {
                   </AlertDescription>
                 </Alert>
               </CardContent>
-            </Card>
-        </TabsContent>
-        <TabsContent value="logros" className="mt-6">
-             <Card>
-                <CardHeader>
-                    <CardTitle>Logros Desbloqueados</CardTitle>
-                    <CardDescription>Tus medallas ganadas por participar como invitado.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                {(currentUser.achievements && currentUser.achievements.length > 0) ? (
-                    <div className="space-y-3">
-                        {currentUser.achievements.map((achId) => {
-                          const details = achievementDetails[achId as AchievementId];
-                          if (!details) return null;
-                          const Icon = details.icon;
-                          return (
-                            <div key={achId} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md">
-                              <Icon className="h-8 w-8 text-primary flex-shrink-0" />
-                              <div>
-                                <p className="font-semibold text-foreground">{details.title}</p>
-                                <p className="text-sm text-muted-foreground">{details.description}</p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
-                        <Award className="mx-auto h-8 w-8 mb-2" />
-                        <p>Aún no has desbloqueado ningún logro. ¡Empieza a explorar para ganar el primero!</p>
-                    </div>
-                  )}
-                </CardContent>
             </Card>
         </TabsContent>
         <TabsContent value="rachas" className="mt-6">
@@ -357,9 +319,8 @@ export default function ProfilePage() {
 
   const renderProfileForRegisteredUser = () => (
        <Tabs defaultValue="stats" className="w-full mt-6">
-            <TabsList className="grid w-full grid-cols-4 h-auto">
+            <TabsList className="grid w-full grid-cols-3 h-auto">
                 <TabsTrigger value="stats"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
-                <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
                 <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
                 <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
             </TabsList>
@@ -378,40 +339,6 @@ export default function ProfilePage() {
                 </Card>
             </TabsContent>
             
-            <TabsContent value="logros" className="mt-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Logros Desbloqueados</CardTitle>
-                        <CardDescription>Tus medallas e insignias ganadas por participar.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                    {(currentUser.achievements && currentUser.achievements.length > 0) ? (
-                        <div className="space-y-3">
-                            {currentUser.achievements.map((achId) => {
-                              const details = achievementDetails[achId as AchievementId];
-                              if (!details) return null;
-                              const Icon = details.icon;
-                              return (
-                                <div key={achId} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md">
-                                  <Icon className="h-8 w-8 text-primary flex-shrink-0" />
-                                  <div>
-                                    <p className="font-semibold text-foreground">{details.title}</p>
-                                    <p className="text-sm text-muted-foreground">{details.description}</p>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      ) : (
-                        <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
-                            <Award className="mx-auto h-8 w-8 mb-2" />
-                            <p>Aún no has desbloqueado ningún logro. ¡Empieza a explorar para ganar el primero!</p>
-                        </div>
-                      )}
-                    </CardContent>
-                </Card>
-            </TabsContent>
-
             <TabsContent value="rachas" className="mt-6">
                 <Card>
                     <CardHeader>
@@ -579,3 +506,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
