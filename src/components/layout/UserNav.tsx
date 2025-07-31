@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link'; 
@@ -46,13 +45,17 @@ export function UserNav() {
     );
   }
 
-  // If the user is anonymous or doesn't exist, render nothing.
-  if (isAnonymous || !currentUser) {
-    return null;
+  // User is not logged in at all (not even anonymous), show a login button
+  if (!currentUser) {
+     return (
+        <Button asChild variant="outline">
+            <Link href="/login">Acceder</Link>
+        </Button>
+    );
   }
   
-  const isAdmin = currentUser.uid === ADMIN_UID || currentUser.role === 'admin';
-  const displayName = currentUser.username || "Usuario";
+  const isAdmin = !isAnonymous && (currentUser.uid === ADMIN_UID || currentUser.role === 'admin');
+  const displayName = currentUser.username || (isAnonymous ? "Invitado" : "Usuario");
   const photoURL = currentUser.photoURL;
   const email = currentUser.email;
 
@@ -63,7 +66,7 @@ export function UserNav() {
           <Avatar className="h-9 w-9">
             <AvatarImage src={correctMalformedUrl(photoURL) || undefined} alt={displayName} />
             <AvatarFallback>
-              {displayName.charAt(0).toUpperCase()}
+              {isAnonymous ? <User className="h-5 w-5" /> : displayName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -72,7 +75,7 @@ export function UserNav() {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{displayName}</p>
-            {email && (
+            {email && !isAnonymous && (
               <p className="text-xs leading-none text-muted-foreground">
                 {email}
               </p>
@@ -83,8 +86,8 @@ export function UserNav() {
         
         <Link href="/profile" passHref>
           <DropdownMenuItem>
-            <User className="mr-2 h-4 w-4" />
-            <span>Mi Perfil</span>
+            {isAnonymous ? <Save className="mr-2 h-4 w-4" /> : <User className="mr-2 h-4 w-4" />}
+            <span>{isAnonymous ? 'Guardar Progreso' : 'Mi Perfil'}</span>
           </DropdownMenuItem>
         </Link>
         
@@ -97,11 +100,15 @@ export function UserNav() {
           </Link>
         )}
 
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Cerrar Sesión</span>
-        </DropdownMenuItem>
+        {!isAnonymous && (
+            <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Cerrar Sesión</span>
+                </DropdownMenuItem>
+            </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

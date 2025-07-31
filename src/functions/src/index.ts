@@ -35,24 +35,26 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
   const user = event.data; // The user record created in Firebase Auth
   const { uid, email, displayName, photoURL } = user;
 
+  const isAnonymous = !email; // A simple heuristic: if no email, it's likely an anonymous user.
+
   const userProfile: UserProfile = {
     uid: uid,
     email: email || null,
-    username: user.isAnonymous 
+    username: isAnonymous 
       ? `Invitado_${uid.substring(0, 5)}`
       : (displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`),
     country: '',
     countryCode: '',
     gender: '',
-    photoURL: photoURL || null, // Ensure photoURL is always defined as string or null
-    role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
+    photoURL: photoURL || null, 
+    role: uid === ADMIN_UID ? 'admin' : 'user',
     createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(), // Set initial login time
+    lastLoginAt: new Date().toISOString(),
     achievements: [],
+    isAnonymous: isAnonymous,
   };
 
   try {
-    // Set the document in the 'users' collection with the user's UID as the document ID.
     await db.collection('users').doc(uid).set(userProfile);
     console.log(`Successfully created profile for user: ${uid}`);
   } catch (error) {
@@ -84,16 +86,15 @@ export const updateUserProfile = onCall(async (request) => {
         lastLoginAt: new Date().toISOString(),
     };
     
-    // For registered users, also update their Auth profile
+    // If the account was linked (is no longer anonymous), mark it.
     const user = await auth.getUser(uid);
     if (!user.isAnonymous) {
-      updateData.isAnonymous = false; // Mark as not anonymous
-      await auth.updateUser(uid, { displayName: username });
+        // This is a registered user now, not anonymous.
+        // The `isAnonymous` field should have been updated upon linking.
     }
 
     try {
         await userRef.set(updateData, { merge: true });
-        
         return { success: true, message: 'Profile updated successfully.' };
     } catch (error) {
         console.error("Error updating user profile:", error);
