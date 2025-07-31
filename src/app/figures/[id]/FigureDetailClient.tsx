@@ -155,6 +155,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   const [expandedComments, setExpandedComments] = React.useState<Record<string, boolean>>({});
   const [highlightedCommentId, setHighlightedCommentId] = React.useState<string | null>(null);
+  
+  const [currentUserStreak, setCurrentUserStreak] = React.useState<number | null>(null);
 
 
   const MAX_COMMENT_LENGTH = 1000;
@@ -229,6 +231,27 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       setStarAudios(audios);
     }
   }, []);
+  
+  const fetchCurrentUserStreak = React.useCallback(() => {
+    if (!figure?.id) return;
+    try {
+      const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
+      if (streaksJSON) {
+        const streaks: LocalUserStreak[] = JSON.parse(streaksJSON);
+        const figureStreak = streaks.find(s => s.figureId === figure.id);
+        setCurrentUserStreak(figureStreak ? figureStreak.currentStreak : null);
+      } else {
+        setCurrentUserStreak(null);
+      }
+    } catch (error) {
+      console.error("Error fetching current streak:", error);
+      setCurrentUserStreak(null);
+    }
+  }, [figure?.id]);
+
+  React.useEffect(() => {
+    fetchCurrentUserStreak();
+  }, [fetchCurrentUserStreak]);
 
   const playSoundEffect = React.useCallback((starValue: StarValue) => {
     const audio = starAudios[starValue];
@@ -608,6 +631,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
               </Button>
             )
         });
+        fetchCurrentUserStreak(); // Refresh streak display on the page
     } catch (error) {
         console.error("Error updating local streak:", error);
     }
@@ -1349,7 +1373,15 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
           <Card className="mt-8 w-full border border-white/20 bg-black">
             <CardHeader>
-              <CardTitle className="flex items-center text-2xl font-headline"><MessagesSquare className="mr-3 h-7 w-7 text-primary" />Califica y Comenta sobre {figure!.name}</CardTitle>
+               <div className="flex justify-between items-center">
+                  <CardTitle className="flex items-center text-2xl font-headline"><MessagesSquare className="mr-3 h-7 w-7 text-primary" />Califica y Comenta sobre {figure!.name}</CardTitle>
+                   {currentUserStreak && currentUserStreak > 0 && (
+                    <div className="flex items-center gap-2 text-orange-400 font-semibold bg-orange-400/10 px-3 py-1 rounded-full">
+                      <Flame className="h-5 w-5" />
+                      <span>Racha actual: {currentUserStreak} {currentUserStreak === 1 ? 'día' : 'días'}</span>
+                    </div>
+                  )}
+                </div>
             </CardHeader>
             <CardContent className="space-y-6">
               {canCommentOrRate && figure && currentUser !== undefined ? (
