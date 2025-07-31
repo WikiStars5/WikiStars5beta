@@ -29,17 +29,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
-      setIsLoading(true);
-      setFirebaseUser(fbUser);
-      setIsAnonymous(fbUser?.isAnonymous ?? false);
-
       if (fbUser) {
+        setFirebaseUser(fbUser);
+        // Determine anonymity instantly from the Firebase user object
+        const isUserAnonymous = fbUser.isAnonymous;
+        setIsAnonymous(isUserAnonymous);
+
         const userDocRef = doc(db, 'users', fbUser.uid);
         const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             setUser(docSnap.data() as UserProfile);
-          } else if (fbUser.isAnonymous) {
+          } else if (isUserAnonymous) {
             // Build a local guest profile immediately if the Firestore doc doesn't exist yet.
+            // This is crucial for the profile page to load correctly without errors.
             setUser({
               uid: fbUser.uid,
               email: null,
@@ -66,8 +68,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         return () => unsubscribeSnapshot();
       } else {
-        // No user logged in at all.
+        // No user logged in at all. Reset all states.
+        setFirebaseUser(null);
         setUser(null);
+        setIsAnonymous(false);
         setIsLoading(false);
       }
     });
