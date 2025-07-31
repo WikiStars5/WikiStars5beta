@@ -200,59 +200,109 @@ export default function ProfilePage() {
   };
   
   const renderProfileForGuest = () => (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle>Guarda Tu Progreso</CardTitle>
-        <CardDescription>Tu actividad como invitado se guarda en este dispositivo. Crea una cuenta para no perderlo.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <Alert>
-          <BarChart3 className="h-4 w-4" />
-          <AlertTitle>Estadísticas en Desarrollo</AlertTitle>
-          <AlertDescription>
-            Las estadísticas de comentarios y votos para invitados estarán disponibles pronto.
-          </AlertDescription>
-        </Alert>
-        <Separator/>
-        <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full" size="lg">
-              <Save className="mr-2 h-5 w-5"/>
-              Vincular Cuenta y Guardar Progreso
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Crea una cuenta para guardar tu progreso</DialogTitle>
-              <DialogDescription>
-                Vincula tu actividad a una cuenta permanente con correo y contraseña. Tu nombre de invitado se usará por defecto.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
-              <div>
-                <Label htmlFor="link-username">Nombre de Usuario</Label>
-                <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} placeholder="Elige un nombre de usuario"/>} />
-                {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
-              </div>
-              <div>
-                <Label htmlFor="link-email">Correo Electrónico</Label>
-                <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} placeholder="tu@correo.com"/>} />
-                 {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
-              </div>
-              <div>
-                <Label htmlFor="link-password">Contraseña</Label>
-                <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} placeholder="Mínimo 6 caracteres"/>} />
-                 {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
-              </div>
-              <Button type="submit" disabled={isLinking} className="w-full">
-                {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserPlus className="mr-2 h-4 w-4"/>}
-                Vincular Cuenta
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
+    <Tabs defaultValue="progreso" className="w-full mt-6">
+        <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsTrigger value="stats"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
+            <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
+            <TabsTrigger value="progreso"><Save className="mr-2" />Guardar Progreso</TabsTrigger>
+        </TabsList>
+        <TabsContent value="stats" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Estadísticas de Invitado</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Alert>
+                  <BarChart3 className="h-4 w-4" />
+                  <AlertTitle>Estadísticas en Desarrollo</AlertTitle>
+                  <AlertDescription>
+                    Las estadísticas de comentarios y votos para invitados estarán disponibles pronto.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="logros" className="mt-6">
+             <Card>
+                <CardHeader>
+                    <CardTitle>Logros Desbloqueados</CardTitle>
+                    <CardDescription>Tus medallas ganadas por participar como invitado.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                {(currentUser.achievements && currentUser.achievements.length > 0) ? (
+                    <div className="space-y-3">
+                        {currentUser.achievements.map((achId) => {
+                          const details = achievementDetails[achId as AchievementId];
+                          if (!details) return null;
+                          const Icon = details.icon;
+                          return (
+                            <div key={achId} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md">
+                              <Icon className="h-8 w-8 text-primary flex-shrink-0" />
+                              <div>
+                                <p className="font-semibold text-foreground">{details.title}</p>
+                                <p className="text-sm text-muted-foreground">{details.description}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
+                        <Award className="mx-auto h-8 w-8 mb-2" />
+                        <p>Aún no has desbloqueado ningún logro. ¡Empieza a explorar para ganar el primero!</p>
+                    </div>
+                  )}
+                </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="progreso" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Guarda Tu Progreso</CardTitle>
+                <CardDescription>Tu actividad como invitado se guarda en este dispositivo. Crea una cuenta para no perderlo.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full" size="lg">
+                      <UserPlus className="mr-2 h-5 w-5"/>
+                      Vincular Cuenta y Guardar Progreso
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Crea una cuenta para guardar tu progreso</DialogTitle>
+                      <DialogDescription>
+                        Vincula tu actividad a una cuenta permanente con correo y contraseña. Tu nombre de invitado se usará por defecto.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
+                      <div>
+                        <Label htmlFor="link-username">Nombre de Usuario</Label>
+                        <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} placeholder="Elige un nombre de usuario"/>} />
+                        {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
+                      </div>
+                      <div>
+                        <Label htmlFor="link-email">Correo Electrónico</Label>
+                        <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} placeholder="tu@correo.com"/>} />
+                         {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
+                      </div>
+                      <div>
+                        <Label htmlFor="link-password">Contraseña</Label>
+                        <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} placeholder="Mínimo 6 caracteres"/>} />
+                         {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
+                      </div>
+                      <Button type="submit" disabled={isLinking} className="w-full">
+                        {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserPlus className="mr-2 h-4 w-4"/>}
+                        Vincular Cuenta
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+        </TabsContent>
+    </Tabs>
   );
 
   const renderProfileForRegisteredUser = () => (
@@ -391,5 +441,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
