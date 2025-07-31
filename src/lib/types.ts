@@ -125,6 +125,13 @@ export interface LocalUserStreak {
   lastCommentDate: string; // Stored as 'YYYY-MM-DD'
 }
 
+export interface FanFigure {
+  id: string;
+  name: string;
+  photoUrl: string;
+  addedAt: string; // Stored as ISO string
+}
+
 
 export interface GenderOption {
   value: string;

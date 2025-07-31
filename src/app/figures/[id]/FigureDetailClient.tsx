@@ -47,7 +47,7 @@ import { countryCodeToNameMap } from "@/config/countries";
 import { GENDER_OPTIONS, type GenderOption } from "@/config/genderOptions";
 import { CATEGORY_OPTIONS } from "@/config/categories";
 import { ShareButton } from "@/components/shared/ShareButton";
-import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile, LocalUserStreak } from "@/lib/types";
+import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile, LocalUserStreak, FanFigure } from "@/lib/types";
 import { updateFigureInFirestore } from "@/lib/placeholder-data";
 import { markAllNotificationsAsRead, markNotificationAsRead } from '@/app/actions/notificationActions';
 import { ADMIN_UID } from '@/config/admin';
@@ -160,6 +160,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   
   const [currentUserStreak, setCurrentUserStreak] = React.useState<number | null>(null);
   const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
+  const [isFan, setIsFan] = React.useState(false);
 
 
   const MAX_COMMENT_LENGTH = 1000;
@@ -255,6 +256,59 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   React.useEffect(() => {
     fetchCurrentUserStreak();
   }, [fetchCurrentUserStreak]);
+
+  const checkIsFan = React.useCallback(() => {
+    if (!figure) return;
+    try {
+      const fanListJSON = localStorage.getItem('wikistars5-fan-list');
+      if (fanListJSON) {
+        const fanList: FanFigure[] = JSON.parse(fanListJSON);
+        const isFigureFan = fanList.some(f => f.id === figure.id);
+        setIsFan(isFigureFan);
+      } else {
+        setIsFan(false);
+      }
+    } catch (error) {
+      console.error("Error checking fan list:", error);
+      setIsFan(false);
+    }
+  }, [figure]);
+
+  React.useEffect(() => {
+    checkIsFan();
+  }, [checkIsFan]);
+
+  const handleFanToggle = () => {
+    if (!figure) return;
+    try {
+      const fanListJSON = localStorage.getItem('wikistars5-fan-list');
+      let fanList: FanFigure[] = fanListJSON ? JSON.parse(fanListJSON) : [];
+      
+      const isAlreadyFan = fanList.some(f => f.id === figure.id);
+      
+      if (isAlreadyFan) {
+        fanList = fanList.filter(f => f.id !== figure.id);
+        toast({ title: "Eliminado de Fans", description: `${figure.name} ya no está en tu lista de fans.` });
+      } else {
+        const newFan: FanFigure = {
+          id: figure.id,
+          name: figure.name,
+          photoUrl: figure.photoUrl,
+          addedAt: new Date().toISOString(),
+        };
+        fanList.push(newFan);
+        toast({ title: "¡Añadido a Fans!", description: `Has marcado a ${figure.name} como tu fan.` });
+      }
+      
+      localStorage.setItem('wikistars5-fan-list', JSON.stringify(fanList));
+      checkIsFan(); // Re-check to update state
+      
+    } catch (error) {
+      console.error("Error toggling fan status:", error);
+      toast({ title: "Error", description: "No se pudo actualizar tu lista de fans.", variant: "destructive" });
+    }
+  };
+
 
   const playSoundEffect = React.useCallback((starValue: StarValue) => {
     const audio = starAudios[starValue];
@@ -1273,6 +1327,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         figure={figure!} 
         currentUser={currentUser}
         currentUserStreak={currentUserStreak}
+        isFan={isFan}
+        onFanToggle={handleFanToggle}
         onImageClick={handleOpenProfileImage}
       />
 

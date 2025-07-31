@@ -16,7 +16,7 @@ import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
 import { Separator } from '@/components/ui/separator';
-import type { UserProfile, LocalUserStreak } from '@/lib/types';
+import type { UserProfile, LocalUserStreak, FanFigure } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { auth, app } from '@/lib/firebase';
 import { signOut, linkWithCredential, EmailAuthProvider, updateProfile } from 'firebase/auth';
@@ -68,7 +68,8 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [userStats, setUserStats] = useState<{ comments: number; ratings: number; attitudes: number } | null>(null);
   const [streaks, setStreaks] = useState<LocalUserStreak[]>([]);
-  const [isStreaksLoading, setIsStreaksLoading] = useState(true);
+  const [fanList, setFanList] = useState<FanFigure[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [isLinking, setIsLinking] = useState(false);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [animationStreak, setAnimationStreak] = useState<number | null>(null);
@@ -103,7 +104,7 @@ export default function ProfilePage() {
           setUserStats(null);
       }
       
-      setIsStreaksLoading(true);
+      setIsDataLoading(true);
       try {
           const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
           if(streaksJSON) {
@@ -113,11 +114,21 @@ export default function ProfilePage() {
           } else {
               setStreaks([]);
           }
+
+          const fanListJSON = localStorage.getItem('wikistars5-fan-list');
+          if(fanListJSON) {
+              const localFanList: FanFigure[] = JSON.parse(fanListJSON);
+              localFanList.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
+              setFanList(localFanList);
+          } else {
+            setFanList([]);
+          }
       } catch (error) {
           console.error("Error loading streaks from localStorage", error);
           setStreaks([]);
+          setFanList([]);
       } finally {
-          setIsStreaksLoading(false);
+          setIsDataLoading(false);
       }
 
     }
@@ -227,7 +238,7 @@ export default function ProfilePage() {
   };
   
   const renderProfileForGuest = () => (
-    <Tabs defaultValue="estadisticas" className="w-full mt-6">
+    <Tabs defaultValue="actitud" className="w-full mt-6">
         <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-4 h-auto">
             <TabsTrigger value="estadisticas"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
             <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
@@ -290,7 +301,7 @@ export default function ProfilePage() {
                     <CardDescription>Tu historial de participación y rachas. ¡Gana una racha comentando o respondiendo en el perfil de un personaje por días consecutivos!</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {isStreaksLoading ? (
+                  {isDataLoading ? (
                       <div className="flex justify-center items-center py-10">
                           <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       </div>
@@ -331,20 +342,38 @@ export default function ProfilePage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-4 gap-2">
-                        <Card className="p-4 text-center">
-                            <CardTitle className="text-base">Neutral</CardTitle>
-                        </Card>
-                        <Card className="p-4 text-center">
-                            <CardTitle className="text-base">Fan</CardTitle>
-                        </Card>
-                        <Card className="p-4 text-center">
-                             <CardTitle className="text-base">Simp</CardTitle>
-                        </Card>
-                        <Card className="p-4 text-center">
-                             <CardTitle className="text-base">Hater</CardTitle>
-                        </Card>
-                    </div>
+                  <Tabs defaultValue="fans" className="w-full">
+                    <TabsList className="grid w-full grid-cols-4 h-auto">
+                        <TabsTrigger value="fans">Fans</TabsTrigger>
+                        <TabsTrigger value="haters" disabled>Haters</TabsTrigger>
+                        <TabsTrigger value="simps" disabled>Simps</TabsTrigger>
+                        <TabsTrigger value="neutral" disabled>Neutral</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="fans" className="mt-4">
+                      {isDataLoading ? (
+                          <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                      ) : fanList.length > 0 ? (
+                          <div className="space-y-4">
+                              {fanList.map(figure => (
+                                  <Link key={figure.id} href={`/figures/${figure.id}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
+                                      <Avatar className="h-12 w-12">
+                                          <AvatarImage src={correctMalformedUrl(figure.photoUrl) || undefined} alt={figure.name} />
+                                          <AvatarFallback>{figure.name.charAt(0)}</AvatarFallback>
+                                      </Avatar>
+                                      <div className="flex-grow">
+                                          <p className="font-semibold">{figure.name}</p>
+                                      </div>
+                                  </Link>
+                              ))}
+                          </div>
+                      ) : (
+                         <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
+                              <Heart className="mx-auto h-8 w-8 mb-2" />
+                              <p>Aún no has marcado a nadie como "Fan". ¡Haz clic en el corazón en el perfil de un personaje para añadirlo!</p>
+                          </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
             </Card>
         </TabsContent>
@@ -415,7 +444,7 @@ export default function ProfilePage() {
                         <CardDescription>Tu historial de participación y rachas. ¡Gana una racha comentando o respondiendo en el perfil de un personaje por días consecutivos!</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {isStreaksLoading ? (
+                        {isDataLoading ? (
                             <div className="flex justify-center items-center py-10">
                                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                             </div>

@@ -4,15 +4,18 @@
 import type { Figure } from "@/lib/types";
 import Image from "next/image";
 import { ShareButton } from "@/components/shared/ShareButton";
-import { correctMalformedUrl } from "@/lib/utils";
+import { correctMalformedUrl, cn } from "@/lib/utils";
 import type { User } from 'firebase/auth';
 import { Badge } from "@/components/ui/badge";
-import { Flame } from "lucide-react";
+import { Flame, Heart } from "lucide-react";
+import { Button } from "../ui/button";
 
 interface ProfileHeaderProps {
   figure: Figure;
   currentUser: User | null;
   currentUserStreak: number | null;
+  isFan: boolean;
+  onFanToggle: () => void;
   onImageClick: (imageUrl: string) => void;
 }
 
@@ -20,6 +23,8 @@ export function ProfileHeader({
   figure, 
   currentUser,
   currentUserStreak,
+  isFan,
+  onFanToggle,
   onImageClick,
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
@@ -59,7 +64,12 @@ export function ProfileHeader({
                 {figure.name}
               </h1>
               <div className="mt-3 md:mt-0 flex-shrink-0 flex flex-col items-center md:items-end gap-2">
-                <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={onFanToggle} aria-label={isFan ? 'Quitar de fans' : 'Añadir a fans'}>
+                      <Heart className={cn("h-5 w-5", isFan ? "fill-red-500 text-red-500" : "text-foreground/70")} />
+                    </Button>
+                    <ShareButton figureName={figure.name} figureId={figure.id} showText={false} />
+                </div>
                 {currentUserStreak && currentUserStreak > 0 && (
                   <div className="flex items-center gap-2 text-orange-400 font-semibold bg-orange-400/10 px-3 py-1 rounded-full text-sm">
                     <Flame className="h-5 w-5" />
