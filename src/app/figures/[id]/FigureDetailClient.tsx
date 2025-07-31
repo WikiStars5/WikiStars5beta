@@ -7,7 +7,7 @@ import {
   ImageOff, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
   MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight,
-  Archive, Bike
+  Archive, Bike, UserPlus
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
@@ -51,6 +51,15 @@ import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile } f
 import { updateFigureInFirestore } from "@/lib/placeholder-data";
 import { markAllNotificationsAsRead, markNotificationAsRead } from '@/app/actions/notificationActions';
 import { ADMIN_UID } from '@/config/admin';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
 import { 
   grantFirstGlanceAchievement,
   grantEstrellaBrillanteAchievement,
@@ -115,10 +124,14 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const [newComment, setNewComment] = React.useState("");
   const [newCommentStars, setNewCommentStars] = React.useState<StarValue | null>(null);
   const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
-  const [guestUsername, setGuestUsername] = React.useState("");
-  const [isGuestNameSet, setIsGuestNameSet] = React.useState(false);
-  const [guestGender, setGuestGender] = React.useState("");
-  const [isGuestGenderSet, setIsGuestGenderSet] = React.useState(false);
+  
+  // State for guest identity dialog
+  const [isGuestInfoDialogOpen, setIsGuestInfoDialogOpen] = React.useState(false);
+  const [tempGuestUsername, setTempGuestUsername] = React.useState("");
+  const [tempGuestGender, setTempGuestGender] = React.useState("");
+  const [isGuestInfoSet, setIsGuestInfoSet] = React.useState(false);
+
+
   const [commentsList, setCommentsList] = React.useState<UserComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [votingCommentId, setVotingCommentId] = React.useState<string | null>(null);
@@ -237,14 +250,11 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       if (user) { 
         if (user.isAnonymous) {
             const savedGuestName = localStorage.getItem('wikistars5-guestUsername');
-            if (savedGuestName) {
-                setGuestUsername(savedGuestName);
-                setIsGuestNameSet(true);
-            }
             const savedGuestGender = localStorage.getItem('wikistars5-guestGender');
-            if (savedGuestGender) {
-                setGuestGender(savedGuestGender);
-                setIsGuestGenderSet(true);
+            if (savedGuestName && savedGuestGender) {
+                setIsGuestInfoSet(true);
+                setTempGuestUsername(savedGuestName);
+                setTempGuestGender(savedGuestGender);
             }
         } else {
             // This is a registered user, check for achievement
@@ -269,10 +279,9 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         }
       } else {
         setNewCommentStars(null);
-        setIsGuestNameSet(false);
-        setGuestUsername("");
-        setIsGuestGenderSet(false);
-        setGuestGender("");
+        setIsGuestInfoSet(false);
+        setTempGuestUsername("");
+        setTempGuestGender("");
       }
     });
     return () => unsubscribe();
@@ -529,14 +538,58 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
   };
 
+  const handleSaveGuestInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tempGuestUsername.trim() || !tempGuestGender) {
+        toast({ title: "Campos Requeridos", description: "Por favor, introduce un nombre y selecciona un sexo.", variant: "destructive" });
+        return;
+    }
+
+    // Uniqueness check
+    const normalizedGuestName = tempGuestUsername.trim().toLowerCase();
+    try {
+      const commentsCollectionRef = collection(db, 'userComments');
+      const uniquenessQuery = query(
+        commentsCollectionRef,
+        where('figureId', '==', figure!.id),
+        where('guestUsernameLower', '==', normalizedGuestName)
+      );
+      const existingUsernamesSnapshot = await getDocs(uniquenessQuery);
+      if (!existingUsernamesSnapshot.empty) {
+        toast({
+          title: "Nombre en Uso",
+          description: "Este nombre de invitado ya está en uso en esta página. Por favor, elige otro.",
+          variant: "destructive"
+        });
+        return;
+      }
+    } catch (queryError: any) {
+      console.error("Error checking guest username uniqueness:", queryError);
+      let errorMessage = "No se pudo verificar el nombre de invitado. Inténtalo de nuevo.";
+      if (queryError.message && queryError.message.includes("firestore/failed-precondition")) {
+        errorMessage = "Error de base de datos: Falta un índice para buscar nombres de invitado. Revisa la consola (F12) para un enlace de creación de índice."
+      }
+      toast({ title: "Error de Verificación", description: errorMessage, variant: "destructive" });
+      return;
+    }
+
+    // If unique, save to localStorage and update state
+    localStorage.setItem('wikistars5-guestUsername', tempGuestUsername.trim());
+    localStorage.setItem('wikistars5-guestGender', tempGuestGender);
+    setIsGuestInfoSet(true);
+    setIsGuestInfoDialogOpen(false);
+    toast({ title: "¡Identidad de Invitado Guardada!", description: `Ahora puedes comentar como ${tempGuestUsername.trim()}.` });
+  };
+
+
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canCommentOrRate || !currentUser || !figure) {
         toast({ title: "Error", description: "Debes estar conectado para opinar.", variant: "destructive" });
         return;
     }
-    if (currentUser.isAnonymous && (!guestUsername.trim() || !guestGender.trim())) {
-        toast({ title: "Información Requerida", description: "Por favor, introduce un nombre y selecciona un sexo para comentar.", variant: "destructive" });
+    if (currentUser.isAnonymous && !isGuestInfoSet) {
+        toast({ title: "Información Requerida", description: "Por favor, define tu identidad de invitado para poder comentar.", variant: "destructive" });
         return;
     }
     if (newComment.trim() === "" || newComment.length > MAX_COMMENT_LENGTH) {
@@ -545,44 +598,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
     setIsSubmittingComment(true);
     
-    // 1. Check for unique guest username if applicable (OUTSIDE the transaction)
-    if (currentUser.isAnonymous) {
-      const normalizedGuestName = guestUsername.trim().toLowerCase();
-      if (normalizedGuestName) {
-        try {
-          const commentsCollectionRef = collection(db, 'userComments');
-          const uniquenessQuery = query(
-            commentsCollectionRef,
-            where('figureId', '==', figure.id),
-            where('guestUsernameLower', '==', normalizedGuestName)
-          );
-          // Use getDocs, which is the correct way to execute a query
-          const existingUsernamesSnapshot = await getDocs(uniquenessQuery);
-          if (!existingUsernamesSnapshot.empty) {
-            toast({
-              title: "Nombre en Uso",
-              description: "Este nombre de invitado ya está en uso. Por favor, elige otro.",
-              variant: "destructive"
-            });
-            setIsSubmittingComment(false);
-            return; // Stop the submission
-          }
-        } catch (queryError: any) {
-          console.error("Error checking guest username uniqueness:", queryError);
-          let errorMessage = "No se pudo verificar el nombre de invitado. Inténtalo de nuevo.";
-          if (queryError.message && queryError.message.includes("firestore/failed-precondition")) {
-            errorMessage = "Error de base de datos: Falta un índice para buscar nombres de invitado. Revisa la consola del navegador (F12) para un enlace de creación de índice."
-          }
-          toast({
-            title: "Error de Verificación",
-            description: errorMessage,
-            variant: "destructive"
-          });
-          setIsSubmittingComment(false);
-          return;
-        }
-      }
-    }
+    // Uniqueness check for guest username is now handled when setting the guest identity, so not needed here.
 
     const figureDocRef = doc(db, "figures", figure.id);
     const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
@@ -590,9 +606,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
     try {
       await runTransaction(db, async (transaction) => {
-        // The uniqueness check that was here has been moved outside.
-        
-        // 2. Handle Star Rating
+        // Handle Star Rating
         const figureSnap = await transaction.get(figureDocRef);
         if (!figureSnap.exists()) throw new Error("Figure document does not exist!");
         const figureData = figureSnap.data()!;
@@ -623,7 +637,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           }
         }
         
-        // 3. Prepare Comment Document
+        // Prepare Comment Document
         const newCommentRef = doc(commentsCollectionRef);
         const commentData: any = {
           figureId: figure.id,
@@ -642,33 +656,21 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         };
 
         if (currentUser.isAnonymous) {
-          commentData.guestUsername = guestUsername.trim();
-          commentData.guestUsernameLower = guestUsername.trim().toLowerCase(); // Add normalized name
-          commentData.guestGender = guestGender;
+          commentData.guestUsername = localStorage.getItem('wikistars5-guestUsername');
+          commentData.guestUsernameLower = localStorage.getItem('wikistars5-guestUsername')?.toLowerCase();
+          commentData.guestGender = localStorage.getItem('wikistars5-guestGender');
           if (anonymousUserCountryCode) {
             commentData.userCountryCode = anonymousUserCountryCode;
           }
         }
         
-        // 4. Set up all writes in the transaction
+        // Set up all writes in the transaction
         transaction.set(newCommentRef, commentData);
         transaction.update(figureDocRef, { 
           starRatingCounts: newAggregatedStarCounts,
           commentCount: increment(1)
         });
       });
-
-      // After successful transaction
-      if (currentUser.isAnonymous) {
-          if (!isGuestNameSet) {
-            localStorage.setItem('wikistars5-guestUsername', guestUsername.trim());
-            setIsGuestNameSet(true);
-          }
-          if (!isGuestGenderSet) {
-            localStorage.setItem('wikistars5-guestGender', guestGender);
-            setIsGuestGenderSet(true);
-          }
-      }
       
       if (newCommentStars) {
         playSoundEffect(newCommentStars);
@@ -772,7 +774,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     // Fire and forget server update
     (async () => {
       try {
-        const actorName = currentUser.isAnonymous ? guestUsername : (currentUser.displayName || "Usuario Anónimo");
+        const actorName = currentUser.isAnonymous ? (localStorage.getItem('wikistars5-guestUsername') || "Invitado") : (currentUser.displayName || "Usuario Anónimo");
         const result = await updateCommentLikes(
           commentId,
           figure.id,
@@ -939,8 +941,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       toast({ title: "Acción Requerida", description: "Debes estar conectado para responder.", variant: "destructive" });
       return;
     }
-    if (currentUser.isAnonymous && (!guestUsername.trim() || !guestGender.trim())) {
-      toast({ title: "Información Requerida", description: "Por favor, introduce un nombre y selecciona un sexo para poder responder.", variant: "destructive" });
+    if (currentUser.isAnonymous && !isGuestInfoSet) {
+      toast({ title: "Información Requerida", description: "Por favor, define tu identidad de invitado para poder responder.", variant: "destructive" });
       return;
     }
     if (!replyText.trim() || replyText.length > MAX_COMMENT_LENGTH) {
@@ -970,9 +972,9 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     };
 
     if (currentUser.isAnonymous) {
-      if(guestUsername) replyData.guestUsername = guestUsername.trim();
-      if(anonymousUserCountryCode) replyData.userCountryCode = anonymousUserCountryCode;
-      if(guestGender) replyData.guestGender = guestGender;
+      replyData.guestUsername = localStorage.getItem('wikistars5-guestUsername');
+      replyData.userCountryCode = anonymousUserCountryCode;
+      replyData.guestGender = localStorage.getItem('wikistars5-guestGender');
     }
     
     try {
@@ -999,7 +1001,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           transaction.set(notificationRef, {
             userId: parentUserId,
             actorId: currentUser.uid,
-            actorName: currentUser.isAnonymous ? guestUsername.trim() : (currentUser.displayName || "Usuario Anónimo"),
+            actorName: currentUser.isAnonymous ? (localStorage.getItem('wikistars5-guestUsername') || "Invitado") : (currentUser.displayName || "Usuario Anónimo"),
             actorPhotoUrl: currentUser.photoURL || null,
             type: 'reply',
             isRead: false,
@@ -1189,7 +1191,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                   <Button 
                     size="sm" 
                     onClick={() => handleSubmitReply(comment.id)} 
-                    disabled={isSubmittingReply === comment.id || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH || (currentUser?.isAnonymous && (!guestUsername.trim() || !guestGender.trim()))}
+                    disabled={isSubmittingReply === comment.id || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH || (currentUser?.isAnonymous && !isGuestInfoSet)}
                   >
                     {isSubmittingReply === comment.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Enviar Respuesta
@@ -1329,54 +1331,53 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                         size={32}
                     />
                   </div>
-                  {currentUser?.isAnonymous && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        {isGuestNameSet ? (
-                            <div className="text-sm p-3 bg-muted rounded-md border h-full flex flex-col justify-center">
-                                <span className="text-muted-foreground text-xs">Comentarás como: </span>
-                                <strong className="text-foreground">{guestUsername}</strong>
-                            </div>
-                        ) : (
-                            <>
-                                <Label htmlFor="guestUsername">Nombre de Invitado (Requerido)</Label>
-                                <Input
-                                    id="guestUsername"
-                                    value={guestUsername}
-                                    onChange={(e) => setGuestUsername(e.target.value)}
-                                    placeholder="Escribe un nombre"
-                                    disabled={isSubmittingComment}
-                                    maxLength={50}
-                                />
-                            </>
-                        )}
-                      </div>
-                      <div>
-                        {isGuestGenderSet ? (
-                             <div className="text-sm p-3 bg-muted rounded-md border h-full flex flex-col justify-center">
-                                <span className="text-muted-foreground text-xs">Sexo: </span>
-                                <strong className="text-foreground">{GENDER_OPTIONS.find(g => g.value === guestGender)?.label || 'No especificado'}</strong>
-                            </div>
-                        ) : (
-                            <>
-                              <Label htmlFor="guestGender">Sexo (Requerido)</Label>
-                               <Select onValueChange={setGuestGender} value={guestGender} disabled={isSubmittingComment}>
-                                <SelectTrigger id="guestGender">
-                                  <SelectValue placeholder="Selecciona tu sexo" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {GENDER_OPTIONS.filter(g => g.value === 'male' || g.value === 'female').map((gender) => (
-                                    <SelectItem key={gender.value} value={gender.value}>
-                                      {gender.symbol && <span aria-hidden="true" className="mr-2">{gender.symbol}</span>}
-                                      {gender.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </>
-                        )}
-                      </div>
-                    </div>
+                   {currentUser?.isAnonymous && !isGuestInfoSet && (
+                    <Dialog open={isGuestInfoDialogOpen} onOpenChange={setIsGuestInfoDialogOpen}>
+                      <DialogTrigger asChild>
+                         <Button variant="outline" className="w-full">
+                           <UserPlus className="mr-2 h-4 w-4" />
+                           Continuar como Invitado para Comentar
+                         </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Definir Identidad de Invitado</DialogTitle>
+                          <DialogDescription>
+                            Para comentar, elige un nombre de invitado y un sexo. Esta información se guardará en tu navegador para esta sesión.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleSaveGuestInfo} className="space-y-4">
+                            <div>
+                               <Label htmlFor="guestUsernameDialog">Nombre de Invitado (Requerido)</Label>
+                               <Input
+                                   id="guestUsernameDialog"
+                                   value={tempGuestUsername}
+                                   onChange={(e) => setTempGuestUsername(e.target.value)}
+                                   placeholder="Elige un nombre"
+                                   maxLength={50}
+                                   required
+                               />
+                           </div>
+                           <div>
+                               <Label htmlFor="guestGenderDialog">Sexo (Requerido)</Label>
+                               <Select onValueChange={setTempGuestGender} value={tempGuestGender} required>
+                                 <SelectTrigger id="guestGenderDialog">
+                                   <SelectValue placeholder="Selecciona tu sexo" />
+                                 </SelectTrigger>
+                                 <SelectContent>
+                                   {GENDER_OPTIONS.filter(g => g.value === 'male' || g.value === 'female').map((gender) => (
+                                     <SelectItem key={gender.value} value={gender.value}>
+                                       {gender.symbol && <span aria-hidden="true" className="mr-2">{gender.symbol}</span>}
+                                       {gender.label}
+                                     </SelectItem>
+                                   ))}
+                                 </SelectContent>
+                               </Select>
+                           </div>
+                           <Button type="submit" className="w-full">Guardar Identidad</Button>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
                   )}
                   <div>
                     <Label htmlFor="newComment" className="sr-only">Tu comentario</Label>
@@ -1387,7 +1388,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                       placeholder="Escribe tu comentario aquí (obligatorio)..." 
                       rows={4} 
                       className="w-full" 
-                      disabled={isSubmittingComment} 
+                      disabled={isSubmittingComment || (currentUser?.isAnonymous && !isGuestInfoSet)} 
                       maxLength={MAX_COMMENT_LENGTH}
                     />
                     <div className="text-right text-sm text-muted-foreground mt-1">
@@ -1395,7 +1396,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                     </div>
                   </div>
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmittingComment || !newComment.trim() || newComment.length > MAX_COMMENT_LENGTH || (currentUser?.isAnonymous && (!guestUsername.trim() || !guestGender.trim()))}>
+                    <Button type="submit" disabled={isSubmittingComment || !newComment.trim() || newComment.length > MAX_COMMENT_LENGTH || (currentUser?.isAnonymous && !isGuestInfoSet)}>
                       <Send className="mr-2 h-4 w-4" />
                       {isSubmittingComment ? "Enviando..." : "Enviar Opinión"}
                     </Button>
