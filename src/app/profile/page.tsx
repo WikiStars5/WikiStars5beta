@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, MessageSquare, Edit, Save, BarChart3, Map, VenusAndMars, Smile, UserPlus } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, MessageSquare, Edit, Save, BarChart3, Map, VenusAndMars, Smile, UserPlus, Link2 } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -94,9 +94,9 @@ export default function ProfilePage() {
             }
           }).catch(err => console.error("Error fetching user stats:", err));
       } else {
-          setUserStats({ comments: 0, ratings: 0, attitudes: 0});
+          // For guests, stats are not yet tracked on the server.
+          setUserStats(null);
       }
-
     }
   }, [isLoading, currentUser, reset, isAnonymous]);
 
@@ -109,10 +109,11 @@ export default function ProfilePage() {
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
       await updateUserProfileCallable(data);
-
+      if (firebaseUser) {
+        await updateProfile(firebaseUser, { displayName: data.username });
+      }
       toast({ title: "Perfil Actualizado", description: "Tus cambios han sido guardados." });
       setIsEditing(false);
-      // Let the onSnapshot listener in useAuth handle the state update automatically.
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({ title: "Error", description: error.message || "No se pudo actualizar tu perfil.", variant: "destructive" });
@@ -129,7 +130,6 @@ export default function ProfilePage() {
       const credential = EmailAuthProvider.credential(data.email, data.password);
       await linkWithCredential(firebaseUser, credential);
       await updateUserProfileCallable({ username: data.username });
-      
       await updateProfile(firebaseUser, { displayName: data.username });
 
       toast({
@@ -175,7 +175,7 @@ export default function ProfilePage() {
 
   if (!currentUser) {
      return (
-        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center p-4">
             <Alert variant="destructive">
                 <ShieldCheck className="h-4 w-4" />
                 <AlertTitle>Error al Cargar Perfil</AlertTitle>
@@ -284,8 +284,8 @@ export default function ProfilePage() {
             <TabsList className="grid w-full grid-cols-4 h-auto">
                 <TabsTrigger value="stats"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
                 <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
-                <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
                 <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
+                <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
             </TabsList>
             
             <TabsContent value="stats" className="mt-6">
@@ -332,6 +332,24 @@ export default function ProfilePage() {
                             <p>Aún no has desbloqueado ningún logro. ¡Empieza a explorar para ganar el primero!</p>
                         </div>
                       )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="rachas" className="mt-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Rachas de Actividad</CardTitle>
+                        <CardDescription>Tu historial de participación y rachas.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Alert>
+                            <Flame className="h-4 w-4" />
+                            <AlertTitle>Próximamente</AlertTitle>
+                            <AlertDescription>
+                                ¡Estamos trabajando en esta función! Vuelve pronto para ver tus rachas de participación.
+                            </AlertDescription>
+                        </Alert>
                     </CardContent>
                 </Card>
             </TabsContent>
@@ -386,24 +404,7 @@ export default function ProfilePage() {
                   </CardContent>
                 </Card>
             </TabsContent>
-            
-            <TabsContent value="rachas" className="mt-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Rachas de Actividad</CardTitle>
-                        <CardDescription>Tu historial de participación y rachas.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Alert>
-                            <Flame className="h-4 w-4" />
-                            <AlertTitle>Próximamente</AlertTitle>
-                            <AlertDescription>
-                                ¡Estamos trabajando en esta función! Vuelve pronto para ver tus rachas de participación.
-                            </AlertDescription>
-                        </Alert>
-                    </CardContent>
-                </Card>
-            </TabsContent>
+
         </Tabs>
   );
 
@@ -427,6 +428,47 @@ export default function ProfilePage() {
           </CardTitle>
           <CardDescription>{isAnonymous ? 'Perfil de Invitado' : currentUser.email}</CardDescription>
         </CardHeader>
+        {isAnonymous && (
+            <CardContent className="p-4 bg-primary/10 text-center">
+                 <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+                    <DialogTrigger asChild>
+                         <Button>
+                           <Link2 className="mr-2 h-4 w-4" />
+                           Vincular Cuenta y Guardar Progreso
+                         </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Vincular Cuenta</DialogTitle>
+                          <DialogDescription>
+                            Crea una cuenta permanente para guardar tu progreso y acceder desde cualquier dispositivo.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
+                           <div>
+                               <Label htmlFor="link-username">Nombre de Usuario</Label>
+                               <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} />} />
+                               {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
+                           </div>
+                           <div>
+                               <Label htmlFor="link-email">Correo Electrónico</Label>
+                               <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} />} />
+                               {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
+                           </div>
+                           <div>
+                               <Label htmlFor="link-password">Contraseña</Label>
+                               <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} />} />
+                               {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
+                           </div>
+                           <Button type="submit" className="w-full" disabled={isLinking}>
+                                {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Link2 className="mr-2 h-4 w-4"/>}
+                                {isLinking ? 'Vinculando...' : 'Vincular Cuenta'}
+                           </Button>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+            </CardContent>
+        )}
       </Card>
       
       {isAnonymous ? renderProfileForGuest() : renderProfileForRegisteredUser()}
