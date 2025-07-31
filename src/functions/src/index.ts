@@ -35,7 +35,7 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
   const user = event.data; // The user record created in Firebase Auth
   const { uid, email, displayName, photoURL } = user;
 
-  const isAnonymous = !email; // A simple heuristic: if no email, it's likely an anonymous user.
+  const isAnonymous = !email; 
 
   const userProfile: UserProfile = {
     uid: uid,
@@ -56,7 +56,7 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
 
   try {
     await db.collection('users').doc(uid).set(userProfile);
-    console.log(`Successfully created profile for user: ${uid}`);
+    console.log(`Successfully created profile for user: ${uid} (isAnonymous: ${isAnonymous})`);
   } catch (error) {
     console.error(`Error creating user profile for ${uid}:`, error);
   }
@@ -70,8 +70,6 @@ export const updateUserProfile = onCall(async (request) => {
     const uid = request.auth.uid;
     const { username, countryCode, gender } = request.data;
     
-    // Allow username/gender update for anonymous users, but not country for now.
-    // The username check is also more lenient for guests.
     if (!username || username.length < 3 || username.length > 50) {
         throw new HttpsError('invalid-argument', 'Username must be between 3 and 50 characters.');
     }
@@ -85,19 +83,20 @@ export const updateUserProfile = onCall(async (request) => {
         gender: gender || '',
         lastLoginAt: new Date().toISOString(),
     };
-
-    // For registered users, update country and potentially Firebase Auth displayName
-    const callingUser = await auth.getUser(uid);
-    if (!callingUser.providerData.some(p => p.providerId === 'anonymous')) {
-      updateData.country = countryName;
-      updateData.countryCode = safeCountryCode;
+    
+    // Only add country if it's provided. This allows guests to update only username/gender.
+    if (safeCountryCode) {
+        updateData.country = countryName;
+        updateData.countryCode = safeCountryCode;
     }
 
     try {
         await userRef.set(updateData, { merge: true });
         
-        // Only update Auth profile if user is not anonymous
-        if (!callingUser.providerData.some(p => p.providerId === 'anonymous')) {
+        const userRecord = await auth.getUser(uid);
+        const isAnonymous = userRecord.providerData.length === 0;
+
+        if (!isAnonymous) {
              await auth.updateUser(uid, { displayName: username.trim() });
         }
 
@@ -171,7 +170,7 @@ const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
     lastLoginAt: convertTimestampToString(data.lastLoginAt),
     fcmToken: data.fcmToken || undefined,
     achievements: data.achievements || [],
-    isAnonymous: data.isAnonymous ?? true,
+    isAnonymous: data.isAnonymous ?? false,
   };
 };
 

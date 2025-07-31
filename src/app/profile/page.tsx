@@ -78,7 +78,7 @@ export default function ProfilePage() {
     defaultValues: { email: '', password: '', username: ''}
   });
   
-  const isAnonymous = currentUser?.isAnonymous ?? true;
+  const isAnonymous = currentUser?.isAnonymous ?? false;
 
   useEffect(() => {
     if (!isLoading && currentUser) {
@@ -88,21 +88,21 @@ export default function ProfilePage() {
         gender: currentUser.gender ?? '',
       });
       
-      if (currentUser && !currentUser.isAnonymous) {
+      if (currentUser && !isAnonymous) {
           getUserStatsCallable().then(result => {
             const data = result.data as { success: boolean; stats?: any };
             if (data.success) {
               setUserStats(data.stats);
             }
           }).catch(err => console.error("Error fetching user stats:", err));
-      } else if (currentUser && currentUser.isAnonymous) {
+      } else if (currentUser && isAnonymous) {
           // For anonymous users, we can't get stats from server reliably,
           // so we can initialize them to 0 or leave them as null.
           setUserStats({ comments: 0, ratings: 0, attitudes: 0}); // Example: init to 0
       }
 
     }
-  }, [isLoading, currentUser, reset]);
+  }, [isLoading, currentUser, reset, isAnonymous]);
 
   useEffect(() => {
     if (isLinkDialogOpen && currentUser?.username) {
@@ -183,7 +183,7 @@ export default function ProfilePage() {
     );
   }
 
-  // After loading, if there's still no user object, it means something went wrong with auth.
+  // This check is now robust. It only fails if after loading there's truly no user.
   if (!currentUser) {
     return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
