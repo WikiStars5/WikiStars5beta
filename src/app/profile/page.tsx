@@ -208,8 +208,8 @@ export default function ProfilePage() {
         <TabsList className="grid w-full grid-cols-4 h-auto">
             <TabsTrigger value="stats"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
             <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
-            <TabsTrigger value="progreso"><Save className="mr-2" />Guardar Progreso</TabsTrigger>
             <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
+            <TabsTrigger value="progreso"><Save className="mr-2" />Guardar Progreso</TabsTrigger>
         </TabsList>
         <TabsContent value="stats" className="mt-6">
             <Card>
@@ -260,6 +260,23 @@ export default function ProfilePage() {
                 </CardContent>
             </Card>
         </TabsContent>
+        <TabsContent value="rachas" className="mt-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Rachas de Actividad</CardTitle>
+                    <CardDescription>Tu historial de participación y rachas.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Alert>
+                        <Flame className="h-4 w-4" />
+                        <AlertTitle>Próximamente</AlertTitle>
+                        <AlertDescription>
+                            ¡Estamos trabajando en esta función! Vuelve pronto para ver tus rachas de participación.
+                        </AlertDescription>
+                    </Alert>
+                </CardContent>
+            </Card>
+        </TabsContent>
         <TabsContent value="progreso" className="mt-6">
             <Card>
               <CardHeader>
@@ -305,23 +322,6 @@ export default function ProfilePage() {
                   </DialogContent>
                 </Dialog>
               </CardContent>
-            </Card>
-        </TabsContent>
-        <TabsContent value="rachas" className="mt-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Rachas de Actividad</CardTitle>
-                    <CardDescription>Tu historial de participación y rachas.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Alert>
-                        <Flame className="h-4 w-4" />
-                        <AlertTitle>Próximamente</AlertTitle>
-                        <AlertDescription>
-                            ¡Estamos trabajando en esta función! Vuelve pronto para ver tus rachas de participación.
-                        </AlertDescription>
-                    </Alert>
-                </CardContent>
             </Card>
         </TabsContent>
     </Tabs>
