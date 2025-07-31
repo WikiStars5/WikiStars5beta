@@ -97,7 +97,6 @@ export function FigureListItem({ figure, cardStyle = 'default' }: FigureListItem
               <>
                 <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
                 <span className="font-semibold text-foreground">{averageRating.toFixed(1)}</span>
-                <span className="text-xs text-muted-foreground">({totalVotes})</span>
               </>
             ) : (
               <span className="text-xs text-muted-foreground">Sin calificar</span>
