@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -16,7 +15,7 @@ import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
 import { Separator } from '@/components/ui/separator';
-import type { UserProfile } from '@/lib/types';
+import type { UserProfile, UserStreak } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { auth, app } from '@/lib/firebase';
 import { signOut, linkWithCredential, EmailAuthProvider, updateProfile } from 'firebase/auth';
@@ -29,6 +28,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import Image from 'next/image';
 
 const achievementDetails = {
   first_glance: { icon: User, title: "Primer Vistazo", description: "Visitaste tu primer perfil." },
@@ -58,6 +58,8 @@ type LinkAccountFormValues = z.infer<typeof linkAccountFormSchema>;
 
 const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
 const getUserStatsCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserStats');
+const getUserStreaksCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserStreaks');
+
 
 export default function ProfilePage() {
   const { user: currentUser, firebaseUser, isLoading, isAnonymous } = useAuth();
@@ -65,6 +67,8 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [userStats, setUserStats] = useState<{ comments: number; ratings: number; attitudes: number } | null>(null);
+  const [streaks, setStreaks] = useState<UserStreak[]>([]);
+  const [isStreaksLoading, setIsStreaksLoading] = useState(true);
   const [isLinking, setIsLinking] = useState(false);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   
@@ -93,9 +97,21 @@ export default function ProfilePage() {
               setUserStats(data.stats);
             }
           }).catch(err => console.error("Error fetching user stats:", err));
+
+          setIsStreaksLoading(true);
+          getUserStreaksCallable().then(result => {
+              const data = result.data as { success: boolean, streaks?: UserStreak[] };
+              if(data.success && data.streaks) {
+                  setStreaks(data.streaks);
+              }
+          }).catch(err => console.error("Error fetching user streaks:", err))
+          .finally(() => setIsStreaksLoading(false));
+
       } else {
           // For guests, stats are not yet tracked on the server.
           setUserStats(null);
+          setStreaks([]);
+          setIsStreaksLoading(false);
       }
     }
   }, [isLoading, currentUser, reset, isAnonymous]);
@@ -165,9 +181,6 @@ export default function ProfilePage() {
     }
   };
 
-  // **THE FIX**: This logic is now robust. `isLoading` is true until `useAuth`
-  // has a definitive user object (either registered or a locally-built guest).
-  // The `!currentUser` check will now only trigger on a true failure.
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
@@ -208,7 +221,7 @@ export default function ProfilePage() {
   
   const renderProfileForGuest = () => (
     <Tabs defaultValue="stats" className="w-full mt-6">
-        <TabsList className="grid w-full grid-cols-3 h-auto">
+        <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-3 h-auto">
             <TabsTrigger value="stats"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
             <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
             <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
@@ -271,9 +284,9 @@ export default function ProfilePage() {
                 <CardContent>
                     <Alert>
                         <Flame className="h-4 w-4" />
-                        <AlertTitle>Próximamente</AlertTitle>
+                        <AlertTitle>Función para Usuarios Registrados</AlertTitle>
                         <AlertDescription>
-                            ¡Estamos trabajando en esta función! Vuelve pronto para ver tus rachas de participación.
+                            Las rachas de actividad se guardan en tu cuenta. ¡Vincula tu cuenta para empezar a registrar tus rachas!
                         </AlertDescription>
                     </Alert>
                 </CardContent>
@@ -343,16 +356,38 @@ export default function ProfilePage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Rachas de Actividad</CardTitle>
-                        <CardDescription>Tu historial de participación y rachas.</CardDescription>
+                        <CardDescription>Tu historial de participación y rachas por personaje.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Alert>
-                            <Flame className="h-4 w-4" />
-                            <AlertTitle>Próximamente</AlertTitle>
-                            <AlertDescription>
-                                ¡Estamos trabajando en esta función! Vuelve pronto para ver tus rachas de participación.
-                            </AlertDescription>
-                        </Alert>
+                        {isStreaksLoading ? (
+                            <div className="flex justify-center items-center py-10">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                        ) : streaks.length > 0 ? (
+                            <div className="space-y-4">
+                                {streaks.map(streak => (
+                                    <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
+                                        <Avatar className="h-12 w-12">
+                                            <AvatarImage src={correctMalformedUrl(streak.figurePhotoUrl) || undefined} alt={streak.figureName} />
+                                            <AvatarFallback>{streak.figureName.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-grow">
+                                            <p className="font-semibold">{streak.figureName}</p>
+                                            <p className="text-sm text-muted-foreground">Último comentario: {new Date(streak.lastCommentDate).toLocaleDateString()}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-orange-500 font-bold">
+                                            <Flame className="h-5 w-5"/>
+                                            <span>{streak.currentStreak}</span>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                           <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
+                                <Flame className="mx-auto h-8 w-8 mb-2" />
+                                <p>Aún no tienes ninguna racha. ¡Comenta en el perfil de un personaje para empezar una!</p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </TabsContent>

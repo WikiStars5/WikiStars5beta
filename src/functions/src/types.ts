@@ -1,4 +1,3 @@
-
 // This file contains type definitions used exclusively by the Cloud Functions.
 // It is a copy of the relevant types from the main application's /lib/types.ts
 // to ensure the functions directory is completely isolated and has no external dependencies.
@@ -56,6 +55,16 @@ export interface UserProfile {
   fcmToken?: string;
   achievements?: string[];
   isAnonymous?: boolean;
+}
+
+export interface UserStreak {
+  userId: string;
+  figureId: string;
+  figureName: string;
+  figurePhotoUrl: string;
+  currentStreak: number;
+  lastCommentDate: string; // Stored as 'YYYY-MM-DD'
+  updatedAt: any; // Firestore ServerTimestamp
 }
 
 export interface Country {

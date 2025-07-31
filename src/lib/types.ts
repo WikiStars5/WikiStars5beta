@@ -1,4 +1,3 @@
-
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -115,6 +114,16 @@ export interface UserProfile {
   fcmToken?: string; // Field to store the Firebase Cloud Messaging token
   achievements?: string[]; // Array of unlocked achievement IDs
   isAnonymous?: boolean;
+}
+
+export interface UserStreak {
+  userId: string;
+  figureId: string;
+  figureName: string;
+  figurePhotoUrl: string;
+  currentStreak: number;
+  lastCommentDate: string; // ISO string date 'YYYY-MM-DD'
+  updatedAt: string; // ISO string full date
 }
 
 export interface GenderOption {
