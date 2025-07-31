@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import Image from 'next/image';
+import { StreakAnimation } from '@/components/shared/StreakAnimation';
 
 const achievementDetails = {
   first_glance: { icon: User, title: "Primer Vistazo", description: "Visitaste tu primer perfil." },
@@ -70,6 +71,7 @@ export default function ProfilePage() {
   const [isStreaksLoading, setIsStreaksLoading] = useState(true);
   const [isLinking, setIsLinking] = useState(false);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [animationStreak, setAnimationStreak] = useState<number | null>(null);
   const isAnonymous = currentUser?.isAnonymous ?? false;
   
   const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
@@ -101,7 +103,6 @@ export default function ProfilePage() {
           setUserStats(null);
       }
       
-      // For both registered and anonymous users, streaks are local.
       setIsStreaksLoading(true);
       try {
           const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
@@ -330,7 +331,7 @@ export default function ProfilePage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-4 gap-2">
                         <Card className="p-4 text-center">
                             <CardTitle className="text-base">Neutral</CardTitle>
                         </Card>
@@ -503,6 +504,11 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8">
+       <StreakAnimation 
+        streakCount={animationStreak}
+        isOpen={animationStreak !== null}
+        onClose={() => setAnimationStreak(null)}
+      />
       <Card className="w-full shadow-xl overflow-hidden">
         <CardHeader className="items-center text-center p-6 bg-muted/30">
           <Avatar className="h-24 w-24 mb-4 border-2 border-primary">
