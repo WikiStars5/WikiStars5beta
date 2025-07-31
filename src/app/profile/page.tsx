@@ -314,7 +314,7 @@ export default function ProfilePage() {
                     <CardTitle>Mis Emociones</CardTitle>
                     <CardDescription>Aquí verás los personajes según la emoción que te provocan. ¡Funcionalidad próximamente!</CardDescription>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <CardContent className="grid grid-cols-6 gap-4">
                       <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><Smile className="h-8 w-8 text-yellow-500" /><p className="font-semibold">Alegría</p></Card>
                       <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><Hand className="h-8 w-8 text-green-500" /><p className="font-semibold">Envidia</p></Card>
                       <Card className="p-4 flex flex-col items-center justify-center text-center space-y-2"><Frown className="h-8 w-8 text-blue-500" /><p className="font-semibold">Tristeza</p></Card>
