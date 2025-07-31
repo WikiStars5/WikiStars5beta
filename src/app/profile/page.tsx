@@ -77,9 +77,13 @@ export default function ProfilePage() {
     defaultValues: { email: '', password: '', username: ''}
   });
   
-  const loadProfileData = useCallback(async () => {
+  const loadProfileData = useCallback(async (attitudeTabClicked = false) => {
     if (!currentUser) return;
-    setIsDataLoading(true);
+
+    if (attitudeTabClicked) {
+      setIsDataLoading(true);
+    }
+
     try {
         const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
         if(streaksJSON) {
@@ -108,10 +112,18 @@ export default function ProfilePage() {
           neutral: attitudes.filter(a => a.attitude === 'neutral').map(a => a.figureId),
         };
 
-        setFanList(await getFiguresByIds(figureIdsByType.fan));
-        setHaterList(await getFiguresByIds(figureIdsByType.hater));
-        setSimpList(await getFiguresByIds(figureIdsByType.simp));
-        setNeutralList(await getFiguresByIds(figureIdsByType.neutral));
+        // Fetch all figures in parallel
+        const [fanFigures, haterFigures, simpFigures, neutralFigures] = await Promise.all([
+            getFiguresByIds(figureIdsByType.fan),
+            getFiguresByIds(figureIdsByType.hater),
+            getFiguresByIds(figureIdsByType.simp),
+            getFiguresByIds(figureIdsByType.neutral)
+        ]);
+
+        setFanList(fanFigures);
+        setHaterList(haterFigures);
+        setSimpList(simpFigures);
+        setNeutralList(neutralFigures);
         
     } catch (error) {
         console.error("Error loading data from localStorage", error);
@@ -121,9 +133,12 @@ export default function ProfilePage() {
         setSimpList([]);
         setNeutralList([]);
     } finally {
-        setIsDataLoading(false);
+        if (attitudeTabClicked) {
+            setIsDataLoading(false);
+        }
     }
   }, [currentUser]);
+
 
   useEffect(() => {
     if (!isLoading && currentUser) {
@@ -132,7 +147,8 @@ export default function ProfilePage() {
         countryCode: currentUser.countryCode ?? '',
         gender: currentUser.gender ?? '',
       });
-      loadProfileData();
+      setIsDataLoading(true);
+      loadProfileData().finally(() => setIsDataLoading(false));
     }
   }, [isLoading, currentUser, reset, loadProfileData]);
 
@@ -253,7 +269,7 @@ export default function ProfilePage() {
        <Tabs defaultValue="rachas" className="w-full">
             <TabsList className="flex w-full h-auto p-1 rounded-lg bg-black border border-white/20">
                 <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
-                <TabsTrigger value="actitud" onClick={() => loadProfileData()}><Heart className="mr-2" />Mi Actitud</TabsTrigger>
+                <TabsTrigger value="actitud" onClick={() => loadProfileData(true)}><Heart className="mr-2" />Mi Actitud</TabsTrigger>
                 <TabsTrigger value="emociones"><Smile className="mr-2" />Mis Emociones</TabsTrigger>
             </TabsList>
             
@@ -391,8 +407,8 @@ export default function ProfilePage() {
         isOpen={animationStreak !== null}
         onClose={() => setAnimationStreak(null)}
       />
-      <Card className="w-full shadow-xl overflow-hidden">
-        <CardHeader className="items-center text-center p-6 bg-muted/30">
+      <Card className="w-full shadow-xl overflow-hidden border border-white/20 bg-black">
+        <CardHeader className="items-center text-center p-6">
           <Avatar className="h-24 w-24 mb-4 border-2 border-primary">
             <AvatarImage src={correctMalformedUrl(currentUser.photoURL) || undefined} alt={displayName} />
             <AvatarFallback className="text-3xl">
