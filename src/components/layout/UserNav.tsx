@@ -46,7 +46,7 @@ export function UserNav() {
     );
   }
 
-  // User is not logged in at all (not even anonymous), show a login button
+  // User is not logged in at all (not even anonymous), show a login button for admin
   if (!currentUser) {
      return (
         <Button asChild variant="ghost" size="icon" className="h-9 w-9">
@@ -89,10 +89,19 @@ export function UserNav() {
         
         <Link href="/profile" passHref>
           <DropdownMenuItem>
-            {isAnonymous ? <Save className="mr-2 h-4 w-4" /> : <User className="mr-2 h-4 w-4" />}
-            <span>{isAnonymous ? 'Guardar Progreso' : 'Mi Perfil'}</span>
+            <User className="mr-2 h-4 w-4" />
+            <span>Mi Perfil</span>
           </DropdownMenuItem>
         </Link>
+        
+        {isAnonymous && (
+           <Link href="/profile" passHref>
+            <DropdownMenuItem>
+              <Save className="mr-2 h-4 w-4" />
+              <span>Guardar Progreso</span>
+            </DropdownMenuItem>
+          </Link>
+        )}
         
         {isAdmin && (
           <Link href="/admin" passHref>
