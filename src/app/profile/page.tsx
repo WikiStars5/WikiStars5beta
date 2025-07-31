@@ -57,7 +57,7 @@ const linkAccountFormSchema = z.object({
 type LinkAccountFormValues = z.infer<typeof linkAccountFormSchema>;
 
 const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
-const getUserStatsCallable = httpsCallable(app.functions('us-central1'), 'getUserStats');
+const getUserStatsCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserStats');
 
 export default function ProfilePage() {
   const { user: currentUser, firebaseUser, isLoading, isAnonymous } = useAuth();
@@ -165,7 +165,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Main render logic starts here
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
@@ -174,14 +173,13 @@ export default function ProfilePage() {
     );
   }
 
-  // After loading, if there's still no user, it's a genuine error.
   if (!currentUser) {
     return (
-        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
-            <h2 className="text-2xl font-bold">Error al Cargar Perfil</h2>
-            <p className="text-muted-foreground mb-4">No se pudo obtener la información del perfil. Por favor, intenta de nuevo.</p>
-            <Button asChild><Link href="/">Volver al Inicio</Link></Button>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
+        <h2 className="text-2xl font-bold">Error al Cargar Perfil</h2>
+        <p className="text-muted-foreground mb-4">No se pudo obtener la información del perfil. Por favor, intenta de nuevo.</p>
+        <Button asChild><Link href="/">Volver al Inicio</Link></Button>
+      </div>
     );
   }
 
@@ -201,67 +199,64 @@ export default function ProfilePage() {
     );
   };
   
-  const renderProfileTabs = () => {
-    if (isAnonymous) {
-      return (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Guarda Tu Progreso</CardTitle>
-            <CardDescription>Tu actividad como invitado se guarda en este dispositivo. Crea una cuenta para no perderlo.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <Alert>
-              <BarChart3 className="h-4 w-4" />
-              <AlertTitle>Estadísticas en Desarrollo</AlertTitle>
-              <AlertDescription>
-                Las estadísticas de comentarios y votos para invitados estarán disponibles pronto.
-              </AlertDescription>
-            </Alert>
-            <Separator/>
-            <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="w-full" size="lg">
-                  <Save className="mr-2 h-5 w-5"/>
-                  Vincular Cuenta y Guardar Progreso
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Crea una cuenta para guardar tu progreso</DialogTitle>
-                  <DialogDescription>
-                    Vincula tu actividad a una cuenta permanente con correo y contraseña. Tu nombre de invitado se usará por defecto.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
-                  <div>
-                    <Label htmlFor="link-username">Nombre de Usuario</Label>
-                    <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} placeholder="Elige un nombre de usuario"/>} />
-                    {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="link-email">Correo Electrónico</Label>
-                    <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} placeholder="tu@correo.com"/>} />
-                     {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="link-password">Contraseña</Label>
-                    <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} placeholder="Mínimo 6 caracteres"/>} />
-                     {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
-                  </div>
-                  <Button type="submit" disabled={isLinking} className="w-full">
-                    {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserPlus className="mr-2 h-4 w-4"/>}
-                    Vincular Cuenta
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </CardContent>
-        </Card>
-      );
-    }
+  const renderProfileForGuest = () => (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>Guarda Tu Progreso</CardTitle>
+        <CardDescription>Tu actividad como invitado se guarda en este dispositivo. Crea una cuenta para no perderlo.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <Alert>
+          <BarChart3 className="h-4 w-4" />
+          <AlertTitle>Estadísticas en Desarrollo</AlertTitle>
+          <AlertDescription>
+            Las estadísticas de comentarios y votos para invitados estarán disponibles pronto.
+          </AlertDescription>
+        </Alert>
+        <Separator/>
+        <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="w-full" size="lg">
+              <Save className="mr-2 h-5 w-5"/>
+              Vincular Cuenta y Guardar Progreso
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Crea una cuenta para guardar tu progreso</DialogTitle>
+              <DialogDescription>
+                Vincula tu actividad a una cuenta permanente con correo y contraseña. Tu nombre de invitado se usará por defecto.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
+              <div>
+                <Label htmlFor="link-username">Nombre de Usuario</Label>
+                <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} placeholder="Elige un nombre de usuario"/>} />
+                {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="link-email">Correo Electrónico</Label>
+                <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} placeholder="tu@correo.com"/>} />
+                 {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="link-password">Contraseña</Label>
+                <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} placeholder="Mínimo 6 caracteres"/>} />
+                 {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
+              </div>
+              <Button type="submit" disabled={isLinking} className="w-full">
+                {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserPlus className="mr-2 h-4 w-4"/>}
+                Vincular Cuenta
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  );
 
-    return (
-       <Tabs defaultValue="logros" className="w-full">
+  const renderProfileForRegisteredUser = () => (
+       <Tabs defaultValue="logros" className="w-full mt-6">
             <TabsList className="grid w-full grid-cols-3 h-auto">
                 <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
                 <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
@@ -376,8 +371,7 @@ export default function ProfilePage() {
                 </Card>
             </TabsContent>
         </Tabs>
-    );
-  }
+  );
 
   return (
     <div className="space-y-8">
@@ -401,10 +395,8 @@ export default function ProfilePage() {
         </CardHeader>
       </Card>
       
-      {renderProfileTabs()}
+      {isAnonymous ? renderProfileForGuest() : renderProfileForRegisteredUser()}
 
     </div>
   );
 }
-
-    
