@@ -84,22 +84,22 @@ export const updateUserProfile = onCall(async (request) => {
         lastLoginAt: new Date().toISOString(),
     };
     
-    // Only add country if it's provided. This allows guests to update only username/gender.
-    if (safeCountryCode) {
+    if (countryCode) {
         updateData.country = countryName;
         updateData.countryCode = safeCountryCode;
     }
 
     try {
-        await userRef.set(updateData, { merge: true });
-        
         const userRecord = await auth.getUser(uid);
-        const isAnonymous = userRecord.providerData.length === 0;
+        const isAnonymous = !userRecord.email;
 
+        // Only update the Auth profile if the user is NOT anonymous
         if (!isAnonymous) {
              await auth.updateUser(uid, { displayName: username.trim() });
         }
-
+        
+        await userRef.set(updateData, { merge: true });
+        
         return { success: true, message: 'Profile updated successfully.' };
     } catch (error) {
         console.error("Error updating user profile:", error);
@@ -140,15 +140,12 @@ export const getUserStats = onCall(async (request) => {
 
 const convertTimestampToString = (timestamp: any): string | undefined => {
   if (!timestamp) return undefined;
-  // Handle Firestore Timestamp
   if (typeof timestamp.toDate === 'function') {
     return timestamp.toDate().toISOString();
   }
-  // Handle ISO string
   if (typeof timestamp === 'string') {
     return timestamp;
   }
-  // Handle Date object
   if (timestamp instanceof Date) {
     return timestamp.toISOString();
   }
