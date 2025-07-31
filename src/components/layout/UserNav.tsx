@@ -46,19 +46,15 @@ export function UserNav() {
     );
   }
 
-  if (!currentUser) {
-    // This case should not happen with anonymous auth enabled, but it's a safe fallback.
-    return (
-       <Button variant="ghost" className="relative h-9 w-9 rounded-full" disabled>
-          <Avatar className="h-9 w-9"><AvatarFallback><User/></AvatarFallback></Avatar>
-       </Button>
-    );
+  // If the user is anonymous or doesn't exist, render nothing.
+  if (isAnonymous || !currentUser) {
+    return null;
   }
   
-  const isAdmin = !isAnonymous && (currentUser.uid === ADMIN_UID || currentUser.role === 'admin');
-  const displayName = isAnonymous ? (currentUser.username || "Invitado") : (currentUser.username || "Usuario");
-  const photoURL = isAnonymous ? null : currentUser.photoURL;
-  const email = isAnonymous ? "Sesión de invitado" : currentUser.email;
+  const isAdmin = currentUser.uid === ADMIN_UID || currentUser.role === 'admin';
+  const displayName = currentUser.username || "Usuario";
+  const photoURL = currentUser.photoURL;
+  const email = currentUser.email;
 
   return (
     <DropdownMenu>
@@ -67,7 +63,7 @@ export function UserNav() {
           <Avatar className="h-9 w-9">
             <AvatarImage src={correctMalformedUrl(photoURL) || undefined} alt={displayName} />
             <AvatarFallback>
-              {isAnonymous ? <User className="h-5 w-5"/> : displayName.charAt(0).toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -101,24 +97,11 @@ export function UserNav() {
           </Link>
         )}
 
-        {isAnonymous && (
-           <Link href="/profile" passHref>
-            <DropdownMenuItem>
-              <Save className="mr-2 h-4 w-4" />
-              <span>Guardar Progreso</span>
-            </DropdownMenuItem>
-          </Link>
-        )}
-
-        {!isAnonymous && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Cerrar Sesión</span>
-            </DropdownMenuItem>
-          </>
-        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleLogout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Cerrar Sesión</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
