@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link'; 
@@ -48,8 +49,10 @@ export function UserNav() {
   // User is not logged in at all (not even anonymous), show a login button
   if (!currentUser) {
      return (
-        <Button asChild variant="outline">
-            <Link href="/login">Acceder</Link>
+        <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+            <Link href="/login" aria-label="Acceder">
+                <User className="h-5 w-5 text-foreground/70" />
+            </Link>
         </Button>
     );
   }
