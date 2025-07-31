@@ -254,91 +254,54 @@ export default function ProfilePage() {
   };
   
   const renderProfileForGuest = () => (
-    <Tabs defaultValue="estadisticas" className="w-full mt-6">
-        <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-2 h-auto">
-            <TabsTrigger value="estadisticas"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
-            <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
-        </TabsList>
-        <TabsContent value="estadisticas" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Estadísticas de Invitado</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Alert>
-                  <BarChart3 className="h-4 w-4" />
-                  <AlertTitle>Estadísticas en Desarrollo</AlertTitle>
-                  <AlertDescription>
-                    Las estadísticas de comentarios y votos para invitados estarán disponibles pronto.
-                  </AlertDescription>
-                </Alert>
-              </CardContent>
-            </Card>
-        </TabsContent>
-        <TabsContent value="rachas" className="mt-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Rachas de Actividad</CardTitle>
-                    <CardDescription>Tu historial de participación y rachas. ¡Gana una racha comentando o respondiendo en el perfil de un personaje por días consecutivos!</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isDataLoading ? (
-                      <div className="flex justify-center items-center py-10">
-                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      </div>
-                  ) : streaks.length > 0 ? (
-                      <div className="space-y-4">
-                          {streaks.map(streak => (
-                              <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
-                                  <Avatar className="h-12 w-12">
-                                      <AvatarImage src={correctMalformedUrl(streak.figurePhotoUrl) || undefined} alt={streak.figureName} />
-                                      <AvatarFallback>{streak.figureName.charAt(0)}</AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-grow">
-                                      <p className="font-semibold">{streak.figureName}</p>
-                                      <p className="text-sm text-muted-foreground">Último comentario: {new Date(streak.lastCommentDate).toLocaleDateString()}</p>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-orange-500 font-bold">
-                                      <Flame className="h-5 w-5"/>
-                                      <span>{streak.currentStreak}</span>
-                                  </div>
-                              </Link>
-                          ))}
-                      </div>
-                  ) : (
-                     <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
-                          <Flame className="mx-auto h-8 w-8 mb-2" />
-                          <p>Aún no tienes ninguna racha. ¡Comenta en el perfil de un personaje para empezar una!</p>
-                      </div>
-                  )}
-                </CardContent>
-            </Card>
-        </TabsContent>
-    </Tabs>
+    <div className="w-full mt-6">
+       <Card>
+          <CardHeader>
+              <CardTitle>Rachas de Actividad</CardTitle>
+              <CardDescription>Tu historial de participación y rachas. ¡Gana una racha comentando o respondiendo en el perfil de un personaje por días consecutivos!</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isDataLoading ? (
+                <div className="flex justify-center items-center py-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            ) : streaks.length > 0 ? (
+                <div className="space-y-4">
+                    {streaks.map(streak => (
+                        <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
+                            <Avatar className="h-12 w-12">
+                                <AvatarImage src={correctMalformedUrl(streak.figurePhotoUrl) || undefined} alt={streak.figureName} />
+                                <AvatarFallback>{streak.figureName.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-grow">
+                                <p className="font-semibold">{streak.figureName}</p>
+                                <p className="text-sm text-muted-foreground">Último comentario: {new Date(streak.lastCommentDate).toLocaleDateString()}</p>
+                            </div>
+                            <div className="flex items-center gap-2 text-orange-500 font-bold">
+                                <Flame className="h-5 w-5"/>
+                                <span>{streak.currentStreak}</span>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+            ) : (
+               <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
+                    <Flame className="mx-auto h-8 w-8 mb-2" />
+                    <p>Aún no tienes ninguna racha. ¡Comenta en el perfil de un personaje para empezar una!</p>
+                </div>
+            )}
+          </CardContent>
+      </Card>
+    </div>
   );
 
   const renderProfileForRegisteredUser = () => (
-       <Tabs defaultValue="stats" className="w-full mt-6">
-            <TabsList className="grid w-full grid-cols-3 h-auto">
-                <TabsTrigger value="stats"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
-                <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
+       <Tabs defaultValue="informacion" className="w-full mt-6">
+            <TabsList className="grid w-full grid-cols-2 h-auto">
                 <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
+                <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="stats" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Tus Estadísticas</CardTitle>
-                    <CardDescription>Resumen de tu actividad en la plataforma.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <StatCard icon={MessageSquare} value={userStats?.comments} label="Comentarios" />
-                      <StatCard icon={BarChart3} value={userStats?.ratings} label="Calificaciones" />
-                      <StatCard icon={Heart} value={userStats?.attitudes} label="Votos de Actitud" />
-                  </CardContent>
-                </Card>
-            </TabsContent>
-            
+
             <TabsContent value="rachas" className="mt-6">
                 <Card>
                     <CardHeader>
@@ -506,5 +469,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
