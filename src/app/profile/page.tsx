@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, MessageSquare, Edit, Save, BarChart3, Map, VenusAndMars, Smile, UserPlus } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, MessageSquare, Edit, Save, BarChart3, Map, VenusAndMars, Smile, UserPlus, Info } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -60,7 +60,7 @@ const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1')
 const getUserStatsCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserStats');
 
 export default function ProfilePage() {
-  const { user: currentUser, firebaseUser, isLoading, isAnonymous } = useAuth();
+  const { user: currentUser, firebaseUser, isLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -77,6 +77,8 @@ export default function ProfilePage() {
     resolver: zodResolver(linkAccountFormSchema),
     defaultValues: { email: '', password: '', username: ''}
   });
+  
+  const isAnonymous = currentUser?.isAnonymous ?? true;
 
   useEffect(() => {
     if (!isLoading && currentUser) {
@@ -86,7 +88,6 @@ export default function ProfilePage() {
         gender: currentUser.gender ?? '',
       });
       
-      // Fetch stats for both anonymous and registered users
       getUserStatsCallable().then(result => {
         const data = result.data as { success: boolean; stats?: any };
         if (data.success) {
@@ -96,7 +97,6 @@ export default function ProfilePage() {
     }
   }, [isLoading, currentUser, reset]);
 
-  // When opening the link dialog, pre-fill the username from the current guest profile
   useEffect(() => {
     if (isLinkDialogOpen && currentUser?.username) {
         resetLink({ username: currentUser.username });
@@ -105,13 +105,21 @@ export default function ProfilePage() {
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
+      if (isAnonymous) {
+          localStorage.setItem('wikistars5-guestUsername', data.username);
+          localStorage.setItem('wikistars5-guestGender', data.gender || '');
+          localStorage.setItem('wikistars5-guestCountryCode', data.countryCode || '');
+      }
+      
       await updateUserProfileCallable(data);
-      if (firebaseUser) {
+
+      if (firebaseUser && !isAnonymous) {
         await updateProfile(firebaseUser, { displayName: data.username });
       }
+      
       toast({ title: "Perfil Actualizado", description: "Tus cambios han sido guardados." });
       setIsEditing(false);
-      // No need to refresh, onSnapshot listener in useAuth will handle it.
+      // useAuth hook will automatically update the view via onSnapshot/localStorage
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({ title: "Error", description: error.message || "No se pudo actualizar tu perfil.", variant: "destructive" });
@@ -129,7 +137,6 @@ export default function ProfilePage() {
       await linkWithCredential(firebaseUser, credential);
       await updateUserProfileCallable({ username: data.username });
       
-      // Also update the auth profile directly
       await updateProfile(firebaseUser, { displayName: data.username });
 
       toast({
@@ -175,7 +182,6 @@ export default function ProfilePage() {
     );
   }
 
-  // This condition now only triggers if, after loading, there's definitively no user.
   if (!currentUser) {
     return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
@@ -202,6 +208,8 @@ export default function ProfilePage() {
     );
   };
   
+  const defaultTab = isAnonymous ? "progreso" : "informacion";
+
   return (
     <div className="space-y-8">
       <Card className="w-full shadow-xl overflow-hidden">
@@ -224,122 +232,117 @@ export default function ProfilePage() {
         </CardHeader>
       </Card>
 
-      <Tabs defaultValue="informacion" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 h-auto">
-          <TabsTrigger value="informacion"><User className="mr-2" />{isAnonymous ? 'Progreso' : 'Información'}</TabsTrigger>
+      <Tabs defaultValue={defaultTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+          {isAnonymous ? (
+            <>
+              <TabsTrigger value="progreso"><BarChart3 className="mr-2" />Progreso</TabsTrigger>
+              <TabsTrigger value="informacion"><Info className="mr-2" />Información</TabsTrigger>
+            </>
+          ) : (
+            <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
+          )}
           <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
           <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
         </TabsList>
         
+        {isAnonymous && (
+           <TabsContent value="progreso" className="mt-6">
+               <Card>
+                 <CardHeader>
+                   <CardTitle>Tu Progreso como Invitado</CardTitle>
+                   <CardDescription>Aquí puedes ver tu actividad. ¡Guarda tu progreso para no perderlo!</CardDescription>
+                 </CardHeader>
+                 <CardContent className="space-y-6">
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     <StatCard icon={MessageSquare} value={userStats?.comments} label="Comentarios" />
+                     <StatCard icon={BarChart3} value={userStats?.ratings} label="Calificaciones" />
+                     <StatCard icon={Heart} value={userStats?.attitudes} label="Votos de Actitud" />
+                   </div>
+                   <Separator/>
+                    <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+                       <DialogTrigger asChild>
+                         <Button className="w-full" size="lg">
+                           <Save className="mr-2 h-5 w-5"/>
+                           Guardar Progreso (Crear Cuenta)
+                         </Button>
+                       </DialogTrigger>
+                       <DialogContent>
+                         <DialogHeader>
+                           <DialogTitle>Crea una cuenta para guardar tu progreso</DialogTitle>
+                           <DialogDescription>
+                             Vincula tu actividad a una cuenta permanente con correo y contraseña.
+                           </DialogDescription>
+                         </DialogHeader>
+                         <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
+                           <div>
+                             <Label htmlFor="link-username">Nombre de Usuario</Label>
+                             <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} placeholder="Elige un nombre de usuario"/>} />
+                             {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
+                           </div>
+                           <div>
+                             <Label htmlFor="link-email">Correo Electrónico</Label>
+                             <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} placeholder="tu@correo.com"/>} />
+                              {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
+                           </div>
+                           <div>
+                             <Label htmlFor="link-password">Contraseña</Label>
+                             <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} placeholder="Mínimo 6 caracteres"/>} />
+                              {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
+                           </div>
+                           <Button type="submit" disabled={isLinking} className="w-full">
+                             {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserPlus className="mr-2 h-4 w-4"/>}
+                             Vincular Cuenta
+                           </Button>
+                         </form>
+                       </DialogContent>
+                     </Dialog>
+                 </CardContent>
+               </Card>
+           </TabsContent>
+        )}
+
         <TabsContent value="informacion" className="mt-6">
-          {isAnonymous ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Tu Progreso como Invitado</CardTitle>
-                <CardDescription>Aquí puedes ver tu actividad. ¡Guarda tu progreso para no perderlo!</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                 <div className="space-y-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2"><VenusAndMars className="h-4 w-4"/>Sexo: <span className="font-medium text-foreground">{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</span></div>
-                 </div>
-                 <Separator/>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <StatCard icon={MessageSquare} value={userStats?.comments} label="Comentarios" />
-                  <StatCard icon={BarChart3} value={userStats?.ratings} label="Calificaciones" />
-                  <StatCard icon={Heart} value={userStats?.attitudes} label="Votos de Actitud" />
-                </div>
-                <Separator/>
-                 <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="w-full" size="lg">
-                        <Save className="mr-2 h-5 w-5"/>
-                        Guardar Progreso (Crear Cuenta)
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Crea una cuenta para guardar tu progreso</DialogTitle>
-                        <DialogDescription>
-                          Vincula tu actividad a una cuenta permanente con correo y contraseña.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
-                        <div>
-                          <Label htmlFor="link-username">Nombre de Usuario</Label>
-                          <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} placeholder="Elige un nombre de usuario"/>} />
-                          {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
-                        </div>
-                        <div>
-                          <Label htmlFor="link-email">Correo Electrónico</Label>
-                          <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} placeholder="tu@correo.com"/>} />
-                           {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
-                        </div>
-                        <div>
-                          <Label htmlFor="link-password">Contraseña</Label>
-                          <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} placeholder="Mínimo 6 caracteres"/>} />
-                           {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
-                        </div>
-                        <Button type="submit" disabled={isLinking} className="w-full">
-                          {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserPlus className="mr-2 h-4 w-4"/>}
-                          Vincular Cuenta
-                        </Button>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-              </CardContent>
-            </Card>
-          ) : (
             <Card>
               <CardHeader>
                 <CardTitle>Tu Información</CardTitle>
                 <CardDescription>Edita los datos de tu perfil.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-8">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold flex items-center gap-2"><User className="h-5 w-5"/>Tu Perfil</h3>
-                    {!isEditing && <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}><Edit className="mr-2 h-4 w-4"/>Editar</Button>}
-                  </div>
-                  {isEditing ? (
-                    <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-4 animate-in fade-in-50">
-                      <div>
-                        <Label htmlFor="username">Nombre de Usuario</Label>
-                        <Controller name="username" control={control} render={({ field }) => <Input id="username" {...field} />} />
-                        {errors.username && <p className="text-xs text-destructive mt-1">{errors.username.message}</p>}
-                      </div>
-                      <div>
-                        <Label htmlFor="countryCode">País</Label>
-                        <Controller name="countryCode" control={control} render={({ field }) => <CountryCombobox value={field.value ?? ''} onChange={field.onChange} />} />
-                      </div>
-                      <div>
-                        <Label htmlFor="gender">Sexo</Label>
-                        <Controller name="gender" control={control} render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value ?? ''}>
-                            <SelectTrigger id="gender"><SelectValue placeholder="Selecciona tu sexo" /></SelectTrigger>
-                            <SelectContent>{GENDER_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
-                          </Select>
-                        )} />
-                      </div>
-                      <div className="flex justify-end gap-2 pt-2">
-                        <Button type="button" variant="ghost" onClick={() => { setIsEditing(false); reset({ username: currentUser.username, countryCode: currentUser.countryCode, gender: currentUser.gender }); }}>Cancelar</Button>
-                        <Button type="submit" disabled={isSubmitting}>
-                          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                          Guardar Cambios
-                        </Button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2"><Map className="h-4 w-4"/>País: <span className="font-medium text-foreground">{currentUser.country || 'No especificado'}</span></div>
-                      <div className="flex items-center gap-2"><VenusAndMars className="h-4 w-4"/>Sexo: <span className="font-medium text-foreground">{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</span></div>
+                  <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-4 animate-in fade-in-50">
+                    <div>
+                      <Label htmlFor="username">Nombre de Usuario</Label>
+                      <Controller name="username" control={control} render={({ field }) => <Input id="username" {...field} />} />
+                      {errors.username && <p className="text-xs text-destructive mt-1">{errors.username.message}</p>}
                     </div>
-                  )}
-                </div>
-                <Separator />
-                <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
+                    <div>
+                      <Label htmlFor="countryCode">País</Label>
+                      <Controller name="countryCode" control={control} render={({ field }) => <CountryCombobox value={field.value ?? ''} onChange={field.onChange} />} />
+                    </div>
+                    <div>
+                      <Label htmlFor="gender">Sexo</Label>
+                      <Controller name="gender" control={control} render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                          <SelectTrigger id="gender"><SelectValue placeholder="Selecciona tu sexo" /></SelectTrigger>
+                          <SelectContent>{GENDER_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                        </Select>
+                      )} />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                        Guardar Cambios
+                      </Button>
+                    </div>
+                  </form>
+                {!isAnonymous && (
+                    <>
+                        <Separator />
+                        <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
+                    </>
+                )}
               </CardContent>
             </Card>
-          )}
         </TabsContent>
 
         <TabsContent value="logros" className="mt-6">
