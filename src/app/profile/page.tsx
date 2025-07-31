@@ -251,7 +251,7 @@ export default function ProfilePage() {
   const renderProfileContent = () => (
     <div className="w-full mt-6">
        <Tabs defaultValue="rachas" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsList className="flex w-full h-auto p-1 rounded-lg bg-black border border-white/20">
                 <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
                 <TabsTrigger value="actitud" onClick={() => loadProfileData()}><Heart className="mr-2" />Mi Actitud</TabsTrigger>
                 <TabsTrigger value="emociones"><Smile className="mr-2" />Mis Emociones</TabsTrigger>
