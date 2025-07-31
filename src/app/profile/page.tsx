@@ -168,10 +168,11 @@ export default function ProfilePage() {
   }
 
   if (!currentUser) {
+    // This condition now only triggers if, after loading, there's definitively no user.
     return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
-            <h2 className="text-2xl font-bold">Inicia sesión para ver tu perfil</h2>
-            <p className="text-muted-foreground mb-4">Parece que no has iniciado sesión.</p>
+            <h2 className="text-2xl font-bold">Error al Cargar Perfil</h2>
+            <p className="text-muted-foreground mb-4">No se pudo obtener la información del perfil. Por favor, intenta de nuevo.</p>
             <Button asChild><Link href="/">Volver al Inicio</Link></Button>
         </div>
     );
