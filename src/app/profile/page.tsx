@@ -364,7 +364,7 @@ export default function ProfilePage() {
                   </CardHeader>
                    <CardContent>
                        <Tabs defaultValue="alegria" className="w-full">
-                           <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 h-auto">
+                           <TabsList className="grid w-full grid-cols-6 h-auto">
                                <TabsTrigger value="alegria" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Alegría" className="text-lg sm:text-xl mr-1">😂</span>Alegría</TabsTrigger>
                                <TabsTrigger value="envidia" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Envidia" className="text-lg sm:text-xl mr-1">😒</span>Envidia</TabsTrigger>
                                <TabsTrigger value="tristeza" className="text-xs p-1 sm:p-2"><span role="img" aria-label="Tristeza" className="text-lg sm:text-xl mr-1">😢</span>Tristeza</TabsTrigger>
