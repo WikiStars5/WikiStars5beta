@@ -285,7 +285,7 @@ export default function ProfilePage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Rachas de Actividad</CardTitle>
-                    <CardDescription>Tu historial de participación y rachas.</CardDescription>
+                    <CardDescription>Tu historial de participación y rachas. ¡Gana una racha comentando o respondiendo en el perfil de un personaje por días consecutivos!</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {isStreaksLoading ? (
@@ -384,7 +384,7 @@ export default function ProfilePage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Rachas de Actividad</CardTitle>
-                        <CardDescription>Tu historial de participación y rachas.</CardDescription>
+                        <CardDescription>Tu historial de participación y rachas. ¡Gana una racha comentando o respondiendo en el perfil de un personaje por días consecutivos!</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {isStreaksLoading ? (
