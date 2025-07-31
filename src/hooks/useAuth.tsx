@@ -25,61 +25,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAnonymous, setIsAnonymous] = useState(true);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
-        setIsAnonymous(fbUser.isAnonymous);
+        const isAnon = fbUser.isAnonymous;
 
-        // If user is anonymous, immediately construct a profile from localStorage
-        // This provides an instant, non-null profile object for guests.
-        if (fbUser.isAnonymous) {
+        // If user is anonymous, immediately construct a profile from localStorage.
+        // This provides an instant, non-null profile object for guests and prevents race conditions.
+        if (isAnon) {
           const guestUsername = localStorage.getItem('wikistars5-guestUsername') || `Invitado_${fbUser.uid.substring(0,5)}`;
           const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
-          const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
           
-          setUser({
+          const localGuestProfile: UserProfile = {
             uid: fbUser.uid,
             email: null,
             username: guestUsername,
             gender: guestGender,
-            countryCode: guestCountryCode,
-            country: '', // Country name can be derived or left empty for guests
+            country: '',
+            countryCode: '',
+            photoURL: null,
             role: 'user',
             isAnonymous: true,
             createdAt: new Date().toISOString(),
             achievements: [],
-          });
-          setIsLoading(false); // Stop loading, guest profile is ready
+          };
+          setUser(localGuestProfile);
         }
 
-        // Listen for Firestore updates for both guest and registered users in the background
+        // Listen for Firestore updates for both guest and registered users.
+        // This will enrich the profile (e.g., with achievements for guests) or load the full profile for registered users.
         const userDocRef = doc(db, 'users', fbUser.uid);
         const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             const profileFromDb = docSnap.data() as UserProfile;
-            
-            // For registered users, this is their source of truth
-            if (!profileFromDb.isAnonymous) {
-              setUser({ ...profileFromDb, isAnonymous: false });
-            } else {
-              // For guests, we can enrich their locally-built profile with DB data like achievements
-              setUser(currentLocalProfile => ({
-                  ...currentLocalProfile!, // Non-null assertion is safe here
-                  ...profileFromDb, // Overwrite with any fresher data from DB
-              }));
-            }
+            // For registered users, this is their source of truth.
+            // For guests, this merges DB data (like achievements) into their local profile.
+            setUser(currentProfile => ({
+                ...(currentProfile || {}), // Start with current profile (local guest or empty)
+                ...profileFromDb,         // Overwrite with DB data
+                isAnonymous: isAnon       // Ensure anonymity status is correct
+            } as UserProfile));
           }
-          // If the doc doesn't exist, we don't overwrite the profile. The onUserCreate function will handle it.
-          // For guests, their local profile is already set. For registered users, we wait.
-          if (!fbUser.isAnonymous) {
-             setIsLoading(false); // Stop loading for registered users after first snapshot attempt
-          }
+          // If the doc doesn't exist, we do nothing and keep the locally constructed profile for guests.
+          // The onUserCreate cloud function will eventually create the doc.
+          setIsLoading(false); // Stop loading after the first snapshot attempt.
         }, (error) => {
           console.error("Error listening to user profile:", error);
-          setUser(null);
+          if (!isAnon) setUser(null); // Only nullify for registered users on error
           setIsLoading(false);
         });
 
@@ -88,12 +82,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // No user, attempt anonymous sign-in
         try {
           await signInAnonymously(auth);
-          // The onAuthStateChanged will re-trigger with the new anonymous user
+          // The onAuthStateChanged will re-trigger with the new anonymous user.
         } catch (error) {
           console.error("Critical error: Could not sign in anonymously.", error);
           setUser(null);
           setFirebaseUser(null);
-          setIsAnonymous(true);
           setIsLoading(false);
         }
       }
@@ -102,6 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
   
+  const isAnonymous = firebaseUser?.isAnonymous ?? true;
   const value = { user, firebaseUser, isLoading, isAnonymous };
 
   return (
