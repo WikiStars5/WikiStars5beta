@@ -25,7 +25,7 @@ import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay"
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
-import { db, auth as firebaseAuth } from "@/lib/firebase";
+import { db, auth as firebaseAuth, app } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment, writeBatch, type DocumentSnapshot } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -66,6 +66,7 @@ import {
   grantMiPrimeraContribucionAchievement,
   grantDialogoAbiertoAchievement
 } from '@/app/actions/achievementActions';
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -78,6 +79,8 @@ const STAR_SOUND_URLS: Record<StarValue, string> = {
   4: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826",
   5: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f",
 };
+
+const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
 
 export default function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const routeParams = useParams<{ id: string }>();
@@ -545,8 +548,11 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         return;
     }
 
+    const username = tempGuestUsername.trim();
+    const gender = tempGuestGender;
+
     // Uniqueness check
-    const normalizedGuestName = tempGuestUsername.trim().toLowerCase();
+    const normalizedGuestName = username.toLowerCase();
     try {
       const commentsCollectionRef = collection(db, 'userComments');
       const uniquenessQuery = query(
@@ -572,13 +578,21 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       toast({ title: "Error de Verificación", description: errorMessage, variant: "destructive" });
       return;
     }
-
-    // If unique, save to localStorage and update state
-    localStorage.setItem('wikistars5-guestUsername', tempGuestUsername.trim());
-    localStorage.setItem('wikistars5-guestGender', tempGuestGender);
-    setIsGuestInfoSet(true);
-    setIsGuestInfoDialogOpen(false);
-    toast({ title: "¡Identidad de Invitado Guardada!", description: `Ahora puedes comentar como ${tempGuestUsername.trim()}.` });
+    
+    try {
+        // Update Firestore profile via Cloud Function
+        await updateUserProfileCallable({ username, gender });
+        // Save to localStorage as a fallback/for speed
+        localStorage.setItem('wikistars5-guestUsername', username);
+        localStorage.setItem('wikistars5-guestGender', gender);
+        setIsGuestInfoSet(true);
+        setIsGuestInfoDialogOpen(false);
+        toast({ title: "¡Identidad de Invitado Guardada!", description: `Ahora puedes comentar como ${username}.` });
+        // The onSnapshot in useAuth will automatically update the profile page.
+    } catch (error: any) {
+        console.error("Error saving guest info to profile:", error);
+        toast({ title: "Error al Guardar", description: `No se pudo guardar tu identidad de invitado: ${error.message}`, variant: "destructive" });
+    }
   };
 
 
@@ -1343,7 +1357,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                         <DialogHeader>
                           <DialogTitle>Definir Identidad de Invitado</DialogTitle>
                           <DialogDescription>
-                            Para comentar, elige un nombre de invitado y un sexo. Esta información se guardará en tu navegador para esta sesión.
+                            Para comentar, elige un nombre de invitado y un sexo. Esta información se guardará en tu perfil y navegador.
                           </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleSaveGuestInfo} className="space-y-4">

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -94,6 +95,13 @@ export default function ProfilePage() {
       }).catch(err => console.error("Error fetching user stats:", err));
     }
   }, [isLoading, currentUser, reset]);
+
+  // When opening the link dialog, pre-fill the username from the current guest profile
+  useEffect(() => {
+    if (isLinkDialogOpen && currentUser?.username) {
+        resetLink({ username: currentUser.username });
+    }
+  }, [isLinkDialogOpen, currentUser, resetLink]);
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
@@ -231,6 +239,10 @@ export default function ProfilePage() {
                 <CardDescription>Aquí puedes ver tu actividad. ¡Guarda tu progreso para no perderlo!</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                 <div className="space-y-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2"><VenusAndMars className="h-4 w-4"/>Sexo: <span className="font-medium text-foreground">{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</span></div>
+                 </div>
+                 <Separator/>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <StatCard icon={MessageSquare} value={userStats?.comments} label="Comentarios" />
                   <StatCard icon={BarChart3} value={userStats?.ratings} label="Calificaciones" />

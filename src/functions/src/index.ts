@@ -69,9 +69,11 @@ export const updateUserProfile = onCall(async (request) => {
     }
     const uid = request.auth.uid;
     const { username, countryCode, gender } = request.data;
-
-    if (!username || username.length < 3 || username.length > 30) {
-        throw new HttpsError('invalid-argument', 'Username must be between 3 and 30 characters.');
+    
+    // Allow username/gender update for anonymous users, but not country for now.
+    // The username check is also more lenient for guests.
+    if (!username || username.length < 3 || username.length > 50) {
+        throw new HttpsError('invalid-argument', 'Username must be between 3 and 50 characters.');
     }
 
     const userRef = db.collection('users').doc(uid);
@@ -79,22 +81,26 @@ export const updateUserProfile = onCall(async (request) => {
     const countryName = COUNTRIES.find(c => c.code === safeCountryCode)?.name || '';
 
     const updateData: any = {
-        username,
-        country: countryName,
-        countryCode: safeCountryCode,
+        username: username.trim(),
         gender: gender || '',
         lastLoginAt: new Date().toISOString(),
     };
-    
-    // If the account was linked (is no longer anonymous), mark it.
-    const user = await auth.getUser(uid);
-    if (!user.isAnonymous) {
-        // This is a registered user now, not anonymous.
-        // The `isAnonymous` field should have been updated upon linking.
+
+    // For registered users, update country and potentially Firebase Auth displayName
+    const callingUser = await auth.getUser(uid);
+    if (!callingUser.providerData.some(p => p.providerId === 'anonymous')) {
+      updateData.country = countryName;
+      updateData.countryCode = safeCountryCode;
     }
 
     try {
         await userRef.set(updateData, { merge: true });
+        
+        // Only update Auth profile if user is not anonymous
+        if (!callingUser.providerData.some(p => p.providerId === 'anonymous')) {
+             await auth.updateUser(uid, { displayName: username.trim() });
+        }
+
         return { success: true, message: 'Profile updated successfully.' };
     } catch (error) {
         console.error("Error updating user profile:", error);
