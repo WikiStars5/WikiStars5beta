@@ -11,14 +11,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, MessageSquare, Edit, Save, BarChart3, Map, VenusAndMars, Smile, UserPlus, Link2 } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, MessageSquare, Edit, Save, BarChart3, Map, VenusAndMars, Smile, UserPlus, Link2, ThumbsDown, SmilePlus } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
 import { Separator } from '@/components/ui/separator';
-import type { UserProfile, LocalUserStreak, FanFigure } from '@/lib/types';
+import type { UserProfile, LocalUserStreak, AttitudeKey, Attitude, Figure } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { auth, app } from '@/lib/firebase';
+import { auth, app, db } from '@/lib/firebase';
 import { signOut, linkWithCredential, EmailAuthProvider, updateProfile } from 'firebase/auth';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import Image from 'next/image';
 import { StreakAnimation } from '@/components/shared/StreakAnimation';
+import { getFiguresByIds } from '@/lib/placeholder-data';
 
 const achievementDetails = {
   first_glance: { icon: User, title: "Primer Vistazo", description: "Visitaste tu primer perfil." },
@@ -68,7 +69,12 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [userStats, setUserStats] = useState<{ comments: number; ratings: number; attitudes: number } | null>(null);
   const [streaks, setStreaks] = useState<LocalUserStreak[]>([]);
-  const [fanList, setFanList] = useState<FanFigure[]>([]);
+  
+  const [fanList, setFanList] = useState<Figure[]>([]);
+  const [haterList, setHaterList] = useState<Figure[]>([]);
+  const [simpList, setSimpList] = useState<Figure[]>([]);
+  const [neutralList, setNeutralList] = useState<Figure[]>([]);
+
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [isLinking, setIsLinking] = useState(false);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
@@ -115,18 +121,32 @@ export default function ProfilePage() {
               setStreaks([]);
           }
 
-          const fanListJSON = localStorage.getItem('wikistars5-fan-list');
-          if(fanListJSON) {
-              const localFanList: FanFigure[] = JSON.parse(fanListJSON);
-              localFanList.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
-              setFanList(localFanList);
-          } else {
-            setFanList([]);
-          }
+          const attitudesJSON = localStorage.getItem('wikistars5-attitudes');
+          const attitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
+          
+          const figureIdsByType = {
+            fan: attitudes.filter(a => a.attitude === 'fan').map(a => a.figureId),
+            hater: attitudes.filter(a => a.attitude === 'hater').map(a => a.figureId),
+            simp: attitudes.filter(a => a.attitude === 'simp').map(a => a.figureId),
+            neutral: attitudes.filter(a => a.attitude === 'neutral').map(a => a.figureId),
+          };
+
+          const fetchAttitudeLists = async () => {
+              setFanList(await getFiguresByIds(figureIdsByType.fan));
+              setHaterList(await getFiguresByIds(figureIdsByType.hater));
+              setSimpList(await getFiguresByIds(figureIdsByType.simp));
+              setNeutralList(await getFiguresByIds(figureIdsByType.neutral));
+          };
+
+          fetchAttitudeLists();
+          
       } catch (error) {
-          console.error("Error loading streaks from localStorage", error);
+          console.error("Error loading data from localStorage", error);
           setStreaks([]);
           setFanList([]);
+          setHaterList([]);
+          setSimpList([]);
+          setNeutralList([]);
       } finally {
           setIsDataLoading(false);
       }
@@ -238,12 +258,11 @@ export default function ProfilePage() {
   };
   
   const renderProfileForGuest = () => (
-    <Tabs defaultValue="actitud" className="w-full mt-6">
-        <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-4 h-auto">
+    <Tabs defaultValue="estadisticas" className="w-full mt-6">
+        <TabsList className="items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid w-full grid-cols-3 h-auto">
             <TabsTrigger value="estadisticas"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
             <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
             <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
-            <TabsTrigger value="actitud"><Heart className="mr-2" />Mi actitud</TabsTrigger>
         </TabsList>
         <TabsContent value="estadisticas" className="mt-6">
             <Card>
@@ -330,50 +349,6 @@ export default function ProfilePage() {
                           <p>Aún no tienes ninguna racha. ¡Comenta en el perfil de un personaje para empezar una!</p>
                       </div>
                   )}
-                </CardContent>
-            </Card>
-        </TabsContent>
-        <TabsContent value="actitud" className="mt-6">
-             <Card>
-                <CardHeader>
-                  <CardTitle>Mis Actitudes</CardTitle>
-                  <CardDescription>
-                    Aquí podrás ver un resumen de todas tus actitudes hacia los diferentes personajes.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Tabs defaultValue="fans" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4 h-auto">
-                        <TabsTrigger value="fans">Fans</TabsTrigger>
-                        <TabsTrigger value="haters" disabled>Haters</TabsTrigger>
-                        <TabsTrigger value="simps" disabled>Simps</TabsTrigger>
-                        <TabsTrigger value="neutral" disabled>Neutral</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="fans" className="mt-4">
-                      {isDataLoading ? (
-                          <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                      ) : fanList.length > 0 ? (
-                          <div className="space-y-4">
-                              {fanList.map(figure => (
-                                  <Link key={figure.id} href={`/figures/${figure.id}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
-                                      <Avatar className="h-12 w-12">
-                                          <AvatarImage src={correctMalformedUrl(figure.photoUrl) || undefined} alt={figure.name} />
-                                          <AvatarFallback>{figure.name.charAt(0)}</AvatarFallback>
-                                      </Avatar>
-                                      <div className="flex-grow">
-                                          <p className="font-semibold">{figure.name}</p>
-                                      </div>
-                                  </Link>
-                              ))}
-                          </div>
-                      ) : (
-                         <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
-                              <Heart className="mx-auto h-8 w-8 mb-2" />
-                              <p>Aún no has marcado a nadie como "Fan". ¡Haz clic en el corazón en el perfil de un personaje para añadirlo!</p>
-                          </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
                 </CardContent>
             </Card>
         </TabsContent>
