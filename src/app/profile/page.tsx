@@ -57,7 +57,7 @@ const linkAccountFormSchema = z.object({
 type LinkAccountFormValues = z.infer<typeof linkAccountFormSchema>;
 
 const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
-const getUserStatsCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserStats');
+const getUserStatsCallable = httpsCallable(app.functions('us-central1'), 'getUserStats');
 
 export default function ProfilePage() {
   const { user: currentUser, firebaseUser, isLoading, isAnonymous } = useAuth();
@@ -108,14 +108,6 @@ export default function ProfilePage() {
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
-      // For both guest and registered users, save to localStorage for instant UI feedback
-      if(isAnonymous) {
-        localStorage.setItem('wikistars5-guestUsername', data.username);
-        if (data.gender) localStorage.setItem('wikistars5-guestGender', data.gender);
-        if (data.countryCode) localStorage.setItem('wikistars5-guestCountry', data.countryCode);
-      }
-      
-      // Call the cloud function to sync with Firestore
       await updateUserProfileCallable(data);
 
       toast({ title: "Perfil Actualizado", description: "Tus cambios han sido guardados." });
@@ -212,120 +204,64 @@ export default function ProfilePage() {
   const renderProfileTabs = () => {
     if (isAnonymous) {
       return (
-        <Tabs defaultValue="progreso" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 h-auto">
-                <TabsTrigger value="progreso"><Flame className="mr-2" />Progreso</TabsTrigger>
-                <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
-            </TabsList>
-            <TabsContent value="informacion" className="mt-6">
-              <Card>
-                <CardHeader className="flex flex-row justify-between items-start">
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Guarda Tu Progreso</CardTitle>
+            <CardDescription>Tu actividad como invitado se guarda en este dispositivo. Crea una cuenta para no perderlo.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <Alert>
+              <BarChart3 className="h-4 w-4" />
+              <AlertTitle>Estadísticas en Desarrollo</AlertTitle>
+              <AlertDescription>
+                Las estadísticas de comentarios y votos para invitados estarán disponibles pronto.
+              </AlertDescription>
+            </Alert>
+            <Separator/>
+            <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="w-full" size="lg">
+                  <Save className="mr-2 h-5 w-5"/>
+                  Vincular Cuenta y Guardar Progreso
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Crea una cuenta para guardar tu progreso</DialogTitle>
+                  <DialogDescription>
+                    Vincula tu actividad a una cuenta permanente con correo y contraseña. Tu nombre de invitado se usará por defecto.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
                   <div>
-                      <CardTitle>Tu Información de Invitado</CardTitle>
-                      <CardDescription>Edita los datos públicos de tu perfil de invitado.</CardDescription>
+                    <Label htmlFor="link-username">Nombre de Usuario</Label>
+                    <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} placeholder="Elige un nombre de usuario"/>} />
+                    {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
                   </div>
-                  {!isEditing && <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}><Edit className="mr-2 h-4 w-4"/>Editar</Button>}
-                </CardHeader>
-                <CardContent>
-                  {isEditing ? (
-                      <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-4 animate-in fade-in-50">
-                        <div>
-                          <Label htmlFor="username">Nombre de Invitado</Label>
-                          <Controller name="username" control={control} render={({ field }) => <Input id="username" {...field} />} />
-                          {errors.username && <p className="text-xs text-destructive mt-1">{errors.username.message}</p>}
-                        </div>
-                        <div>
-                          <Label htmlFor="countryCode">País</Label>
-                          <Controller name="countryCode" control={control} render={({ field }) => <CountryCombobox value={field.value ?? ''} onChange={field.onChange} />} />
-                        </div>
-                        <div>
-                          <Label htmlFor="gender">Sexo</Label>
-                          <Controller name="gender" control={control} render={({ field }) => (
-                            <Select onValueChange={field.onChange} value={field.value ?? ''}>
-                              <SelectTrigger id="gender"><SelectValue placeholder="Selecciona tu sexo" /></SelectTrigger>
-                              <SelectContent>{GENDER_OPTIONS.filter(g => g.value === 'male' || g.value === 'female').map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
-                            </Select>
-                          )} />
-                        </div>
-                        <div className="flex justify-end gap-2 pt-2">
-                          <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancelar</Button>
-                          <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                            Guardar Cambios
-                          </Button>
-                        </div>
-                      </form>
-                  ) : (
-                      <div className="space-y-4">
-                            <div className="flex items-center gap-4"><User className="h-5 w-5 text-muted-foreground"/><p>{currentUser.username}</p></div>
-                            <div className="flex items-center gap-4"><Map className="h-5 w-5 text-muted-foreground"/><p>{currentUser.country || 'No especificado'}</p></div>
-                            <div className="flex items-center gap-4"><VenusAndMars className="h-5 w-5 text-muted-foreground"/><p>{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</p></div>
-                        </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="progreso" className="mt-6">
-               <Card>
-                 <CardHeader>
-                   <CardTitle>Guarda Tu Progreso</CardTitle>
-                   <CardDescription>Tu actividad como invitado se guarda en este dispositivo. Crea una cuenta para no perderlo.</CardDescription>
-                 </CardHeader>
-                 <CardContent className="space-y-6">
-                   <Alert>
-                     <BarChart3 className="h-4 w-4" />
-                     <AlertTitle>Estadísticas en Desarrollo</AlertTitle>
-                     <AlertDescription>
-                       Las estadísticas de comentarios y votos para invitados estarán disponibles pronto.
-                     </AlertDescription>
-                   </Alert>
-                   <Separator/>
-                    <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
-                       <DialogTrigger asChild>
-                         <Button className="w-full" size="lg">
-                           <Save className="mr-2 h-5 w-5"/>
-                           Vincular Cuenta y Guardar Progreso
-                         </Button>
-                       </DialogTrigger>
-                       <DialogContent>
-                         <DialogHeader>
-                           <DialogTitle>Crea una cuenta para guardar tu progreso</DialogTitle>
-                           <DialogDescription>
-                             Vincula tu actividad a una cuenta permanente con correo y contraseña. Tu nombre de invitado se usará por defecto.
-                           </DialogDescription>
-                         </DialogHeader>
-                         <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
-                           <div>
-                             <Label htmlFor="link-username">Nombre de Usuario</Label>
-                             <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} placeholder="Elige un nombre de usuario"/>} />
-                             {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
-                           </div>
-                           <div>
-                             <Label htmlFor="link-email">Correo Electrónico</Label>
-                             <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} placeholder="tu@correo.com"/>} />
-                              {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
-                           </div>
-                           <div>
-                             <Label htmlFor="link-password">Contraseña</Label>
-                             <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} placeholder="Mínimo 6 caracteres"/>} />
-                              {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
-                           </div>
-                           <Button type="submit" disabled={isLinking} className="w-full">
-                             {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserPlus className="mr-2 h-4 w-4"/>}
-                             Vincular Cuenta
-                           </Button>
-                         </form>
-                       </DialogContent>
-                     </Dialog>
-                 </CardContent>
-               </Card>
-            </TabsContent>
-        </Tabs>
+                  <div>
+                    <Label htmlFor="link-email">Correo Electrónico</Label>
+                    <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} placeholder="tu@correo.com"/>} />
+                     {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="link-password">Contraseña</Label>
+                    <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} placeholder="Mínimo 6 caracteres"/>} />
+                     {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
+                  </div>
+                  <Button type="submit" disabled={isLinking} className="w-full">
+                    {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserPlus className="mr-2 h-4 w-4"/>}
+                    Vincular Cuenta
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
+        </Card>
       );
     }
 
     return (
-       <Tabs defaultValue="informacion" className="w-full">
+       <Tabs defaultValue="logros" className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-auto">
                 <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
                 <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
@@ -470,3 +406,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
