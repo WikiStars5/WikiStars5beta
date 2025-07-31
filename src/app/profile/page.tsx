@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, MessageSquare, Edit, Save, BarChart3, Map, VenusAndMars, Smile, UserPlus, Info } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, MessageSquare, Edit, Save, BarChart3, Map, VenusAndMars, Smile, UserPlus } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -88,12 +88,19 @@ export default function ProfilePage() {
         gender: currentUser.gender ?? '',
       });
       
-      getUserStatsCallable().then(result => {
-        const data = result.data as { success: boolean; stats?: any };
-        if (data.success) {
-          setUserStats(data.stats);
-        }
-      }).catch(err => console.error("Error fetching user stats:", err));
+      if (currentUser && !currentUser.isAnonymous) {
+          getUserStatsCallable().then(result => {
+            const data = result.data as { success: boolean; stats?: any };
+            if (data.success) {
+              setUserStats(data.stats);
+            }
+          }).catch(err => console.error("Error fetching user stats:", err));
+      } else if (currentUser && currentUser.isAnonymous) {
+          // For anonymous users, we can't get stats from server reliably,
+          // so we can initialize them to 0 or leave them as null.
+          setUserStats({ comments: 0, ratings: 0, attitudes: 0}); // Example: init to 0
+      }
+
     }
   }, [isLoading, currentUser, reset]);
 
@@ -105,12 +112,6 @@ export default function ProfilePage() {
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
-      if (isAnonymous) {
-          localStorage.setItem('wikistars5-guestUsername', data.username);
-          localStorage.setItem('wikistars5-guestGender', data.gender || '');
-          localStorage.setItem('wikistars5-guestCountryCode', data.countryCode || '');
-      }
-      
       await updateUserProfileCallable(data);
 
       if (firebaseUser && !isAnonymous) {
@@ -119,7 +120,7 @@ export default function ProfilePage() {
       
       toast({ title: "Perfil Actualizado", description: "Tus cambios han sido guardados." });
       setIsEditing(false);
-      // useAuth hook will automatically update the view via onSnapshot/localStorage
+      router.refresh();
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({ title: "Error", description: error.message || "No se pudo actualizar tu perfil.", variant: "destructive" });
@@ -207,8 +208,6 @@ export default function ProfilePage() {
       </div>
     );
   };
-  
-  const defaultTab = isAnonymous ? "progreso" : "informacion";
 
   return (
     <div className="space-y-8">
@@ -231,172 +230,178 @@ export default function ProfilePage() {
           <CardDescription>{isAnonymous ? 'Perfil de Invitado' : currentUser.email}</CardDescription>
         </CardHeader>
       </Card>
-
-      <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
-          {isAnonymous ? (
-            <>
-              <TabsTrigger value="progreso"><BarChart3 className="mr-2" />Progreso</TabsTrigger>
-              <TabsTrigger value="informacion"><Info className="mr-2" />Información</TabsTrigger>
-            </>
-          ) : (
-            <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
-          )}
-          <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
-          <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
-        </TabsList>
-        
-        {isAnonymous && (
-           <TabsContent value="progreso" className="mt-6">
-               <Card>
-                 <CardHeader>
-                   <CardTitle>Tu Progreso como Invitado</CardTitle>
-                   <CardDescription>Aquí puedes ver tu actividad. ¡Guarda tu progreso para no perderlo!</CardDescription>
-                 </CardHeader>
-                 <CardContent className="space-y-6">
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                     <StatCard icon={MessageSquare} value={userStats?.comments} label="Comentarios" />
-                     <StatCard icon={BarChart3} value={userStats?.ratings} label="Calificaciones" />
-                     <StatCard icon={Heart} value={userStats?.attitudes} label="Votos de Actitud" />
-                   </div>
-                   <Separator/>
-                    <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
-                       <DialogTrigger asChild>
-                         <Button className="w-full" size="lg">
-                           <Save className="mr-2 h-5 w-5"/>
-                           Guardar Progreso (Crear Cuenta)
-                         </Button>
-                       </DialogTrigger>
-                       <DialogContent>
-                         <DialogHeader>
-                           <DialogTitle>Crea una cuenta para guardar tu progreso</DialogTitle>
-                           <DialogDescription>
-                             Vincula tu actividad a una cuenta permanente con correo y contraseña.
-                           </DialogDescription>
-                         </DialogHeader>
-                         <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
-                           <div>
-                             <Label htmlFor="link-username">Nombre de Usuario</Label>
-                             <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} placeholder="Elige un nombre de usuario"/>} />
-                             {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
-                           </div>
-                           <div>
-                             <Label htmlFor="link-email">Correo Electrónico</Label>
-                             <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} placeholder="tu@correo.com"/>} />
-                              {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
-                           </div>
-                           <div>
-                             <Label htmlFor="link-password">Contraseña</Label>
-                             <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} placeholder="Mínimo 6 caracteres"/>} />
-                              {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
-                           </div>
-                           <Button type="submit" disabled={isLinking} className="w-full">
-                             {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserPlus className="mr-2 h-4 w-4"/>}
-                             Vincular Cuenta
-                           </Button>
-                         </form>
-                       </DialogContent>
-                     </Dialog>
-                 </CardContent>
-               </Card>
-           </TabsContent>
-        )}
-
-        <TabsContent value="informacion" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Tu Información</CardTitle>
-                <CardDescription>Edita los datos de tu perfil.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-8">
-                  <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-4 animate-in fade-in-50">
+      
+      {isAnonymous ? (
+           <Card>
+             <CardHeader>
+               <CardTitle>Tu Progreso como Invitado</CardTitle>
+               <CardDescription>Aquí puedes ver tu actividad. ¡Guarda tu progreso para no perderlo!</CardDescription>
+             </CardHeader>
+             <CardContent className="space-y-6">
+               <Alert>
+                 <BarChart3 className="h-4 w-4" />
+                 <AlertTitle>Estadísticas en Desarrollo</AlertTitle>
+                 <AlertDescription>
+                   Las estadísticas de comentarios y votos para invitados estarán disponibles pronto.
+                 </AlertDescription>
+               </Alert>
+               <Separator/>
+                <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+                   <DialogTrigger asChild>
+                     <Button className="w-full" size="lg">
+                       <Save className="mr-2 h-5 w-5"/>
+                       Guardar Progreso (Crear Cuenta)
+                     </Button>
+                   </DialogTrigger>
+                   <DialogContent>
+                     <DialogHeader>
+                       <DialogTitle>Crea una cuenta para guardar tu progreso</DialogTitle>
+                       <DialogDescription>
+                         Vincula tu actividad a una cuenta permanente con correo y contraseña. Tu nombre de invitado se usará por defecto.
+                       </DialogDescription>
+                     </DialogHeader>
+                     <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
+                       <div>
+                         <Label htmlFor="link-username">Nombre de Usuario</Label>
+                         <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} placeholder="Elige un nombre de usuario"/>} />
+                         {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
+                       </div>
+                       <div>
+                         <Label htmlFor="link-email">Correo Electrónico</Label>
+                         <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} placeholder="tu@correo.com"/>} />
+                          {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
+                       </div>
+                       <div>
+                         <Label htmlFor="link-password">Contraseña</Label>
+                         <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} placeholder="Mínimo 6 caracteres"/>} />
+                          {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
+                       </div>
+                       <Button type="submit" disabled={isLinking} className="w-full">
+                         {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserPlus className="mr-2 h-4 w-4"/>}
+                         Vincular Cuenta
+                       </Button>
+                     </form>
+                   </DialogContent>
+                 </Dialog>
+             </CardContent>
+           </Card>
+      ) : (
+        <Tabs defaultValue="informacion" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 h-auto">
+                <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
+                <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
+                <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
+            </TabsList>
+            <TabsContent value="informacion" className="mt-6">
+                <Card>
+                  <CardHeader className="flex flex-row justify-between items-start">
                     <div>
-                      <Label htmlFor="username">Nombre de Usuario</Label>
-                      <Controller name="username" control={control} render={({ field }) => <Input id="username" {...field} />} />
-                      {errors.username && <p className="text-xs text-destructive mt-1">{errors.username.message}</p>}
+                        <CardTitle>Tu Información</CardTitle>
+                        <CardDescription>Edita los datos públicos de tu perfil.</CardDescription>
                     </div>
-                    <div>
-                      <Label htmlFor="countryCode">País</Label>
-                      <Controller name="countryCode" control={control} render={({ field }) => <CountryCombobox value={field.value ?? ''} onChange={field.onChange} />} />
+                    {!isEditing && <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}><Edit className="mr-2 h-4 w-4"/>Editar</Button>}
+                  </CardHeader>
+                  <CardContent className="space-y-8">
+                    {isEditing ? (
+                      <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-4 animate-in fade-in-50">
+                        <div>
+                          <Label htmlFor="username">Nombre de Usuario</Label>
+                          <Controller name="username" control={control} render={({ field }) => <Input id="username" {...field} />} />
+                          {errors.username && <p className="text-xs text-destructive mt-1">{errors.username.message}</p>}
+                        </div>
+                        <div>
+                          <Label htmlFor="countryCode">País</Label>
+                          <Controller name="countryCode" control={control} render={({ field }) => <CountryCombobox value={field.value ?? ''} onChange={field.onChange} />} />
+                        </div>
+                        <div>
+                          <Label htmlFor="gender">Sexo</Label>
+                          <Controller name="gender" control={control} render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                              <SelectTrigger id="gender"><SelectValue placeholder="Selecciona tu sexo" /></SelectTrigger>
+                              <SelectContent>{GENDER_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                            </Select>
+                          )} />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                          <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancelar</Button>
+                          <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                            Guardar Cambios
+                          </Button>
+                        </div>
+                      </form>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-4"><User className="h-5 w-5 text-muted-foreground"/><p>{currentUser.username}</p></div>
+                            <div className="flex items-center gap-4"><Map className="h-5 w-5 text-muted-foreground"/><p>{currentUser.country || 'No especificado'}</p></div>
+                            <div className="flex items-center gap-4"><VenusAndMars className="h-5 w-5 text-muted-foreground"/><p>{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</p></div>
+                        </div>
+                    )}
+                    <Separator />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <StatCard icon={MessageSquare} value={userStats?.comments} label="Comentarios" />
+                        <StatCard icon={BarChart3} value={userStats?.ratings} label="Calificaciones" />
+                        <StatCard icon={Heart} value={userStats?.attitudes} label="Votos de Actitud" />
                     </div>
-                    <div>
-                      <Label htmlFor="gender">Sexo</Label>
-                      <Controller name="gender" control={control} render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value ?? ''}>
-                          <SelectTrigger id="gender"><SelectValue placeholder="Selecciona tu sexo" /></SelectTrigger>
-                          <SelectContent>{GENDER_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
-                        </Select>
-                      )} />
-                    </div>
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                        Guardar Cambios
-                      </Button>
-                    </div>
-                  </form>
-                {!isAnonymous && (
-                    <>
-                        <Separator />
-                        <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
-                    </>
-                )}
-              </CardContent>
-            </Card>
-        </TabsContent>
+                    <Separator />
+                    <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
+                  </CardContent>
+                </Card>
+            </TabsContent>
 
-        <TabsContent value="logros" className="mt-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Logros Desbloqueados</CardTitle>
-                    <CardDescription>Tus medallas e insignias ganadas por participar.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                {(currentUser.achievements && currentUser.achievements.length > 0) ? (
-                    <div className="space-y-3">
-                        {currentUser.achievements.map((achId) => {
-                          const details = achievementDetails[achId as AchievementId];
-                          if (!details) return null;
-                          const Icon = details.icon;
-                          return (
-                            <div key={achId} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md">
-                              <Icon className="h-8 w-8 text-primary flex-shrink-0" />
-                              <div>
-                                <p className="font-semibold text-foreground">{details.title}</p>
-                                <p className="text-sm text-muted-foreground">{details.description}</p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
-                        <Award className="mx-auto h-8 w-8 mb-2" />
-                        <p>Aún no has desbloqueado ningún logro. ¡Empieza a explorar para ganar el primero!</p>
-                    </div>
-                  )}
-                </CardContent>
-            </Card>
-        </TabsContent>
+            <TabsContent value="logros" className="mt-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Logros Desbloqueados</CardTitle>
+                        <CardDescription>Tus medallas e insignias ganadas por participar.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                    {(currentUser.achievements && currentUser.achievements.length > 0) ? (
+                        <div className="space-y-3">
+                            {currentUser.achievements.map((achId) => {
+                              const details = achievementDetails[achId as AchievementId];
+                              if (!details) return null;
+                              const Icon = details.icon;
+                              return (
+                                <div key={achId} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md">
+                                  <Icon className="h-8 w-8 text-primary flex-shrink-0" />
+                                  <div>
+                                    <p className="font-semibold text-foreground">{details.title}</p>
+                                    <p className="text-sm text-muted-foreground">{details.description}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
+                            <Award className="mx-auto h-8 w-8 mb-2" />
+                            <p>Aún no has desbloqueado ningún logro. ¡Empieza a explorar para ganar el primero!</p>
+                        </div>
+                      )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
 
-        <TabsContent value="rachas" className="mt-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Rachas de Actividad</CardTitle>
-                    <CardDescription>Tu constancia participando en la comunidad.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Alert>
-                        <Flame className="h-4 w-4" />
-                        <AlertTitle>Próximamente</AlertTitle>
-                        <AlertDescription>
-                            Esta sección está en construcción. ¡Vuelve pronto para ver tus rachas de actividad!
-                        </AlertDescription>
-                    </Alert>
-                </CardContent>
-            </Card>
-        </TabsContent>
-      </Tabs>
+            <TabsContent value="rachas" className="mt-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Rachas de Actividad</CardTitle>
+                        <CardDescription>Tu constancia participando en la comunidad.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Alert>
+                            <Flame className="h-4 w-4" />
+                            <AlertTitle>Próximamente</AlertTitle>
+                            <AlertDescription>
+                                Esta sección está en construcción. ¡Vuelve pronto para ver tus rachas de actividad!
+                            </AlertDescription>
+                        </Alert>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }
