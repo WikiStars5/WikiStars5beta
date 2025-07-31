@@ -176,9 +176,16 @@ export default function ProfilePage() {
   if (!currentUser) {
      return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
-        <h2 className="text-2xl font-bold">Inicia sesión para ver tu perfil</h2>
-        <p className="text-muted-foreground mb-4">Parece que no has iniciado sesión. Accede para ver tu progreso.</p>
-        <Button asChild><Link href="/login">Iniciar Sesión</Link></Button>
+        <Alert>
+            <ShieldCheck className="h-4 w-4" />
+            <AlertTitle>Acceso Denegado</AlertTitle>
+            <AlertDescription>
+                Debes iniciar sesión para ver esta página.
+            </AlertDescription>
+        </Alert>
+        <Button asChild className="mt-4">
+            <Link href="/login">Iniciar Sesión</Link>
+        </Button>
       </div>
     );
   }
@@ -307,10 +314,11 @@ export default function ProfilePage() {
 
   const renderProfileForRegisteredUser = () => (
        <Tabs defaultValue="stats" className="w-full mt-6">
-            <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsList className="grid w-full grid-cols-4 h-auto">
                 <TabsTrigger value="stats"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
                 <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
                 <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
+                <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
             </TabsList>
             
             <TabsContent value="stats" className="mt-6">
@@ -409,6 +417,24 @@ export default function ProfilePage() {
                     <Separator />
                     <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
                   </CardContent>
+                </Card>
+            </TabsContent>
+            
+            <TabsContent value="rachas" className="mt-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Rachas de Actividad</CardTitle>
+                        <CardDescription>Tu historial de participación y rachas.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Alert>
+                            <Flame className="h-4 w-4" />
+                            <AlertTitle>Próximamente</AlertTitle>
+                            <AlertDescription>
+                                ¡Estamos trabajando en esta función! Vuelve pronto para ver tus rachas de participación.
+                            </AlertDescription>
+                        </Alert>
+                    </CardContent>
                 </Card>
             </TabsContent>
         </Tabs>
