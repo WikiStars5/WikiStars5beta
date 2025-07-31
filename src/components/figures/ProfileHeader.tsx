@@ -65,9 +65,6 @@ export function ProfileHeader({
               </h1>
               <div className="mt-3 md:mt-0 flex-shrink-0 flex flex-col items-center md:items-end gap-2">
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={onFanToggle} aria-label={isFan ? 'Quitar de fans' : 'Añadir a fans'}>
-                      <Heart className={cn("h-5 w-5", isFan ? "fill-red-500 text-red-500" : "text-foreground/70")} />
-                    </Button>
                     <ShareButton figureName={figure.name} figureId={figure.id} showText={false} />
                 </div>
                 {currentUserStreak && currentUserStreak > 0 && (
