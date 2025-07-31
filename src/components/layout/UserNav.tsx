@@ -31,6 +31,7 @@ export function UserNav() {
       await signOut(auth);
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       router.push('/'); 
+      router.refresh();
     } catch (error) {
       console.error("Error logging out: ", error);
       toast({ title: "Cierre de Sesión Fallido", description: "No se pudo cerrar tu sesión.", variant: "destructive" });
@@ -46,6 +47,7 @@ export function UserNav() {
   }
 
   if (!currentUser) {
+    // This case should not happen with anonymous auth enabled, but it's a safe fallback.
     return (
        <Button variant="ghost" className="relative h-9 w-9 rounded-full" disabled>
           <Avatar className="h-9 w-9"><AvatarFallback><User/></AvatarFallback></Avatar>
@@ -83,7 +85,7 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        <Link href="/profile">
+        <Link href="/profile" passHref>
           <DropdownMenuItem>
             <User className="mr-2 h-4 w-4" />
             <span>Mi Perfil</span>
@@ -91,7 +93,7 @@ export function UserNav() {
         </Link>
         
         {isAdmin && (
-          <Link href="/admin">
+          <Link href="/admin" passHref>
             <DropdownMenuItem>
               <ShieldCheck className="mr-2 h-4 w-4" />
               <span>Panel de Administración</span>
@@ -100,7 +102,7 @@ export function UserNav() {
         )}
 
         {isAnonymous && (
-           <Link href="/profile">
+           <Link href="/profile" passHref>
             <DropdownMenuItem>
               <Save className="mr-2 h-4 w-4" />
               <span>Guardar Progreso</span>

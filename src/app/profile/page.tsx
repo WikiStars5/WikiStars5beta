@@ -19,7 +19,7 @@ import { Separator } from '@/components/ui/separator';
 import type { UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { auth, app } from '@/lib/firebase';
-import { signOut, linkWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { signOut, linkWithCredential, EmailAuthProvider, updateProfile } from 'firebase/auth';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { CountryCombobox } from '@/components/shared/CountryCombobox';
@@ -28,7 +28,7 @@ import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 
 const achievementDetails = {
   first_glance: { icon: User, title: "Primer Vistazo", description: "Visitaste tu primer perfil." },
@@ -56,8 +56,8 @@ const linkAccountFormSchema = z.object({
 });
 type LinkAccountFormValues = z.infer<typeof linkAccountFormSchema>;
 
-const updateUserProfileCallable = httpsCallable(getFunctions(app), 'updateUserProfile');
-const getUserStatsCallable = httpsCallable(getFunctions(app), 'getUserStats');
+const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
+const getUserStatsCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserStats');
 
 export default function ProfilePage() {
   const { user: currentUser, firebaseUser, isLoading, isAnonymous } = useAuth();
@@ -73,8 +73,9 @@ export default function ProfilePage() {
     defaultValues: { username: '', countryCode: '', gender: '' },
   });
 
-  const { control: linkControl, handleSubmit: handleLinkSubmit, formState: { errors: linkErrors } } = useForm<LinkAccountFormValues>({
+  const { control: linkControl, handleSubmit: handleLinkSubmit, formState: { errors: linkErrors }, reset: resetLink } = useForm<LinkAccountFormValues>({
     resolver: zodResolver(linkAccountFormSchema),
+    defaultValues: { email: '', password: '', username: ''}
   });
 
   useEffect(() => {
@@ -85,6 +86,7 @@ export default function ProfilePage() {
         gender: currentUser.gender ?? '',
       });
       
+      // Fetch stats for both anonymous and registered users
       getUserStatsCallable().then(result => {
         const data = result.data as { success: boolean; stats?: any };
         if (data.success) {
@@ -97,8 +99,12 @@ export default function ProfilePage() {
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
       await updateUserProfileCallable(data);
+      if (firebaseUser) {
+        await updateProfile(firebaseUser, { displayName: data.username });
+      }
       toast({ title: "Perfil Actualizado", description: "Tus cambios han sido guardados." });
       setIsEditing(false);
+      // No need to refresh, onSnapshot listener in useAuth will handle it.
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({ title: "Error", description: error.message || "No se pudo actualizar tu perfil.", variant: "destructive" });
@@ -115,12 +121,16 @@ export default function ProfilePage() {
       const credential = EmailAuthProvider.credential(data.email, data.password);
       await linkWithCredential(firebaseUser, credential);
       await updateUserProfileCallable({ username: data.username });
+      
+      // Also update the auth profile directly
+      await updateProfile(firebaseUser, { displayName: data.username });
 
       toast({
         title: "¡Cuenta Vinculada!",
         description: "Tu progreso ha sido guardado de forma segura.",
       });
       setIsLinkDialogOpen(false);
+      resetLink();
       router.refresh(); 
     } catch (error: any) {
       console.error("Error linking account:", error);
@@ -129,6 +139,8 @@ export default function ProfilePage() {
         message = 'Este correo electrónico ya está en uso por otra cuenta.';
       } else if (error.code === 'auth/credential-already-in-use') {
          message = 'Esta cuenta ya está vinculada a otro usuario. Intenta iniciar sesión.';
+      } else if (error.code === 'auth/weak-password') {
+         message = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
       }
       toast({ title: "Error al Vincular", description: message, variant: "destructive" });
     } finally {
@@ -157,16 +169,17 @@ export default function ProfilePage() {
   }
 
   if (!currentUser) {
-    // This case is unlikely with anonymous auth, but as a safeguard:
     return (
-        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-            <p>Redirigiendo...</p>
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
+            <h2 className="text-2xl font-bold">Inicia sesión para ver tu perfil</h2>
+            <p className="text-muted-foreground mb-4">Parece que no has iniciado sesión.</p>
+            <Button asChild><Link href="/">Volver al Inicio</Link></Button>
         </div>
     );
   }
 
   const isAdmin = !isAnonymous && (currentUser.uid === ADMIN_UID || currentUser.role === 'admin');
-  const displayName = isAnonymous ? (currentUser.username || `Invitado...`) : (currentUser.username || "Usuario");
+  const displayName = currentUser.username || (isAnonymous ? `Invitado...` : "Usuario");
   
   const StatCard = ({ icon, value, label }: { icon: React.ElementType; value: number | undefined; label: string; }) => {
     const Icon = icon;
@@ -174,7 +187,7 @@ export default function ProfilePage() {
       <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
         <Icon className="h-8 w-8 text-primary" />
         <div>
-          <p className="text-2xl font-bold">{value ?? <Loader2 className="h-5 w-5 animate-spin"/>}</p>
+          <p className="text-2xl font-bold">{typeof value === 'number' ? value : <Loader2 className="h-5 w-5 animate-spin"/>}</p>
           <p className="text-sm text-muted-foreground">{label}</p>
         </div>
       </div>
