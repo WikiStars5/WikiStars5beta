@@ -46,8 +46,6 @@ export function UserNav() {
   }
 
   if (!currentUser) {
-    // This case should rarely happen with the new anonymous auth model,
-    // but it's good to have a fallback.
     return (
        <Button variant="ghost" className="relative h-9 w-9 rounded-full" disabled>
           <Avatar className="h-9 w-9"><AvatarFallback><User/></AvatarFallback></Avatar>
@@ -56,7 +54,7 @@ export function UserNav() {
   }
   
   const isAdmin = !isAnonymous && (currentUser.uid === ADMIN_UID || currentUser.role === 'admin');
-  const displayName = isAnonymous ? "Invitado" : (currentUser.username || "Usuario");
+  const displayName = isAnonymous ? (currentUser.username || "Invitado") : (currentUser.username || "Usuario");
   const photoURL = isAnonymous ? null : currentUser.photoURL;
   const email = isAnonymous ? "Sesión de invitado" : currentUser.email;
 
@@ -97,6 +95,15 @@ export function UserNav() {
             <DropdownMenuItem>
               <ShieldCheck className="mr-2 h-4 w-4" />
               <span>Panel de Administración</span>
+            </DropdownMenuItem>
+          </Link>
+        )}
+
+        {isAnonymous && (
+           <Link href="/profile">
+            <DropdownMenuItem>
+              <Save className="mr-2 h-4 w-4" />
+              <span>Guardar Progreso</span>
             </DropdownMenuItem>
           </Link>
         )}

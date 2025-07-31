@@ -157,11 +157,16 @@ export default function ProfilePage() {
   }
 
   if (!currentUser) {
-    return null; // Should be handled by useAuth redirecting or signing in anonymously
+    // This case is unlikely with anonymous auth, but as a safeguard:
+    return (
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+            <p>Redirigiendo...</p>
+        </div>
+    );
   }
 
   const isAdmin = !isAnonymous && (currentUser.uid === ADMIN_UID || currentUser.role === 'admin');
-  const displayName = currentUser.username || (isAnonymous ? `Invitado...` : "Usuario");
+  const displayName = isAnonymous ? (currentUser.username || `Invitado...`) : (currentUser.username || "Usuario");
   
   const StatCard = ({ icon, value, label }: { icon: React.ElementType; value: number | undefined; label: string; }) => {
     const Icon = icon;
