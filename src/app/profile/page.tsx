@@ -174,11 +174,11 @@ export default function ProfilePage() {
   }
 
   if (!currentUser) {
-    return (
+     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
-        <h2 className="text-2xl font-bold">Error al Cargar Perfil</h2>
-        <p className="text-muted-foreground mb-4">No se pudo obtener la información del perfil. Por favor, intenta de nuevo.</p>
-        <Button asChild><Link href="/">Volver al Inicio</Link></Button>
+        <h2 className="text-2xl font-bold">Inicia sesión para ver tu perfil</h2>
+        <p className="text-muted-foreground mb-4">Parece que no has iniciado sesión. Accede para ver tu progreso.</p>
+        <Button asChild><Link href="/login">Iniciar Sesión</Link></Button>
       </div>
     );
   }
@@ -256,12 +256,61 @@ export default function ProfilePage() {
   );
 
   const renderProfileForRegisteredUser = () => (
-       <Tabs defaultValue="logros" className="w-full mt-6">
+       <Tabs defaultValue="stats" className="w-full mt-6">
             <TabsList className="grid w-full grid-cols-3 h-auto">
-                <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
+                <TabsTrigger value="stats"><BarChart3 className="mr-2" />Estadísticas</TabsTrigger>
                 <TabsTrigger value="logros"><Award className="mr-2" />Logros</TabsTrigger>
-                <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
+                <TabsTrigger value="informacion"><User className="mr-2" />Información</TabsTrigger>
             </TabsList>
+            
+            <TabsContent value="stats" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Tus Estadísticas</CardTitle>
+                    <CardDescription>Resumen de tu actividad en la plataforma.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <StatCard icon={MessageSquare} value={userStats?.comments} label="Comentarios" />
+                      <StatCard icon={BarChart3} value={userStats?.ratings} label="Calificaciones" />
+                      <StatCard icon={Heart} value={userStats?.attitudes} label="Votos de Actitud" />
+                  </CardContent>
+                </Card>
+            </TabsContent>
+            
+            <TabsContent value="logros" className="mt-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Logros Desbloqueados</CardTitle>
+                        <CardDescription>Tus medallas e insignias ganadas por participar.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                    {(currentUser.achievements && currentUser.achievements.length > 0) ? (
+                        <div className="space-y-3">
+                            {currentUser.achievements.map((achId) => {
+                              const details = achievementDetails[achId as AchievementId];
+                              if (!details) return null;
+                              const Icon = details.icon;
+                              return (
+                                <div key={achId} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md">
+                                  <Icon className="h-8 w-8 text-primary flex-shrink-0" />
+                                  <div>
+                                    <p className="font-semibold text-foreground">{details.title}</p>
+                                    <p className="text-sm text-muted-foreground">{details.description}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
+                            <Award className="mx-auto h-8 w-8 mb-2" />
+                            <p>Aún no has desbloqueado ningún logro. ¡Empieza a explorar para ganar el primero!</p>
+                        </div>
+                      )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
             <TabsContent value="informacion" className="mt-6">
                 <Card>
                   <CardHeader className="flex flex-row justify-between items-start">
@@ -308,66 +357,8 @@ export default function ProfilePage() {
                         </div>
                     )}
                     <Separator />
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <StatCard icon={MessageSquare} value={userStats?.comments} label="Comentarios" />
-                        <StatCard icon={BarChart3} value={userStats?.ratings} label="Calificaciones" />
-                        <StatCard icon={Heart} value={userStats?.attitudes} label="Votos de Actitud" />
-                    </div>
-                    <Separator />
                     <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
                   </CardContent>
-                </Card>
-            </TabsContent>
-
-            <TabsContent value="logros" className="mt-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Logros Desbloqueados</CardTitle>
-                        <CardDescription>Tus medallas e insignias ganadas por participar.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                    {(currentUser.achievements && currentUser.achievements.length > 0) ? (
-                        <div className="space-y-3">
-                            {currentUser.achievements.map((achId) => {
-                              const details = achievementDetails[achId as AchievementId];
-                              if (!details) return null;
-                              const Icon = details.icon;
-                              return (
-                                <div key={achId} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md">
-                                  <Icon className="h-8 w-8 text-primary flex-shrink-0" />
-                                  <div>
-                                    <p className="font-semibold text-foreground">{details.title}</p>
-                                    <p className="text-sm text-muted-foreground">{details.description}</p>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      ) : (
-                        <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
-                            <Award className="mx-auto h-8 w-8 mb-2" />
-                            <p>Aún no has desbloqueado ningún logro. ¡Empieza a explorar para ganar el primero!</p>
-                        </div>
-                      )}
-                    </CardContent>
-                </Card>
-            </TabsContent>
-
-            <TabsContent value="rachas" className="mt-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Rachas de Actividad</CardTitle>
-                        <CardDescription>Tu constancia participando en la comunidad.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Alert>
-                            <Flame className="h-4 w-4" />
-                            <AlertTitle>Próximamente</AlertTitle>
-                            <AlertDescription>
-                                Esta sección está en construcción. ¡Vuelve pronto para ver tus rachas de actividad!
-                            </AlertDescription>
-                        </Alert>
-                    </CardContent>
                 </Card>
             </TabsContent>
         </Tabs>
@@ -400,3 +391,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
