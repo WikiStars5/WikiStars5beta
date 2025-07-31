@@ -323,18 +323,28 @@ export default function ProfilePage() {
         </TabsContent>
         <TabsContent value="actitud" className="mt-6">
              <Card>
-              <CardHeader>
-                <CardTitle>Mis Actitudes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Alert>
-                  <Heart className="h-4 w-4" />
-                  <AlertTitle>Próximamente</AlertTitle>
-                  <AlertDescription>
+                <CardHeader>
+                  <CardTitle>Mis Actitudes</CardTitle>
+                  <CardDescription>
                     Aquí podrás ver un resumen de todas tus actitudes hacia los diferentes personajes.
-                  </AlertDescription>
-                </Alert>
-              </CardContent>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Card className="p-4 text-center">
+                            <CardTitle className="text-base">Neutral</CardTitle>
+                        </Card>
+                        <Card className="p-4 text-center">
+                            <CardTitle className="text-base">Fan</CardTitle>
+                        </Card>
+                        <Card className="p-4 text-center">
+                             <CardTitle className="text-base">Simp</CardTitle>
+                        </Card>
+                        <Card className="p-4 text-center">
+                             <CardTitle className="text-base">Hater</CardTitle>
+                        </Card>
+                    </div>
+                </CardContent>
             </Card>
         </TabsContent>
     </Tabs>
