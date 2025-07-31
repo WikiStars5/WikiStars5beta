@@ -100,7 +100,7 @@ export default function ProfilePage() {
           setHaterList([]);
           setSimpList([]);
           setNeutralList([]);
-          setIsDataLoading(false);
+          if (attitudeTabClicked) setIsDataLoading(false);
           return;
         }
         const attitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
@@ -267,7 +267,7 @@ export default function ProfilePage() {
   const renderProfileContent = () => (
     <div className="w-full mt-6">
        <Tabs defaultValue="rachas" className="w-full">
-            <TabsList className="flex w-full h-auto p-1 rounded-lg bg-black border border-white/20">
+            <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20">
                 <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
                 <TabsTrigger value="actitud" onClick={() => loadProfileData(true)}><Heart className="mr-2" />Mi Actitud</TabsTrigger>
                 <TabsTrigger value="emociones"><Smile className="mr-2" />Mis Emociones</TabsTrigger>
@@ -425,47 +425,6 @@ export default function ProfilePage() {
           </CardTitle>
           <CardDescription>{isAnonymous ? 'Perfil de Invitado' : currentUser.email}</CardDescription>
         </CardHeader>
-        {isAnonymous && (
-            <CardContent className="p-4 bg-primary/10 text-center">
-                 <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
-                    <DialogTrigger asChild>
-                         <Button>
-                           <Link2 className="mr-2 h-4 w-4" />
-                           Vincular Cuenta y Guardar Progreso
-                         </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Vincular Cuenta</DialogTitle>
-                          <DialogDescription>
-                            Crea una cuenta permanente para guardar tu progreso y acceder desde cualquier dispositivo.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
-                           <div>
-                               <Label htmlFor="link-username">Nombre de Usuario</Label>
-                               <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} />} />
-                               {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
-                           </div>
-                           <div>
-                               <Label htmlFor="link-email">Correo Electrónico</Label>
-                               <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} />} />
-                               {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
-                           </div>
-                           <div>
-                               <Label htmlFor="link-password">Contraseña</Label>
-                               <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} />} />
-                               {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
-                           </div>
-                           <Button type="submit" className="w-full" disabled={isLinking}>
-                                {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Link2 className="mr-2 h-4 w-4"/>}
-                                {isLinking ? 'Vinculando...' : 'Vincular Cuenta'}
-                           </Button>
-                        </form>
-                    </DialogContent>
-                </Dialog>
-            </CardContent>
-        )}
       </Card>
       
       {isAnonymous ? renderProfileContent() : renderProfileForRegisteredUser()}
@@ -473,3 +432,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
