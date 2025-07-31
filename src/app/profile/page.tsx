@@ -290,7 +290,7 @@ export default function ProfilePage() {
                 </Avatar>
                 <div className="flex-grow">
                   <p className="font-semibold">{figure.name}</p>
-                  {dateString && <p className="text-xs text-muted-foreground">Votado el {dateString}</p>}
+                   {dateString && <p className="text-xs text-muted-foreground">Votado el {dateString}</p>}
                 </div>
               </Link>
             )
