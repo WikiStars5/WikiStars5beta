@@ -8,9 +8,11 @@ import { SearchBar } from '@/components/shared/SearchBar';
 import { useState } from 'react';
 import { NotificationBell } from './NotificationBell';
 import { InstallPwaButton } from './InstallPwaButton';
+import { useAuth } from '@/hooks/useAuth';
 
 export function Header() {
   const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
+  const { isAnonymous } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
@@ -31,9 +33,11 @@ export function Header() {
             <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">
               Explorar
             </Link>
-            <Link href="/profile" className="text-foreground/70 hover:text-foreground transition-colors">
-              Mi Perfil
-            </Link>
+            {isAnonymous && (
+              <Link href="/profile" className="text-foreground/70 hover:text-foreground transition-colors">
+                Mi Perfil
+              </Link>
+            )}
           </nav>
 
           <InstallPwaButton />
