@@ -17,7 +17,7 @@ export function StreakAnimation({ streakCount, isOpen, onClose }: StreakAnimatio
     if (isOpen) {
       const timer = setTimeout(() => {
         onClose();
-      }, 3000); // Animation duration: 3 seconds
+      }, 4000); // Animation duration: 4 seconds
 
       return () => clearTimeout(timer);
     }
