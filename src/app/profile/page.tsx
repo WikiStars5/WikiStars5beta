@@ -99,15 +99,28 @@ export default function ProfilePage() {
     setIsDataLoading(true);
 
     try {
-      // Always load streaks
+      // Always load streaks and filter for active ones
       const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
-      if(streaksJSON) {
-          const localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
-          localStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
-          setStreaks(localStreaks);
+      if (streaksJSON) {
+        let localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
+        
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        // Filter to only show streaks from today or yesterday
+        const activeStreaks = localStreaks.filter(streak => 
+            streak.lastCommentDate === todayStr || streak.lastCommentDate === yesterdayStr
+        );
+        
+        activeStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
+        setStreaks(activeStreaks);
       } else {
-          setStreaks([]);
+        setStreaks([]);
       }
+
 
       // Load attitude data if requested
       if (tabToLoad === 'attitude' || tabToLoad === 'all') {
