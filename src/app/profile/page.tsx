@@ -118,15 +118,14 @@ export default function ProfilePage() {
         let localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
         
         const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
         const yesterday = new Date(today);
         yesterday.setDate(today.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-
+        
         // Filter to only show streaks from today or yesterday
-        const activeStreaks = localStreaks.filter(streak => 
-            streak.lastCommentDate === todayStr || streak.lastCommentDate === yesterdayStr
-        );
+        const activeStreaks = localStreaks.filter(streak => {
+            const lastDate = new Date(streak.lastCommentDate);
+            return lastDate.toDateString() === today.toDateString() || lastDate.toDateString() === yesterday.toDateString();
+        });
         
         activeStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
         setStreaks(activeStreaks);
@@ -220,6 +219,48 @@ export default function ProfilePage() {
     }
   };
   
+  const onLinkAccountSubmit = async (data: LinkAccountFormValues) => {
+    if (!firebaseUser || !isAnonymous) {
+      toast({ title: "Error", description: "No hay una cuenta de invitado para vincular.", variant: "destructive" });
+      return;
+    }
+    setIsLinking(true);
+    try {
+      // Create the credential
+      const credential = EmailAuthProvider.credential(data.email, data.password);
+      
+      // Link the credential to the anonymous user
+      await linkWithCredential(firebaseUser, credential);
+
+      // Now that the account is permanent, update the profile with the chosen username
+      await updateUserProfileCallable({
+        username: data.username,
+        countryCode: currentUser?.countryCode,
+        gender: currentUser?.gender,
+      });
+
+      toast({
+        title: "¡Cuenta Vinculada!",
+        description: "Tu progreso ha sido guardado en tu nueva cuenta.",
+      });
+      setIsLinkDialogOpen(false);
+      resetLink();
+      router.refresh(); // Refresh the page to reflect the new state
+
+    } catch (error: any) {
+      console.error("Error linking account:", error);
+      let message = "No se pudo crear la cuenta.";
+      if (error.code === 'auth/email-already-in-use') {
+        message = 'Este correo ya está en uso por otra cuenta.';
+      } else if (error.code === 'auth/credential-already-in-use') {
+        message = 'Estas credenciales ya están asociadas con otro usuario.';
+      }
+      toast({ title: "Error al Vincular", description: message, variant: "destructive" });
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
 
   const handleLogout = async () => {
     try {
@@ -330,96 +371,147 @@ export default function ProfilePage() {
     );
   };
   
-  const renderProfileContent = () => (
-    <div className="w-full mt-6">
-       <Tabs defaultValue="rachas" className="w-full">
-            <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20">
-                <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
-                <TabsTrigger value="actitud" onClick={() => loadProfileData('attitude')}><Heart className="mr-2" />Mi Actitud</TabsTrigger>
-                <TabsTrigger value="emociones" onClick={() => loadProfileData('emotion')}><Smile className="mr-2" />Mis Emociones</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="rachas" className="mt-6">
-                <Card className="border border-white/20 bg-black">
-                    <CardHeader>
-                        <CardTitle>Rachas de Actividad</CardTitle>
-                        <CardDescription>Tu historial de participación y rachas. ¡Gana una racha comentando o respondiendo en el perfil de un personaje por días consecutivos!</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {isDataLoading ? (
-                            <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                        ) : streaks.length > 0 ? (
-                            <div className="space-y-4">
-                                {streaks.map(streak => (
-                                    <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
-                                        <Avatar className="h-12 w-12"><AvatarImage src={correctMalformedUrl(streak.figurePhotoUrl) || undefined} alt={streak.figureName} /><AvatarFallback>{streak.figureName.charAt(0)}</AvatarFallback></Avatar>
-                                        <div className="flex-grow"><p className="font-semibold">{streak.figureName}</p><p className="text-sm text-muted-foreground">Último comentario: {new Date(streak.lastCommentDate).toLocaleDateString()}</p></div>
-                                        <div className="flex items-center gap-2 text-orange-500 font-bold"><Flame className="h-5 w-5"/><span>{streak.currentStreak}</span></div>
-                                    </Link>
-                                ))}
+  const renderProfileForAnonymousUser = () => (
+    <>
+        <Card className="w-full mt-6 border-primary/50 border-2 bg-primary/5">
+            <CardHeader className="text-center">
+                <CardTitle className="text-xl">¡Guarda tu Progreso!</CardTitle>
+                <CardDescription>
+                Estás navegando como invitado. Crea una cuenta para guardar tus rachas, votos y comentarios de forma permanente.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center">
+                <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Crear Cuenta y Guardar Progreso
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Crear Cuenta Permanente</DialogTitle>
+                      <DialogDescription>
+                        Ingresa tus datos para vincular tu actividad de invitado a una cuenta nueva.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
+                        <div>
+                            <Label htmlFor="link-username">Nombre de Usuario</Label>
+                            <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} />} />
+                            {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="link-email">Correo Electrónico</Label>
+                            <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} />} />
+                            {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="link-password">Contraseña</Label>
+                            <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} />} />
+                            {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
+                        </div>
+                        <DialogFooter>
+                            <Button type="submit" className="w-full" disabled={isLinking}>
+                              {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Link2 className="mr-2 h-4 w-4" />}
+                              {isLinking ? "Creando cuenta..." : "Crear y Vincular Cuenta"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+            </CardContent>
+        </Card>
+        <div className="w-full mt-6">
+          <Tabs defaultValue="rachas" className="w-full">
+              <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20">
+                  <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
+                  <TabsTrigger value="actitud" onClick={() => loadProfileData('attitude')}><Heart className="mr-2" />Mi Actitud</TabsTrigger>
+                  <TabsTrigger value="emociones" onClick={() => loadProfileData('emotion')}><Smile className="mr-2" />Mis Emociones</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="rachas" className="mt-6">
+                  <Card className="border border-white/20 bg-black">
+                      <CardHeader>
+                          <CardTitle>Rachas de Actividad</CardTitle>
+                          <CardDescription>Tu historial de participación y rachas. ¡Gana una racha comentando o respondiendo en el perfil de un personaje por días consecutivos!</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                          {isDataLoading ? (
+                              <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                          ) : streaks.length > 0 ? (
+                              <div className="space-y-4">
+                                  {streaks.map(streak => (
+                                      <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
+                                          <Avatar className="h-12 w-12"><AvatarImage src={correctMalformedUrl(streak.figurePhotoUrl) || undefined} alt={streak.figureName} /><AvatarFallback>{streak.figureName.charAt(0)}</AvatarFallback></Avatar>
+                                          <div className="flex-grow"><p className="font-semibold">{streak.figureName}</p><p className="text-sm text-muted-foreground">Último comentario: {new Date(streak.lastCommentDate).toLocaleDateString()}</p></div>
+                                          <div className="flex items-center gap-2 text-orange-500 font-bold"><Flame className="h-5 w-5"/><span>{streak.currentStreak}</span></div>
+                                      </Link>
+                                  ))}
+                              </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md"><Flame className="mx-auto h-8 w-8 mb-2" /><p>Aún no tienes ninguna racha. ¡Comenta en el perfil de un personaje para empezar una!</p></div>
+                          )}
+                      </CardContent>
+                  </Card>
+              </TabsContent>
+              
+              <TabsContent value="actitud" className="mt-6">
+                  <Card className="border border-white/20 bg-black">
+                      <CardHeader>
+                          <CardTitle>Mi Actitud</CardTitle>
+                          <CardDescription>Aquí se muestran los personajes según la actitud que has votado por ellos.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Tabs defaultValue="neutral" className="w-full">
+                            <TabsList className="grid w-full grid-cols-4 h-auto">
+                                <TabsTrigger value="neutral" className="flex-col p-4 text-sm gap-2 h-auto"><span className="text-4xl" role="img" aria-label="Neutral">😐</span>Neutral</TabsTrigger>
+                                <TabsTrigger value="fan" className="flex-col p-4 text-sm gap-2 h-auto"><span className="text-4xl" role="img" aria-label="Fan">😍</span>Fans</TabsTrigger>
+                                <TabsTrigger value="simp" className="flex-col p-4 text-sm gap-2 h-auto"><span className="text-4xl" role="img" aria-label="Simp">🥰</span>Simps</TabsTrigger>
+                                <TabsTrigger value="hater" className="flex-col p-4 text-sm gap-2 h-auto"><span className="text-4xl" role="img" aria-label="Hater">😡</span>Haters</TabsTrigger>
+                            </TabsList>
+                            <div className="mt-4">
+                              <TabsContent value="neutral"><AttitudeList figures={attitudeFigures} attitudeKey="neutral" emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
+                              <TabsContent value="fan"><AttitudeList figures={attitudeFigures} attitudeKey="fan" emptyMessage="Aún no has marcado a nadie como 'Fan'."/></TabsContent>
+                              <TabsContent value="simp"><AttitudeList figures={attitudeFigures} attitudeKey="simp" emptyMessage="No has marcado a nadie como 'Simp'."/></TabsContent>
+                              <TabsContent value="hater"><AttitudeList figures={attitudeFigures} attitudeKey="hater" emptyMessage="No has marcado a nadie como 'Hater'."/></TabsContent>
                             </div>
-                        ) : (
-                           <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md"><Flame className="mx-auto h-8 w-8 mb-2" /><p>Aún no tienes ninguna racha. ¡Comenta en el perfil de un personaje para empezar una!</p></div>
-                        )}
-                    </CardContent>
-                </Card>
-            </TabsContent>
-            
-            <TabsContent value="actitud" className="mt-6">
-                 <Card className="border border-white/20 bg-black">
+                        </Tabs>
+                      </CardContent>
+                  </Card>
+              </TabsContent>
+
+              <TabsContent value="emociones" className="mt-6">
+                  <Card className="border border-white/20 bg-black">
                     <CardHeader>
-                        <CardTitle>Mi Actitud</CardTitle>
-                        <CardDescription>Aquí se muestran los personajes según la actitud que has votado por ellos.</CardDescription>
+                      <CardTitle>Mis Emociones</CardTitle>
+                      <CardDescription>Aquí verás los personajes según la emoción que te provocan.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                       <Tabs defaultValue="neutral" className="w-full">
-                           <TabsList className="grid w-full grid-cols-4 h-auto">
-                               <TabsTrigger value="neutral" className="flex-col p-3 text-sm gap-2 h-auto"><span className="text-3xl" role="img" aria-label="Neutral">😐</span>Neutral</TabsTrigger>
-                               <TabsTrigger value="fan" className="flex-col p-3 text-sm gap-2 h-auto"><span className="text-3xl" role="img" aria-label="Fan">😍</span>Fans</TabsTrigger>
-                               <TabsTrigger value="simp" className="flex-col p-3 text-sm gap-2 h-auto"><span className="text-3xl" role="img" aria-label="Simp">🥰</span>Simps</TabsTrigger>
-                               <TabsTrigger value="hater" className="flex-col p-3 text-sm gap-2 h-auto"><span className="text-3xl" role="img" aria-label="Hater">😡</span>Haters</TabsTrigger>
-                           </TabsList>
-                           <div className="mt-4">
-                             <TabsContent value="neutral"><AttitudeList figures={attitudeFigures} attitudeKey="neutral" emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
-                             <TabsContent value="fan"><AttitudeList figures={attitudeFigures} attitudeKey="fan" emptyMessage="Aún no has marcado a nadie como 'Fan'."/></TabsContent>
-                             <TabsContent value="simp"><AttitudeList figures={attitudeFigures} attitudeKey="simp" emptyMessage="No has marcado a nadie como 'Simp'."/></TabsContent>
-                             <TabsContent value="hater"><AttitudeList figures={attitudeFigures} attitudeKey="hater" emptyMessage="No has marcado a nadie como 'Hater'."/></TabsContent>
-                           </div>
-                       </Tabs>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-
-            <TabsContent value="emociones" className="mt-6">
-                <Card className="border border-white/20 bg-black">
-                  <CardHeader>
-                    <CardTitle>Mis Emociones</CardTitle>
-                    <CardDescription>Aquí verás los personajes según la emoción que te provocan.</CardDescription>
-                  </CardHeader>
-                   <CardContent>
-                       <Tabs defaultValue="alegria" className="w-full">
-                           <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar p-1 h-auto bg-muted rounded-md text-muted-foreground">
-                               {Object.entries(EMOTION_IMAGES).map(([key, {label, imageUrl}]) => (
-                                   <TabsTrigger key={key} value={key} className="text-sm p-3 flex-col h-auto flex-shrink-0 gap-2">
-                                       <Image src={imageUrl} alt={label} width={32} height={32} className="mb-1" />
-                                       {label}
-                                   </TabsTrigger>
-                               ))}
-                           </TabsList>
-                           <div className="mt-4">
-                             <TabsContent value="alegria"><EmotionList figures={alegriaList} emptyMessage="No has votado 'Alegría' por nadie."/></TabsContent>
-                             <TabsContent value="envidia"><EmotionList figures={envidiaList} emptyMessage="No has votado 'Envidia' por nadie."/></TabsContent>
-                             <TabsContent value="tristeza"><EmotionList figures={tristezaList} emptyMessage="No has votado 'Tristeza' por nadie."/></TabsContent>
-                             <TabsContent value="miedo"><EmotionList figures={miedoList} emptyMessage="No has votado 'Miedo' por nadie."/></TabsContent>
-                             <TabsContent value="desagrado"><EmotionList figures={desagradoList} emptyMessage="No has votado 'Desagrado' por nadie."/></TabsContent>
-                             <TabsContent value="furia"><EmotionList figures={furiaList} emptyMessage="No has votado 'Furia' por nadie."/></TabsContent>
-                           </div>
-                       </Tabs>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-        </Tabs>
-    </div>
+                        <Tabs defaultValue="alegria" className="w-full">
+                            <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar p-1 h-auto bg-muted rounded-md text-muted-foreground">
+                                {Object.entries(EMOTION_IMAGES).map(([key, {label, imageUrl}]) => (
+                                    <TabsTrigger key={key} value={key} className="text-sm p-3 flex-col h-auto flex-shrink-0 gap-2">
+                                        <Image src={imageUrl} alt={label} width={40} height={40} className="mb-1" />
+                                        {label}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                            <div className="mt-4">
+                              <TabsContent value="alegria"><EmotionList figures={alegriaList} emptyMessage="No has votado 'Alegría' por nadie."/></TabsContent>
+                              <TabsContent value="envidia"><EmotionList figures={envidiaList} emptyMessage="No has votado 'Envidia' por nadie."/></TabsContent>
+                              <TabsContent value="tristeza"><EmotionList figures={tristezaList} emptyMessage="No has votado 'Tristeza' por nadie."/></TabsContent>
+                              <TabsContent value="miedo"><EmotionList figures={miedoList} emptyMessage="No has votado 'Miedo' por nadie."/></TabsContent>
+                              <TabsContent value="desagrado"><EmotionList figures={desagradoList} emptyMessage="No has votado 'Desagrado' por nadie."/></TabsContent>
+                              <TabsContent value="furia"><EmotionList figures={furiaList} emptyMessage="No has votado 'Furia' por nadie."/></TabsContent>
+                            </div>
+                        </Tabs>
+                      </CardContent>
+                  </Card>
+              </TabsContent>
+          </Tabs>
+      </div>
+    </>
   );
 
   const renderProfileForRegisteredUser = () => (
@@ -474,7 +566,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
       </div>
-      {renderProfileContent()}
     </>
 );
 
@@ -505,7 +596,7 @@ export default function ProfilePage() {
         </CardHeader>
       </Card>
       
-      {isAnonymous ? renderProfileContent() : renderProfileForRegisteredUser()}
+      {isAnonymous ? renderProfileForAnonymousUser() : renderProfileForRegisteredUser()}
 
     </div>
   );
