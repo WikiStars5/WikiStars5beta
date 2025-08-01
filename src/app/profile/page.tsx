@@ -65,7 +65,6 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [streaks, setStreaks] = useState<LocalUserStreak[]>([]);
   
-  // States for Attitude and Emotion Lists
   const [attitudeFigures, setAttitudeFigures] = useState<Figure[]>([]);
   const [attitudes, setAttitudes] = useState<Attitude[]>([]);
 
@@ -91,10 +90,12 @@ export default function ProfilePage() {
     resolver: zodResolver(linkAccountFormSchema),
     defaultValues: { email: '', password: '', username: ''}
   });
+
+  const isAdmin = currentUser?.role === 'admin';
   
   const loadProfileData = useCallback(async (tabToLoad: 'attitude' | 'emotion' | 'all') => {
-    // This is the key change: only load from localStorage if the user is anonymous.
-    if (!isAnonymous) {
+    // If the user is a registered admin, don't load anything from localStorage.
+    if (isAdmin) {
       setStreaks([]);
       setAttitudes([]);
       setEmotions([]);
@@ -121,7 +122,6 @@ export default function ProfilePage() {
         const yesterday = new Date(today);
         yesterday.setDate(today.getDate() - 1);
         
-        // Filter to only show streaks from today or yesterday
         const activeStreaks = localStreaks.filter(streak => {
             const lastDate = new Date(streak.lastCommentDate);
             return lastDate.toDateString() === today.toDateString() || lastDate.toDateString() === yesterday.toDateString();
@@ -133,13 +133,10 @@ export default function ProfilePage() {
         setStreaks([]);
       }
 
-
-      // Load attitude data if requested
       if (tabToLoad === 'attitude' || tabToLoad === 'all') {
         const attitudesJSON = localStorage.getItem('wikistars5-attitudes');
         const localAttitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
         setAttitudes(localAttitudes.sort((a, b) => {
-          // Sort by date, but handle cases where addedAt might be missing
           const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
           const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
           return dateB - dateA;
@@ -154,7 +151,6 @@ export default function ProfilePage() {
         }
       }
 
-      // Load emotion data if requested
       if (tabToLoad === 'emotion' || tabToLoad === 'all') {
         const emotionsJSON = localStorage.getItem('wikistars5-emotions');
         const localEmotions: EmotionVote[] = emotionsJSON ? JSON.parse(emotionsJSON) : [];
@@ -190,7 +186,7 @@ export default function ProfilePage() {
     } finally {
         setIsDataLoading(false);
     }
-  }, [isAnonymous, toast]);
+  }, [isAdmin, toast]);
 
 
   useEffect(() => {
@@ -226,13 +222,10 @@ export default function ProfilePage() {
     }
     setIsLinking(true);
     try {
-      // Create the credential
       const credential = EmailAuthProvider.credential(data.email, data.password);
       
-      // Link the credential to the anonymous user
       await linkWithCredential(firebaseUser, credential);
 
-      // Now that the account is permanent, update the profile with the chosen username
       await updateUserProfileCallable({
         username: data.username,
         countryCode: currentUser?.countryCode,
@@ -245,7 +238,7 @@ export default function ProfilePage() {
       });
       setIsLinkDialogOpen(false);
       resetLink();
-      router.refresh(); // Refresh the page to reflect the new state
+      router.refresh();
 
     } catch (error: any) {
       console.error("Error linking account:", error);
@@ -295,7 +288,6 @@ export default function ProfilePage() {
     );
   }
 
-  const isAdmin = !isAnonymous && (currentUser.uid === ADMIN_UID || currentUser.role === 'admin');
   const displayName = currentUser.username || (isAnonymous ? "Invitado" : "Usuario");
 
   const AttitudeList = ({ figures, attitudeKey, emptyMessage }: { figures: Figure[], attitudeKey: string, emptyMessage: string }) => {
@@ -415,11 +407,11 @@ export default function ProfilePage() {
                       </CardHeader>
                       <CardContent>
                         <Tabs defaultValue="neutral" className="w-full">
-                            <TabsList className="grid w-full grid-cols-4 h-auto">
-                                <TabsTrigger value="neutral" className="flex-col p-4 text-sm gap-2 h-auto"><span className="text-4xl" role="img" aria-label="Neutral">😐</span>Neutral</TabsTrigger>
-                                <TabsTrigger value="fan" className="flex-col p-4 text-sm gap-2 h-auto"><span className="text-4xl" role="img" aria-label="Fan">😍</span>Fans</TabsTrigger>
-                                <TabsTrigger value="simp" className="flex-col p-4 text-sm gap-2 h-auto"><span className="text-4xl" role="img" aria-label="Simp">🥰</span>Simps</TabsTrigger>
-                                <TabsTrigger value="hater" className="flex-col p-4 text-sm gap-2 h-auto"><span className="text-4xl" role="img" aria-label="Hater">😡</span>Haters</TabsTrigger>
+                            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+                                <TabsTrigger value="neutral" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Neutral">😐</span>Neutral</TabsTrigger>
+                                <TabsTrigger value="fan" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Fan">😍</span>Fans</TabsTrigger>
+                                <TabsTrigger value="simp" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Simp">🥰</span>Simps</TabsTrigger>
+                                <TabsTrigger value="hater" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Hater">😡</span>Haters</TabsTrigger>
                             </TabsList>
                             <div className="mt-4">
                               <TabsContent value="neutral"><AttitudeList figures={attitudeFigures} attitudeKey="neutral" emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
