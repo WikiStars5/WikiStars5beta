@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, LogOut, ShieldCheck, Loader2, Save } from 'lucide-react';
+import { User, LogOut, ShieldCheck, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation'; 
 import { correctMalformedUrl } from '@/lib/utils';
@@ -46,23 +46,19 @@ export function UserNav() {
     );
   }
 
-  // If the user is anonymous, show a simple link to their profile
-  // where they can choose to register/link their account.
+  // If the user is anonymous, the button should lead to the admin login page.
+  // This provides a clear path for the admin to sign in.
   if (isAnonymous) {
      return (
-        <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-            <Link href="/profile" aria-label="Ver perfil de invitado">
-                 <Avatar className="h-9 w-9">
-                    <AvatarFallback>
-                      <User className="h-5 w-5" />
-                    </AvatarFallback>
-                </Avatar>
+        <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+            <Link href="/login" aria-label="Acceder como Administrador">
+                 <User className="h-5 w-5 text-foreground/70" />
             </Link>
         </Button>
     );
   }
 
-  // If we have a registered user, show the full dropdown menu.
+  // If we have a registered user (e.g., the admin), show the full dropdown menu.
   if (currentUser) {
       const isAdmin = currentUser.uid === ADMIN_UID || currentUser.role === 'admin';
       const displayName = currentUser.username || "Usuario";
@@ -120,8 +116,8 @@ export function UserNav() {
       );
   }
 
-  // Fallback for when there is no user at all (including anonymous).
-  // This state is now the explicit "Login" button for admins.
+  // Fallback case: if no user (not even anonymous), show the login button.
+  // This might briefly appear before anonymous sign-in completes.
   return (
     <Button asChild variant="ghost" size="icon" className="h-9 w-9">
         <Link href="/login" aria-label="Acceder">
