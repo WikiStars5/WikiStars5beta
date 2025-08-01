@@ -47,7 +47,6 @@ export function UserNav() {
   }
 
   // If the user is anonymous, the button should lead to the admin login page.
-  // This provides a clear path for the admin to sign in.
   if (isAnonymous) {
      return (
         <Button asChild variant="ghost" size="icon" className="h-9 w-9">
@@ -117,7 +116,6 @@ export function UserNav() {
   }
 
   // Fallback case: if no user (not even anonymous), show the login button.
-  // This might briefly appear before anonymous sign-in completes.
   return (
     <Button asChild variant="ghost" size="icon" className="h-9 w-9">
         <Link href="/login" aria-label="Acceder">
