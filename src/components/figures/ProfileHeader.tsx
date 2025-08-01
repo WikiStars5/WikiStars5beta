@@ -30,7 +30,7 @@ export function ProfileHeader({
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
 
   return (
-    <div className="w-full bg-card p-4 sm:p-6 rounded-lg shadow-md">
+    <div className="w-full bg-black border border-white/20 p-4 sm:p-6 rounded-lg shadow-md">
         <div className="flex flex-col items-center md:flex-row md:items-start md:space-x-5">
           <div className="relative flex-shrink-0 w-28 h-28 md:w-36 md:h-36">
              <button 
