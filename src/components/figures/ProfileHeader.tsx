@@ -65,7 +65,7 @@ export function ProfileHeader({
               </h1>
               <div className="mt-3 md:mt-0 flex-shrink-0 flex flex-col items-center md:items-end gap-2">
                 <div className="flex items-center gap-2">
-                    <ShareButton figureName={figure.name} figureId={figure.id} showText={false} />
+                    <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
                 </div>
                 {currentUserStreak && currentUserStreak > 0 && (
                   <div className="flex items-center gap-2 text-orange-400 font-semibold bg-orange-400/10 px-3 py-1 rounded-full text-sm">
