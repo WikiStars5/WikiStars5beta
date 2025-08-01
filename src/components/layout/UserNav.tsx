@@ -22,7 +22,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 export function UserNav() {
-  const { user: currentUser, isAnonymous, isLoading } = useAuth();
+  const { user: currentUser, firebaseUser, isAnonymous, isLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -47,13 +47,23 @@ export function UserNav() {
   }
 
   // User is not logged in at all (not even anonymous), show a login button for admin
-  if (!currentUser) {
+  if (!firebaseUser) {
      return (
         <Button asChild variant="ghost" size="icon" className="h-9 w-9">
             <Link href="/login" aria-label="Acceder">
                 <User className="h-5 w-5 text-foreground/70" />
             </Link>
         </Button>
+    );
+  }
+
+  // At this point, we have a firebaseUser, but we might still be loading the custom user profile.
+  // We check for `currentUser` to be sure.
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center h-9 w-9">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
     );
   }
   
