@@ -361,10 +361,10 @@ export default function ProfilePage() {
                     <CardContent>
                        <Tabs defaultValue="neutral" className="w-full">
                            <TabsList className="grid w-full grid-cols-4 h-auto">
-                               <TabsTrigger value="neutral" className="flex-col p-3 text-sm gap-2 h-auto"><span className="text-2xl" role="img" aria-label="Neutral">😐</span>Neutral</TabsTrigger>
-                               <TabsTrigger value="fan" className="flex-col p-3 text-sm gap-2 h-auto"><span className="text-2xl" role="img" aria-label="Fan">😍</span>Fans</TabsTrigger>
-                               <TabsTrigger value="simp" className="flex-col p-3 text-sm gap-2 h-auto"><span className="text-2xl" role="img" aria-label="Simp">🥰</span>Simps</TabsTrigger>
-                               <TabsTrigger value="hater" className="flex-col p-3 text-sm gap-2 h-auto"><span className="text-2xl" role="img" aria-label="Hater">😡</span>Haters</TabsTrigger>
+                               <TabsTrigger value="neutral" className="flex-col p-3 text-sm gap-2 h-auto"><span className="text-3xl" role="img" aria-label="Neutral">😐</span>Neutral</TabsTrigger>
+                               <TabsTrigger value="fan" className="flex-col p-3 text-sm gap-2 h-auto"><span className="text-3xl" role="img" aria-label="Fan">😍</span>Fans</TabsTrigger>
+                               <TabsTrigger value="simp" className="flex-col p-3 text-sm gap-2 h-auto"><span className="text-3xl" role="img" aria-label="Simp">🥰</span>Simps</TabsTrigger>
+                               <TabsTrigger value="hater" className="flex-col p-3 text-sm gap-2 h-auto"><span className="text-3xl" role="img" aria-label="Hater">😡</span>Haters</TabsTrigger>
                            </TabsList>
                            <div className="mt-4">
                              <TabsContent value="neutral"><AttitudeList figures={attitudeFigures} attitudeKey="neutral" emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
@@ -387,8 +387,8 @@ export default function ProfilePage() {
                        <Tabs defaultValue="alegria" className="w-full">
                            <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar p-1 h-auto bg-muted rounded-md text-muted-foreground">
                                {Object.entries(EMOTION_IMAGES).map(([key, {label, imageUrl}]) => (
-                                   <TabsTrigger key={key} value={key} className="text-xs p-2 sm:p-3 flex-col h-auto flex-shrink-0">
-                                       <Image src={imageUrl} alt={label} width={24} height={24} className="mb-1" />
+                                   <TabsTrigger key={key} value={key} className="text-sm p-3 flex-col h-auto flex-shrink-0 gap-2">
+                                       <Image src={imageUrl} alt={label} width={32} height={32} className="mb-1" />
                                        {label}
                                    </TabsTrigger>
                                ))}
