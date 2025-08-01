@@ -59,7 +59,7 @@ const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
 };
 
 export default function ProfilePage() {
-  const { user: currentUser, firebaseUser, isLoading } = useAuth();
+  const { user: currentUser, firebaseUser, isLoading, isAnonymous } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -81,7 +81,6 @@ export default function ProfilePage() {
   const [isLinking, setIsLinking] = useState(false);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [animationStreak, setAnimationStreak] = useState<number | null>(null);
-  const isAnonymous = currentUser?.isAnonymous ?? false;
   
   const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -94,7 +93,21 @@ export default function ProfilePage() {
   });
   
   const loadProfileData = useCallback(async (tabToLoad: 'attitude' | 'emotion' | 'all') => {
-    if (!currentUser) return;
+    // This is the key change: only load from localStorage if the user is anonymous.
+    if (!isAnonymous) {
+      setStreaks([]);
+      setAttitudes([]);
+      setEmotions([]);
+      setAttitudeFigures([]);
+      setAlegriaList([]);
+      setEnvidiaList([]);
+      setTristezaList([]);
+      setMiedoList([]);
+      setDesagradoList([]);
+      setFuriaList([]);
+      setIsDataLoading(false);
+      return;
+    }
 
     setIsDataLoading(true);
 
@@ -178,7 +191,7 @@ export default function ProfilePage() {
     } finally {
         setIsDataLoading(false);
     }
-  }, [currentUser, toast]);
+  }, [isAnonymous, toast]);
 
 
   useEffect(() => {
