@@ -373,55 +373,6 @@ export default function ProfilePage() {
   
   const renderProfileForAnonymousUser = () => (
     <>
-        <Card className="w-full mt-6 border-primary/50 border-2 bg-primary/5">
-            <CardHeader className="text-center">
-                <CardTitle className="text-xl">¡Guarda tu Progreso!</CardTitle>
-                <CardDescription>
-                Estás navegando como invitado. Crea una cuenta para guardar tus rachas, votos y comentarios de forma permanente.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center">
-                <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Crear Cuenta y Guardar Progreso
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Crear Cuenta Permanente</DialogTitle>
-                      <DialogDescription>
-                        Ingresa tus datos para vincular tu actividad de invitado a una cuenta nueva.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleLinkSubmit(onLinkAccountSubmit)} className="space-y-4">
-                        <div>
-                            <Label htmlFor="link-username">Nombre de Usuario</Label>
-                            <Controller name="username" control={linkControl} render={({ field }) => <Input id="link-username" {...field} />} />
-                            {linkErrors.username && <p className="text-xs text-destructive mt-1">{linkErrors.username.message}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="link-email">Correo Electrónico</Label>
-                            <Controller name="email" control={linkControl} render={({ field }) => <Input id="link-email" type="email" {...field} />} />
-                            {linkErrors.email && <p className="text-xs text-destructive mt-1">{linkErrors.email.message}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="link-password">Contraseña</Label>
-                            <Controller name="password" control={linkControl} render={({ field }) => <Input id="link-password" type="password" {...field} />} />
-                            {linkErrors.password && <p className="text-xs text-destructive mt-1">{linkErrors.password.message}</p>}
-                        </div>
-                        <DialogFooter>
-                            <Button type="submit" className="w-full" disabled={isLinking}>
-                              {isLinking ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Link2 className="mr-2 h-4 w-4" />}
-                              {isLinking ? "Creando cuenta..." : "Crear y Vincular Cuenta"}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-            </CardContent>
-        </Card>
         <div className="w-full mt-6">
           <Tabs defaultValue="rachas" className="w-full">
               <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20">
