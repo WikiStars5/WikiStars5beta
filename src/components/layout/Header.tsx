@@ -8,12 +8,13 @@ import { MobileSearchButton } from './MobileSearchButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
 import { useState } from 'react';
 import { NotificationBell } from './NotificationBell';
+import { GuestNotificationBell } from './GuestNotificationBell'; // Import the new component
 import { InstallPwaButton } from './InstallPwaButton';
 import { useAuth } from '@/hooks/useAuth';
 
 export function Header() {
   const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
-  const { isAnonymous } = useAuth();
+  const { isAnonymous, isLoading } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
@@ -43,7 +44,12 @@ export function Header() {
 
           <InstallPwaButton />
           <MobileSearchButton />
-          <NotificationBell />
+          
+          {/* Conditional rendering for notification bells */}
+          {!isLoading && (
+            isAnonymous ? <GuestNotificationBell /> : <NotificationBell />
+          )}
+
           <UserNav />
         </div>
       </div>

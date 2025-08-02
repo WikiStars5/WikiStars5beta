@@ -208,3 +208,6 @@ export const getAllUsers = onCall(async (request) => {
         return { success: false, error: error.message || 'Un error desconocido ocurrió en la Cloud Function.' };
     }
 });
+
+// Import notifications logic so it gets deployed
+import "./notifications";

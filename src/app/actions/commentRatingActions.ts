@@ -28,7 +28,7 @@ export async function updateCommentLikes(
 
       const data = commentDoc.data();
       const commentAuthorId = data.userId;
-      const isCommentAuthorGuest = !!data.guestUsername;
+      const isCommentAuthorGuest = !!data.isAnonymous; // Use the new isAnonymous flag
       
       const likedBy: string[] = data.likedBy || [];
       const dislikedBy: string[] = data.dislikedBy || [];
@@ -52,21 +52,27 @@ export async function updateCommentLikes(
             updateData.dislikes = increment(-1);
           }
           
-          // Create a notification if the user is not liking their own comment and the author is not a guest
-          if (userId !== commentAuthorId && !isCommentAuthorGuest) {
-            const notificationRef = doc(collection(db, 'notifications'));
-            transaction.set(notificationRef, {
-              userId: commentAuthorId, // The user to notify
-              actorId: userId,
-              actorName: actorName,
-              actorPhotoUrl: actorPhotoUrl,
-              type: 'like',
-              isRead: false,
-              figureId: figureId,
-              figureName: figureName,
-              commentId: commentId,
-              createdAt: serverTimestamp()
-            });
+          // Create a notification if the user is not liking their own comment.
+          // The target of the notification depends on whether the author is a guest or not.
+          if (userId !== commentAuthorId) {
+            if (isCommentAuthorGuest) {
+              // This is a guest user. We handle this client-side, but the action itself is valid.
+            } else {
+              // This is a registered user. Create a Firestore notification.
+              const notificationRef = doc(collection(db, 'notifications'));
+              transaction.set(notificationRef, {
+                userId: commentAuthorId, // The user to notify
+                actorId: userId,
+                actorName: actorName,
+                actorPhotoUrl: actorPhotoUrl,
+                type: 'like',
+                isRead: false,
+                figureId: figureId,
+                figureName: figureName,
+                commentId: commentId,
+                createdAt: serverTimestamp()
+              });
+            }
           }
         }
       } else if (action === 'dislike') {

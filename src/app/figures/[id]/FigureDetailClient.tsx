@@ -47,7 +47,7 @@ import { countryCodeToNameMap } from "@/config/countries";
 import { GENDER_OPTIONS, type GenderOption } from "@/config/genderOptions";
 import { CATEGORY_OPTIONS } from "@/config/categories";
 import { ShareButton } from "@/components/shared/ShareButton";
-import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile, LocalUserStreak, FanFigure } from "@/lib/types";
+import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile, LocalUserStreak, FanFigure, GuestNotification } from "@/lib/types";
 import { updateFigureInFirestore } from "@/lib/placeholder-data";
 import { markAllNotificationsAsRead, markNotificationAsRead } from '@/app/actions/notificationActions';
 import { ADMIN_UID } from '@/config/admin';
@@ -452,6 +452,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           guestUsernameLower: data.guestUsernameLower || null,
           guestGender: data.guestGender || null,
           userCountryCode: data.userCountryCode || null,
+          isAnonymous: data.isAnonymous || false, // Add this line
         });
       });
       setCommentsList(fetchedComments);
@@ -754,6 +755,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           dislikedBy: [],
           parentId: null,
           replyCount: 0,
+          isAnonymous: currentUser.isAnonymous, // Set the flag
         };
 
         if (currentUser.isAnonymous) {
@@ -813,8 +815,26 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
   };
 
+  const addLocalGuestNotification = (targetUserId: string, notification: Omit<GuestNotification, 'id' | 'isRead'>) => {
+    try {
+      const key = `wikistars5-guest-notifications-${targetUserId}`;
+      const existingNotificationsJSON = localStorage.getItem(key);
+      let notifications: GuestNotification[] = existingNotificationsJSON ? JSON.parse(existingNotificationsJSON) : [];
+      const newNotification: GuestNotification = {
+        ...notification,
+        id: `notif_${Date.now()}_${Math.random()}`,
+        isRead: false
+      };
+      notifications.unshift(newNotification); // Add to the top
+      notifications = notifications.slice(0, 50); // Keep only the latest 50
+      localStorage.setItem(key, JSON.stringify(notifications));
+    } catch (e) {
+      console.error("Could not add local guest notification", e);
+    }
+  };
 
-  const handleLikeDislike = (commentId: string, action: 'like' | 'dislike', parentCommentId: string | null = null) => {
+
+  const handleLikeDislike = async (commentId: string, action: 'like' | 'dislike', parentCommentId: string | null = null) => {
     if (!currentUser || !figure) {
       toast({ title: 'Acción Requerida', description: 'Debes estar conectado para votar.' });
       return;
@@ -822,62 +842,30 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     if (votingCommentId) return;
 
     setVotingCommentId(commentId);
-
-    const originalComments = structuredClone(commentsList);
-    const originalReplies = structuredClone(replies);
     
-    const updateStateOptimistically = (comments: UserComment[], targetId: string, userId: string, voteAction: 'like' | 'dislike'): UserComment[] => {
-      return comments.map(comment => {
-        if (comment.id === targetId) {
-          const newComment = { ...comment, likedBy: [...comment.likedBy], dislikedBy: [...comment.dislikedBy] };
-          
-          const hasLiked = newComment.likedBy.includes(userId);
-          const hasDisliked = newComment.dislikedBy.includes(userId);
-
-          if (voteAction === 'like') {
-            if (hasLiked) {
-              newComment.likes--;
-              newComment.likedBy = newComment.likedBy.filter(id => id !== userId);
-            } else {
-              newComment.likes++;
-              newComment.likedBy.push(userId);
-              if (hasDisliked) {
-                newComment.dislikes--;
-                newComment.dislikedBy = newComment.dislikedBy.filter(id => id !== userId);
-              }
-            }
-          } else { // dislike
-            if (hasDisliked) {
-              newComment.dislikes--;
-              newComment.dislikedBy = newComment.dislikedBy.filter(id => id !== userId);
-            } else {
-              newComment.dislikes++;
-              newComment.dislikedBy.push(userId);
-              if (hasLiked) {
-                newComment.likes--;
-                newComment.likedBy = newComment.likedBy.filter(id => id !== userId);
-              }
-            }
-          }
-          return newComment;
-        }
-        return comment;
-      });
-    };
-
-    if (parentCommentId && replies[parentCommentId]) {
-      setReplies(prev => ({
-        ...prev,
-        [parentCommentId]: updateStateOptimistically(prev[parentCommentId], commentId, currentUser.uid, action)
-      }));
-    } else {
-      setCommentsList(prev => updateStateOptimistically(prev, commentId, currentUser.uid, action));
-    }
-
-    // Fire and forget server update
-    (async () => {
-      try {
+    // Server update
+    try {
         const actorName = currentUser.isAnonymous ? (localStorage.getItem('wikistars5-guestUsername') || "Invitado") : (currentUser.displayName || "Usuario Anónimo");
+        
+        // Before calling the action, get the target comment to check if author is guest
+        const commentRef = doc(db, 'userComments', commentId);
+        const commentSnap = await getDoc(commentRef);
+        const commentData = commentSnap.data();
+
+        if (commentData && commentData.isAnonymous && action === 'like' && currentUser.uid !== commentData.userId) {
+          // If the liked comment's author is a guest, create a local notification for them
+          addLocalGuestNotification(commentData.userId, {
+            actorId: currentUser.uid,
+            actorName: actorName,
+            actorPhotoUrl: currentUser.photoURL,
+            type: 'like',
+            figureId: figure.id,
+            figureName: figure.name,
+            commentId: commentId,
+            createdAt: new Date().toISOString(),
+          });
+        }
+        
         const result = await updateCommentLikes(
           commentId,
           figure.id,
@@ -887,23 +875,35 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           currentUser.photoURL,
           action
         );
+
         if (!result.success) {
           toast({ title: 'Error', description: result.message, variant: 'destructive' });
-          setCommentsList(originalComments);
-          setReplies(originalReplies);
         } else {
-          // No need to refresh, optimistic update is enough.
-          // router.refresh();
+            // Optimistically update UI
+            const updateList = (list: UserComment[]) => list.map(c => {
+                if (c.id === commentId) {
+                    return { ...c, likes: result.newLikes ?? c.likes, dislikes: result.newDislikes ?? c.dislikes };
+                }
+                return c;
+            });
+            if (parentCommentId) {
+                setReplies(prev => ({...prev, [parentCommentId]: updateList(prev[parentCommentId])}));
+            } else {
+                setCommentsList(prev => updateList(prev));
+            }
         }
       } catch (error: any) {
         console.error("Error al llamar a la acción del servidor para me gusta/no me gusta:", error);
         toast({ title: 'Error', description: `Error inesperado al votar: ${error.message}`, variant: 'destructive' });
-        setCommentsList(originalComments);
-        setReplies(originalReplies);
       } finally {
         setVotingCommentId(null);
+        // Refresh comments to get latest vote counts accurately
+        if (parentCommentId) {
+          handleToggleReplies(parentCommentId, true);
+        } else {
+          fetchComments();
+        }
       }
-    })();
 };
 
   const handleDeleteCommentConfirmation = async () => {
@@ -1072,6 +1072,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       dislikedBy: [],
       parentId: parentId,
       replyCount: 0,
+      isAnonymous: currentUser.isAnonymous, // Set the flag
     };
 
     if (currentUser.isAnonymous) {
@@ -1088,7 +1089,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
         const parentCommentData = parentCommentDoc.data();
         const parentUserId = parentCommentData.userId;
-        const parentIsGuest = !!parentCommentData.guestUsername;
+        const parentIsGuest = !!parentCommentData.isAnonymous;
         
         // 1. Create the new reply document reference and set its data
         const newReplyRef = doc(collection(db, 'userComments'));
@@ -1098,22 +1099,40 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         transaction.update(figureRef, { commentCount: increment(1) });
         transaction.update(parentCommentRef, { replyCount: increment(1) });
         
-        // 3. Create a notification only if the parent comment's author is NOT a guest and not the one replying
-        if (parentUserId && currentUser.uid !== parentUserId && !parentIsGuest) {
-          const notificationRef = doc(collection(db, 'notifications'));
-          transaction.set(notificationRef, {
-            userId: parentUserId,
-            actorId: currentUser.uid,
-            actorName: currentUser.isAnonymous ? (localStorage.getItem('wikistars5-guestUsername') || "Invitado") : (currentUser.displayName || "Usuario Anónimo"),
-            actorPhotoUrl: currentUser.photoURL || null,
-            type: 'reply',
-            isRead: false,
-            figureId: figure.id,
-            figureName: figure.name,
-            commentId: parentId, // The comment being replied to
-            replyId: newReplyRef.id,
-            createdAt: serverTimestamp()
-          });
+        // 3. Create a notification if the parent comment's author is not the one replying
+        if (parentUserId && currentUser.uid !== parentUserId) {
+          const actorName = currentUser.isAnonymous ? (localStorage.getItem('wikistars5-guestUsername') || "Invitado") : (currentUser.displayName || "Usuario Anónimo");
+
+          if (parentIsGuest) {
+            // Create local notification for the guest author
+            addLocalGuestNotification(parentUserId, {
+              actorId: currentUser.uid,
+              actorName: actorName,
+              actorPhotoUrl: currentUser.photoURL,
+              type: 'reply',
+              figureId: figure.id,
+              figureName: figure.name,
+              commentId: parentId,
+              replyId: newReplyRef.id,
+              createdAt: new Date().toISOString(),
+            });
+          } else {
+            // Create Firestore notification for the registered author
+            const notificationRef = doc(collection(db, 'notifications'));
+            transaction.set(notificationRef, {
+              userId: parentUserId,
+              actorId: currentUser.uid,
+              actorName: actorName,
+              actorPhotoUrl: currentUser.photoURL,
+              type: 'reply',
+              isRead: false,
+              figureId: figure.id,
+              figureName: figure.name,
+              commentId: parentId, // The comment being replied to
+              replyId: newReplyRef.id,
+              createdAt: serverTimestamp()
+            });
+          }
         }
       });
       
@@ -1210,7 +1229,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-foreground">{displayName}</p>
-                {comment.username === 'Invitado' && comment.userCountryCode && (
+                {comment.isAnonymous && comment.userCountryCode && (
                   <Image
                     src={`https://flagcdn.com/w20/${comment.userCountryCode.toLowerCase()}.png`}
                     alt={countryName || comment.userCountryCode}
@@ -1220,7 +1239,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                     className="rounded-sm"
                   />
                 )}
-                 {comment.username === 'Invitado' && genderSymbol && (
+                 {comment.isAnonymous && genderSymbol && (
                   <span className={cn(
                       "text-sm font-bold",
                       genderOption?.value === 'male' && "text-blue-400",

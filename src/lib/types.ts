@@ -108,6 +108,7 @@ export interface UserComment {
   parentId?: string | null; // ID of the parent comment if this is a reply
   replyCount?: number; // Number of replies this comment has
   userCountryCode?: string | null;
+  isAnonymous?: boolean;
 }
 
 
@@ -169,6 +170,22 @@ export interface Notification {
   replyId?: string; // ID of the reply itself, if applicable
   createdAt: Timestamp;
 }
+
+// Definition for local notifications for guest users
+export interface GuestNotification {
+  id: string;
+  actorId: string; 
+  actorName: string;
+  actorPhotoUrl: string | null;
+  type: 'reply' | 'like';
+  isRead: boolean;
+  figureId: string;
+  figureName: string;
+  commentId: string;
+  replyId?: string;
+  createdAt: string; // ISO string
+}
+
 
 export interface CategoryOption {
   value: string;
