@@ -52,28 +52,32 @@ export const sendPushNotification = onDocumentCreated("notifications/{notificati
     return;
   }
   
-  // Correctly structured payload for admin.messaging().send()
+  // This is the correct payload structure for Webpush notifications via FCM.
+  // The `notification` object must be inside the `webpush` object.
   const payload = {
     token: fcmToken,
-    notification: {
-      title: notificationTitle,
-      body: notificationBody,
-    },
     webpush: {
       notification: {
+        title: notificationTitle,
+        body: notificationBody,
         icon: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194",
       },
       fcm_options: {
         link: `https://wikistars5-2yctr.web.app/figures/${notificationData.figureId}#comment-${notificationData.replyId || notificationData.commentId}`,
       },
     },
+     // You can also include a general notification for other platforms (like mobile)
+    notification: {
+      title: notificationTitle,
+      body: notificationBody,
+    },
   };
 
   // 3. Send the message
   try {
     console.log(`Sending notification to user ${userId} with token ${fcmToken}`);
-    await admin.messaging().send(payload);
-    console.log("Successfully sent message");
+    const response = await admin.messaging().send(payload);
+    console.log("Successfully sent message:", response);
   } catch (error) {
     console.error("Error sending message:", error);
   }
