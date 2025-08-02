@@ -4,115 +4,102 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import type { GuestNotification } from '@/lib/types';
+import { Bell, CheckCheck, Heart, MessageSquareReply } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Bell, CheckCheck, MessageSquareReply, Heart } from 'lucide-react';
-import { cn, correctMalformedUrl } from '@/lib/utils';
-import { ScrollArea } from '../ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from '../ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn, correctMalformedUrl } from '@/lib/utils';
+import { collection, query, where, onSnapshot, orderBy, limit, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Notification } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
-function timeSince(dateString: string): string {
-  const date = new Date(dateString);
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-  let interval = seconds / 31536000;
-  if (interval > 1) return Math.floor(interval) + "a";
-  interval = seconds / 2592000;
-  if (interval > 1) return Math.floor(interval) + "m";
-  interval = seconds / 86400;
-  if (interval > 1) return Math.floor(interval) + "d";
-  interval = seconds / 3600;
-  if (interval > 1) return Math.floor(interval) + "h";
-  interval = seconds / 60;
-  if (interval > 1) return Math.floor(interval) + "min";
-  return Math.floor(seconds) + "s";
+function timeSince(date: Date): string {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + "a";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + "m";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + "d";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + "h";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + "min";
+    return Math.floor(seconds) + "s";
 }
 
 export function GuestNotificationBell() {
-  const { firebaseUser } = useAuth();
-  const [notifications, setNotifications] = React.useState<GuestNotification[]>([]);
+  const { firebaseUser, isAnonymous } = useAuth();
+  const [notifications, setNotifications] = React.useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isOpen, setIsOpen] = React.useState(false);
   const router = useRouter();
-
-  const storageKey = React.useMemo(() => {
-    // This is the CORRECT and ROBUST way to get the key.
-    // It directly uses the firebaseUser UID which is stable for the anonymous session.
-    return firebaseUser ? `wikistars5-guest-notifications-${firebaseUser.uid}` : null;
-  }, [firebaseUser]);
+  const { toast } = useToast();
 
   React.useEffect(() => {
-    if (!storageKey) return;
+    if (!firebaseUser || !isAnonymous) return;
 
-    // Function to load and update state from localStorage
-    const loadNotifications = () => {
-      const storedNotificationsJSON = localStorage.getItem(storageKey);
-      const storedNotifications: GuestNotification[] = storedNotificationsJSON ? JSON.parse(storedNotificationsJSON) : [];
-      setNotifications(storedNotifications);
-      setUnreadCount(storedNotifications.filter(n => !n.isRead).length);
-    };
+    const notificationsRef = collection(db, 'notifications');
+    const q = query(
+      notificationsRef,
+      where('userId', '==', firebaseUser.uid),
+      orderBy('createdAt', 'desc'),
+      limit(50)
+    );
 
-    // Initial load
-    loadNotifications();
-    
-    // Listen for storage changes from other tabs to keep them in sync
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === storageKey) {
-        loadNotifications();
-      }
-    };
-    
-    // Custom event to handle notifications added in the same tab
-    const handleLocalUpdate = () => {
-      loadNotifications();
-    };
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const serverNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+      setNotifications(serverNotifications);
+      setUnreadCount(serverNotifications.filter(n => !n.isRead).length);
+    }, (error) => {
+      console.error("Error fetching guest notifications:", error);
+      toast({
+        title: "Error de Notificaciones",
+        description: "No se pudieron cargar las notificaciones.",
+        variant: "destructive"
+      });
+    });
 
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('local-notification-update', handleLocalUpdate);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('local-notification-update', handleLocalUpdate);
-    };
+    return () => unsubscribe();
+  }, [firebaseUser, isAnonymous, toast]);
 
-  }, [storageKey]);
-
-  const handleNotificationClick = (notification: GuestNotification) => {
+  const handleNotificationClick = async (notification: Notification) => {
     const url = `/figures/${notification.figureId}#comment-${notification.replyId || notification.commentId}`;
     router.push(url);
     setIsOpen(false);
-
     if (!notification.isRead) {
-      markAsRead(notification.id);
+      await markAsRead(notification.id);
     }
   };
 
-  const markAsRead = (notificationId: string) => {
-    if (!storageKey) return;
-    const newNotifications = notifications.map(n => n.id === notificationId ? { ...n, isRead: true } : n);
-    setNotifications(newNotifications);
-    setUnreadCount(newNotifications.filter(n => !n.isRead).length);
-    localStorage.setItem(storageKey, JSON.stringify(newNotifications));
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const notificationRef = doc(db, 'notifications', notificationId);
+      await updateDoc(notificationRef, { isRead: true });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
   };
-  
-  const handleMarkAllAsRead = () => {
-    if (!storageKey || unreadCount === 0) return;
 
-    const newNotifications = notifications.map(n => ({ ...n, isRead: true }));
-    setNotifications(newNotifications);
-    setUnreadCount(0);
-    localStorage.setItem(storageKey, JSON.stringify(newNotifications));
+  const handleMarkAllAsRead = async () => {
+    if (!firebaseUser || unreadCount === 0) return;
+    const unreadIds = notifications.filter(n => !n.isRead).map(n => n.id);
+    for (const id of unreadIds) {
+      await markAsRead(id);
+    }
   };
-  
-  if (!firebaseUser || !firebaseUser.isAnonymous) {
+
+  if (!firebaseUser || !isAnonymous) {
     return null;
   }
 
   const replyNotifications = notifications.filter(n => n.type === 'reply');
   const likeNotifications = notifications.filter(n => n.type === 'like');
 
-  const renderNotificationItem = (notification: GuestNotification) => (
+  const renderNotificationItem = (notification: Notification) => (
     <div
       key={notification.id}
       onClick={() => handleNotificationClick(notification)}
@@ -140,7 +127,7 @@ export function GuestNotificationBell() {
           </p>
         )}
         <p className="text-xs text-muted-foreground mt-1">
-          {timeSince(notification.createdAt)}
+          {notification.createdAt ? timeSince(notification.createdAt.toDate()) : ''}
         </p>
       </div>
       {!notification.isRead && (
@@ -164,7 +151,7 @@ export function GuestNotificationBell() {
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between p-2 border-b">
-          <h3 className="font-semibold text-sm px-2">Notificaciones Locales</h3>
+          <h3 className="font-semibold text-sm px-2">Notificaciones</h3>
           {unreadCount > 0 && (
             <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead} className="text-xs">
               <CheckCheck className="mr-1 h-3 w-3"/>

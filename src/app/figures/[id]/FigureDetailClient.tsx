@@ -47,7 +47,7 @@ import { countryCodeToNameMap } from "@/config/countries";
 import { GENDER_OPTIONS, type GenderOption } from "@/config/genderOptions";
 import { CATEGORY_OPTIONS } from "@/config/categories";
 import { ShareButton } from "@/components/shared/ShareButton";
-import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile, LocalUserStreak, FanFigure, GuestNotification } from "@/lib/types";
+import type { Figure, UserComment, StarValue, StarValueAsString, UserProfile, LocalUserStreak, FanFigure } from "@/lib/types";
 import { updateFigureInFirestore } from "@/lib/placeholder-data";
 import { markAllNotificationsAsRead, markNotificationAsRead } from '@/app/actions/notificationActions';
 import { ADMIN_UID } from '@/config/admin';
@@ -815,28 +815,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     }
   };
 
-  const addLocalGuestNotification = (targetUserId: string, notification: Omit<GuestNotification, 'id' | 'isRead'>) => {
-    try {
-      const key = `wikistars5-guest-notifications-${targetUserId}`;
-      const existingNotificationsJSON = localStorage.getItem(key);
-      let notifications: GuestNotification[] = existingNotificationsJSON ? JSON.parse(existingNotificationsJSON) : [];
-      const newNotification: GuestNotification = {
-        ...notification,
-        id: `notif_${Date.now()}_${Math.random()}`,
-        isRead: false
-      };
-      notifications.unshift(newNotification); // Add to the top
-      notifications = notifications.slice(0, 50); // Keep only the latest 50
-      localStorage.setItem(key, JSON.stringify(notifications));
-
-      // Dispatch a custom event to notify other components in the same tab (like the bell)
-      window.dispatchEvent(new CustomEvent('local-notification-update'));
-    } catch (e) {
-      console.error("Could not add local guest notification", e);
-    }
-  };
-
-
   const handleLikeDislike = async (commentId: string, action: 'like' | 'dislike', parentCommentId: string | null = null) => {
     if (!currentUser || !figure) {
       toast({ title: 'Acción Requerida', description: 'Debes estar conectado para votar.' });
@@ -849,25 +827,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     // Server update
     try {
         const actorName = currentUser.isAnonymous ? (localStorage.getItem('wikistars5-guestUsername') || "Invitado") : (currentUser.displayName || "Usuario Anónimo");
-        
-        // Before calling the action, get the target comment to check if author is guest
-        const commentRef = doc(db, 'userComments', commentId);
-        const commentSnap = await getDoc(commentRef);
-        const commentData = commentSnap.data();
-
-        if (commentData && commentData.isAnonymous && action === 'like' && currentUser.uid !== commentData.userId) {
-          // If the liked comment's author is a guest, create a local notification for them
-          addLocalGuestNotification(commentData.userId, {
-            actorId: currentUser.uid,
-            actorName: actorName,
-            actorPhotoUrl: currentUser.photoURL,
-            type: 'like',
-            figureId: figure.id,
-            figureName: figure.name,
-            commentId: commentId,
-            createdAt: new Date().toISOString(),
-          });
-        }
         
         const result = await updateCommentLikes(
           commentId,
@@ -1106,36 +1065,20 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         if (parentUserId && currentUser.uid !== parentUserId) {
           const actorName = currentUser.isAnonymous ? (localStorage.getItem('wikistars5-guestUsername') || "Invitado") : (currentUser.displayName || "Usuario Anónimo");
 
-          if (parentIsGuest) {
-            // Create local notification for the guest author
-            addLocalGuestNotification(parentUserId, {
-              actorId: currentUser.uid,
-              actorName: actorName,
-              actorPhotoUrl: currentUser.photoURL,
-              type: 'reply',
-              figureId: figure.id,
-              figureName: figure.name,
-              commentId: parentId,
-              replyId: newReplyRef.id,
-              createdAt: new Date().toISOString(),
-            });
-          } else {
-            // Create Firestore notification for the registered author
-            const notificationRef = doc(collection(db, 'notifications'));
-            transaction.set(notificationRef, {
-              userId: parentUserId,
-              actorId: currentUser.uid,
-              actorName: actorName,
-              actorPhotoUrl: currentUser.photoURL,
-              type: 'reply',
-              isRead: false,
-              figureId: figure.id,
-              figureName: figure.name,
-              commentId: parentId, // The comment being replied to
-              replyId: newReplyRef.id,
-              createdAt: serverTimestamp()
-            });
-          }
+          const notificationRef = doc(collection(db, 'notifications'));
+          transaction.set(notificationRef, {
+            userId: parentUserId, // The user to notify (can be guest or registered)
+            actorId: currentUser.uid,
+            actorName: actorName,
+            actorPhotoUrl: currentUser.photoURL,
+            type: 'reply',
+            isRead: false,
+            figureId: figure.id,
+            figureName: figure.name,
+            commentId: parentId, // The comment being replied to
+            replyId: newReplyRef.id,
+            createdAt: serverTimestamp()
+          });
         }
       });
       

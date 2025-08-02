@@ -172,20 +172,9 @@ export interface Notification {
 }
 
 // Definition for local notifications for guest users
-export interface GuestNotification {
-  id: string;
-  actorId: string; 
-  actorName: string;
-  actorPhotoUrl: string | null;
-  type: 'reply' | 'like';
-  isRead: boolean;
-  figureId: string;
-  figureName: string;
-  commentId: string;
-  replyId?: string;
-  createdAt: string; // ISO string
+export interface GuestNotification extends Omit<Notification, 'createdAt'> {
+  createdAt: string; // ISO string for local storage
 }
-
 
 export interface CategoryOption {
   value: string;
