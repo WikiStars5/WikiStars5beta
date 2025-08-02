@@ -1,69 +1,60 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper Functions
-    function isUserAuthenticated() {
+    
+    // --- Helper Functions ---
+    function isAuth() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isAdmin(userId) {
-      // User is admin if their UID is the admin UID OR their role in Firestore is 'admin'.
-      return request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' || get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
+    // Explicitly check for the Admin UID. This is the most reliable method.
+    function isRequestingAdmin() {
+      return request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
 
-    // Collection: figures
+    // --- Collections ---
+
     match /figures/{figureId} {
-      allow read: if true;
-      allow create, delete: if isAdmin(request.auth.uid);
-      
-      // Allow updates if the user is an admin OR if the update only affects the allowed counter fields.
-      allow update: if isAdmin(request.auth.uid) || (
-          isUserAuthenticated() &&
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['attitudeCounts', 'perceptionCounts', 'starRatingCounts', 'commentCount'])
-      );
-    }
+      allow read;
+      allow create, delete: if isRequestingAdmin();
 
-    // Collection: users
+      // Allow updates if the user is an admin, OR if a regular user is only updating the counter fields.
+      allow update: if isRequestingAdmin() || 
+                      (request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['commentCount', 'starRatingCounts', 'attitudeCounts', 'perceptionCounts']));
+    }
+    
     match /users/{userId} {
-      allow read: if isAdmin(request.auth.uid) || isOwner(userId);
-      allow write: if isOwner(userId); // Creation is handled by Cloud Function
+      allow read, update: if isAuth() && request.auth.uid == userId;
+      allow list: if isRequestingAdmin();
     }
-
-    // Collection: userComments
+    
     match /userComments/{commentId} {
-      allow read: if true;
-      allow create: if isUserAuthenticated();
-      allow update: if isOwner(request.resource.data.userId);
-       // Allow delete if the user is the owner OR is an admin
-      allow delete: if isOwner(resource.data.userId) || isAdmin(request.auth.uid);
+      allow read;
+      allow create: if isAuth();
+      allow update: if isAuth() && request.auth.uid == resource.data.userId;
+      
+      // Allow delete if the user is the owner OR the user is the Admin.
+      allow delete: if isAuth() && (request.auth.uid == resource.data.userId || isRequestingAdmin());
     }
     
-    // Collections for user-specific votes/ratings
-    match /userAttitudes/{docId} {
-      allow read, write: if isUserAuthenticated() && isOwner(docId.split('_')[0]);
-    }
-
-    match /userPerceptions/{docId} {
-       allow read, write: if isUserAuthenticated() && isOwner(docId.split('_')[0]);
+    match /userAttitudes/{attitudeId} {
+      allow read, write: if isAuth() && request.auth.uid == request.resource.data.userId;
     }
     
-    match /userStarRatings/{docId} {
-       allow read, write: if isUserAuthenticated() && isOwner(docId.split('_')[0]);
+    match /userStarRatings/{ratingId} {
+      allow read, write: if isAuth() && request.auth.uid == request.resource.data.userId;
     }
 
-    // Collection: notifications
+    match /userPerceptions/{perceptionId} {
+       allow read, write: if isAuth() && request.auth.uid == request.resource.data.userId;
+    }
+    
     match /notifications/{notificationId} {
-      allow read, update: if isUserAuthenticated() && isOwner(resource.data.userId);
-      // No one should be able to create notifications directly from the client.
-      // This is handled by a secure Cloud Function.
-      allow create, delete: if false; 
+        allow read, update: if isAuth() && request.auth.uid == resource.data.userId;
+        allow create: if isAuth(); // Functions create notifications, users read/update them.
     }
   }
 }
