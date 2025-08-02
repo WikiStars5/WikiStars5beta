@@ -3,73 +3,67 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is an admin.
-    // An admin's user document must exist in /users/{userId} and have the role 'admin'.
-    function isAdmin(userId) {
-      return exists(/databases/$(database)/documents/users/$(userId)) &&
-             get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
+    // Helper Functions
+    function isUserAuthenticated() {
+      return request.auth != null;
     }
 
-    // Helper function to check if the user is the owner of a document.
-    function isOwner(docId) {
-      return request.auth.uid == docId;
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
     
-    // Helper function to check if the user is authenticated (includes anonymous).
-    function isAuthenticated() {
-        return request.auth != null;
+    function isAdmin(userId) {
+      // User is admin if their UID is the admin UID OR their role in Firestore is 'admin'.
+      return request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2' || get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
     }
 
-    // Rules for the 'figures' collection
+    // Collection: figures
     match /figures/{figureId} {
       allow read: if true;
       allow create, delete: if isAdmin(request.auth.uid);
       
-      // Allow updates only if the user is an admin, OR if they are only changing specific counter fields.
+      // Allow updates if the user is an admin OR if the update only affects the allowed counter fields.
       allow update: if isAdmin(request.auth.uid) || (
-        isAuthenticated() &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'commentCount', 'starRatingCounts', 'attitudeCounts', 'perceptionCounts'
-        ])
+          isUserAuthenticated() &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['attitudeCounts', 'perceptionCounts', 'starRatingCounts', 'commentCount'])
       );
     }
 
-    // Rules for the 'users' collection
+    // Collection: users
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin(request.auth.uid);
-      allow update: if isOwner(userId);
-      // Create is handled by a Cloud Function (onUserCreate) so we don't need a client rule for it.
-      allow create, delete: if isAdmin(request.auth.uid);
+      allow read: if isAdmin(request.auth.uid) || isOwner(userId);
+      allow write: if isOwner(userId); // Creation is handled by Cloud Function
     }
-    
-    // Rules for user-generated content
+
+    // Collection: userComments
     match /userComments/{commentId} {
       allow read: if true;
-      allow create: if isAuthenticated(); // Any authenticated user (including anonymous) can create
-      allow update(text): if isOwner(resource.data.userId); // Allow owner to edit their own comment text
-      // Allow owner OR an admin to delete
+      allow create: if isUserAuthenticated();
+      allow update: if isOwner(request.resource.data.userId);
+       // Allow delete if the user is the owner OR is an admin
       allow delete: if isOwner(resource.data.userId) || isAdmin(request.auth.uid);
     }
-
-    match /userAttitudes/{attitudeId} {
-      allow read: if true;
-      allow write: if isOwner(request.resource.data.userId); // User can only write their own attitude
+    
+    // Collections for user-specific votes/ratings
+    match /userAttitudes/{docId} {
+      allow read, write: if isUserAuthenticated() && isOwner(docId.split('_')[0]);
     }
 
-    match /userPerceptions/{perceptionId} {
-      allow read: if true;
-      allow write: if isOwner(request.resource.data.userId); // User can only write their own perception
+    match /userPerceptions/{docId} {
+       allow read, write: if isUserAuthenticated() && isOwner(docId.split('_')[0]);
     }
     
-    match /userStarRatings/{ratingId} {
-      allow read: if true;
-      allow write: if isOwner(request.resource.data.userId); // User can only write their own rating
+    match /userStarRatings/{docId} {
+       allow read, write: if isUserAuthenticated() && isOwner(docId.split('_')[0]);
     }
 
-    // Rules for notifications
+    // Collection: notifications
     match /notifications/{notificationId} {
-        allow read, update, delete: if isOwner(resource.data.userId);
-        allow create: if isAuthenticated(); // Allow server-side creation (or any auth user)
+      allow read, update: if isUserAuthenticated() && isOwner(resource.data.userId);
+      // No one should be able to create notifications directly from the client.
+      // This is handled by a secure Cloud Function.
+      allow create, delete: if false; 
     }
   }
 }
