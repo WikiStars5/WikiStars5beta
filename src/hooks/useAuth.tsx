@@ -27,63 +27,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
-        
-        // If the user is registered (not anonymous), fetch their profile from Firestore.
-        if (!fbUser.isAnonymous) {
-          const unsubscribeSnapshot = onSnapshot(doc(db, 'users', fbUser.uid), (docSnap) => {
-            if (docSnap.exists()) {
-              setUser(docSnap.data() as UserProfile);
-            } else {
-              // This can happen if the cloud function is slow to create the profile.
-              // We create a temporary local profile to avoid showing an error.
+        const unsubscribeSnapshot = onSnapshot(doc(db, 'users', fbUser.uid), (docSnap) => {
+          if (docSnap.exists()) {
+            setUser(docSnap.data() as UserProfile);
+          } else {
+             // This might happen if the user is new and the Cloud Function hasn't created the profile yet.
+            // Or if the user is anonymous. For anonymous, we can build a local profile.
+            if (fbUser.isAnonymous) {
               setUser({
                 uid: fbUser.uid,
-                email: fbUser.email,
-                username: fbUser.displayName || `user_${fbUser.uid.substring(0, 5)}`,
+                email: null,
+                username: `Invitado_${fbUser.uid.substring(0,5)}`,
                 role: 'user',
                 createdAt: new Date().toISOString(),
+                isAnonymous: true
               });
+            } else {
+               setUser(null);
             }
-            setIsLoading(false);
-          }, (error) => {
-            console.error("Error fetching registered user profile:", error);
-            setUser(null);
-            setIsLoading(false);
-          });
-          return () => unsubscribeSnapshot();
-        } else {
-          // **THE FIX**: If the user is anonymous, build the profile locally
-          // from localStorage instead of waiting for a Firestore document that might not exist yet.
-          // This avoids the race condition and ensures the guest profile is always available.
-          const guestUsername = localStorage.getItem('wikistars5-guestUsername') || `Invitado_${fbUser.uid.substring(0, 5)}`;
-          const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
-          
-          setUser({
-            uid: fbUser.uid,
-            email: null,
-            username: guestUsername,
-            gender: guestGender,
-            role: 'user',
-            isAnonymous: true,
-            createdAt: new Date().toISOString(),
-            achievements: [], 
-          });
+          }
           setIsLoading(false);
-        }
-
-      } else {
-        // No user is signed in, attempt to sign in anonymously.
-        // This will trigger the onAuthStateChanged listener again once complete.
-        signInAnonymously(auth).catch((error) => {
-          console.error("Critical: Anonymous sign-in failed:", error);
-          // If anonymous sign-in fails, there's a fundamental issue.
-          setFirebaseUser(null);
+        }, (error) => {
+          console.error("Error fetching user profile:", error);
           setUser(null);
           setIsLoading(false);
         });
+
+        return () => unsubscribeSnapshot();
+      } else {
+        // No user signed in, attempt anonymous sign-in
+        try {
+          await signInAnonymously(auth);
+          // onAuthStateChanged will be triggered again with the new anonymous user
+        } catch (error) {
+           console.error("Critical: Anonymous sign-in failed:", error);
+           setUser(null);
+           setFirebaseUser(null);
+           setIsLoading(false);
+        }
       }
     });
 
