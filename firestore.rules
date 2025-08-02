@@ -1,60 +1,70 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- Helper Functions ---
-    function isAuth() {
-      return request.auth != null;
+    // Helper function to check for admin role
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
-
-    // Explicitly check for the Admin UID. This is the most reliable method.
-    function isRequestingAdmin() {
-      return request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
-    }
-
-    // --- Collections ---
-
+    
+    // --- Figures Collection ---
+    // Anyone can read figures, but only admins can create, update core fields, or delete.
     match /figures/{figureId} {
       allow read;
-      allow create, delete: if isRequestingAdmin();
 
-      // Allow updates if the user is an admin, OR if a regular user is only updating the counter fields.
-      allow update: if isRequestingAdmin() || 
-                      (request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['commentCount', 'starRatingCounts', 'attitudeCounts', 'perceptionCounts']));
+      // Rule: Allow creation only by an admin.
+      allow create: if request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+      
+      // Rule: Allow deletion only by an admin.
+      allow delete: if request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+
+      // Rule: Allow updates under two conditions:
+      // 1. The user is a confirmed administrator.
+      // 2. The user is only updating the counter fields for votes/comments.
+      allow update: if request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2'
+                      || (request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['perceptionCounts', 'attitudeCounts', 'starRatingCounts', 'commentCount']));
     }
-    
+
+    // --- Users Collection ---
+    // Users can only manage their own profile. Admins can read all profiles.
     match /users/{userId} {
-      allow read, update: if isAuth() && request.auth.uid == userId;
-      allow list: if isRequestingAdmin();
+      allow read: if isOwner(userId) || request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+      allow write: if isOwner(userId);
     }
     
+    // --- Comments Collection ---
+    // Any authenticated user can create comments. 
+    // Only the owner or an admin can delete them.
     match /userComments/{commentId} {
       allow read;
-      allow create: if isAuth();
-      allow update: if isAuth() && request.auth.uid == resource.data.userId;
-      
-      // Allow delete if the user is the owner OR the user is the Admin.
-      allow delete: if isAuth() && (request.auth.uid == resource.data.userId || isRequestingAdmin());
+      allow create: if request.auth != null;
+      allow update: if isOwner(request.resource.data.userId);
+      // Let the owner of the comment OR an admin delete it.
+      allow delete: if isOwner(resource.data.userId) || request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
     
+    // --- Voting Collections (Attitude, StarRating, Perception) ---
+    // Users can only manage their own votes.
     match /userAttitudes/{attitudeId} {
-      allow read, write: if isAuth() && request.auth.uid == request.resource.data.userId;
+      allow read, write: if isOwner(attitudeId.split('_')[0]);
     }
     
     match /userStarRatings/{ratingId} {
-      allow read, write: if isAuth() && request.auth.uid == request.resource.data.userId;
-    }
-
-    match /userPerceptions/{perceptionId} {
-       allow read, write: if isAuth() && request.auth.uid == request.resource.data.userId;
+      allow read, write: if isOwner(ratingId.split('_')[0]);
     }
     
+    match /userPerceptions/{perceptionId} {
+      allow read, write: if isOwner(perceptionId.split('_')[0]);
+    }
+
+    // --- Notifications Collection ---
+    // Users can only read their own notifications. Notifications are created by Cloud Functions.
     match /notifications/{notificationId} {
-        allow read, update: if isAuth() && request.auth.uid == resource.data.userId;
-        allow create: if isAuth(); // Functions create notifications, users read/update them.
+      allow read: if isOwner(resource.data.userId);
+      // Deny direct client writes, as they are handled by secure server-side logic (Functions)
+      allow write: if false; 
     }
   }
 }
