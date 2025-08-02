@@ -1,94 +1,65 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Helper Functions ---
-    function isRequestingUser(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
+    // =================================================================
+    // ADVERTENCIA: REGLAS INSEGURAS - SOLO PARA DESARROLLO
+    // Estas reglas son extremadamente permisivas y están destinadas
+    // ÚNICAMENTE para la fase de desarrollo y pruebas para evitar
+    // errores de permisos.
+    // NO UTILICES ESTAS REGLAS EN UN ENTORNO DE PRODUCCIÓN.
+    // =================================================================
 
     function isAdmin() {
-      // Use the hardcoded Admin UID for a reliable and secure check.
+      // Un administrador es aquel cuyo UID coincide con el ID de administrador predefinido.
       return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
     }
 
-    // --- Collection: figures ---
+    // Reglas para la colección de figuras.
     match /figures/{figureId} {
+      // Cualquiera puede leer la información de las figuras.
       allow read: if true;
-
-      // Only admins can create or delete figures.
-      allow create, delete: if isAdmin();
-      
-      // Update is allowed if:
-      // 1. The user is an admin (can change anything).
-      // 2. A non-admin is ONLY updating the vote/comment counter fields.
-      allow update: if 
-        isAdmin() || 
-        (
-          request.auth != null &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'attitudeCounts', 'perceptionCounts', 'starRatingCounts', 'commentCount'
-          ])
-        );
+      // Cualquiera puede escribir/actualizar. CUIDADO EN PRODUCCIÓN.
+      allow write: if request.auth != null;
     }
 
-    // --- Collection: users ---
+    // Reglas para los perfiles de usuario.
     match /users/{userId} {
-      // Allow a user to read their own profile, or an admin to read any profile.
-      allow read: if isRequestingUser(userId) || isAdmin();
-      
-      // A user can only write to their own profile.
-      // Creation is handled by the createProfileOnRegister Cloud Function.
-      allow write: if isRequestingUser(userId);
+       // Cualquiera puede leer/escribir. CUIDADO EN PRODUCCIÓN.
+      allow read, write: if request.auth != null;
     }
-    
-    // --- Collection: userComments ---
+
+    // Reglas para los comentarios de los usuarios.
     match /userComments/{commentId} {
+      // Cualquiera puede leer.
       allow read: if true;
-      
-      // Any authenticated user (including anonymous) can create a comment.
-      allow create: if request.auth != null;
-      
-      // Allow update only if:
-      // 1. The user is an admin.
-      // 2. The user is updating their OWN comment (this is not currently used in the app, but is a safe rule).
-      // 3. ANY authenticated user is ONLY incrementing the replyCount. This is the key fix.
-      allow update: if 
-        isAdmin() || 
-        (isRequestingUser(resource.data.userId)) ||
-        (
-          request.auth != null &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyCount']) &&
-          request.resource.data.replyCount == resource.data.replyCount + 1
-        );
-        
-      // Allow delete if the user is the owner of the comment OR is an admin.
-      allow delete: if isRequestingUser(resource.data.userId) || isAdmin();
+      // Cualquiera puede crear, actualizar y borrar. CUIDADO EN PRODUCCIÓN.
+      allow write: if request.auth != null;
     }
-    
-    // --- Collections for Votes ---
-    // These collections store individual user votes. A user should only be able
-    // to manage their own vote documents.
-    match /userAttitudes/{docId} {
-      allow read, write: if request.auth != null && isRequestingUser(docId.split('_')[0]);
+
+    // Reglas para las calificaciones con estrellas.
+    match /userStarRatings/{ratingId} {
+      // Cualquiera puede leer y escribir. CUIDADO EN PRODUCCIÓN.
+      allow read, write: if request.auth != null;
     }
-    
-    match /userPerceptions/{docId} {
-      allow read, write: if request.auth != null && isRequestingUser(docId.split('_')[0]);
+
+    // Reglas para los votos de actitud.
+    match /userAttitudes/{attitudeId} {
+       // Cualquiera puede leer y escribir. CUIDADO EN PRODUCCIÓN.
+      allow read, write: if request.auth != null;
     }
-    
-    match /userStarRatings/{docId} {
-      allow read, write: if request.auth != null && isRequestingUser(docId.split('_')[0]);
+
+    // Reglas para los votos de percepción emocional.
+    match /userPerceptions/{perceptionId} {
+       // Cualquiera puede leer y escribir. CUIDADO EN PRODUCCIÓN.
+      allow read, write: if request.auth != null;
     }
-    
-    // --- Collection: notifications ---
+
+    // Reglas para las notificaciones.
     match /notifications/{notificationId} {
-      // A user can only interact with their own notifications.
-      // Creation is handled by a server-side process (Cloud Function/Action).
-      allow create: if request.auth != null; // Allows server actions to create notifications
-      allow read, update, delete: if request.auth != null && isRequestingUser(resource.data.userId);
+       // Cualquiera puede leer y escribir. CUIDADO EN PRODUCCIÓN.
+      allow read, write: if request.auth != null;
     }
   }
 }
