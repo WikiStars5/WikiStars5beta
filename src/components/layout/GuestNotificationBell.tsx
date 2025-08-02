@@ -37,6 +37,8 @@ export function GuestNotificationBell() {
   const router = useRouter();
 
   const storageKey = React.useMemo(() => {
+    // This is the CORRECT and ROBUST way to get the key.
+    // It directly uses the firebaseUser UID which is stable for the anonymous session.
     return firebaseUser ? `wikistars5-guest-notifications-${firebaseUser.uid}` : null;
   }, [firebaseUser]);
 
@@ -61,10 +63,17 @@ export function GuestNotificationBell() {
       }
     };
     
+    // Custom event to handle notifications added in the same tab
+    const handleLocalUpdate = () => {
+      loadNotifications();
+    };
+
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('local-notification-update', handleLocalUpdate);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('local-notification-update', handleLocalUpdate);
     };
 
   }, [storageKey]);

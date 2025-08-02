@@ -828,6 +828,9 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       notifications.unshift(newNotification); // Add to the top
       notifications = notifications.slice(0, 50); // Keep only the latest 50
       localStorage.setItem(key, JSON.stringify(notifications));
+
+      // Dispatch a custom event to notify other components in the same tab (like the bell)
+      window.dispatchEvent(new CustomEvent('local-notification-update'));
     } catch (e) {
       console.error("Could not add local guest notification", e);
     }
