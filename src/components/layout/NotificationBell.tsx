@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -43,7 +42,7 @@ export function NotificationBell() {
   const { toast } = useToast();
   
   const [notificationSound, setNotificationSound] = React.useState<HTMLAudioElement | null>(null);
-  const soundTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const prevUnreadCountRef = React.useRef(0);
 
   // Effect to create the audio element once on the client
   React.useEffect(() => {
@@ -66,7 +65,7 @@ export function NotificationBell() {
     return () => unsubscribe();
   }, []);
 
-  // Separate effect for listening to notifications
+  // Separate effect for listening to notifications and playing sound
   React.useEffect(() => {
     if (!currentUser) return;
 
@@ -81,37 +80,26 @@ export function NotificationBell() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const serverNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
       setNotifications(serverNotifications);
+
+      const newUnreadCount = serverNotifications.filter(n => !n.isRead).length;
+      setUnreadCount(newUnreadCount);
+
+      // Play sound if the unread count has increased
+      if (newUnreadCount > prevUnreadCountRef.current) {
+        notificationSound?.play().catch(err => {
+          console.warn("Notification sound was blocked by browser autoplay policy.", err);
+        });
+      }
+      
+      // Update the ref with the new count for the next check
+      prevUnreadCountRef.current = newUnreadCount;
+
     }, (error) => {
       console.error("Error fetching notifications:", error);
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
-
-  // Separate effect to handle unread count and play sound
-  React.useEffect(() => {
-    const newUnreadCount = notifications.filter(n => !n.isRead).length;
-
-    if (newUnreadCount > unreadCount) {
-      if (soundTimeoutRef.current) {
-        clearTimeout(soundTimeoutRef.current);
-      }
-      soundTimeoutRef.current = setTimeout(() => {
-        notificationSound?.play().catch(err => {
-          console.warn("Notification sound was blocked by browser autoplay policy.", err);
-        });
-      }, 300); // Small delay to bundle rapid updates
-    }
-
-    setUnreadCount(newUnreadCount);
-    
-    return () => {
-      if (soundTimeoutRef.current) {
-        clearTimeout(soundTimeoutRef.current);
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notifications, notificationSound]);
+  }, [currentUser, notificationSound]);
 
 
   const handleNotificationClick = async (notification: Notification) => {
