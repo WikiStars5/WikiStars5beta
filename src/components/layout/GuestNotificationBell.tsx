@@ -8,10 +8,9 @@ import type { GuestNotification } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Bell, CheckCheck, MessageSquareReply, Heart, User } from 'lucide-react';
+import { Bell, CheckCheck, MessageSquareReply, Heart } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function timeSince(dateString: string): string {
@@ -37,33 +36,38 @@ export function GuestNotificationBell() {
   const [isOpen, setIsOpen] = React.useState(false);
   const router = useRouter();
 
-  const getStorageKey = React.useCallback(() => {
+  const storageKey = React.useMemo(() => {
     return firebaseUser ? `wikistars5-guest-notifications-${firebaseUser.uid}` : null;
   }, [firebaseUser]);
 
   React.useEffect(() => {
-    const storageKey = getStorageKey();
     if (!storageKey) return;
 
-    // Load initial notifications from localStorage
-    const storedNotificationsJSON = localStorage.getItem(storageKey);
-    const storedNotifications: GuestNotification[] = storedNotificationsJSON ? JSON.parse(storedNotificationsJSON) : [];
-    setNotifications(storedNotifications);
-    setUnreadCount(storedNotifications.filter(n => !n.isRead).length);
+    // Function to load and update state from localStorage
+    const loadNotifications = () => {
+      const storedNotificationsJSON = localStorage.getItem(storageKey);
+      const storedNotifications: GuestNotification[] = storedNotificationsJSON ? JSON.parse(storedNotificationsJSON) : [];
+      setNotifications(storedNotifications);
+      setUnreadCount(storedNotifications.filter(n => !n.isRead).length);
+    };
+
+    // Initial load
+    loadNotifications();
     
-    // Listen for storage changes from other tabs
+    // Listen for storage changes from other tabs to keep them in sync
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === storageKey) {
-        const newNotifications: GuestNotification[] = event.newValue ? JSON.parse(event.newValue) : [];
-        setNotifications(newNotifications);
-        setUnreadCount(newNotifications.filter(n => !n.isRead).length);
+        loadNotifications();
       }
     };
     
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
 
-  }, [getStorageKey]);
+  }, [storageKey]);
 
   const handleNotificationClick = (notification: GuestNotification) => {
     const url = `/figures/${notification.figureId}#comment-${notification.replyId || notification.commentId}`;
@@ -76,7 +80,6 @@ export function GuestNotificationBell() {
   };
 
   const markAsRead = (notificationId: string) => {
-    const storageKey = getStorageKey();
     if (!storageKey) return;
     const newNotifications = notifications.map(n => n.id === notificationId ? { ...n, isRead: true } : n);
     setNotifications(newNotifications);
@@ -85,7 +88,6 @@ export function GuestNotificationBell() {
   };
   
   const handleMarkAllAsRead = () => {
-    const storageKey = getStorageKey();
     if (!storageKey || unreadCount === 0) return;
 
     const newNotifications = notifications.map(n => ({ ...n, isRead: true }));
