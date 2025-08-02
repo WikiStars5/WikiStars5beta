@@ -1,69 +1,65 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper function to check if a user is an admin
+
+    // Helper function to check if the user is an admin.
     function isAdmin() {
-      // An admin is identified by having the 'role' field set to 'admin' in their user profile document.
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    // Helper function to check if the user is the owner of the resource
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    // Helper function to check if the user is authenticated (registered or anonymous)
-    function isAuthenticated() {
-      return request.auth != null;
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Figures can be read by anyone, but only written by admins.
+    // Rules for the 'figures' collection
     match /figures/{figureId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      
+      // Allow updates if the user is an admin OR if they are only updating the count fields.
+      // This is the key change to allow users to submit comments and ratings that update totals.
+      allow update: if isAdmin() || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'commentCount', 'starRatingCounts', 'attitudeCounts', 'perceptionCounts'
+        ])
+      );
     }
 
-    // Users can read/update their own profile. Admins can read all profiles.
+    // Rules for the 'users' collection
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
+      // Only admins can see the full list of users.
       allow list: if isAdmin();
-      allow update: if isOwner(userId);
-      // Create and delete are handled by backend functions for security.
+      // Users can read their own profile, and admins can read any profile.
+      allow read: if request.auth.uid == userId || isAdmin();
+      // Users can update their own profile. Creation is handled by a Cloud Function.
+      allow update: if request.auth.uid == userId;
+      // No one can create or delete user profiles directly from the client.
       allow create, delete: if false;
     }
 
-    // Comments can be created by any authenticated user.
-    // Users can update/delete their own comments.
-    // Admins can delete any comment for moderation.
+    // Rules for comments
     match /userComments/{commentId} {
+      // Anyone can read comments.
       allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && isOwner(request.resource.data.userId);
-      allow delete: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
-    }
-
-    // Star ratings can be created/updated/deleted only by the user who owns them.
-    match /userStarRatings/{ratingId} {
-        allow read: if isAuthenticated() && isOwner(ratingId.split('_')[0]);
-        allow write: if isAuthenticated() && isOwner(ratingId.split('_')[0]);
-    }
-
-    // Notifications can be read and updated (to be marked as read) only by the user they are addressed to.
-    match /notifications/{notificationId} {
-      allow read, update: if isAuthenticated() && isOwner(resource.data.userId);
-      // Only backend functions can create notifications.
-      allow create, delete: if false;
+      // Any authenticated user (including anonymous) can create a comment.
+      allow create: if request.auth.uid != null;
+      // Only the author of the comment or an admin can update or delete it.
+      allow update, delete: if resource.data.userId == request.auth.uid || isAdmin();
     }
     
-    // Deprecated collections - block all access for security
-    match /userAttitudes/{attitudeId} {
-      allow read, write: if false;
+    // Rules for notifications
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications. Admins can read all for debugging.
+      allow read: if resource.data.userId == request.auth.uid || isAdmin();
+      // Only the server (via Cloud Functions) can create notifications.
+      allow write: if false;
     }
-    match /userPerceptions/{perceptionId} {
-      allow read, write: if false;
+
+    // Generic rules for user-specific subcollections (ratings, attitudes, etc.)
+    match /userStarRatings/{ratingId} {
+      allow read, write: if request.auth.uid != null && ratingId.split('_')[0] == request.auth.uid;
+    }
+    match /userAttitudes/{attitudeId} {
+      allow read, write: if request.auth.uid != null && attitudeId.split('_')[0] == request.auth.uid;
+    }
+     match /userPerceptions/{perceptionId} {
+      allow read, write: if request.auth.uid != null && perceptionId.split('_')[0] == request.auth.uid;
     }
   }
 }
