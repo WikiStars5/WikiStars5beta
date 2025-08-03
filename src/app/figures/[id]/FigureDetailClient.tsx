@@ -1332,9 +1332,9 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
                   {!canEditFigure && !isEditing && (
                     <Alert variant="default" className="mb-4">
                         <LogIn className="h-4 w-4" />
-                        <AlertTitle>Edición para Usuarios Registrados</AlertTitle>
+                        <AlertTitle>Edición Restringida</AlertTitle>
                         <AlertDescription>
-                          Para editar esta sección, necesitas <Link href="/login" className="font-semibold text-primary hover:underline">iniciar sesión</Link> o <Link href="/signup" className="font-semibold text-primary hover:underline">crear una cuenta</Link>.
+                          La edición de esta sección solo está disponible para administradores.
                         </AlertDescription>
                     </Alert>
                   )}
@@ -1576,4 +1576,3 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
-
