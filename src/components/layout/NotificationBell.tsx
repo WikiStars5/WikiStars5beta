@@ -42,8 +42,15 @@ export function NotificationBell() {
   const { toast } = useToast();
   
   const prevUnreadCountRef = React.useRef(0);
-  const NOTIFICATION_SOUND_URL = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711";
+  const notificationAudioRef = React.useRef<HTMLAudioElement | null>(null);
 
+  // Effect to set up the audio element once on the client
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      notificationAudioRef.current = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711");
+      notificationAudioRef.current.preload = 'auto';
+    }
+  }, []);
 
   // Effect to manage user authentication state
   React.useEffect(() => {
@@ -80,11 +87,16 @@ export function NotificationBell() {
 
       // Play sound if the unread count has increased
       if (newUnreadCount > 0 && newUnreadCount > prevUnreadCountRef.current) {
-        const audio = new Audio(NOTIFICATION_SOUND_URL);
-        audio.play().catch(err => {
-          // Log a more descriptive message to help debug autoplay issues
-          console.warn("Reproducción de sonido de notificación bloqueada por el navegador. Esto es normal si no ha habido interacción del usuario con la página. Detalles:", err);
-        });
+        const audio = notificationAudioRef.current;
+        if (audio) {
+          audio.currentTime = 0;
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(error => {
+              console.warn("Reproducción de sonido de notificación bloqueada por el navegador. Esto es normal si no ha habido interacción del usuario con la página. Detalles:", error);
+            });
+          }
+        }
       }
       
       // Update the ref with the new count for the next check
@@ -95,7 +107,7 @@ export function NotificationBell() {
     });
 
     return () => unsubscribe();
-  }, [currentUser, NOTIFICATION_SOUND_URL]);
+  }, [currentUser]);
 
 
   const handleNotificationClick = async (notification: Notification) => {
