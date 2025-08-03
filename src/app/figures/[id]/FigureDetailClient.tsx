@@ -243,15 +243,31 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       if (streaksJSON) {
         const streaks: LocalUserStreak[] = JSON.parse(streaksJSON);
         const figureStreak = streaks.find(s => s.figureId === figure.id);
-        setCurrentUserStreak(figureStreak ? figureStreak.currentStreak : null);
+
+        if (figureStreak) {
+          // Validate if the streak is still active (today or yesterday)
+          const today = new Date();
+          const yesterday = new Date(today);
+          yesterday.setDate(today.getDate() - 1);
+          const lastDate = new Date(figureStreak.lastCommentDate);
+
+          if (lastDate.toDateString() === today.toDateString() || lastDate.toDateString() === yesterday.toDateString()) {
+            setCurrentUserStreak(figureStreak.currentStreak);
+          } else {
+            setCurrentUserStreak(null); // Streak has expired
+          }
+        } else {
+          setCurrentUserStreak(null); // No streak found for this figure
+        }
       } else {
-        setCurrentUserStreak(null);
+        setCurrentUserStreak(null); // No streaks in storage at all
       }
     } catch (error) {
       console.error("Error fetching current streak:", error);
       setCurrentUserStreak(null);
     }
   }, [figure?.id]);
+
 
   React.useEffect(() => {
     fetchCurrentUserStreak();
@@ -1560,3 +1576,4 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
+
