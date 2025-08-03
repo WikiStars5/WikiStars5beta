@@ -42,13 +42,14 @@ export function NotificationBell() {
   const { toast } = useToast();
   
   const prevUnreadCountRef = React.useRef(0);
-  const notificationAudioRef = React.useRef<HTMLAudioElement | null>(null);
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const [isAudioReady, setIsAudioReady] = React.useState(false);
 
   // Effect to set up the audio element once on the client
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
-      notificationAudioRef.current = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711");
-      notificationAudioRef.current.preload = 'auto';
+        audioRef.current = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711");
+        audioRef.current.preload = 'auto';
     }
   }, []);
 
@@ -85,17 +86,14 @@ export function NotificationBell() {
       const newUnreadCount = serverNotifications.filter(n => !n.isRead).length;
       setUnreadCount(newUnreadCount);
 
-      // Play sound if the unread count has increased
-      if (newUnreadCount > 0 && newUnreadCount > prevUnreadCountRef.current) {
-        const audio = notificationAudioRef.current;
+      // Play sound if the unread count has increased AND the audio is ready
+      if (isAudioReady && newUnreadCount > 0 && newUnreadCount > prevUnreadCountRef.current) {
+        const audio = audioRef.current;
         if (audio) {
           audio.currentTime = 0;
-          const playPromise = audio.play();
-          if (playPromise !== undefined) {
-            playPromise.catch(error => {
-              console.warn("Reproducción de sonido de notificación bloqueada por el navegador. Esto es normal si no ha habido interacción del usuario con la página. Detalles:", error);
-            });
-          }
+          audio.play().catch(error => {
+            console.error("Error al reproducir el sonido de notificación:", error);
+          });
         }
       }
       
@@ -107,7 +105,27 @@ export function NotificationBell() {
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, isAudioReady]);
+  
+  const handlePopoverOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    // This is the key change: "unlock" audio playback on the first user interaction.
+    if (open && !isAudioReady && audioRef.current) {
+      // Mute, play, then pause. This convinces the browser the user wants audio.
+      audioRef.current.muted = true;
+      const playPromise = audioRef.current.play();
+      
+      if (playPromise !== undefined) {
+          playPromise.then(() => {
+              audioRef.current?.pause();
+              audioRef.current!.muted = false;
+              setIsAudioReady(true); // Now we are allowed to play sound later
+          }).catch(error => {
+              console.error("No se pudo 'desbloquear' el audio. El navegador puede estar bloqueando la reproducción automática.", error);
+          });
+      }
+    }
+  };
 
 
   const handleNotificationClick = async (notification: Notification) => {
@@ -186,7 +204,7 @@ export function NotificationBell() {
   );
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handlePopoverOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative h-9 w-9">
           <Bell className="h-5 w-5 text-foreground/70" />
