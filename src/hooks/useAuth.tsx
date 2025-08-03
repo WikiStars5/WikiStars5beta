@@ -37,13 +37,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
              // This might happen if the user is new and the Cloud Function hasn't created the profile yet.
             // Or if the user is anonymous. For anonymous, we can build a local profile.
             if (fbUser.isAnonymous) {
+              // For anonymous users, create a local profile, but prioritize saved guest info.
+              const savedGuestName = localStorage.getItem('wikistars5-guestUsername');
+              const savedGuestGender = localStorage.getItem('wikistars5-guestGender');
+              
               setUser({
                 uid: fbUser.uid,
                 email: null,
-                username: `Invitado_${fbUser.uid.substring(0,5)}`,
+                username: savedGuestName || `Invitado_${fbUser.uid.substring(0,5)}`,
                 role: 'user',
                 createdAt: new Date().toISOString(),
-                isAnonymous: true
+                isAnonymous: true,
+                gender: savedGuestGender || '',
               });
             } else {
                setUser(null);
