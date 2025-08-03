@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, UserPlus } from 'lucide-react';
+import { Loader2, UserPlus, ShieldAlert } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const signupFormSchema = z.object({
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres.").max(30, "El nombre de usuario no puede exceder los 30 caracteres."),
@@ -22,8 +23,6 @@ const signupFormSchema = z.object({
 
 type SignupFormValues = z.infer<typeof signupFormSchema>;
 
-// This page is intentionally not linked in the main UI and is meant for admin/manual registration.
-// The primary user flow is anonymous sign-in with account linking.
 export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -38,8 +37,6 @@ export default function SignupPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       
-      // The onUserCreate Cloud Function will handle creating the Firestore profile.
-      // We just need to update the Auth display name here.
       await updateProfile(userCredential.user, {
         displayName: data.username,
       });
@@ -67,9 +64,16 @@ export default function SignupPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-headline">Crear Cuenta de Administrador</CardTitle>
-          <CardDescription>Usa esta página para registrar nuevas cuentas de administrador o de prueba.</CardDescription>
+          <CardDescription>Esta página es solo para uso administrativo.</CardDescription>
         </CardHeader>
         <CardContent>
+          <Alert variant="destructive" className="mb-6">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Acceso Restringido</AlertTitle>
+            <AlertDescription>
+              Esta funcionalidad es solo para administradores. Los intentos de registro no autorizados serán monitorizados.
+            </AlertDescription>
+          </Alert>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="username">Nombre de Usuario</Label>
