@@ -41,16 +41,14 @@ export function NotificationBell() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const prevUnreadCountRef = React.useRef(0);
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
-  const [isAudioReady, setIsAudioReady] = React.useState(false);
+  const [notificationSound, setNotificationSound] = React.useState<HTMLAudioElement | null>(null);
+  const soundTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  // Effect to set up the audio element once on the client
+  // Effect to create the audio element once on the client
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-        audioRef.current = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711");
-        audioRef.current.preload = 'auto';
-    }
+    const sound = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711");
+    sound.preload = 'auto';
+    setNotificationSound(sound);
   }, []);
 
   // Effect to manage user authentication state
@@ -67,7 +65,7 @@ export function NotificationBell() {
     return () => unsubscribe();
   }, []);
 
-  // Separate effect for listening to notifications and playing sound
+  // Separate effect for listening to notifications
   React.useEffect(() => {
     if (!currentUser) return;
 
@@ -82,50 +80,37 @@ export function NotificationBell() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const serverNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
       setNotifications(serverNotifications);
-
-      const newUnreadCount = serverNotifications.filter(n => !n.isRead).length;
-      setUnreadCount(newUnreadCount);
-
-      // Play sound if the unread count has increased AND the audio is ready
-      if (isAudioReady && newUnreadCount > 0 && newUnreadCount > prevUnreadCountRef.current) {
-        const audio = audioRef.current;
-        if (audio) {
-          audio.currentTime = 0;
-          audio.play().catch(error => {
-            console.error("Error al reproducir el sonido de notificación:", error);
-          });
-        }
-      }
-      
-      // Update the ref with the new count for the next check
-      prevUnreadCountRef.current = newUnreadCount;
-
     }, (error) => {
       console.error("Error fetching notifications:", error);
     });
 
     return () => unsubscribe();
-  }, [currentUser, isAudioReady]);
-  
-  const handlePopoverOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    // This is the key change: "unlock" audio playback on the first user interaction.
-    if (open && !isAudioReady && audioRef.current) {
-      // Mute, play, then pause. This convinces the browser the user wants audio.
-      audioRef.current.muted = true;
-      const playPromise = audioRef.current.play();
-      
-      if (playPromise !== undefined) {
-          playPromise.then(() => {
-              audioRef.current?.pause();
-              audioRef.current!.muted = false;
-              setIsAudioReady(true); // Now we are allowed to play sound later
-          }).catch(error => {
-              console.error("No se pudo 'desbloquear' el audio. El navegador puede estar bloqueando la reproducción automática.", error);
-          });
+  }, [currentUser]);
+
+  // Separate effect to handle unread count and play sound
+  React.useEffect(() => {
+    const newUnreadCount = notifications.filter(n => !n.isRead).length;
+
+    if (newUnreadCount > unreadCount) {
+      if (soundTimeoutRef.current) {
+        clearTimeout(soundTimeoutRef.current);
       }
+      soundTimeoutRef.current = setTimeout(() => {
+        notificationSound?.play().catch(err => {
+          console.warn("Notification sound was blocked by browser autoplay policy.", err);
+        });
+      }, 300); // Small delay to bundle rapid updates
     }
-  };
+
+    setUnreadCount(newUnreadCount);
+    
+    return () => {
+      if (soundTimeoutRef.current) {
+        clearTimeout(soundTimeoutRef.current);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifications, notificationSound]);
 
 
   const handleNotificationClick = async (notification: Notification) => {
@@ -204,7 +189,7 @@ export function NotificationBell() {
   );
 
   return (
-    <Popover open={isOpen} onOpenChange={handlePopoverOpenChange}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative h-9 w-9">
           <Bell className="h-5 w-5 text-foreground/70" />
