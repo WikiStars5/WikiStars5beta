@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Award, Flame, Heart, Edit, Save, BarChart3, MapIcon, VenusAndMars, Smile, UserPlus, Link2, ThumbsDown, SmilePlus, Frown, Angry, Hand, MehIcon } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Flame, Heart, Edit, Save, BarChart3, MapIcon, VenusAndMars, Smile, UserPlus, Link2 } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -28,7 +28,6 @@ import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import Image from 'next/image';
 import { StreakAnimation } from '@/components/shared/StreakAnimation';
 import { getFiguresByIds } from '@/lib/placeholder-data';
@@ -40,16 +39,7 @@ const profileFormSchema = z.object({
 });
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
-const linkAccountFormSchema = z.object({
-  email: z.string().email("Correo electrónico no válido."),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres."),
-  username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres.").max(30, "No puede exceder los 30 caracteres."),
-});
-type LinkAccountFormValues = z.infer<typeof linkAccountFormSchema>;
-
 const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
-const getUserAttitudesCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserAttitudes');
-const getUserEmotionsCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserEmotions');
 
 const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
   alegria: { label: 'Alegría', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414' },
@@ -65,22 +55,17 @@ export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [streaks, setStreaks] = useState<LocalUserStreak[]>([]);
   
-  const [attitudeFigures, setAttitudeFigures] = useState<Figure[]>([]);
+  // States for data
+  const [streaks, setStreaks] = useState<LocalUserStreak[]>([]);
   const [attitudes, setAttitudes] = useState<Attitude[]>([]);
-
-  const [alegriaList, setAlegriaList] = useState<Figure[]>([]);
-  const [envidiaList, setEnvidiaList] = useState<Figure[]>([]);
-  const [tristezaList, setTristezaList] = useState<Figure[]>([]);
-  const [miedoList, setMiedoList] = useState<Figure[]>([]);
-  const [desagradoList, setDesagradoList] = useState<Figure[]>([]);
-  const [furiaList, setFuriaList] = useState<Figure[]>([]);
   const [emotions, setEmotions] = useState<EmotionVote[]>([]);
+  
+  // States for figures related to votes
+  const [attitudeFigures, setAttitudeFigures] = useState<Figure[]>([]);
+  const [emotionFigures, setEmotionFigures] = useState<Figure[]>([]);
 
   const [isDataLoading, setIsDataLoading] = useState(true);
-  const [isLinking, setIsLinking] = useState(false);
-  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [animationStreak, setAnimationStreak] = useState<number | null>(null);
   
   const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
@@ -88,17 +73,12 @@ export default function ProfilePage() {
     defaultValues: { username: '', countryCode: '', gender: '' },
   });
 
-  const { control: linkControl, handleSubmit: handleLinkSubmit, formState: { errors: linkErrors }, reset: resetLink } = useForm<LinkAccountFormValues>({
-    resolver: zodResolver(linkAccountFormSchema),
-    defaultValues: { email: '', password: '', username: ''}
-  });
-
   const isAdmin = currentUser?.role === 'admin';
   
-  const loadProfileData = useCallback(async (tabToLoad: 'attitude' | 'emotion' | 'all') => {
+  const loadProfileData = useCallback(async () => {
     setIsDataLoading(true);
-
     try {
+        // Streaks from localStorage
         const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
         if (streaksJSON) {
             let localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
@@ -113,48 +93,28 @@ export default function ProfilePage() {
             setStreaks(activeStreaks);
         }
 
-        if (tabToLoad === 'attitude' || tabToLoad === 'all') {
-            const attitudeResult = await getUserAttitudesCallable();
-            const attitudeData = attitudeResult.data as { success: boolean, attitudes?: Attitude[], error?: string };
-            if (attitudeData.success && attitudeData.attitudes) {
-                setAttitudes(attitudeData.attitudes);
-                const figureIds = attitudeData.attitudes.map(a => a.figureId);
-                const figures = await getFiguresByIds(figureIds);
-                setAttitudeFigures(figures);
-            } else {
-                console.error("Failed to fetch attitudes:", attitudeData.error);
-            }
+        // Attitudes from localStorage
+        const attitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
+        const localAttitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
+        setAttitudes(localAttitudes);
+        const attitudeFigureIds = localAttitudes.map(a => a.figureId);
+        if (attitudeFigureIds.length > 0) {
+            const figures = await getFiguresByIds(attitudeFigureIds);
+            setAttitudeFigures(figures);
         }
 
-        if (tabToLoad === 'emotion' || tabToLoad === 'all') {
-            const emotionResult = await getUserEmotionsCallable();
-            const emotionData = emotionResult.data as { success: boolean, emotions?: EmotionVote[], error?: string };
-            if (emotionData.success && emotionData.emotions) {
-                setEmotions(emotionData.emotions);
-                const figureIdsByEmotion = {
-                    alegria: emotionData.emotions.filter(e => e.emotion === 'alegria').map(e => e.figureId),
-                    envidia: emotionData.emotions.filter(e => e.emotion === 'envidia').map(e => e.figureId),
-                    tristeza: emotionData.emotions.filter(e => e.emotion === 'tristeza').map(e => e.figureId),
-                    miedo: emotionData.emotions.filter(e => e.emotion === 'miedo').map(e => e.figureId),
-                    desagrado: emotionData.emotions.filter(e => e.emotion === 'desagrado').map(e => e.figureId),
-                    furia: emotionData.emotions.filter(e => e.emotion === 'furia').map(e => e.figureId),
-                };
-
-                const [alegriaFigures, envidiaFigures, tristezaFigures, miedoFigures, desagradoFigures, furiaFigures] = await Promise.all([
-                    getFiguresByIds(figureIdsByEmotion.alegria), getFiguresByIds(figureIdsByEmotion.envidia),
-                    getFiguresByIds(figureIdsByEmotion.tristeza), getFiguresByIds(figureIdsByEmotion.miedo),
-                    getFiguresByIds(figureIdsByEmotion.desagrado), getFiguresByIds(figureIdsByEmotion.furia),
-                ]);
-
-                setAlegriaList(alegriaFigures); setEnvidiaList(envidiaFigures);
-                setTristezaList(tristezaFigures); setMiedoList(miedoFigures);
-                setDesagradoList(desagradoFigures); setFuriaList(furiaFigures);
-            } else {
-                console.error("Failed to fetch emotions:", emotionData.error);
-            }
+        // Emotions from localStorage
+        const emotionsJSON = localStorage.getItem('wikistars5-userEmotions');
+        const localEmotions: EmotionVote[] = emotionsJSON ? JSON.parse(emotionsJSON) : [];
+        setEmotions(localEmotions);
+        const emotionFigureIds = localEmotions.map(e => e.figureId);
+        if (emotionFigureIds.length > 0) {
+            const figures = await getFiguresByIds(emotionFigureIds);
+            setEmotionFigures(figures);
         }
+
     } catch (error) {
-        console.error("Error loading profile data:", error);
+        console.error("Error loading profile data from localStorage:", error);
         toast({ title: "Error", description: "No se pudieron cargar los datos del perfil.", variant: "destructive" });
     } finally {
         setIsDataLoading(false);
@@ -169,7 +129,7 @@ export default function ProfilePage() {
         countryCode: currentUser.countryCode ?? '',
         gender: currentUser.gender ?? '',
       });
-      loadProfileData('all');
+      loadProfileData();
     }
   }, [isLoading, currentUser, reset, loadProfileData]);
 
@@ -187,46 +147,6 @@ export default function ProfilePage() {
       toast({ title: "Error", description: error.message || "No se pudo actualizar tu perfil.", variant: "destructive" });
     }
   };
-  
-  const onLinkAccountSubmit = async (data: LinkAccountFormValues) => {
-    if (!firebaseUser || !isAnonymous) {
-      toast({ title: "Error", description: "No hay una cuenta de invitado para vincular.", variant: "destructive" });
-      return;
-    }
-    setIsLinking(true);
-    try {
-      const credential = EmailAuthProvider.credential(data.email, data.password);
-      
-      await linkWithCredential(firebaseUser, credential);
-
-      await updateUserProfileCallable({
-        username: data.username,
-        countryCode: currentUser?.countryCode,
-        gender: currentUser?.gender,
-      });
-
-      toast({
-        title: "¡Cuenta Vinculada!",
-        description: "Tu progreso ha sido guardado en tu nueva cuenta.",
-      });
-      setIsLinkDialogOpen(false);
-      resetLink();
-      router.refresh();
-
-    } catch (error: any) {
-      console.error("Error linking account:", error);
-      let message = "No se pudo crear la cuenta.";
-      if (error.code === 'auth/email-already-in-use') {
-        message = 'Este correo ya está en uso por otra cuenta.';
-      } else if (error.code === 'auth/credential-already-in-use') {
-        message = 'Estas credenciales ya están asociadas con otro usuario.';
-      }
-      toast({ title: "Error al Vincular", description: message, variant: "destructive" });
-    } finally {
-      setIsLinking(false);
-    }
-  };
-
 
   const handleLogout = async () => {
     try {
@@ -263,9 +183,9 @@ export default function ProfilePage() {
 
   const displayName = currentUser.username || (isAnonymous ? "Invitado" : "Usuario");
 
-  const AttitudeList = ({ figures, attitudeKey, emptyMessage }: { figures: Figure[], attitudeKey: string, emptyMessage: string }) => {
+  const AttitudeList = ({ attitudeKey, emptyMessage }: { attitudeKey: string, emptyMessage: string }) => {
     const attitudeMap = new Map(attitudes.map(a => [a.figureId, a]));
-    const filteredFigures = figures.filter(f => {
+    const filteredFigures = attitudeFigures.filter(f => {
         const attitude = attitudeMap.get(f.id);
         return attitude?.attitude === attitudeKey;
     });
@@ -304,14 +224,19 @@ export default function ProfilePage() {
     )
   };
   
-  const EmotionList = ({ figures, emptyMessage }: { figures: Figure[], emptyMessage: string }) => {
+  const EmotionList = ({ emotionKey, emptyMessage }: { emotionKey: string, emptyMessage: string }) => {
     const emotionMap = new Map(emotions.map(e => [e.figureId, e]));
+    const filteredFigures = emotionFigures.filter(f => {
+      const emotion = emotionMap.get(f.id);
+      return emotion?.emotion === emotionKey;
+    });
+
     return (
       <div className="space-y-4">
         {isDataLoading ? (
            <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-        ) : figures.length > 0 ? (
-          figures.map(figure => {
+        ) : filteredFigures.length > 0 ? (
+          filteredFigures.map(figure => {
             const emotion = emotionMap.get(figure.id);
             let dateString = '';
             if (emotion && emotion.addedAt && !isNaN(new Date(emotion.addedAt).getTime())) {
@@ -345,8 +270,8 @@ export default function ProfilePage() {
           <Tabs defaultValue="rachas" className="w-full">
               <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20">
                   <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
-                  <TabsTrigger value="actitud" onClick={() => loadProfileData('attitude')}><Heart className="mr-2" />Mi Actitud</TabsTrigger>
-                  <TabsTrigger value="emociones" onClick={() => loadProfileData('emotion')}><Smile className="mr-2" />Mis Emociones</TabsTrigger>
+                  <TabsTrigger value="actitud"><Heart className="mr-2" />Mi Actitud</TabsTrigger>
+                  <TabsTrigger value="emociones"><Smile className="mr-2" />Mis Emociones</TabsTrigger>
               </TabsList>
               
               <TabsContent value="rachas" className="mt-6">
@@ -390,10 +315,10 @@ export default function ProfilePage() {
                                 <TabsTrigger value="hater" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Hater">😡</span>Haters</TabsTrigger>
                             </TabsList>
                             <div className="mt-4">
-                              <TabsContent value="fan"><AttitudeList figures={attitudeFigures} attitudeKey="fan" emptyMessage="Aún no has marcado a nadie como 'Fan'."/></TabsContent>
-                              <TabsContent value="neutral"><AttitudeList figures={attitudeFigures} attitudeKey="neutral" emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
-                              <TabsContent value="simp"><AttitudeList figures={attitudeFigures} attitudeKey="simp" emptyMessage="No has marcado a nadie como 'Simp'."/></TabsContent>
-                              <TabsContent value="hater"><AttitudeList figures={attitudeFigures} attitudeKey="hater" emptyMessage="No has marcado a nadie como 'Hater'."/></TabsContent>
+                              <TabsContent value="fan"><AttitudeList attitudeKey="fan" emptyMessage="Aún no has marcado a nadie como 'Fan'."/></TabsContent>
+                              <TabsContent value="neutral"><AttitudeList attitudeKey="neutral" emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
+                              <TabsContent value="simp"><AttitudeList attitudeKey="simp" emptyMessage="No has marcado a nadie como 'Simp'."/></TabsContent>
+                              <TabsContent value="hater"><AttitudeList attitudeKey="hater" emptyMessage="No has marcado a nadie como 'Hater'."/></TabsContent>
                             </div>
                         </Tabs>
                       </CardContent>
@@ -417,12 +342,12 @@ export default function ProfilePage() {
                                 ))}
                             </TabsList>
                             <div className="mt-4">
-                              <TabsContent value="alegria"><EmotionList figures={alegriaList} emptyMessage="No has votado 'Alegría' por nadie."/></TabsContent>
-                              <TabsContent value="envidia"><EmotionList figures={envidiaList} emptyMessage="No has votado 'Envidia' por nadie."/></TabsContent>
-                              <TabsContent value="tristeza"><EmotionList figures={tristezaList} emptyMessage="No has votado 'Tristeza' por nadie."/></TabsContent>
-                              <TabsContent value="miedo"><EmotionList figures={miedoList} emptyMessage="No has votado 'Miedo' por nadie."/></TabsContent>
-                              <TabsContent value="desagrado"><EmotionList figures={desagradoList} emptyMessage="No has votado 'Desagrado' por nadie."/></TabsContent>
-                              <TabsContent value="furia"><EmotionList figures={furiaList} emptyMessage="No has votado 'Furia' por nadie."/></TabsContent>
+                              <TabsContent value="alegria"><EmotionList emotionKey="alegria" emptyMessage="No has votado 'Alegría' por nadie."/></TabsContent>
+                              <TabsContent value="envidia"><EmotionList emotionKey="envidia" emptyMessage="No has votado 'Envidia' por nadie."/></TabsContent>
+                              <TabsContent value="tristeza"><EmotionList emotionKey="tristeza" emptyMessage="No has votado 'Tristeza' por nadie."/></TabsContent>
+                              <TabsContent value="miedo"><EmotionList emotionKey="miedo" emptyMessage="No has votado 'Miedo' por nadie."/></TabsContent>
+                              <TabsContent value="desagrado"><EmotionList emotionKey="desagrado" emptyMessage="No has votado 'Desagrado' por nadie."/></TabsContent>
+                              <TabsContent value="furia"><EmotionList emotionKey="furia" emptyMessage="No has votado 'Furia' por nadie."/></TabsContent>
                             </div>
                         </Tabs>
                       </CardContent>
