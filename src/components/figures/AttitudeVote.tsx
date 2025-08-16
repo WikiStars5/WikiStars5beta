@@ -57,7 +57,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       return;
     }
     
-    // First, try to get the user's vote from localStorage for instant UI feedback
     if (currentUser) {
         try {
             const localAttitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
@@ -86,25 +85,19 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       if (isComponentLoading) setIsComponentLoading(false);
     });
 
-    const syncVoteFromFirestore = async () => {
-      if (currentUser) {
-        const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
-        try {
-          const docSnap = await getDoc(userVoteDocRef);
-          if (docSnap.exists()) {
-            setSelectedAttitude(docSnap.data().attitude as AttitudeKey);
-          } else {
-            setSelectedAttitude(null);
-          }
-        } catch (error) {
-          console.warn("Permission denied fetching user attitude. This is expected for guests and will rely on localStorage.", error);
-        }
-      } else {
+    if (currentUser) {
+        getDoc(doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`))
+            .then(docSnap => {
+                if (docSnap.exists()) {
+                    setSelectedAttitude(docSnap.data().attitude as AttitudeKey);
+                }
+            })
+            .catch(error => {
+                 console.warn("Permission denied fetching user attitude. This is expected for guests and will rely on localStorage.", error);
+            });
+    } else {
         setSelectedAttitude(null);
-      }
-    };
-
-    syncVoteFromFirestore();
+    }
     
     return () => {
       unsubscribeFigure();
@@ -122,9 +115,22 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
     const previousSelectedAttitude = selectedAttitude;
     const newAttitudeToSet = previousSelectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
-    const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
     
+    // Optimistic UI Update
     setSelectedAttitude(newAttitudeToSet);
+    setFigureAttitudeCounts(prevCounts => {
+        const newCounts = { ...prevCounts };
+        if (previousSelectedAttitude) {
+            newCounts[previousSelectedAttitude] = Math.max(0, (newCounts[previousSelectedAttitude] || 0) - 1);
+        }
+        if (newAttitudeToSet) {
+            newCounts[newAttitudeToSet] = (newCounts[newAttitudeToSet] || 0) + 1;
+        }
+        setTotalVotes(Object.values(newCounts).reduce((sum, count) => sum + count, 0));
+        return newCounts;
+    });
+
+    const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
 
     try {
         const localAttitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
@@ -166,7 +172,19 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
     } catch (error: any) {
         console.error("Error updating Firestore attitude:", error);
+        // Revert optimistic UI on error
         setSelectedAttitude(previousSelectedAttitude);
+        setFigureAttitudeCounts(prevCounts => {
+            const revertedCounts = { ...prevCounts };
+            if (newAttitudeToSet) {
+                revertedCounts[newAttitudeToSet] = Math.max(0, (revertedCounts[newAttitudeToSet] || 0) - 1);
+            }
+            if (previousSelectedAttitude) {
+                revertedCounts[previousSelectedAttitude] = (revertedCounts[previousSelectedAttitude] || 0) + 1;
+            }
+            setTotalVotes(Object.values(revertedCounts).reduce((sum, count) => sum + count, 0));
+            return revertedCounts;
+        });
         toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar en el servidor. Intenta de nuevo.", variant: "destructive" });
     } finally {
         setIsLoadingAttitudeAction(null);

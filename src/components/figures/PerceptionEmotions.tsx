@@ -81,25 +81,19 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         if (isComponentLoading) setIsComponentLoading(false);
     });
 
-    const syncVoteFromFirestore = async () => {
-      if (currentUser) {
-        const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
-        try {
-          const docSnap = await getDoc(userVoteDocRef);
-          if (docSnap.exists()) {
-            setSelectedEmotion(docSnap.data().emotion as EmotionKey);
-          } else {
-            setSelectedEmotion(null);
-          }
-        } catch (error) {
-          console.warn("Permission denied fetching user emotion. This is expected for guests and will rely on localStorage.", error);
-        }
-      } else {
+    if (currentUser) {
+        getDoc(doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`))
+            .then(docSnap => {
+                if (docSnap.exists()) {
+                    setSelectedEmotion(docSnap.data().emotion as EmotionKey);
+                }
+            })
+            .catch(error => {
+                console.warn("Permission denied fetching user emotion. This is expected for guests and will rely on localStorage.", error);
+            });
+    } else {
         setSelectedEmotion(null);
-      }
-    };
-    
-    syncVoteFromFirestore();
+    }
 
     return () => {
       unsubscribeFigure();
@@ -117,9 +111,22 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     
     const previousSelectedEmotion = selectedEmotion;
     const newEmotionToSet = previousSelectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
-    const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
     
+    // Optimistic UI Update
     setSelectedEmotion(newEmotionToSet);
+    setFigurePerceptionCounts(prevCounts => {
+        const newCounts = { ...prevCounts };
+        if (previousSelectedEmotion) {
+            newCounts[previousSelectedEmotion] = Math.max(0, (newCounts[previousSelectedEmotion] || 0) - 1);
+        }
+        if (newEmotionToSet) {
+            newCounts[newEmotionToSet] = (newCounts[newEmotionToSet] || 0) + 1;
+        }
+        setTotalVotes(Object.values(newCounts).reduce((sum, count) => sum + count, 0));
+        return newCounts;
+    });
+
+    const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
     
     try {
         const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
@@ -160,9 +167,21 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         }
 
     } catch (error: any) {
-      console.error("Error updating Firestore perception:", error);
-      setSelectedEmotion(previousSelectedEmotion);
-      toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar en el servidor. Intenta de nuevo.", variant: "destructive" });
+        console.error("Error updating Firestore perception:", error);
+        // Revert optimistic UI on error
+        setSelectedEmotion(previousSelectedEmotion);
+        setFigurePerceptionCounts(prevCounts => {
+            const revertedCounts = { ...prevCounts };
+            if (newEmotionToSet) {
+                revertedCounts[newEmotionToSet] = Math.max(0, (revertedCounts[newEmotionToSet] || 0) - 1);
+            }
+            if (previousSelectedEmotion) {
+                revertedCounts[previousSelectedEmotion] = (revertedCounts[previousSelectedEmotion] || 0) + 1;
+            }
+            setTotalVotes(Object.values(revertedCounts).reduce((sum, count) => sum + count, 0));
+            return revertedCounts;
+        });
+        toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar en el servidor. Intenta de nuevo.", variant: "destructive" });
     } finally {
       setIsLoadingEmotionAction(null);
     }
