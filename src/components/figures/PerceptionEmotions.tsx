@@ -76,9 +76,10 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         setFigurePerceptionCounts(counts);
         setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
       }
+      if (isComponentLoading) setIsComponentLoading(false);
     });
 
-    const fetchUserVote = async () => {
+    const syncVoteFromFirestore = async () => {
       if (currentUser) {
         const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
         try {
@@ -89,21 +90,19 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
             setSelectedEmotion(null);
           }
         } catch (error) {
-          console.warn("Permission denied fetching user emotion, this is expected for guests.", error);
-          setSelectedEmotion(null); // Fallback to local state if Firestore read fails
+          console.warn("Permission denied fetching user emotion. This is expected for guests and will rely on localStorage.", error);
         }
       } else {
         setSelectedEmotion(null);
       }
-      setIsComponentLoading(false);
     };
-
-    fetchUserVote();
     
+    syncVoteFromFirestore();
+
     return () => {
       unsubscribeFigure();
     };
-  }, [figureId, currentUser]);
+  }, [figureId, currentUser, isComponentLoading]);
 
   const handleEmotionClick = async (emotionKeyClicked: EmotionKey) => {
     if (!canUserVote || !currentUser) {
@@ -116,13 +115,13 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     
     const previousSelectedEmotion = selectedEmotion;
     const newEmotionToSet = previousSelectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
-    const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
-    const figureDocRef = doc(db, "figures", figureId);
-
-    setSelectedEmotion(newEmotionToSet);
     
+    // --- Optimistic UI Update ---
+    // 1. Update local state immediately
+    setSelectedEmotion(newEmotionToSet);
+
+    // 2. Update localStorage for instant persistence on this device
     try {
-        // --- Update Local Storage for instant UI ---
         const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
         let localEmotions: EmotionVote[] = localEmotionsJSON ? JSON.parse(localEmotionsJSON) : [];
         localEmotions = localEmotions.filter(e => e.figureId !== figureId); // Remove old vote
@@ -130,8 +129,15 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
             localEmotions.push({ figureId, emotion: newEmotionToSet, addedAt: new Date().toISOString() });
         }
         localStorage.setItem('wikistars5-userEmotions', JSON.stringify(localEmotions));
+    } catch(e) {
+        console.error("Error updating localStorage for emotions", e);
+    }
+    
+    // --- Sync with Firestore in the background ---
+    try {
+        const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
+        const figureDocRef = doc(db, "figures", figureId);
 
-        // --- Update Firestore ---
         await runTransaction(db, async (transaction) => {
             const figureDoc = await transaction.get(figureDocRef);
             if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
@@ -153,7 +159,10 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
                     timestamp: serverTimestamp(),
                 });
             } else {
-                transaction.delete(userVoteDocRef);
+                const userVoteSnap = await transaction.get(userVoteDocRef);
+                if (userVoteSnap.exists()) {
+                    transaction.delete(userVoteDocRef);
+                }
             }
         });
       
@@ -177,8 +186,9 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
     } catch (error: any) {
       console.error("Error updating Firestore perception counts:", error);
-      toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar. Intenta de nuevo.", variant: "destructive" });
+      // Rollback UI if Firestore fails
       setSelectedEmotion(previousSelectedEmotion);
+      toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar en el servidor. Intenta de nuevo.", variant: "destructive" });
     } finally {
       setIsLoadingEmotionAction(null);
     }

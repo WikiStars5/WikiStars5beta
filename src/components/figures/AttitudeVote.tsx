@@ -80,9 +80,11 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         setFigureAttitudeCounts(counts);
         setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
       }
+      // We finish loading once we have the live counts
+      if (isComponentLoading) setIsComponentLoading(false);
     });
 
-    const fetchUserVote = async () => {
+    const syncVoteFromFirestore = async () => {
       if (currentUser) {
         const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
         try {
@@ -93,21 +95,19 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
             setSelectedAttitude(null);
           }
         } catch (error) {
-          console.warn("Permission denied fetching user attitude, this is expected for guests.", error);
-          setSelectedAttitude(null); // Fallback to local state if Firestore read fails
+          console.warn("Permission denied fetching user attitude. This is expected for guests and will rely on localStorage.", error);
         }
       } else {
         setSelectedAttitude(null);
       }
-      setIsComponentLoading(false);
     };
 
-    fetchUserVote();
+    syncVoteFromFirestore();
     
     return () => {
       unsubscribeFigure();
     };
-  }, [figureId, currentUser]);
+  }, [figureId, currentUser, isComponentLoading]);
 
   const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
     if (!canUserVote || !currentUser) {
@@ -123,10 +123,12 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
     const figureDocRef = doc(db, "figures", figureId);
 
+    // --- Optimistic UI Update ---
+    // 1. Update local state immediately
     setSelectedAttitude(newAttitudeToSet);
 
+    // 2. Update localStorage for instant persistence on this device
     try {
-        // --- Update Local Storage for instant UI ---
         const localAttitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
         let localAttitudes: Attitude[] = localAttitudesJSON ? JSON.parse(localAttitudesJSON) : [];
         localAttitudes = localAttitudes.filter(a => a.figureId !== figureId); // Remove old vote
@@ -134,8 +136,12 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
             localAttitudes.push({ figureId, attitude: newAttitudeToSet, addedAt: new Date().toISOString() });
         }
         localStorage.setItem('wikistars5-userAttitudes', JSON.stringify(localAttitudes));
+    } catch(e) {
+        console.error("Error updating localStorage for attitudes", e);
+    }
 
-        // --- Update Firestore ---
+    // --- Sync with Firestore in the background ---
+    try {
         await runTransaction(db, async (transaction) => {
             const figureDoc = await transaction.get(figureDocRef);
             if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
@@ -159,7 +165,11 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                     timestamp: serverTimestamp(),
                 });
             } else {
-                transaction.delete(userVoteDocRef);
+                // If the user is un-voting, we must also check if they had a vote on Firestore
+                const userVoteSnap = await transaction.get(userVoteDocRef);
+                if (userVoteSnap.exists()) {
+                    transaction.delete(userVoteDocRef);
+                }
             }
         });
       
@@ -183,8 +193,9 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
     } catch (error: any) {
       console.error("Error updating Firestore attitude counts:", error);
-      toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar. Intenta de nuevo.", variant: "destructive" });
+      // Rollback UI if Firestore fails
       setSelectedAttitude(previousSelectedAttitude);
+      toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar en el servidor. Intenta de nuevo.", variant: "destructive" });
     } finally {
         setIsLoadingAttitudeAction(null);
     }

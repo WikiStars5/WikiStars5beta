@@ -428,8 +428,8 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
         const commentsCollectionRef = collection(db, 'userComments');
 
+        // Optimistic UI update for star rating in localStorage
         try {
-            // Update local storage for star rating
             const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
             let localRatings: UserStarRating[] = localRatingsJSON ? JSON.parse(localRatingsJSON) : [];
             localRatings = localRatings.filter(r => r.figureId !== figure.id);
@@ -437,8 +437,11 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                 localRatings.push({ userId: currentUser.uid, figureId: figure.id, starValue: newCommentStars, timestamp: new Date() as any });
             }
             localStorage.setItem('wikistars5-userStarRatings', JSON.stringify(localRatings));
+        } catch (error) {
+            console.error("Error updating localStorage for star ratings", error);
+        }
 
-
+        try {
             await runTransaction(db, async (transaction) => {
                 const figureSnap = await transaction.get(figureDocRef);
                 if (!figureSnap.exists()) throw new Error("Figure document does not exist!");
@@ -1084,5 +1087,3 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         </>
     );
 }
-
-    
