@@ -1062,4 +1062,3 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         </>
     );
 }
-
