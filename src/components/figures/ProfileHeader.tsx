@@ -14,8 +14,6 @@ interface ProfileHeaderProps {
   figure: Figure;
   currentUser: User | null;
   currentUserStreak: number | null;
-  isFan: boolean;
-  onFanToggle: () => void;
   onImageClick: (imageUrl: string) => void;
 }
 
@@ -23,8 +21,6 @@ export function ProfileHeader({
   figure, 
   currentUser,
   currentUserStreak,
-  isFan,
-  onFanToggle,
   onImageClick,
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
