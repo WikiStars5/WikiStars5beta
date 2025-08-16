@@ -53,7 +53,20 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         setIsComponentLoading(false);
         return;
     }
-    setIsComponentLoading(true); 
+    
+    // Get user's vote from localStorage for instant UI feedback
+    if (currentUser) {
+        try {
+            const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
+            if (localEmotionsJSON) {
+                const localEmotions: EmotionVote[] = JSON.parse(localEmotionsJSON);
+                const currentVote = localEmotions.find(e => e.figureId === figureId);
+                if (currentVote) {
+                    setSelectedEmotion(currentVote.emotion);
+                }
+            }
+        } catch (e) { console.error("Failed to read emotions from localStorage", e); }
+    }
 
     const figureDocRef = doc(db, "figures", figureId);
     const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
@@ -62,15 +75,8 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         const counts = data.perceptionCounts || defaultPerceptionCountsData;
         setFigurePerceptionCounts(counts);
         setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
-      } else {
-        setFigurePerceptionCounts(defaultPerceptionCountsData);
-        setTotalVotes(0);
       }
       setIsComponentLoading(false);
-    }, (error) => {
-      console.error("Error fetching figure perception counts:", error);
-      toast({ title: "Error", description: "No se pudieron cargar los conteos de emociones.", variant: "destructive" });
-      setIsComponentLoading(false); 
     });
 
     let unsubscribeUserVote: Unsubscribe | undefined;
@@ -91,7 +97,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
       unsubscribeFigure();
       if (unsubscribeUserVote) unsubscribeUserVote();
     };
-  }, [figureId, currentUser, toast]);
+  }, [figureId, currentUser]);
 
   const handleEmotionClick = async (emotionKeyClicked: EmotionKey) => {
     if (!canUserVote || !currentUser) {
@@ -107,34 +113,43 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
     const figureDocRef = doc(db, "figures", figureId);
 
-    // Optimistic UI update
     setSelectedEmotion(newEmotionToSet);
     
     try {
-      await runTransaction(db, async (transaction) => {
-        const figureDoc = await transaction.get(figureDocRef);
-        if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
-
-        const serverCounts = figureDoc.data()?.perceptionCounts || { ...defaultPerceptionCountsData };
-        if (previousSelectedEmotion) {
-          serverCounts[previousSelectedEmotion] = Math.max(0, (serverCounts[previousSelectedEmotion] || 0) - 1);
-        }
+        // --- Update Local Storage for instant UI ---
+        const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
+        let localEmotions: EmotionVote[] = localEmotionsJSON ? JSON.parse(localEmotionsJSON) : [];
+        localEmotions = localEmotions.filter(e => e.figureId !== figureId); // Remove old vote
         if (newEmotionToSet) {
-          serverCounts[newEmotionToSet] = (serverCounts[newEmotionToSet] || 0) + 1;
+            localEmotions.push({ figureId, emotion: newEmotionToSet, addedAt: new Date().toISOString() });
         }
-        transaction.update(figureDocRef, { perceptionCounts: serverCounts });
+        localStorage.setItem('wikistars5-userEmotions', JSON.stringify(localEmotions));
 
-        if (newEmotionToSet) {
-          transaction.set(userVoteDocRef, {
-            userId: currentUser.uid,
-            figureId: figureId,
-            emotion: newEmotionToSet,
-            timestamp: serverTimestamp(),
-          });
-        } else {
-          transaction.delete(userVoteDocRef);
-        }
-      });
+        // --- Update Firestore ---
+        await runTransaction(db, async (transaction) => {
+            const figureDoc = await transaction.get(figureDocRef);
+            if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
+
+            const serverCounts = figureDoc.data()?.perceptionCounts || { ...defaultPerceptionCountsData };
+            if (previousSelectedEmotion) {
+                serverCounts[previousSelectedEmotion] = Math.max(0, (serverCounts[previousSelectedEmotion] || 0) - 1);
+            }
+            if (newEmotionToSet) {
+                serverCounts[newEmotionToSet] = (serverCounts[newEmotionToSet] || 0) + 1;
+            }
+            transaction.update(figureDocRef, { perceptionCounts: serverCounts });
+
+            if (newEmotionToSet) {
+                transaction.set(userVoteDocRef, {
+                    userId: currentUser.uid,
+                    figureId: figureId,
+                    emotion: newEmotionToSet,
+                    timestamp: serverTimestamp(),
+                });
+            } else {
+                transaction.delete(userVoteDocRef);
+            }
+        });
       
       if (!currentUser.isAnonymous && newEmotionToSet) {
         const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
@@ -157,7 +172,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     } catch (error: any) {
       console.error("Error updating Firestore perception counts:", error);
       toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar. Intenta de nuevo.", variant: "destructive" });
-      // Revert optimistic update
       setSelectedEmotion(previousSelectedEmotion);
     } finally {
       setIsLoadingEmotionAction(null);
@@ -243,3 +257,5 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     </Card>
   );
 };
+
+    

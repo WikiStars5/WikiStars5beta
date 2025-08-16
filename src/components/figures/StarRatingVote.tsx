@@ -85,7 +85,21 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
       setIsComponentLoading(false);
       return;
     }
-    setIsComponentLoading(true);
+    
+    // Instant UI from localStorage
+    if (currentUser) {
+        try {
+            const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
+            if (localRatingsJSON) {
+                const localRatings: UserStarRating[] = JSON.parse(localRatingsJSON);
+                const currentVote = localRatings.find(r => r.figureId === figureId);
+                if (currentVote) {
+                    setSelectedStarRating(currentVote.starValue);
+                }
+            }
+        } catch(e) { console.error("Failed to read star ratings from localStorage", e); }
+    }
+
 
     const figureDocRef = doc(db, "figures", figureId);
     const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
@@ -94,13 +108,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
         const counts = data.starRatingCounts || defaultStarRatingCountsData;
         setFigureStarRatingCounts(counts);
         setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
-      } else {
-        setFigureStarRatingCounts(defaultStarRatingCountsData);
-        setTotalVotes(0);
       }
-    }, (error) => {
-      console.error("Error fetching figure star rating counts:", error);
-      toast({ title: "Error", description: "No se pudieron cargar los conteos de estrellas.", variant: "destructive" });
     });
 
     let unsubscribeUserStarRating: Unsubscribe | undefined;
@@ -115,10 +123,6 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
         } else {
           setSelectedStarRating(null);
         }
-        setIsComponentLoading(false);
-      }, (error) => {
-        console.error("Error fetching user's star rating:", error);
-        setSelectedStarRating(null);
         setIsComponentLoading(false);
       });
     } else {
@@ -150,8 +154,19 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
 
     const previousSelectedUserRating = selectedStarRating;
     const newStarValueToSetForUser = previousSelectedUserRating === starValueClicked ? null : starValueClicked;
+    setSelectedStarRating(newStarValueToSetForUser);
 
     try {
+        // --- Update Local Storage for instant UI ---
+        const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
+        let localRatings: UserStarRating[] = localRatingsJSON ? JSON.parse(localRatingsJSON) : [];
+        localRatings = localRatings.filter(r => r.figureId !== figureId); // Remove old rating
+        if (newStarValueToSetForUser) {
+            localRatings.push({ userId: currentUser.uid, figureId, starValue: newStarValueToSetForUser, timestamp: new Date() as any });
+        }
+        localStorage.setItem('wikistars5-userStarRatings', JSON.stringify(localRatings));
+
+
       await runTransaction(db, async (transaction) => {
         const figureDoc = await transaction.get(figureDocRef);
         if (!figureDoc.exists()) {
@@ -182,27 +197,18 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
           starValue: newStarValueToSetForUser,
           timestamp: serverTimestamp(),
         });
-        setSelectedStarRating(newStarValueToSetForUser); 
         toast({ title: "Calificación Guardada", description: `Has calificado a ${figureName} con ${newStarValueToSetForUser} estrella(s).` });
       } else {
         await deleteDoc(userStarRatingDocRef);
-        setSelectedStarRating(null);
         toast({ title: "Calificación Eliminada", description: `Has eliminado tu calificación para ${figureName}.` });
       }
 
     } catch (error: any) {
       console.error("Error rating figure:", error);
       let errorMessage = "No se pudo registrar tu calificación.";
-      if (error.message && (error.message.includes("PERMISSION_DENIED") || error.message.includes("Missing or insufficient permissions"))) {
-        errorMessage = "Error de permisos. Verifica las reglas de Firestore.";
-      } else if (error.message) {
-        errorMessage = `Detalles: ${error.message}`;
-      }
       toast({ title: "Error al Calificar", description: errorMessage, variant: "destructive" });
-      // Revert optimistic local state update only if it was an actual change
-      if (newStarValueToSetForUser !== previousSelectedUserRating) {
-        setSelectedStarRating(previousSelectedUserRating);
-      }
+      setSelectedStarRating(previousSelectedUserRating);
+
     } finally {
       setIsLoadingStarAction(null);
     }
@@ -282,3 +288,5 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
     </Card>
   );
 };
+
+    

@@ -180,3 +180,5 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     </div>
   );
 }
+
+    

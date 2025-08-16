@@ -99,7 +99,6 @@ export default function ProfilePage() {
     setIsDataLoading(true);
 
     try {
-        // Streaks are still local, so we load them from localStorage
         const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
         if (streaksJSON) {
             let localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
@@ -114,7 +113,6 @@ export default function ProfilePage() {
             setStreaks(activeStreaks);
         }
 
-        // Attitudes and Emotions are now fetched from Firestore via Cloud Functions
         if (tabToLoad === 'attitude' || tabToLoad === 'all') {
             const attitudeResult = await getUserAttitudesCallable();
             const attitudeData = attitudeResult.data as { success: boolean, attitudes?: Attitude[], error?: string };
@@ -267,7 +265,10 @@ export default function ProfilePage() {
 
   const AttitudeList = ({ figures, attitudeKey, emptyMessage }: { figures: Figure[], attitudeKey: string, emptyMessage: string }) => {
     const attitudeMap = new Map(attitudes.map(a => [a.figureId, a]));
-    const filteredFigures = figures.filter(f => attitudeMap.get(f.id)?.attitude === attitudeKey);
+    const filteredFigures = figures.filter(f => {
+        const attitude = attitudeMap.get(f.id);
+        return attitude?.attitude === attitudeKey;
+    });
 
     return (
       <div className="space-y-4">
@@ -381,16 +382,16 @@ export default function ProfilePage() {
                           <CardDescription>Aquí se muestran los personajes según la actitud que has votado por ellos.</CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <Tabs defaultValue="neutral" className="w-full">
+                        <Tabs defaultValue="fan" className="w-full">
                             <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
-                                <TabsTrigger value="neutral" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Neutral">😐</span>Neutral</TabsTrigger>
                                 <TabsTrigger value="fan" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Fan">😍</span>Fans</TabsTrigger>
+                                <TabsTrigger value="neutral" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Neutral">😐</span>Neutral</TabsTrigger>
                                 <TabsTrigger value="simp" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Simp">🥰</span>Simps</TabsTrigger>
                                 <TabsTrigger value="hater" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Hater">😡</span>Haters</TabsTrigger>
                             </TabsList>
                             <div className="mt-4">
-                              <TabsContent value="neutral"><AttitudeList figures={attitudeFigures} attitudeKey="neutral" emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
                               <TabsContent value="fan"><AttitudeList figures={attitudeFigures} attitudeKey="fan" emptyMessage="Aún no has marcado a nadie como 'Fan'."/></TabsContent>
+                              <TabsContent value="neutral"><AttitudeList figures={attitudeFigures} attitudeKey="neutral" emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
                               <TabsContent value="simp"><AttitudeList figures={attitudeFigures} attitudeKey="simp" emptyMessage="No has marcado a nadie como 'Simp'."/></TabsContent>
                               <TabsContent value="hater"><AttitudeList figures={attitudeFigures} attitudeKey="hater" emptyMessage="No has marcado a nadie como 'Hater'."/></TabsContent>
                             </div>
@@ -519,3 +520,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    

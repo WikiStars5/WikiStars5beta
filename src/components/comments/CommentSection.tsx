@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { Figure, UserComment, StarValue, StarValueAsString } from "@/lib/types";
+import type { Figure, UserComment, StarValue, StarValueAsString, UserStarRating } from "@/lib/types";
 import { db, app } from "@/lib/firebase";
 import type { User } from "firebase/auth";
 import { collection, addDoc, serverTimestamp, doc, getDoc, runTransaction, query, where, orderBy, limit, getDocs, Timestamp, setDoc, deleteDoc, increment, writeBatch } from 'firebase/firestore';
@@ -74,7 +74,6 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
     const [newCommentStars, setNewCommentStars] = React.useState<StarValue | null>(null);
     const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
     
-    // State for guest identity dialog
     const [isGuestInfoDialogOpen, setIsGuestInfoDialogOpen] = React.useState(false);
     const [tempGuestUsername, setTempGuestUsername] = React.useState("");
     const [tempGuestGender, setTempGuestGender] = React.useState("");
@@ -180,12 +179,25 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
             }
 
             if (figure?.id) {
+                // Get rating from localStorage for instant UI
+                try {
+                    const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
+                    if(localRatingsJSON) {
+                        const localRatings: UserStarRating[] = JSON.parse(localRatingsJSON);
+                        const currentVote = localRatings.find(r => r.figureId === figure.id);
+                        if (currentVote) {
+                            setNewCommentStars(currentVote.starValue);
+                        } else {
+                            setNewCommentStars(null);
+                        }
+                    }
+                } catch(e) { console.error(e) }
+
+                // Sync with Firestore
                 const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${figure.id}`);
                 getDoc(userStarRatingDocRef).then(docSnap => {
                 if (docSnap.exists()) {
                     setNewCommentStars(docSnap.data().starValue as StarValue);
-                } else {
-                    setNewCommentStars(null);
                 }
                 });
             }
@@ -417,70 +429,80 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         const commentsCollectionRef = collection(db, 'userComments');
 
         try {
-        await runTransaction(db, async (transaction) => {
-            const figureSnap = await transaction.get(figureDocRef);
-            if (!figureSnap.exists()) throw new Error("Figure document does not exist!");
-            const figureData = figureSnap.data()!;
-            const currentAggregatedStarCounts = (figureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
-            const newAggregatedStarCounts = { ...currentAggregatedStarCounts };
-            
-            const userPrevRatingSnap = await transaction.get(userStarRatingDocRef); 
-            const previousUserStarValue: StarValue | null = userPrevRatingSnap.exists() ? userPrevRatingSnap.data()!.starValue as StarValue : null;
+            // Update local storage for star rating
+            const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
+            let localRatings: UserStarRating[] = localRatingsJSON ? JSON.parse(localRatingsJSON) : [];
+            localRatings = localRatings.filter(r => r.figureId !== figure.id);
+            if (newCommentStars) {
+                localRatings.push({ userId: currentUser.uid, figureId: figure.id, starValue: newCommentStars, timestamp: new Date() as any });
+            }
+            localStorage.setItem('wikistars5-userStarRatings', JSON.stringify(localRatings));
 
-            if (previousUserStarValue !== null) {
-            const prevKey = previousUserStarValue.toString() as StarValueAsString;
-            newAggregatedStarCounts[prevKey] = Math.max(0, (newAggregatedStarCounts[prevKey] || 0) - 1);
-            }
-            
-            const currentStarsForComment = newCommentStars;
-            if (currentStarsForComment !== null) {
-            const newKey = currentStarsForComment.toString() as StarValueAsString;
-            newAggregatedStarCounts[newKey] = (newAggregatedStarCounts[newKey] || 0) + 1;
-            transaction.set(userStarRatingDocRef, { 
-                userId: currentUser.uid,
-                figureId: figure.id,
-                starValue: currentStarsForComment,
-                timestamp: serverTimestamp(),
-            });
-            } else { 
-            if (userPrevRatingSnap.exists()) {
-                transaction.delete(userStarRatingDocRef);
-            }
-            }
-            
-            const newCommentRef = doc(commentsCollectionRef);
-            const commentData: any = {
-                figureId: figure.id,
-                userId: currentUser.uid,
-                username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
-                userPhotoURL: currentUser.photoURL || null,
-                text: newComment.trim(),
-                starRatingGiven: currentStarsForComment, 
-                createdAt: serverTimestamp(),
-                likes: 0,
-                dislikes: 0,
-                likedBy: [],
-                dislikedBy: [],
-                parentId: null,
-                replyCount: 0,
-                isAnonymous: currentUser.isAnonymous,
-            };
 
-            if (currentUser.isAnonymous) {
-                commentData.guestUsername = localStorage.getItem('wikistars5-guestUsername');
-                commentData.guestUsernameLower = localStorage.getItem('wikistars5-guestUsername')?.toLowerCase();
-                commentData.guestGender = localStorage.getItem('wikistars5-guestGender');
-                if (anonymousUserCountryCode) {
-                    commentData.userCountryCode = anonymousUserCountryCode;
+            await runTransaction(db, async (transaction) => {
+                const figureSnap = await transaction.get(figureDocRef);
+                if (!figureSnap.exists()) throw new Error("Figure document does not exist!");
+                const figureData = figureSnap.data()!;
+                const currentAggregatedStarCounts = (figureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
+                const newAggregatedStarCounts = { ...currentAggregatedStarCounts };
+                
+                const userPrevRatingSnap = await transaction.get(userStarRatingDocRef); 
+                const previousUserStarValue: StarValue | null = userPrevRatingSnap.exists() ? userPrevRatingSnap.data()!.starValue as StarValue : null;
+
+                if (previousUserStarValue !== null) {
+                const prevKey = previousUserStarValue.toString() as StarValueAsString;
+                newAggregatedStarCounts[prevKey] = Math.max(0, (newAggregatedStarCounts[prevKey] || 0) - 1);
                 }
-            }
-            
-            transaction.set(newCommentRef, commentData);
-            transaction.update(figureDocRef, { 
-            starRatingCounts: newAggregatedStarCounts,
-            commentCount: increment(1)
+                
+                const currentStarsForComment = newCommentStars;
+                if (currentStarsForComment !== null) {
+                const newKey = currentStarsForComment.toString() as StarValueAsString;
+                newAggregatedStarCounts[newKey] = (newAggregatedStarCounts[newKey] || 0) + 1;
+                transaction.set(userStarRatingDocRef, { 
+                    userId: currentUser.uid,
+                    figureId: figure.id,
+                    starValue: currentStarsForComment,
+                    timestamp: serverTimestamp(),
+                });
+                } else { 
+                if (userPrevRatingSnap.exists()) {
+                    transaction.delete(userStarRatingDocRef);
+                }
+                }
+                
+                const newCommentRef = doc(commentsCollectionRef);
+                const commentData: any = {
+                    figureId: figure.id,
+                    userId: currentUser.uid,
+                    username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
+                    userPhotoURL: currentUser.photoURL || null,
+                    text: newComment.trim(),
+                    starRatingGiven: currentStarsForComment, 
+                    createdAt: serverTimestamp(),
+                    likes: 0,
+                    dislikes: 0,
+                    likedBy: [],
+                    dislikedBy: [],
+                    parentId: null,
+                    replyCount: 0,
+                    isAnonymous: currentUser.isAnonymous,
+                };
+
+                if (currentUser.isAnonymous) {
+                    commentData.guestUsername = localStorage.getItem('wikistars5-guestUsername');
+                    commentData.guestUsernameLower = localStorage.getItem('wikistars5-guestUsername')?.toLowerCase();
+                    commentData.guestGender = localStorage.getItem('wikistars5-guestGender');
+                    if (anonymousUserCountryCode) {
+                        commentData.userCountryCode = anonymousUserCountryCode;
+                    }
+                }
+                
+                transaction.set(newCommentRef, commentData);
+                transaction.update(figureDocRef, { 
+                starRatingCounts: newAggregatedStarCounts,
+                commentCount: increment(1)
+                });
             });
-        });
         
         updateLocalStreak();
         
@@ -1062,3 +1084,5 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         </>
     );
 }
+
+    
