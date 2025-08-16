@@ -30,29 +30,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
+        // The onSnapshot listener will now correctly pick up the profile created by the Cloud Function.
         const unsubscribeSnapshot = onSnapshot(doc(db, 'users', fbUser.uid), (docSnap) => {
           if (docSnap.exists()) {
             setUser(docSnap.data() as UserProfile);
           } else {
-             // This might happen if the user is new and the Cloud Function hasn't created the profile yet.
-            // Or if the user is anonymous. For anonymous, we can build a local profile.
-            if (fbUser.isAnonymous) {
-              // For anonymous users, create a local profile, but prioritize saved guest info.
-              const savedGuestName = localStorage.getItem('wikistars5-guestUsername');
-              const savedGuestGender = localStorage.getItem('wikistars5-guestGender');
-              
-              setUser({
-                uid: fbUser.uid,
-                email: null,
-                username: savedGuestName || `Invitado_${fbUser.uid.substring(0,5)}`,
-                role: 'user',
-                createdAt: new Date().toISOString(),
-                isAnonymous: true,
-                gender: savedGuestGender || '',
-              });
-            } else {
-               setUser(null);
-            }
+            // This case should be rare now, but we'll keep a fallback.
+            setUser(null);
           }
           setIsLoading(false);
         }, (error) => {
@@ -96,3 +80,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    
