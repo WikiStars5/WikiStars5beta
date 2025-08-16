@@ -80,7 +80,9 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         setFigureAttitudeCounts(counts);
         setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
       }
-      // We finish loading once we have the live counts
+      if (isComponentLoading) setIsComponentLoading(false);
+    }, (error) => {
+      console.error("Error listening to figure document for attitudes:", error);
       if (isComponentLoading) setIsComponentLoading(false);
     });
 
@@ -121,81 +123,51 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     const previousSelectedAttitude = selectedAttitude;
     const newAttitudeToSet = previousSelectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
     const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
-    const figureDocRef = doc(db, "figures", figureId);
-
-    // --- Optimistic UI Update ---
-    // 1. Update local state immediately
+    
     setSelectedAttitude(newAttitudeToSet);
 
-    // 2. Update localStorage for instant persistence on this device
     try {
         const localAttitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
         let localAttitudes: Attitude[] = localAttitudesJSON ? JSON.parse(localAttitudesJSON) : [];
-        localAttitudes = localAttitudes.filter(a => a.figureId !== figureId); // Remove old vote
+        localAttitudes = localAttitudes.filter(a => a.figureId !== figureId); 
         if (newAttitudeToSet) {
             localAttitudes.push({ figureId, attitude: newAttitudeToSet, addedAt: new Date().toISOString() });
         }
         localStorage.setItem('wikistars5-userAttitudes', JSON.stringify(localAttitudes));
-    } catch(e) {
-        console.error("Error updating localStorage for attitudes", e);
-    }
 
-    // --- Sync with Firestore in the background ---
-    try {
-        await runTransaction(db, async (transaction) => {
-            const figureDoc = await transaction.get(figureDocRef);
-            if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
-
-            const serverCounts = figureDoc.data()?.attitudeCounts || { ...defaultAttitudeCountsData };
-            
-            if (previousSelectedAttitude) {
-                serverCounts[previousSelectedAttitude] = Math.max(0, (serverCounts[previousSelectedAttitude] || 0) - 1);
-            }
-            if (newAttitudeToSet) {
-                serverCounts[newAttitudeToSet] = (serverCounts[newAttitudeToSet] || 0) + 1;
-            }
-            
-            transaction.update(figureDocRef, { attitudeCounts: serverCounts });
-
-            if (newAttitudeToSet) {
-                transaction.set(userVoteDocRef, {
-                    userId: currentUser.uid,
-                    figureId: figureId,
-                    attitude: newAttitudeToSet,
-                    timestamp: serverTimestamp(),
-                });
-            } else {
-                // If the user is un-voting, we must also check if they had a vote on Firestore
-                const userVoteSnap = await transaction.get(userVoteDocRef);
-                if (userVoteSnap.exists()) {
-                    transaction.delete(userVoteDocRef);
-                }
-            }
-        });
+        if (newAttitudeToSet) {
+            await setDoc(userVoteDocRef, {
+                userId: currentUser.uid,
+                figureId: figureId,
+                attitude: newAttitudeToSet,
+                timestamp: serverTimestamp(),
+            });
+        } else {
+            await deleteDoc(userVoteDocRef);
+        }
       
-      if (!currentUser.isAnonymous && newAttitudeToSet) {
-          const achievementResult = await grantActitudDefinidaAchievement(currentUser.uid);
-          if (achievementResult.unlocked) {
-            toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
-          }
-      }
-      
-      if (newAttitudeToSet) {
-          toast({
-            title: "¡Voto Registrado!",
-            description: "¡Gracias por tu voto! Compártelo para ver qué opinan los demás.",
-            duration: 8000,
-            action: <ShareButton figureName={figureName} figureId={figureId} showText />,
-          });
-      } else {
-           toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
-      }
+        if (!currentUser.isAnonymous && newAttitudeToSet) {
+            const achievementResult = await grantActitudDefinidaAchievement(currentUser.uid);
+            if (achievementResult.unlocked) {
+                toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
+            }
+        }
+        
+        if (newAttitudeToSet) {
+            toast({
+                title: "¡Voto Registrado!",
+                description: "¡Gracias por tu voto! Compártelo para ver qué opinan los demás.",
+                duration: 8000,
+                action: <ShareButton figureName={figureName} figureId={figureId} showText />,
+            });
+        } else {
+            toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
+        }
 
     } catch (error: any) {
-      console.error("Error updating Firestore attitude counts:", error);
-      // Rollback UI if Firestore fails
-      setSelectedAttitude(previousSelectedAttitude);
-      toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar en el servidor. Intenta de nuevo.", variant: "destructive" });
+        console.error("Error updating Firestore attitude:", error);
+        setSelectedAttitude(previousSelectedAttitude);
+        toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar en el servidor. Intenta de nuevo.", variant: "destructive" });
     } finally {
         setIsLoadingAttitudeAction(null);
     }

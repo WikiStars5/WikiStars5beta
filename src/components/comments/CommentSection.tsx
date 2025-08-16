@@ -166,48 +166,56 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         }
     }, [starAudios]);
 
-    React.useEffect(() => {
-        if (currentUser) { 
-            if (currentUser.isAnonymous) {
-                const savedGuestName = localStorage.getItem('wikistars5-guestUsername');
-                const savedGuestGender = localStorage.getItem('wikistars5-guestGender');
-                if (savedGuestName && savedGuestGender) {
-                    setIsGuestInfoSet(true);
-                    setTempGuestUsername(savedGuestName);
-                    setTempGuestGender(savedGuestGender);
-                }
-            }
-
-            if (figure?.id) {
-                // Get rating from localStorage for instant UI
-                try {
-                    const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
-                    if(localRatingsJSON) {
-                        const localRatings: UserStarRating[] = JSON.parse(localRatingsJSON);
-                        const currentVote = localRatings.find(r => r.figureId === figure.id);
-                        if (currentVote) {
-                            setNewCommentStars(currentVote.starValue);
-                        } else {
-                            setNewCommentStars(null);
-                        }
-                    }
-                } catch(e) { console.error(e) }
-
-                // Sync with Firestore
-                const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${figure.id}`);
-                getDoc(userStarRatingDocRef).then(docSnap => {
-                if (docSnap.exists()) {
-                    setNewCommentStars(docSnap.data().starValue as StarValue);
-                }
-                });
-            }
-        } else {
+    const loadLocalStarRating = React.useCallback(() => {
+      if (!currentUser || !figure?.id) return;
+      try {
+        const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
+        if (localRatingsJSON) {
+          const localRatings: UserStarRating[] = JSON.parse(localRatingsJSON);
+          const currentVote = localRatings.find(r => r.figureId === figure.id);
+          if (currentVote) {
+            setNewCommentStars(currentVote.starValue);
+          } else {
             setNewCommentStars(null);
-            setIsGuestInfoSet(false);
-            setTempGuestUsername("");
-            setTempGuestGender("");
+          }
         }
-    }, [figure?.id, currentUser]);
+      } catch (e) {
+        console.error(e);
+      }
+    }, [currentUser, figure?.id]);
+
+    React.useEffect(() => {
+      if (currentUser) {
+        if (currentUser.isAnonymous) {
+          const savedGuestName = localStorage.getItem('wikistars5-guestUsername');
+          const savedGuestGender = localStorage.getItem('wikistars5-guestGender');
+          if (savedGuestName && savedGuestGender) {
+            setIsGuestInfoSet(true);
+            setTempGuestUsername(savedGuestName);
+            setTempGuestGender(savedGuestGender);
+          }
+        }
+        loadLocalStarRating(); // Load from localStorage first
+
+        // Then, sync with Firestore to get the most updated state
+        const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${figure.id}`);
+        getDoc(userStarRatingDocRef).then(docSnap => {
+          if (docSnap.exists()) {
+            setNewCommentStars(docSnap.data().starValue as StarValue);
+          } else {
+            setNewCommentStars(null);
+          }
+        }).catch(error => console.error("Error syncing star rating from Firestore:", error));
+
+      } else {
+        // Reset for logged out users
+        setNewCommentStars(null);
+        setIsGuestInfoSet(false);
+        setTempGuestUsername("");
+        setTempGuestGender("");
+      }
+    }, [figure?.id, currentUser, loadLocalStarRating]);
+
 
     React.useEffect(() => {
         const fetchCountryCode = async () => {
@@ -424,12 +432,11 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         }
         setIsSubmittingComment(true);
         
-        const figureDocRef = doc(db, "figures", figure.id);
         const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
         const commentsCollectionRef = collection(db, 'userComments');
-
-        // Optimistic UI update for star rating in localStorage
+        
         try {
+            // Optimistic UI update for star rating in localStorage
             const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
             let localRatings: UserStarRating[] = localRatingsJSON ? JSON.parse(localRatingsJSON) : [];
             localRatings = localRatings.filter(r => r.figureId !== figure.id);
@@ -437,75 +444,50 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                 localRatings.push({ userId: currentUser.uid, figureId: figure.id, starValue: newCommentStars, timestamp: new Date() as any });
             }
             localStorage.setItem('wikistars5-userStarRatings', JSON.stringify(localRatings));
-        } catch (error) {
-            console.error("Error updating localStorage for star ratings", error);
-        }
 
-        try {
-            await runTransaction(db, async (transaction) => {
-                const figureSnap = await transaction.get(figureDocRef);
-                if (!figureSnap.exists()) throw new Error("Figure document does not exist!");
-                const figureData = figureSnap.data()!;
-                const currentAggregatedStarCounts = (figureData.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 }) as Record<StarValueAsString, number>;
-                const newAggregatedStarCounts = { ...currentAggregatedStarCounts };
-                
-                const userPrevRatingSnap = await transaction.get(userStarRatingDocRef); 
-                const previousUserStarValue: StarValue | null = userPrevRatingSnap.exists() ? userPrevRatingSnap.data()!.starValue as StarValue : null;
+            const newCommentRef = doc(commentsCollectionRef);
+            const commentData: any = {
+                id: newCommentRef.id,
+                figureId: figure.id,
+                userId: currentUser.uid,
+                username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
+                userPhotoURL: currentUser.photoURL || null,
+                text: newComment.trim(),
+                starRatingGiven: newCommentStars, 
+                createdAt: serverTimestamp(),
+                likes: 0,
+                dislikes: 0,
+                likedBy: [],
+                dislikedBy: [],
+                parentId: null,
+                replyCount: 0,
+                isAnonymous: currentUser.isAnonymous,
+            };
 
-                if (previousUserStarValue !== null) {
-                const prevKey = previousUserStarValue.toString() as StarValueAsString;
-                newAggregatedStarCounts[prevKey] = Math.max(0, (newAggregatedStarCounts[prevKey] || 0) - 1);
+            if (currentUser.isAnonymous) {
+                commentData.guestUsername = localStorage.getItem('wikistars5-guestUsername');
+                commentData.guestUsernameLower = localStorage.getItem('wikistars5-guestUsername')?.toLowerCase();
+                commentData.guestGender = localStorage.getItem('wikistars5-guestGender');
+                if (anonymousUserCountryCode) {
+                    commentData.userCountryCode = anonymousUserCountryCode;
                 }
-                
-                const currentStarsForComment = newCommentStars;
-                if (currentStarsForComment !== null) {
-                const newKey = currentStarsForComment.toString() as StarValueAsString;
-                newAggregatedStarCounts[newKey] = (newAggregatedStarCounts[newKey] || 0) + 1;
-                transaction.set(userStarRatingDocRef, { 
+            }
+            
+            // Client only writes the comment and the separate rating doc.
+            // The Cloud Function trigger will handle updating the counters on the figure document.
+            const batch = writeBatch(db);
+            batch.set(newCommentRef, commentData);
+            if (newCommentStars) {
+                batch.set(userStarRatingDocRef, { 
                     userId: currentUser.uid,
                     figureId: figure.id,
-                    starValue: currentStarsForComment,
+                    starValue: newCommentStars,
                     timestamp: serverTimestamp(),
                 });
-                } else { 
-                if (userPrevRatingSnap.exists()) {
-                    transaction.delete(userStarRatingDocRef);
-                }
-                }
-                
-                const newCommentRef = doc(commentsCollectionRef);
-                const commentData: any = {
-                    figureId: figure.id,
-                    userId: currentUser.uid,
-                    username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
-                    userPhotoURL: currentUser.photoURL || null,
-                    text: newComment.trim(),
-                    starRatingGiven: currentStarsForComment, 
-                    createdAt: serverTimestamp(),
-                    likes: 0,
-                    dislikes: 0,
-                    likedBy: [],
-                    dislikedBy: [],
-                    parentId: null,
-                    replyCount: 0,
-                    isAnonymous: currentUser.isAnonymous,
-                };
-
-                if (currentUser.isAnonymous) {
-                    commentData.guestUsername = localStorage.getItem('wikistars5-guestUsername');
-                    commentData.guestUsernameLower = localStorage.getItem('wikistars5-guestUsername')?.toLowerCase();
-                    commentData.guestGender = localStorage.getItem('wikistars5-guestGender');
-                    if (anonymousUserCountryCode) {
-                        commentData.userCountryCode = anonymousUserCountryCode;
-                    }
-                }
-                
-                transaction.set(newCommentRef, commentData);
-                transaction.update(figureDocRef, { 
-                starRatingCounts: newAggregatedStarCounts,
-                commentCount: increment(1)
-                });
-            });
+            } else {
+                batch.delete(userStarRatingDocRef);
+            }
+            await batch.commit();
         
         updateLocalStreak();
         
@@ -531,21 +513,18 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
             if (achResult2.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult2.message });
         }
 
-
         setNewComment("");
         fetchComments(); 
         onNewComment();
         } catch (error: any) {
-        console.error("Error submitting opinion:", error);
-        let errorMessage = `No se pudo enviar tu opinión. ${error.message}`;
-        if (error.message.includes("firestore/failed-precondition")) {
-            errorMessage = "No se pudo enviar tu opinión. Es posible que falte un índice en Firestore para la validación de nombres de invitado. Revisa la consola del navegador (F12) para un enlace de creación de índice.";
-        }
-        toast({ title: "Error al Enviar", description: errorMessage, variant: "destructive" });
+            console.error("Error submitting opinion:", error);
+            let errorMessage = `No se pudo enviar tu opinión. ${error.message}`;
+            toast({ title: "Error al Enviar", description: errorMessage, variant: "destructive" });
         } finally {
-        setIsSubmittingComment(false);
+            setIsSubmittingComment(false);
         }
     };
+
 
     const handleLikeDislike = async (commentId: string, action: 'like' | 'dislike', parentCommentId: string | null = null) => {
         if (!currentUser || !figure) {
@@ -610,55 +589,34 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                 setCommentToDeleteId(null);
                 return;
             }
-
-            const commentToDeleteData = commentToDeleteSnap.data() as UserComment;
-
+    
+            // The Cloud Function onDelete trigger will handle decrementing counters.
+            // Client is now only responsible for deleting the documents.
+    
+            const batch = writeBatch(db);
+    
+            // Delete the main comment
+            batch.delete(commentRef);
+    
+            // Find and delete all replies
             const repliesQuery = query(collection(db, 'userComments'), where('parentId', '==', commentToDeleteId));
             const repliesSnapshot = await getDocs(repliesQuery);
-            const repliesToDelete = repliesSnapshot.docs;
-            const totalDeletions = 1 + repliesToDelete.length;
-
-            const batch = writeBatch(db);
-            
-            if (commentToDeleteData.parentId) {
-                const parentCommentRef = doc(db, 'userComments', commentToDeleteData.parentId);
-                batch.update(parentCommentRef, { replyCount: increment(-1) });
-            }
-
-            batch.delete(commentRef);
-            repliesToDelete.forEach(replyDoc => batch.delete(replyDoc.ref));
-
-            const figureRef = doc(db, "figures", figure.id);
-            batch.update(figureRef, { commentCount: increment(-totalDeletions) });
-
-            if (commentToDeleteData.starRatingGiven) {
-                const userStarRatingDocRef = doc(db, 'userStarRatings', `${commentToDeleteData.userId}_${figure.id}`);
-                const userStarRatingSnap = await getDoc(userStarRatingDocRef);
-                
-                const figureDoc = await getDoc(figureRef);
-                if (figureDoc.exists()) {
-                    const figureData = figureDoc.data();
-                    const starKey = commentToDeleteData.starRatingGiven.toString() as StarValueAsString;
-                    const currentStarCounts = (figureData.starRatingCounts || {}) as Record<StarValueAsString, number>;
-                    
-                    if (currentStarCounts[starKey] !== undefined) {
-                        const newStarCounts = { ...currentStarCounts };
-                        newStarCounts[starKey] = Math.max(0, newStarCounts[starKey] - 1);
-                        batch.update(figureRef, { starRatingCounts: newStarCounts });
-                    }
-                }
-
-                if (userStarRatingSnap.exists() && userStarRatingSnap.data()?.starValue === commentToDeleteData.starRatingGiven) {
-                    batch.delete(userStarRatingSnap.ref);
-                }
-            }
-            
+            repliesSnapshot.forEach(replyDoc => batch.delete(replyDoc.ref));
+    
             await batch.commit();
-
-            toast({ title: "Comentario Eliminado", description: "El comentario y todas sus respuestas han sido eliminados." });
+    
+            toast({ title: "Comentario Eliminado", description: "El comentario y sus respuestas han sido eliminados." });
         
+            // If the deleted comment had a star rating, optimistically update local state.
+            const commentToDeleteData = commentToDeleteSnap.data() as UserComment;
             if (commentToDeleteData.starRatingGiven && currentUser.uid === commentToDeleteData.userId) {
                 setNewCommentStars(null);
+                try {
+                    const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
+                    let localRatings: UserStarRating[] = localRatingsJSON ? JSON.parse(localRatingsJSON) : [];
+                    localRatings = localRatings.filter(r => r.figureId !== figure.id);
+                    localStorage.setItem('wikistars5-userStarRatings', JSON.stringify(localRatings));
+                } catch(e) { console.error("Error clearing local star rating", e); }
             }
             
             if (commentToDeleteData.parentId) {
@@ -672,9 +630,6 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         } catch (error: any) {
             console.error("Error deleting comment and its replies:", error);
             let errorMessage = `No se pudo eliminar el comentario. ${error.message}`;
-            if (String(error.message).toLowerCase().includes("permission")) {
-                errorMessage = "No se pudo eliminar el comentario debido a un error de permisos. Asegúrate de que las reglas de seguridad de Firestore estén actualizadas.";
-            }
             toast({ title: "Error al Eliminar", description: errorMessage, variant: "destructive" });
         } finally {
             setIsDeleteDialogOpen(false);
@@ -712,9 +667,6 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         }
         setIsSubmittingReply(parentId);
 
-        const figureRef = doc(db, "figures", figure.id);
-        const parentCommentRef = doc(db, "userComments", parentId);
-
         const replyData: any = {
         figureId: figure.id,
         userId: currentUser.uid,
@@ -739,54 +691,26 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         }
         
         try {
-        await runTransaction(db, async (transaction) => {
-            const parentCommentDoc = await transaction.get(parentCommentRef);
-            if (!parentCommentDoc.exists()) throw new Error("El comentario original no fue encontrado.");
-
-            const parentCommentData = parentCommentDoc.data();
-            const parentUserId = parentCommentData.userId;
+            // The client just writes the new reply document.
+            // The Cloud Function will handle incrementing the figure's and parent comment's counters,
+            // and creating a notification.
+            await addDoc(collection(db, 'userComments'), replyData);
             
-            const newReplyRef = doc(collection(db, 'userComments'));
-            transaction.set(newReplyRef, replyData);
+            updateLocalStreak();
 
-            transaction.update(figureRef, { commentCount: increment(1) });
-            transaction.update(parentCommentRef, { replyCount: increment(1) });
-            
-            if (parentUserId && currentUser.uid !== parentUserId) {
-            const actorName = currentUser.isAnonymous ? (localStorage.getItem('wikistars5-guestUsername') || "Invitado") : (currentUser.displayName || "Usuario Anónimo");
-
-            const notificationRef = doc(collection(db, 'notifications'));
-            transaction.set(notificationRef, {
-                userId: parentUserId,
-                actorId: currentUser.uid,
-                actorName: actorName,
-                actorPhotoUrl: currentUser.photoURL,
-                type: 'reply',
-                isRead: false,
-                figureId: figure.id,
-                figureName: figure.name,
-                commentId: parentId, 
-                replyId: newReplyRef.id,
-                createdAt: serverTimestamp()
-            });
+            toast({ title: "Respuesta Enviada", description: "Tu respuesta ha sido guardada." });
+            if (!currentUser.isAnonymous) {
+                const achResult = await grantDialogoAbiertoAchievement(currentUser.uid);
+                if (achResult.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult.message });
             }
-        });
-        
-        updateLocalStreak();
-
-        toast({ title: "Respuesta Enviada", description: "Tu respuesta ha sido guardada." });
-        if (!currentUser.isAnonymous) {
-            const achResult = await grantDialogoAbiertoAchievement(currentUser.uid);
-            if (achResult.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult.message });
-        }
-        setReplyText("");
-        setReplyingTo(null);
-        handleToggleReplies(parentId, true); 
+            setReplyText("");
+            setReplyingTo(null);
+            handleToggleReplies(parentId, true); 
         } catch (error: any) {
-        console.error("Error submitting reply:", error);
-        toast({ title: "Error al Responder", description: `No se pudo enviar tu respuesta. ${error.message}`, variant: "destructive" });
+            console.error("Error submitting reply:", error);
+            toast({ title: "Error al Responder", description: `No se pudo enviar tu respuesta. ${error.message}`, variant: "destructive" });
         } finally {
-        setIsSubmittingReply(null);
+            setIsSubmittingReply(null);
         }
     };
 

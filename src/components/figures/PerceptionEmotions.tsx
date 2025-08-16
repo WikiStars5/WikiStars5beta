@@ -54,7 +54,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         return;
     }
     
-    // Get user's vote from localStorage for instant UI feedback
     if (currentUser) {
         try {
             const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
@@ -77,6 +76,9 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
       }
       if (isComponentLoading) setIsComponentLoading(false);
+    }, (error) => {
+        console.error("Error listening to figure document for perceptions:", error);
+        if (isComponentLoading) setIsComponentLoading(false);
     });
 
     const syncVoteFromFirestore = async () => {
@@ -115,78 +117,50 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     
     const previousSelectedEmotion = selectedEmotion;
     const newEmotionToSet = previousSelectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
+    const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
     
-    // --- Optimistic UI Update ---
-    // 1. Update local state immediately
     setSelectedEmotion(newEmotionToSet);
-
-    // 2. Update localStorage for instant persistence on this device
+    
     try {
         const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
         let localEmotions: EmotionVote[] = localEmotionsJSON ? JSON.parse(localEmotionsJSON) : [];
-        localEmotions = localEmotions.filter(e => e.figureId !== figureId); // Remove old vote
+        localEmotions = localEmotions.filter(e => e.figureId !== figureId);
         if (newEmotionToSet) {
             localEmotions.push({ figureId, emotion: newEmotionToSet, addedAt: new Date().toISOString() });
         }
         localStorage.setItem('wikistars5-userEmotions', JSON.stringify(localEmotions));
-    } catch(e) {
-        console.error("Error updating localStorage for emotions", e);
-    }
-    
-    // --- Sync with Firestore in the background ---
-    try {
-        const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
-        const figureDocRef = doc(db, "figures", figureId);
 
-        await runTransaction(db, async (transaction) => {
-            const figureDoc = await transaction.get(figureDocRef);
-            if (!figureDoc.exists()) throw new Error("Documento de figura no existe!");
-
-            const serverCounts = figureDoc.data()?.perceptionCounts || { ...defaultPerceptionCountsData };
-            if (previousSelectedEmotion) {
-                serverCounts[previousSelectedEmotion] = Math.max(0, (serverCounts[previousSelectedEmotion] || 0) - 1);
-            }
-            if (newEmotionToSet) {
-                serverCounts[newEmotionToSet] = (serverCounts[newEmotionToSet] || 0) + 1;
-            }
-            transaction.update(figureDocRef, { perceptionCounts: serverCounts });
-
-            if (newEmotionToSet) {
-                transaction.set(userVoteDocRef, {
-                    userId: currentUser.uid,
-                    figureId: figureId,
-                    emotion: newEmotionToSet,
-                    timestamp: serverTimestamp(),
-                });
-            } else {
-                const userVoteSnap = await transaction.get(userVoteDocRef);
-                if (userVoteSnap.exists()) {
-                    transaction.delete(userVoteDocRef);
-                }
-            }
-        });
-      
-      if (!currentUser.isAnonymous && newEmotionToSet) {
-        const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
-        if (achievementResult.unlocked) {
-          toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
+        if (newEmotionToSet) {
+            await setDoc(userVoteDocRef, {
+                userId: currentUser.uid,
+                figureId: figureId,
+                emotion: newEmotionToSet,
+                timestamp: serverTimestamp(),
+            });
+        } else {
+            await deleteDoc(userVoteDocRef);
         }
-      }
       
-      if (newEmotionToSet) {
-        toast({
-          title: "¡Voto Registrado!",
-          description: `Tu percepción ha sido guardada. ¡Invita a otros a votar!`,
-          duration: 8000,
-          action: <ShareButton figureName={figureName} figureId={figureId} showText />,
-        });
-      } else {
-        toast({ title: "Voto Eliminado", description: "Tu percepción ha sido eliminada." });
-      }
+        if (!currentUser.isAnonymous && newEmotionToSet) {
+            const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
+            if (achievementResult.unlocked) {
+                toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
+            }
+        }
+        
+        if (newEmotionToSet) {
+            toast({
+                title: "¡Voto Registrado!",
+                description: `Tu percepción ha sido guardada. ¡Invita a otros a votar!`,
+                duration: 8000,
+                action: <ShareButton figureName={figureName} figureId={figureId} showText />,
+            });
+        } else {
+            toast({ title: "Voto Eliminado", description: "Tu percepción ha sido eliminada." });
+        }
 
     } catch (error: any) {
-      console.error("Error updating Firestore perception counts:", error);
-      // Rollback UI if Firestore fails
+      console.error("Error updating Firestore perception:", error);
       setSelectedEmotion(previousSelectedEmotion);
       toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar en el servidor. Intenta de nuevo.", variant: "destructive" });
     } finally {

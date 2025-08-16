@@ -47,6 +47,7 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
     createdAt: new Date().toISOString(),
     lastLoginAt: new Date().toISOString(), // Set initial login time
     achievements: [],
+    isAnonymous: user.providerData.length === 0, // True if the user is anonymous
   };
 
   try {
@@ -241,3 +242,4 @@ export const getAllUsers = onCall(async (request) => {
 
 // Import notifications logic so it gets deployed
 import "./notifications";
+import "./triggers";
