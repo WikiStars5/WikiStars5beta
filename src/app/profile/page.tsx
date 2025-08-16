@@ -51,7 +51,7 @@ const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
 };
 
 export default function ProfilePage() {
-  const { user: currentUser, firebaseUser, isLoading, isAnonymous } = useAuth();
+  const { user: firestoreUser, firebaseUser, isLoading, isAnonymous } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -72,10 +72,9 @@ export default function ProfilePage() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: { username: '', countryCode: '', gender: '' },
   });
-
-  const isAdmin = currentUser?.role === 'admin';
   
-  const loadProfileData = useCallback(async () => {
+  const loadLocalData = useCallback(async () => {
+    if (typeof window === 'undefined') return;
     setIsDataLoading(true);
     try {
         // Streaks from localStorage
@@ -115,7 +114,7 @@ export default function ProfilePage() {
 
     } catch (error) {
         console.error("Error loading profile data from localStorage:", error);
-        toast({ title: "Error", description: "No se pudieron cargar los datos del perfil.", variant: "destructive" });
+        toast({ title: "Error", description: "No se pudieron cargar los datos de tu actividad local.", variant: "destructive" });
     } finally {
         setIsDataLoading(false);
     }
@@ -123,16 +122,18 @@ export default function ProfilePage() {
 
 
   useEffect(() => {
-    if (!isLoading && currentUser) {
-      reset({
-        username: currentUser.username ?? '',
-        countryCode: currentUser.countryCode ?? '',
-        gender: currentUser.gender ?? '',
-      });
-      loadProfileData();
+    if (!isLoading) {
+      if (firestoreUser && !isAnonymous) {
+        reset({
+          username: firestoreUser.username ?? '',
+          countryCode: firestoreUser.countryCode ?? '',
+          gender: firestoreUser.gender ?? '',
+        });
+      }
+      // Always load local data for both guests and registered users
+      loadLocalData();
     }
-  }, [isLoading, currentUser, reset, loadProfileData]);
-
+  }, [isLoading, firestoreUser, isAnonymous, reset, loadLocalData]);
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
@@ -142,6 +143,7 @@ export default function ProfilePage() {
       }
       toast({ title: "Perfil Actualizado", description: "Tus cambios han sido guardados." });
       setIsEditing(false);
+      // No need to call router.refresh() as onSnapshot in useAuth will update the profile
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({ title: "Error", description: error.message || "No se pudo actualizar tu perfil.", variant: "destructive" });
@@ -167,6 +169,18 @@ export default function ProfilePage() {
     );
   }
 
+  // This is the main fix. We create a valid user object for guests.
+  const currentUser: UserProfile | null = isAnonymous
+    ? {
+        uid: firebaseUser?.uid || 'guest',
+        username: 'Invitado',
+        email: null,
+        role: 'user',
+        isAnonymous: true,
+        createdAt: new Date().toISOString(),
+      }
+    : firestoreUser;
+  
   if (!currentUser) {
      return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center p-4">
@@ -181,7 +195,8 @@ export default function ProfilePage() {
     );
   }
 
-  const displayName = currentUser.username || (isAnonymous ? "Invitado" : "Usuario");
+  const isAdmin = currentUser.role === 'admin';
+  const displayName = currentUser.username || "Usuario";
 
   const AttitudeList = ({ attitudeKey, emptyMessage }: { attitudeKey: string, emptyMessage: string }) => {
     const attitudeMap = new Map(attitudes.map(a => [a.figureId, a]));
@@ -445,5 +460,7 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
 
     
