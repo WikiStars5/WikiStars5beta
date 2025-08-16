@@ -54,7 +54,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         return;
     }
     
-    // Listener for real-time updates on the figure's vote counts
     const figureDocRef = doc(db, "figures", figureId);
     const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -67,7 +66,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         console.error("Error listening to figure document for perceptions:", error);
     });
 
-    // One-time fetch for the current user's vote
     if (currentUser) {
         const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
         getDoc(userVoteDocRef).then(docSnap => {
@@ -137,7 +135,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
             }
         });
 
-        // After successful transaction, update local state
         const newSelectedEmotion = selectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
         setSelectedEmotion(newSelectedEmotion);
       
@@ -161,7 +158,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
     } catch (error: any) {
         console.error("Error updating Firestore perception:", error);
-        toast({ title: "Error al Votar", description: "No se pudo registrar tu voto. Intenta de nuevo.", variant: "destructive" });
+        toast({ title: "Error al Votar", description: `No se pudo registrar tu voto. ${error.message}`, variant: "destructive" });
     } finally {
       setIsLoadingEmotionAction(null);
     }
