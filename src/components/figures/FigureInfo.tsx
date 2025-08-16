@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -19,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CATEGORY_OPTIONS } from "@/config/categories";
 import { GENDER_OPTIONS } from "@/config/genderOptions";
 import { 
-  Info, Edit, Save, X, Loader2, LogIn, ImageOff, Archive, Bike, Briefcase, NotepadText, FamilyIcon, Zap, BookOpen, Cake, MapPin, Globe, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan
+  Info, Edit, Save, X, Loader2, LogIn, ImageOff, Archive, Bike, Briefcase, NotepadText, Users2, Zap, BookOpen, Cake, MapPin, Globe, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan
 } from "lucide-react";
 import Image from "next/image";
 
@@ -261,7 +260,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                     {figure.category === 'Deportista' && figure.sportSubcategory && renderDetailItem(Bike, "Deporte", figure.sportSubcategory)}
                     {figure.occupation && renderDetailItem(Briefcase, "Ocupación", figure.occupation)}
                     {figure.alias && renderDetailItem(NotepadText, "Alias", figure.alias)}
-                    {figure.gender && renderDetailItem(FamilyIcon, "Género", figure.gender)}
+                    {figure.gender && renderDetailItem(Users2, "Género", figure.gender)}
                     {figure.species && renderDetailItem(Zap, "Especie", figure.species)}
                     {figure.firstAppearance && renderDetailItem(BookOpen, "Primera Aparición", figure.firstAppearance)}
                     {figure.birthDateOrAge && renderDetailItem(Cake, "Nacimiento/Edad", figure.birthDateOrAge)}
