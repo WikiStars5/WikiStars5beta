@@ -4,8 +4,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Figure, UserPerception, EmotionKey, EmotionVote } from '@/lib/types';
 import { db, auth as firebaseAuth } from '@/lib/firebase';
-import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, getDoc, serverTimestamp, type DocumentData, type Unsubscribe } from 'firebase/firestore';
-import { onAuthStateChanged, type User } from 'firebase/auth'; 
+import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, getDoc, serverTimestamp, type DocumentData, type Unsubscribe, increment } from 'firebase/firestore';
+import type { User } from 'firebase/auth'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -54,19 +54,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         return;
     }
     
-    if (currentUser) {
-        try {
-            const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
-            if (localEmotionsJSON) {
-                const localEmotions: EmotionVote[] = JSON.parse(localEmotionsJSON);
-                const currentVote = localEmotions.find(e => e.figureId === figureId);
-                if (currentVote) {
-                    setSelectedEmotion(currentVote.emotion);
-                }
-            }
-        } catch (e) { console.error("Failed to read emotions from localStorage", e); }
-    }
-
+    // Listener for real-time updates on the figure's vote counts
     const figureDocRef = doc(db, "figures", figureId);
     const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -75,30 +63,33 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         setFigurePerceptionCounts(counts);
         setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
       }
-      if (isComponentLoading) setIsComponentLoading(false);
     }, (error) => {
         console.error("Error listening to figure document for perceptions:", error);
-        if (isComponentLoading) setIsComponentLoading(false);
     });
 
+    // One-time fetch for the current user's vote
     if (currentUser) {
-        getDoc(doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`))
-            .then(docSnap => {
-                if (docSnap.exists()) {
-                    setSelectedEmotion(docSnap.data().emotion as EmotionKey);
-                }
-            })
-            .catch(error => {
-                console.warn("Permission denied fetching user emotion. This is expected for guests and will rely on localStorage.", error);
-            });
+        const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
+        getDoc(userVoteDocRef).then(docSnap => {
+            if (docSnap.exists()) {
+                setSelectedEmotion(docSnap.data().emotion as EmotionKey);
+            } else {
+                setSelectedEmotion(null);
+            }
+        }).catch(error => {
+            console.error("Error fetching user emotion:", error);
+        }).finally(() => {
+            setIsComponentLoading(false);
+        });
     } else {
         setSelectedEmotion(null);
+        setIsComponentLoading(false);
     }
 
     return () => {
       unsubscribeFigure();
     };
-  }, [figureId, currentUser, isComponentLoading]);
+  }, [figureId, currentUser]);
 
   const handleEmotionClick = async (emotionKeyClicked: EmotionKey) => {
     if (!canUserVote || !currentUser) {
@@ -109,53 +100,55 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     
     setIsLoadingEmotionAction(emotionKeyClicked);
     
-    const previousSelectedEmotion = selectedEmotion;
-    const newEmotionToSet = previousSelectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
-    
-    // Optimistic UI Update
-    setSelectedEmotion(newEmotionToSet);
-    setFigurePerceptionCounts(prevCounts => {
-        const newCounts = { ...prevCounts };
-        if (previousSelectedEmotion) {
-            newCounts[previousSelectedEmotion] = Math.max(0, (newCounts[previousSelectedEmotion] || 0) - 1);
-        }
-        if (newEmotionToSet) {
-            newCounts[newEmotionToSet] = (newCounts[newEmotionToSet] || 0) + 1;
-        }
-        setTotalVotes(Object.values(newCounts).reduce((sum, count) => sum + count, 0));
-        return newCounts;
-    });
-
     const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
+    const figureDocRef = doc(db, 'figures', figureId);
     
     try {
-        const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
-        let localEmotions: EmotionVote[] = localEmotionsJSON ? JSON.parse(localEmotionsJSON) : [];
-        localEmotions = localEmotions.filter(e => e.figureId !== figureId);
-        if (newEmotionToSet) {
-            localEmotions.push({ figureId, emotion: newEmotionToSet, addedAt: new Date().toISOString() });
-        }
-        localStorage.setItem('wikistars5-userEmotions', JSON.stringify(localEmotions));
+        await runTransaction(db, async (transaction) => {
+            const userVoteDoc = await transaction.get(userVoteDocRef);
+            const figureDoc = await transaction.get(figureDocRef);
 
-        if (newEmotionToSet) {
-            await setDoc(userVoteDocRef, {
-                userId: currentUser.uid,
-                figureId: figureId,
-                emotion: newEmotionToSet,
-                timestamp: serverTimestamp(),
-            });
-        } else {
-            await deleteDoc(userVoteDocRef);
-        }
+            if (!figureDoc.exists()) {
+                throw new Error("Figure document does not exist!");
+            }
+
+            const previousEmotion = userVoteDoc.exists() ? userVoteDoc.data().emotion as EmotionKey : null;
+            const newEmotion = previousEmotion === emotionKeyClicked ? null : emotionKeyClicked;
+
+            const updates: {[key: string]: any} = {};
+            if (previousEmotion) {
+                updates[`perceptionCounts.${previousEmotion}`] = increment(-1);
+            }
+            if (newEmotion) {
+                updates[`perceptionCounts.${newEmotion}`] = increment(1);
+            }
+
+            transaction.update(figureDocRef, updates);
+
+            if (newEmotion) {
+                transaction.set(userVoteDocRef, {
+                    userId: currentUser.uid,
+                    figureId,
+                    emotion: newEmotion,
+                    timestamp: serverTimestamp(),
+                });
+            } else {
+                transaction.delete(userVoteDocRef);
+            }
+        });
+
+        // After successful transaction, update local state
+        const newSelectedEmotion = selectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
+        setSelectedEmotion(newSelectedEmotion);
       
-        if (!currentUser.isAnonymous && newEmotionToSet) {
+        if (!currentUser.isAnonymous && newSelectedEmotion) {
             const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
             if (achievementResult.unlocked) {
                 toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
             }
         }
         
-        if (newEmotionToSet) {
+        if (newSelectedEmotion) {
             toast({
                 title: "¡Voto Registrado!",
                 description: `Tu percepción ha sido guardada. ¡Invita a otros a votar!`,
@@ -168,20 +161,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
     } catch (error: any) {
         console.error("Error updating Firestore perception:", error);
-        // Revert optimistic UI on error
-        setSelectedEmotion(previousSelectedEmotion);
-        setFigurePerceptionCounts(prevCounts => {
-            const revertedCounts = { ...prevCounts };
-            if (newEmotionToSet) {
-                revertedCounts[newEmotionToSet] = Math.max(0, (revertedCounts[newEmotionToSet] || 0) - 1);
-            }
-            if (previousSelectedEmotion) {
-                revertedCounts[previousSelectedEmotion] = (revertedCounts[previousSelectedEmotion] || 0) + 1;
-            }
-            setTotalVotes(Object.values(revertedCounts).reduce((sum, count) => sum + count, 0));
-            return revertedCounts;
-        });
-        toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar en el servidor. Intenta de nuevo.", variant: "destructive" });
+        toast({ title: "Error al Votar", description: "No se pudo registrar tu voto. Intenta de nuevo.", variant: "destructive" });
     } finally {
       setIsLoadingEmotionAction(null);
     }
