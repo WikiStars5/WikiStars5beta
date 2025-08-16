@@ -35,28 +35,24 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
   const user = event.data; // The user record created in Firebase Auth
   const { uid, email, displayName, photoURL } = user;
 
-  const isAnonymous = !email; 
-
   const userProfile: UserProfile = {
     uid: uid,
     email: email || null,
-    username: isAnonymous 
-      ? `Invitado_${uid.substring(0, 5)}`
-      : (displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`),
+    username: displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`,
     country: '',
     countryCode: '',
     gender: '',
-    photoURL: photoURL || null, 
-    role: uid === ADMIN_UID ? 'admin' : 'user',
+    photoURL: photoURL || null, // Ensure photoURL is always defined as string or null
+    role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
     createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString(), // Set initial login time
     achievements: [],
-    isAnonymous: isAnonymous,
   };
 
   try {
+    // Set the document in the 'users' collection with the user's UID as the document ID.
     await db.collection('users').doc(uid).set(userProfile);
-    console.log(`Successfully created profile for user: ${uid} (isAnonymous: ${isAnonymous})`);
+    console.log(`Successfully created profile for user: ${uid}`);
   } catch (error) {
     console.error(`Error creating user profile for ${uid}:`, error);
   }
@@ -69,38 +65,27 @@ export const updateUserProfile = onCall(async (request) => {
     }
     const uid = request.auth.uid;
     const { username, countryCode, gender } = request.data;
-    
-    if (!username || username.length < 3 || username.length > 50) {
-        throw new HttpsError('invalid-argument', 'Username must be between 3 and 50 characters.');
+
+    if (!username || username.length < 3 || username.length > 30) {
+        throw new HttpsError('invalid-argument', 'Username must be between 3 and 30 characters.');
     }
 
     const userRef = db.collection('users').doc(uid);
     const safeCountryCode = countryCode || '';
     const countryName = COUNTRIES.find(c => c.code === safeCountryCode)?.name || '';
 
-    const updateData: any = {
-        username: username.trim(),
+    const updateData = {
+        username,
+        country: countryName,
+        countryCode: safeCountryCode,
         gender: gender || '',
         lastLoginAt: new Date().toISOString(),
     };
-    
-    // Only add country if a valid country code is provided
-    if (countryCode && countryName) {
-        updateData.country = countryName;
-        updateData.countryCode = safeCountryCode;
-    }
 
     try {
-        const userRecord = await auth.getUser(uid);
-        const isAnonymous = !userRecord.email;
-
-        // Only update the Auth profile if the user is NOT anonymous.
-        // This was the source of the "internal" error.
-        if (!isAnonymous) {
-             await auth.updateUser(uid, { displayName: username.trim() });
-        }
-        
-        // This will create or update the document in Firestore.
+        // Also update the displayName in Firebase Auth for consistency
+        await auth.updateUser(uid, { displayName: username });
+        // Use set with merge:true to create the document if it doesn't exist, or update it if it does.
         await userRef.set(updateData, { merge: true });
         
         return { success: true, message: 'Profile updated successfully.' };
@@ -256,5 +241,3 @@ export const getAllUsers = onCall(async (request) => {
 
 // Import notifications logic so it gets deployed
 import "./notifications";
-
-    
