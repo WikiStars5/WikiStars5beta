@@ -47,6 +47,7 @@ import {
     MessagesSquare, Send, Trash2, ThumbsUp, ThumbsDown, MessageSquareReply, Loader2, UserPlus, LogIn
 } from "lucide-react";
 import Link from 'next/link';
+import NextImage from 'next/image';
 
 interface CommentSectionProps {
     figure: Figure;
@@ -804,7 +805,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                 <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-foreground">{displayName}</p>
                     {comment.isAnonymous && comment.userCountryCode && (
-                    <Image
+                    <NextImage
                         src={`https://flagcdn.com/w20/${comment.userCountryCode.toLowerCase()}.png`}
                         alt={countryName || comment.userCountryCode}
                         title={countryName || comment.userCountryCode || ''}
