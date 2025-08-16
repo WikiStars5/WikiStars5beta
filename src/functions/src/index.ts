@@ -8,7 +8,7 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
-import type { UserProfile } from "./types";
+import type { UserProfile, Attitude, EmotionVote } from "./types";
 import { COUNTRIES } from "./countries";
 import type { DocumentData } from "firebase-admin/firestore";
 
@@ -138,6 +138,51 @@ export const getUserStats = onCall(async (request) => {
     console.error("Error getting user stats:", error);
     throw new HttpsError('internal', 'Could not retrieve user statistics.');
   }
+});
+
+export const getUserAttitudes = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Authentication is required.');
+    const uid = request.auth.uid;
+    try {
+        const attitudesRef = db.collection('userAttitudes');
+        const q = attitudesRef.where('userId', '==', uid).orderBy('timestamp', 'desc');
+        const snapshot = await q.get();
+        const attitudes: Attitude[] = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                figureId: data.figureId,
+                attitude: data.attitude,
+                // Ensure timestamp is converted to a serializable format (ISO string)
+                addedAt: data.timestamp.toDate().toISOString()
+            };
+        });
+        return { success: true, attitudes };
+    } catch (error) {
+        console.error("Error fetching user attitudes:", error);
+        throw new HttpsError('internal', 'Failed to fetch user attitudes.');
+    }
+});
+
+export const getUserEmotions = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Authentication is required.');
+    const uid = request.auth.uid;
+    try {
+        const emotionsRef = db.collection('userEmotions');
+        const q = emotionsRef.where('userId', '==', uid).orderBy('timestamp', 'desc');
+        const snapshot = await q.get();
+        const emotions: EmotionVote[] = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                figureId: data.figureId,
+                emotion: data.emotion,
+                addedAt: data.timestamp.toDate().toISOString()
+            };
+        });
+        return { success: true, emotions };
+    } catch (error) {
+        console.error("Error fetching user emotions:", error);
+        throw new HttpsError('internal', 'Failed to fetch user emotions.');
+    }
 });
 
 

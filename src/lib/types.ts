@@ -58,14 +58,6 @@ export interface UserPerception {
   timestamp: Timestamp; 
 }
 
-// Type for storing emotion vote in localStorage
-export interface EmotionVote {
-  figureId: string;
-  emotion: EmotionKey;
-  addedAt: string; // ISO String for the date
-}
-
-
 export interface UserAttitude {
   userId: string;
   figureId: string;
@@ -73,13 +65,19 @@ export interface UserAttitude {
   timestamp: Timestamp; 
 }
 
-// Type for storing attitude in localStorage
+// Type for storing attitude vote in Firestore or returning from Function
 export interface Attitude {
   figureId: string;
   attitude: AttitudeKey;
   addedAt: string; // ISO String for the date
 }
 
+// Type for storing emotion vote in Firestore or returning from Function
+export interface EmotionVote {
+  figureId: string;
+  emotion: EmotionKey;
+  addedAt: string; // ISO String for the date
+}
 
 export interface UserStarRating {
   userId: string;

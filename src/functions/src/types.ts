@@ -63,3 +63,17 @@ export interface Country {
   code: string;
   emoji: string;
 }
+
+// Type for storing attitude in localStorage or returning from Function
+export interface Attitude {
+  figureId: string;
+  attitude: AttitudeKey;
+  addedAt: string; // ISO String for the date
+}
+
+// Type for storing emotion vote in localStorage or returning from Function
+export interface EmotionVote {
+  figureId: string;
+  emotion: EmotionKey;
+  addedAt: string; // ISO String for the date
+}

@@ -48,6 +48,8 @@ const linkAccountFormSchema = z.object({
 type LinkAccountFormValues = z.infer<typeof linkAccountFormSchema>;
 
 const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
+const getUserAttitudesCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserAttitudes');
+const getUserEmotionsCallable = httpsCallable(getFunctions(app, 'us-central1'), 'getUserEmotions');
 
 const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
   alegria: { label: 'Alegría', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414' },
@@ -94,99 +96,72 @@ export default function ProfilePage() {
   const isAdmin = currentUser?.role === 'admin';
   
   const loadProfileData = useCallback(async (tabToLoad: 'attitude' | 'emotion' | 'all') => {
-    // If the user is a registered admin, don't load anything from localStorage.
-    if (isAdmin) {
-      setStreaks([]);
-      setAttitudes([]);
-      setEmotions([]);
-      setAttitudeFigures([]);
-      setAlegriaList([]);
-      setEnvidiaList([]);
-      setTristezaList([]);
-      setMiedoList([]);
-      setDesagradoList([]);
-      setFuriaList([]);
-      setIsDataLoading(false);
-      return;
-    }
-
     setIsDataLoading(true);
 
     try {
-      // Always load streaks and filter for active ones
-      const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
-      if (streaksJSON) {
-        let localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
-        
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-        
-        const activeStreaks = localStreaks.filter(streak => {
-            const lastDate = new Date(streak.lastCommentDate);
-            return lastDate.toDateString() === today.toDateString() || lastDate.toDateString() === yesterday.toDateString();
-        });
-        
-        activeStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
-        setStreaks(activeStreaks);
-      } else {
-        setStreaks([]);
-      }
-
-      if (tabToLoad === 'attitude' || tabToLoad === 'all') {
-        const attitudesJSON = localStorage.getItem('wikistars5-attitudes');
-        const localAttitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
-        setAttitudes(localAttitudes.sort((a, b) => {
-          const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
-          const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
-          return dateB - dateA;
-        }));
-        
-        const figureIds = localAttitudes.map(a => a.figureId);
-        if (figureIds.length > 0) {
-            const figures = await getFiguresByIds(figureIds);
-            setAttitudeFigures(figures);
-        } else {
-            setAttitudeFigures([]);
+        // Streaks are still local, so we load them from localStorage
+        const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
+        if (streaksJSON) {
+            let localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            const activeStreaks = localStreaks.filter(streak => {
+                const lastDate = new Date(streak.lastCommentDate);
+                return lastDate.toDateString() === today.toDateString() || lastDate.toDateString() === yesterday.toDateString();
+            });
+            activeStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
+            setStreaks(activeStreaks);
         }
-      }
 
-      if (tabToLoad === 'emotion' || tabToLoad === 'all') {
-        const emotionsJSON = localStorage.getItem('wikistars5-emotions');
-        const localEmotions: EmotionVote[] = emotionsJSON ? JSON.parse(emotionsJSON) : [];
-        setEmotions(localEmotions.sort((a, b) => {
-          const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
-          const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
-          return dateB - dateA;
-        }));
+        // Attitudes and Emotions are now fetched from Firestore via Cloud Functions
+        if (tabToLoad === 'attitude' || tabToLoad === 'all') {
+            const attitudeResult = await getUserAttitudesCallable();
+            const attitudeData = attitudeResult.data as { success: boolean, attitudes?: Attitude[], error?: string };
+            if (attitudeData.success && attitudeData.attitudes) {
+                setAttitudes(attitudeData.attitudes);
+                const figureIds = attitudeData.attitudes.map(a => a.figureId);
+                const figures = await getFiguresByIds(figureIds);
+                setAttitudeFigures(figures);
+            } else {
+                console.error("Failed to fetch attitudes:", attitudeData.error);
+            }
+        }
 
-        const figureIdsByEmotion = {
-            alegria: localEmotions.filter(e => e.emotion === 'alegria').map(e => e.figureId),
-            envidia: localEmotions.filter(e => e.emotion === 'envidia').map(e => e.figureId),
-            tristeza: localEmotions.filter(e => e.emotion === 'tristeza').map(e => e.figureId),
-            miedo: localEmotions.filter(e => e.emotion === 'miedo').map(e => e.figureId),
-            desagrado: localEmotions.filter(e => e.emotion === 'desagrado').map(e => e.figureId),
-            furia: localEmotions.filter(e => e.emotion === 'furia').map(e => e.figureId),
-        };
+        if (tabToLoad === 'emotion' || tabToLoad === 'all') {
+            const emotionResult = await getUserEmotionsCallable();
+            const emotionData = emotionResult.data as { success: boolean, emotions?: EmotionVote[], error?: string };
+            if (emotionData.success && emotionData.emotions) {
+                setEmotions(emotionData.emotions);
+                const figureIdsByEmotion = {
+                    alegria: emotionData.emotions.filter(e => e.emotion === 'alegria').map(e => e.figureId),
+                    envidia: emotionData.emotions.filter(e => e.emotion === 'envidia').map(e => e.figureId),
+                    tristeza: emotionData.emotions.filter(e => e.emotion === 'tristeza').map(e => e.figureId),
+                    miedo: emotionData.emotions.filter(e => e.emotion === 'miedo').map(e => e.figureId),
+                    desagrado: emotionData.emotions.filter(e => e.emotion === 'desagrado').map(e => e.figureId),
+                    furia: emotionData.emotions.filter(e => e.emotion === 'furia').map(e => e.figureId),
+                };
 
-        const [alegriaFigures, envidiaFigures, tristezaFigures, miedoFigures, desagradoFigures, furiaFigures] = await Promise.all([
-            getFiguresByIds(figureIdsByEmotion.alegria), getFiguresByIds(figureIdsByEmotion.envidia),
-            getFiguresByIds(figureIdsByEmotion.tristeza), getFiguresByIds(figureIdsByEmotion.miedo),
-            getFiguresByIds(figureIdsByEmotion.desagrado), getFiguresByIds(figureIdsByEmotion.furia),
-        ]);
+                const [alegriaFigures, envidiaFigures, tristezaFigures, miedoFigures, desagradoFigures, furiaFigures] = await Promise.all([
+                    getFiguresByIds(figureIdsByEmotion.alegria), getFiguresByIds(figureIdsByEmotion.envidia),
+                    getFiguresByIds(figureIdsByEmotion.tristeza), getFiguresByIds(figureIdsByEmotion.miedo),
+                    getFiguresByIds(figureIdsByEmotion.desagrado), getFiguresByIds(figureIdsByEmotion.furia),
+                ]);
 
-        setAlegriaList(alegriaFigures); setEnvidiaList(envidiaFigures);
-        setTristezaList(tristezaFigures); setMiedoList(miedoFigures);
-        setDesagradoList(desagradoFigures); setFuriaList(furiaFigures);
-      }
-        
+                setAlegriaList(alegriaFigures); setEnvidiaList(envidiaFigures);
+                setTristezaList(tristezaFigures); setMiedoList(miedoFigures);
+                setDesagradoList(desagradoFigures); setFuriaList(furiaFigures);
+            } else {
+                console.error("Failed to fetch emotions:", emotionData.error);
+            }
+        }
     } catch (error) {
-        console.error("Error loading data from localStorage", error);
+        console.error("Error loading profile data:", error);
         toast({ title: "Error", description: "No se pudieron cargar los datos del perfil.", variant: "destructive" });
     } finally {
         setIsDataLoading(false);
     }
-  }, [isAdmin, toast]);
+  }, [toast]);
 
 
   useEffect(() => {

@@ -73,24 +73,23 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
       setIsComponentLoading(false); 
     });
 
+    let unsubscribeUserVote: Unsubscribe | undefined;
     if (currentUser) {
-        try {
-            const emotionsJSON = localStorage.getItem('wikistars5-emotions');
-            if (emotionsJSON) {
-                const emotions: EmotionVote[] = JSON.parse(emotionsJSON);
-                const userEmotionForFigure = emotions.find(e => e.figureId === figureId);
-                setSelectedEmotion(userEmotionForFigure ? userEmotionForFigure.emotion : null);
-            }
-        } catch (e) {
-            console.error("Error reading emotions from localStorage", e);
-            setSelectedEmotion(null);
+      const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
+      unsubscribeUserVote = onSnapshot(userVoteDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setSelectedEmotion(docSnap.data().emotion as EmotionKey);
+        } else {
+          setSelectedEmotion(null);
         }
+      });
     } else {
       setSelectedEmotion(null);
     }
     
     return () => {
       unsubscribeFigure();
+      if (unsubscribeUserVote) unsubscribeUserVote();
     };
   }, [figureId, currentUser, toast]);
 
@@ -105,33 +104,12 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     
     const previousSelectedEmotion = selectedEmotion;
     const newEmotionToSet = previousSelectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
-
-    // --- Start of Local Storage Logic ---
-    try {
-        const emotionsJSON = localStorage.getItem('wikistars5-emotions');
-        let emotions: EmotionVote[] = emotionsJSON ? JSON.parse(emotionsJSON) : [];
-        emotions = emotions.filter(e => e.figureId !== figureId);
-
-        if (newEmotionToSet) {
-            emotions.push({ 
-              figureId: figureId, 
-              emotion: newEmotionToSet,
-              addedAt: new Date().toISOString() 
-            });
-        }
-        localStorage.setItem('wikistars5-emotions', JSON.stringify(emotions));
-        setSelectedEmotion(newEmotionToSet);
-
-    } catch (error) {
-        console.error("Error updating localStorage for emotions", error);
-        toast({ title: "Error Local", description: "No se pudo guardar tu elección de emoción.", variant: "destructive" });
-        setIsLoadingEmotionAction(null);
-        return;
-    }
-    // --- End of Local Storage Logic ---
-
-    // --- Start of Firestore Logic for Global Counts ---
+    const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
     const figureDocRef = doc(db, "figures", figureId);
+
+    // Optimistic UI update
+    setSelectedEmotion(newEmotionToSet);
+    
     try {
       await runTransaction(db, async (transaction) => {
         const figureDoc = await transaction.get(figureDocRef);
@@ -145,6 +123,17 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
           serverCounts[newEmotionToSet] = (serverCounts[newEmotionToSet] || 0) + 1;
         }
         transaction.update(figureDocRef, { perceptionCounts: serverCounts });
+
+        if (newEmotionToSet) {
+          transaction.set(userVoteDocRef, {
+            userId: currentUser.uid,
+            figureId: figureId,
+            emotion: newEmotionToSet,
+            timestamp: serverTimestamp(),
+          });
+        } else {
+          transaction.delete(userVoteDocRef);
+        }
       });
       
       if (!currentUser.isAnonymous && newEmotionToSet) {
@@ -167,11 +156,12 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
     } catch (error: any) {
       console.error("Error updating Firestore perception counts:", error);
-      toast({ title: "Error de Sincronización", description: "Tu voto se guardó localmente, pero falló la actualización del contador global.", variant: "destructive" });
+      toast({ title: "Error de Sincronización", description: "Tu voto no se pudo registrar. Intenta de nuevo.", variant: "destructive" });
+      // Revert optimistic update
+      setSelectedEmotion(previousSelectedEmotion);
     } finally {
       setIsLoadingEmotionAction(null);
     }
-    // --- End of Firestore Logic ---
   };
   
   if (isComponentLoading) { 
