@@ -80,26 +80,32 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         setFigureAttitudeCounts(counts);
         setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
       }
-      setIsComponentLoading(false);
     });
 
-    let unsubscribeUserVote: Unsubscribe | undefined;
-    if (currentUser) {
-      const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
-      unsubscribeUserVote = onSnapshot(userVoteDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          setSelectedAttitude(docSnap.data().attitude as AttitudeKey);
-        } else {
-          setSelectedAttitude(null);
+    const fetchUserVote = async () => {
+      if (currentUser) {
+        const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
+        try {
+          const docSnap = await getDoc(userVoteDocRef);
+          if (docSnap.exists()) {
+            setSelectedAttitude(docSnap.data().attitude as AttitudeKey);
+          } else {
+            setSelectedAttitude(null);
+          }
+        } catch (error) {
+          console.warn("Permission denied fetching user attitude, this is expected for guests.", error);
+          setSelectedAttitude(null); // Fallback to local state if Firestore read fails
         }
-      });
-    } else {
-      setSelectedAttitude(null);
-    }
+      } else {
+        setSelectedAttitude(null);
+      }
+      setIsComponentLoading(false);
+    };
+
+    fetchUserVote();
     
     return () => {
       unsubscribeFigure();
-      if (unsubscribeUserVote) unsubscribeUserVote();
     };
   }, [figureId, currentUser]);
 
@@ -256,5 +262,3 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     </Card>
   );
 };
-
-    

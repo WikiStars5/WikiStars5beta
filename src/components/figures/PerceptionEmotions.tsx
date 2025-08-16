@@ -76,26 +76,32 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         setFigurePerceptionCounts(counts);
         setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
       }
-      setIsComponentLoading(false);
     });
 
-    let unsubscribeUserVote: Unsubscribe | undefined;
-    if (currentUser) {
-      const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
-      unsubscribeUserVote = onSnapshot(userVoteDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          setSelectedEmotion(docSnap.data().emotion as EmotionKey);
-        } else {
-          setSelectedEmotion(null);
+    const fetchUserVote = async () => {
+      if (currentUser) {
+        const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
+        try {
+          const docSnap = await getDoc(userVoteDocRef);
+          if (docSnap.exists()) {
+            setSelectedEmotion(docSnap.data().emotion as EmotionKey);
+          } else {
+            setSelectedEmotion(null);
+          }
+        } catch (error) {
+          console.warn("Permission denied fetching user emotion, this is expected for guests.", error);
+          setSelectedEmotion(null); // Fallback to local state if Firestore read fails
         }
-      });
-    } else {
-      setSelectedEmotion(null);
-    }
+      } else {
+        setSelectedEmotion(null);
+      }
+      setIsComponentLoading(false);
+    };
+
+    fetchUserVote();
     
     return () => {
       unsubscribeFigure();
-      if (unsubscribeUserVote) unsubscribeUserVote();
     };
   }, [figureId, currentUser]);
 
@@ -257,5 +263,3 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     </Card>
   );
 };
-
-    
