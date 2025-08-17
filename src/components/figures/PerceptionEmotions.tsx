@@ -1,10 +1,11 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import type { Figure, UserPerception, EmotionKey, EmotionVote } from '@/lib/types';
-import { db, auth as firebaseAuth } from '@/lib/firebase';
-import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, getDoc, serverTimestamp, type DocumentData, type Unsubscribe, increment } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import type { Figure, EmotionKey } from '@/lib/types';
+import { db, app } from '@/lib/firebase'; // Import app for functions
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions'; // Import functions
 import type { User } from 'firebase/auth'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +16,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ShareButton } from '../shared/ShareButton';
 import { grantEmocionAlDescubiertoAchievement } from '@/app/actions/achievementActions';
+
+// Create a callable function reference
+const updateEmotionVoteCallable = httpsCallable(getFunctions(app), 'updateEmotionVote');
 
 interface PerceptionEmotionsProps {
   figureId: string;
@@ -97,46 +101,27 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     if (isLoadingEmotionAction) return;
     
     setIsLoadingEmotionAction(emotionKeyClicked);
+
+    // Optimistic UI update
+    const previousEmotion = selectedEmotion;
+    const newSelectedEmotion = previousEmotion === emotionKeyClicked ? null : emotionKeyClicked;
+    setSelectedEmotion(newSelectedEmotion);
     
-    const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
-    const figureDocRef = doc(db, 'figures', figureId);
-    
+    setFigurePerceptionCounts(prevCounts => {
+      const newCounts = { ...prevCounts };
+      if (previousEmotion) {
+        newCounts[previousEmotion] = Math.max(0, (newCounts[previousEmotion] || 0) - 1);
+      }
+      if (newSelectedEmotion) {
+        newCounts[newSelectedEmotion] = (newCounts[newSelectedEmotion] || 0) + 1;
+      }
+      setTotalVotes(Object.values(newCounts).reduce((sum, count) => sum + count, 0));
+      return newCounts;
+    });
+
     try {
-        await runTransaction(db, async (transaction) => {
-            const userVoteDoc = await transaction.get(userVoteDocRef);
-            const figureDoc = await transaction.get(figureDocRef);
-
-            if (!figureDoc.exists()) {
-                throw new Error("Figure document does not exist!");
-            }
-
-            const previousEmotion = userVoteDoc.exists() ? userVoteDoc.data().emotion as EmotionKey : null;
-            const newEmotion = previousEmotion === emotionKeyClicked ? null : emotionKeyClicked;
-
-            const updates: {[key: string]: any} = {};
-            if (previousEmotion) {
-                updates[`perceptionCounts.${previousEmotion}`] = increment(-1);
-            }
-            if (newEmotion) {
-                updates[`perceptionCounts.${newEmotion}`] = increment(1);
-            }
-
-            transaction.update(figureDocRef, updates);
-
-            if (newEmotion) {
-                transaction.set(userVoteDocRef, {
-                    userId: currentUser.uid,
-                    figureId,
-                    emotion: newEmotion,
-                    timestamp: serverTimestamp(),
-                });
-            } else {
-                transaction.delete(userVoteDocRef);
-            }
-        });
-
-        const newSelectedEmotion = selectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
-        setSelectedEmotion(newSelectedEmotion);
+        // Call the Cloud Function
+        await updateEmotionVoteCallable({ figureId, emotion: emotionKeyClicked });
       
         if (!currentUser.isAnonymous && newSelectedEmotion) {
             const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
@@ -157,8 +142,23 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         }
 
     } catch (error: any) {
-        console.error("Error updating Firestore perception:", error);
-        toast({ title: "Error al Votar", description: `No se pudo registrar tu voto. ${error.message}`, variant: "destructive" });
+        console.error("Error calling updateEmotionVote function:", error);
+        toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
+
+        // Revert optimistic UI update on error
+        setSelectedEmotion(previousEmotion);
+        setFigurePerceptionCounts(prevCounts => {
+            const revertedCounts = { ...prevCounts };
+            if (newSelectedEmotion) {
+                revertedCounts[newSelectedEmotion] = Math.max(0, (revertedCounts[newSelectedEmotion] || 0) - 1);
+            }
+            if (previousEmotion) {
+                revertedCounts[previousEmotion] = (revertedCounts[previousEmotion] || 0) + 1;
+            }
+            setTotalVotes(Object.values(revertedCounts).reduce((sum, count) => sum + count, 0));
+            return revertedCounts;
+        });
+
     } finally {
       setIsLoadingEmotionAction(null);
     }
@@ -177,7 +177,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
       </Card>
     );
   }
-
 
   return (
     <Card className="border border-white/20 bg-black">

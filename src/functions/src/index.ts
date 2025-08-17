@@ -8,9 +8,9 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
-import type { UserProfile, Attitude, EmotionVote } from "./types";
+import type { UserProfile, Attitude, EmotionVote, AttitudeKey, EmotionKey } from "./types";
 import { COUNTRIES } from "./countries";
-import type { DocumentData } from "firebase-admin/firestore";
+import type { DocumentData, FieldValue } from "firebase-admin/firestore";
 
 // Centralized Admin UID for security checks.
 const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
@@ -34,11 +34,12 @@ setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 export const createProfileOnRegister = onUserCreate(async (event) => {
   const user = event.data; // The user record created in Firebase Auth
   const { uid, email, displayName, photoURL } = user;
+  const isAnonymous = user.providerData.length === 0;
 
   const userProfile: UserProfile = {
     uid: uid,
     email: email || null,
-    username: displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`,
+    username: isAnonymous ? "Invitado" : (displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`),
     country: '',
     countryCode: '',
     gender: '',
@@ -47,7 +48,7 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
     createdAt: new Date().toISOString(),
     lastLoginAt: new Date().toISOString(), // Set initial login time
     achievements: [],
-    isAnonymous: user.providerData.length === 0, // True if the user is anonymous
+    isAnonymous: isAnonymous,
   };
 
   try {
@@ -84,9 +85,7 @@ export const updateUserProfile = onCall(async (request) => {
     };
 
     try {
-        // Also update the displayName in Firebase Auth for consistency
         await auth.updateUser(uid, { displayName: username });
-        // Use set with merge:true to create the document if it doesn't exist, or update it if it does.
         await userRef.set(updateData, { merge: true });
         
         return { success: true, message: 'Profile updated successfully.' };
@@ -96,79 +95,78 @@ export const updateUserProfile = onCall(async (request) => {
     }
 });
 
-export const getUserStats = onCall(async (request) => {
-  if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'You must be logged in to view stats.');
-  }
-  const uid = request.auth.uid;
+export const updateAttitudeVote = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'You must be logged in to vote.');
+    const uid = request.auth.uid;
+    const { figureId, attitude } = request.data as { figureId: string, attitude: AttitudeKey };
 
-  try {
-    const commentsQuery = db.collection('userComments').where('userId', '==', uid);
-    const ratingsQuery = db.collection('userStarRatings').where('userId', '==', uid);
-    const attitudesQuery = db.collection('userAttitudes').where('userId', '==', uid);
+    const userVoteDocRef = db.collection('userAttitudes').doc(`${uid}_${figureId}`);
+    const figureDocRef = db.collection('figures').doc(figureId);
 
-    const [commentsSnapshot, ratingsSnapshot, attitudesSnapshot] = await Promise.all([
-      commentsQuery.count().get(),
-      ratingsQuery.count().get(),
-      attitudesQuery.count().get()
-    ]);
+    return db.runTransaction(async (transaction) => {
+        const userVoteDoc = await transaction.get(userVoteDocRef);
+        const previousAttitude = userVoteDoc.exists ? userVoteDoc.data()?.attitude as AttitudeKey : null;
 
-    const stats = {
-      comments: commentsSnapshot.data().count,
-      ratings: ratingsSnapshot.data().count,
-      attitudes: attitudesSnapshot.data().count,
-    };
+        const updates: { [key: string]: FieldValue } = {};
+        const newVote = previousAttitude === attitude ? null : attitude;
 
-    return { success: true, stats };
-  } catch (error) {
-    console.error("Error getting user stats:", error);
-    throw new HttpsError('internal', 'Could not retrieve user statistics.');
-  }
+        if (previousAttitude) {
+            updates[`attitudeCounts.${previousAttitude}`] = admin.firestore.FieldValue.increment(-1);
+        }
+        if (newVote) {
+            updates[`attitudeCounts.${newVote}`] = admin.firestore.FieldValue.increment(1);
+        }
+
+        transaction.update(figureDocRef, updates);
+
+        if (newVote) {
+            transaction.set(userVoteDocRef, { userId: uid, figureId, attitude: newVote, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+        } else {
+            transaction.delete(userVoteDocRef);
+        }
+
+        return { success: true, newVote };
+    }).catch(error => {
+        console.error("Attitude vote transaction failed:", error);
+        throw new HttpsError('internal', 'The vote could not be processed.');
+    });
 });
 
-export const getUserAttitudes = onCall(async (request) => {
-    if (!request.auth) throw new HttpsError('unauthenticated', 'Authentication is required.');
+export const updateEmotionVote = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'You must be logged in to vote.');
     const uid = request.auth.uid;
-    try {
-        const attitudesRef = db.collection('userAttitudes');
-        const q = attitudesRef.where('userId', '==', uid).orderBy('timestamp', 'desc');
-        const snapshot = await q.get();
-        const attitudes: Attitude[] = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                figureId: data.figureId,
-                attitude: data.attitude,
-                // Ensure timestamp is converted to a serializable format (ISO string)
-                addedAt: data.timestamp.toDate().toISOString()
-            };
-        });
-        return { success: true, attitudes };
-    } catch (error) {
-        console.error("Error fetching user attitudes:", error);
-        throw new HttpsError('internal', 'Failed to fetch user attitudes.');
-    }
-});
+    const { figureId, emotion } = request.data as { figureId: string, emotion: EmotionKey };
 
-export const getUserEmotions = onCall(async (request) => {
-    if (!request.auth) throw new HttpsError('unauthenticated', 'Authentication is required.');
-    const uid = request.auth.uid;
-    try {
-        const emotionsRef = db.collection('userEmotions');
-        const q = emotionsRef.where('userId', '==', uid).orderBy('timestamp', 'desc');
-        const snapshot = await q.get();
-        const emotions: EmotionVote[] = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                figureId: data.figureId,
-                emotion: data.emotion,
-                addedAt: data.timestamp.toDate().toISOString()
-            };
-        });
-        return { success: true, emotions };
-    } catch (error) {
-        console.error("Error fetching user emotions:", error);
-        throw new HttpsError('internal', 'Failed to fetch user emotions.');
-    }
+    const userVoteDocRef = db.collection('userEmotions').doc(`${uid}_${figureId}`);
+    const figureDocRef = db.collection('figures').doc(figureId);
+
+    return db.runTransaction(async (transaction) => {
+        const userVoteDoc = await transaction.get(userVoteDocRef);
+        const previousEmotion = userVoteDoc.exists ? userVoteDoc.data()?.emotion as EmotionKey : null;
+        
+        const updates: { [key: string]: FieldValue } = {};
+        const newVote = previousEmotion === emotion ? null : emotion;
+
+        if (previousEmotion) {
+            updates[`perceptionCounts.${previousEmotion}`] = admin.firestore.FieldValue.increment(-1);
+        }
+        if (newVote) {
+            updates[`perceptionCounts.${newVote}`] = admin.firestore.FieldValue.increment(1);
+        }
+        
+        transaction.update(figureDocRef, updates);
+
+        if (newVote) {
+            transaction.set(userVoteDocRef, { userId: uid, figureId, emotion: newVote, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+        } else {
+            transaction.delete(userVoteDocRef);
+        }
+        
+        return { success: true, newVote };
+    }).catch(error => {
+        console.error("Emotion vote transaction failed:", error);
+        throw new HttpsError('internal', 'The vote could not be processed.');
+    });
 });
 
 

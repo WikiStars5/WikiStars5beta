@@ -1,10 +1,11 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import type { Figure, UserAttitude, AttitudeKey, Attitude } from '@/lib/types';
-import { db } from '@/lib/firebase';
-import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, serverTimestamp, type Unsubscribe, getDoc, increment } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import type { Figure, AttitudeKey } from '@/lib/types';
+import { db, app } from '@/lib/firebase'; // Import app for functions
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions'; // Import functions
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +16,9 @@ import Link from 'next/link';
 import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
+
+// Create a callable function reference
+const updateAttitudeVoteCallable = httpsCallable(getFunctions(app), 'updateAttitudeVote');
 
 interface AttitudeVoteProps {
   figureId: string;
@@ -36,7 +40,6 @@ const ATTITUDE_OPTIONS_CONFIG: {
   { key: 'hater', label: 'Hater', emoji: '😡', colorClass: 'border-destructive/50 text-destructive hover:bg-destructive/10 hover:border-destructive', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-destructive border-destructive' },
 ];
 
-
 const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
@@ -57,7 +60,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       return;
     }
 
-    // Listener for real-time updates on the figure's vote counts
     const figureDocRef = doc(db, "figures", figureId);
     const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -70,7 +72,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       console.error("Error listening to figure document for attitudes:", error);
     });
 
-    // One-time fetch for the current user's vote
     if (currentUser) {
         const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
         getDoc(userVoteDocRef).then(docSnap => {
@@ -102,70 +103,64 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     if (isLoadingAttitudeAction) return;
 
     setIsLoadingAttitudeAction(attitudeKeyClicked);
-
-    const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
-    const figureDocRef = doc(db, "figures", figureId);
+    
+    // Optimistically update the UI
+    const previousAttitude = selectedAttitude;
+    const newSelectedAttitude = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
+    setSelectedAttitude(newSelectedAttitude);
+    
+    setFigureAttitudeCounts(prevCounts => {
+      const newCounts = { ...prevCounts };
+      if (previousAttitude) {
+        newCounts[previousAttitude] = Math.max(0, (newCounts[previousAttitude] || 0) - 1);
+      }
+      if (newSelectedAttitude) {
+        newCounts[newSelectedAttitude] = (newCounts[newSelectedAttitude] || 0) + 1;
+      }
+       setTotalVotes(Object.values(newCounts).reduce((sum, count) => sum + count, 0));
+      return newCounts;
+    });
 
     try {
-        await runTransaction(db, async (transaction) => {
-            const userVoteDoc = await transaction.get(userVoteDocRef);
-            const figureDoc = await transaction.get(figureDocRef);
+      // Call the Cloud Function
+      await updateAttitudeVoteCallable({ figureId, attitude: attitudeKeyClicked });
 
-            if (!figureDoc.exists()) {
-                throw new Error("Figure document does not exist!");
-            }
-
-            const previousAttitude = userVoteDoc.exists() ? userVoteDoc.data().attitude as AttitudeKey : null;
-            const newAttitude = previousAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
-            
-            const updates: {[key: string]: any} = {};
-
-            if (previousAttitude) {
-                updates[`attitudeCounts.${previousAttitude}`] = increment(-1);
-            }
-            if (newAttitude) {
-                updates[`attitudeCounts.${newAttitude}`] = increment(1);
-            }
-            
-            transaction.update(figureDocRef, updates);
-
-            if (newAttitude) {
-                transaction.set(userVoteDocRef, {
-                    userId: currentUser.uid,
-                    figureId: figureId,
-                    attitude: newAttitude,
-                    timestamp: serverTimestamp(),
-                });
-            } else {
-                transaction.delete(userVoteDocRef);
-            }
-        });
-        
-        // After successful transaction, update local state
-        const newSelectedAttitude = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
-        setSelectedAttitude(newSelectedAttitude);
-        
-        if (!currentUser.isAnonymous && newSelectedAttitude) {
-            const achievementResult = await grantActitudDefinidaAchievement(currentUser.uid);
-            if (achievementResult.unlocked) {
-                toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
-            }
-        }
-        
-        if (newSelectedAttitude) {
-            toast({
-                title: "¡Voto Registrado!",
-                description: "¡Gracias por tu voto! Compártelo para ver qué opinan los demás.",
-                duration: 8000,
-                action: <ShareButton figureName={figureName} figureId={figureId} showText />,
-            });
-        } else {
-            toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
-        }
+      if (!currentUser.isAnonymous && newSelectedAttitude) {
+          const achievementResult = await grantActitudDefinidaAchievement(currentUser.uid);
+          if (achievementResult.unlocked) {
+              toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
+          }
+      }
+      
+      if (newSelectedAttitude) {
+          toast({
+              title: "¡Voto Registrado!",
+              description: "¡Gracias por tu voto! Compártelo para ver qué opinan los demás.",
+              duration: 8000,
+              action: <ShareButton figureName={figureName} figureId={figureId} showText />,
+          });
+      } else {
+          toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
+      }
 
     } catch (error: any) {
-        console.error("Error updating Firestore attitude:", error);
-        toast({ title: "Error al Votar", description: "No se pudo registrar tu voto. Intenta de nuevo.", variant: "destructive" });
+      console.error("Error calling updateAttitudeVote function:", error);
+      toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
+      
+      // Revert optimistic UI update on error
+      setSelectedAttitude(previousAttitude);
+      setFigureAttitudeCounts(prevCounts => {
+        const revertedCounts = { ...prevCounts };
+        if (newSelectedAttitude) {
+            revertedCounts[newSelectedAttitude] = Math.max(0, (revertedCounts[newSelectedAttitude] || 0) - 1);
+        }
+        if (previousAttitude) {
+            revertedCounts[previousAttitude] = (revertedCounts[previousAttitude] || 0) + 1;
+        }
+        setTotalVotes(Object.values(revertedCounts).reduce((sum, count) => sum + count, 0));
+        return revertedCounts;
+      });
+
     } finally {
         setIsLoadingAttitudeAction(null);
     }
