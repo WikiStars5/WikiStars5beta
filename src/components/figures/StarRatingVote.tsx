@@ -4,23 +4,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Figure, UserStarRating, StarValue, StarValueAsString } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, serverTimestamp, type Unsubscribe } from 'firebase/firestore';
+import { doc, runTransaction, onSnapshot, setDoc, deleteDoc, serverTimestamp, type Unsubscribe } from 'firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogIn, Star } from 'lucide-react';
+import { Loader2, LogIn, Star, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { grantEstrellaBrillanteAchievement } from '@/app/actions/achievementActions';
+import { useAuth } from '@/hooks/useAuth';
 
 
 interface StarRatingVoteProps {
   figureId: string;
   figureName: string;
   initialStarRatingCounts?: Record<StarValueAsString, number>;
-  currentUser: User | null;
 }
 
 const STAR_OPTIONS_CONFIG: { key: StarValue; label: string; colorClass: string }[] = [
@@ -44,7 +44,8 @@ const STAR_SOUND_URLS: Record<StarValue, string> = {
 };
 
 
-export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figureName, initialStarRatingCounts, currentUser }) => {
+export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figureName, initialStarRatingCounts }) => {
+  const { firebaseUser: currentUser, isAnonymous } = useAuth();
   const [selectedStarRating, setSelectedStarRating] = useState<StarValue | null>(null);
   const [figureStarRatingCounts, setFigureStarRatingCounts] = useState<Record<StarValueAsString, number>>(initialStarRatingCounts || defaultStarRatingCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
@@ -54,8 +55,8 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
   
   const [starAudios, setStarAudios] = useState<Partial<Record<StarValue, HTMLAudioElement>>>({});
 
-  // This is the fix: Allow any authenticated user (registered or anonymous) to vote.
-  const canUserVote = !!currentUser;
+  // NEW LOGIC: Only anonymous (guest) users can vote with stars.
+  const canUserVote = !!currentUser && isAnonymous;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -89,7 +90,6 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
       return;
     }
     
-    // Instant UI from localStorage
     if (currentUser) {
         try {
             const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
@@ -137,18 +137,20 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
       unsubscribeFigure();
       if (unsubscribeUserStarRating) unsubscribeUserStarRating();
     };
-  }, [figureId, currentUser, toast]);
+  }, [figureId, currentUser]);
 
   const handleStarRatingClick = async (starValueClicked: StarValue) => {
-    playSoundEffect(starValueClicked);
-
-    if (!canUserVote) {
+    if (!currentUser) {
       toast({ title: "Acción Requerida", description: "Debes estar conectado para calificar.", variant: "default" });
       return;
     }
+    if (!canUserVote) {
+       toast({ title: "Acción no permitida", description: "Solo los usuarios invitados pueden calificar con estrellas.", variant: "destructive" });
+       return;
+    }
     if (isLoadingStarAction) return;
-    if (!currentUser) return;
-
+    
+    playSoundEffect(starValueClicked);
     setIsLoadingStarAction(starValueClicked);
 
     const figureDocRef = doc(db, "figures", figureId);
@@ -160,19 +162,13 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
     setSelectedStarRating(newStarValueToSetForUser);
 
     try {
-        // --- Update Local Storage for instant UI ---
         const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
         let localRatings: UserStarRating[] = localRatingsJSON ? JSON.parse(localRatingsJSON) : [];
-        localRatings = localRatings.filter(r => r.figureId !== figureId); // Remove old rating
+        localRatings = localRatings.filter(r => r.figureId !== figureId);
         if (newStarValueToSetForUser) {
             localRatings.push({ userId: currentUser.uid, figureId, starValue: newStarValueToSetForUser, timestamp: new Date() as any });
         }
         localStorage.setItem('wikistars5-userStarRatings', JSON.stringify(localRatings));
-
-
-      // The on-device trigger `onStarRatingWritten` will handle updating the aggregate counts.
-      // This is the new, robust approach.
-      // The client just needs to write or delete the individual user's rating document.
 
       if (newStarValueToSetForUser) {
         await setDoc(userStarRatingDocRef, {
@@ -182,7 +178,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
           timestamp: serverTimestamp(),
         });
         toast({ title: "Calificación Guardada", description: `Has calificado a ${figureName} con ${newStarValueToSetForUser} estrella(s).` });
-        if (!currentUser.isAnonymous) {
+        if (isAnonymous) {
           const achResult = await grantEstrellaBrillanteAchievement(currentUser.uid);
           if (achResult.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult.message });
         }
@@ -198,7 +194,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
         errorMessage = "Error de permisos. Revisa las reglas de seguridad de Firestore para 'userStarRatings'.";
       }
       toast({ title: "Error al Calificar", description: errorMessage, variant: "destructive" });
-      setSelectedStarRating(previousSelectedUserRating); // Revert optimistic update on failure
+      setSelectedStarRating(previousSelectedUserRating); 
 
     } finally {
       setIsLoadingStarAction(null);
@@ -231,25 +227,25 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
       <CardHeader>
         <CardTitle>Califica a {figureName}</CardTitle>
         <CardDescription>
-          {canUserVote
-            ? "Selecciona una calificación de estrellas."
-            : "Debes estar conectado para poder calificar."}
+          {isAnonymous ? "Selecciona una calificación de estrellas." : "La calificación por estrellas es solo para invitados."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {!canUserVote && (
+        {!currentUser && (
           <Alert variant="default" className="mb-4">
             <LogIn className="h-4 w-4" />
             <AlertTitle>Participación</AlertTitle>
             <AlertDescription>
-              <Link href="/login" className="font-semibold text-primary hover:underline">
-                Inicia sesión
-              </Link>
-              {" "}o{" "}
-              <Link href="/signup" className="font-semibold text-primary hover:underline">
-                regrístrate
-              </Link>
-              {" "}para calificar o continúa como invitado.
+              Conéctate como invitado para poder calificar.
+            </AlertDescription>
+          </Alert>
+        )}
+         {currentUser && !isAnonymous && (
+          <Alert variant="default" className="mb-4">
+            <UserCheck className="h-4 w-4" />
+            <AlertTitle>Función solo para invitados</AlertTitle>
+            <AlertDescription>
+              Como usuario registrado, tu voz es importante en los comentarios y otras encuestas. ¡La calificación por estrellas está reservada para los invitados!
             </AlertDescription>
           </Alert>
         )}
@@ -283,7 +279,3 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figureId, figure
     </Card>
   );
 };
-
-    
-
-    

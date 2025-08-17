@@ -49,10 +49,10 @@ import {
 } from "lucide-react";
 import Link from 'next/link';
 import NextImage from 'next/image';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CommentSectionProps {
     figure: Figure;
-    currentUser: User | null;
     onNewComment: () => void;
     setAnimationStreak: (streak: number | null) => void;
 }
@@ -66,7 +66,8 @@ const STAR_SOUND_URLS: Record<StarValue, string> = {
 };
 
 
-export function CommentSection({ figure, currentUser, onNewComment, setAnimationStreak }: CommentSectionProps) {
+export function CommentSection({ figure, onNewComment, setAnimationStreak }: CommentSectionProps) {
+    const { firebaseUser: currentUser, isAnonymous } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
 
@@ -105,6 +106,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
     const COMMENT_TRUNCATE_LENGTH = 350;
 
     const canCommentOrRate = !!currentUser;
+    const canRateWithStars = !!currentUser && isAnonymous;
 
     const displayedComments = React.useMemo(() => {
         if (isLoadingComments) return [];
@@ -126,7 +128,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
             });
             break;
         case 'myComment':
-            if (!currentUser || currentUser.isAnonymous) {
+            if (!currentUser || isAnonymous) {
             commentsToDisplay = [];
             } else {
             commentsToDisplay = commentsToDisplay.filter(
@@ -140,7 +142,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
             break;
         }
         return commentsToDisplay;
-    }, [commentsList, commentSortOrder, currentUser, isLoadingComments]);
+    }, [commentsList, commentSortOrder, currentUser, isLoadingComments, isAnonymous]);
 
     React.useEffect(() => {
         if (typeof window !== "undefined") {
@@ -187,7 +189,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
 
     React.useEffect(() => {
       if (currentUser) {
-        if (currentUser.isAnonymous) {
+        if (isAnonymous) {
           const savedGuestName = localStorage.getItem('wikistars5-guestUsername');
           const savedGuestGender = localStorage.getItem('wikistars5-guestGender');
           if (savedGuestName && savedGuestGender) {
@@ -196,34 +198,27 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
             setTempGuestGender(savedGuestGender);
           }
         }
-        loadLocalStarRating(); // Load from localStorage first
+        loadLocalStarRating(); 
 
-        // Then, sync with Firestore to get the most updated state
         const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${figure.id}`);
         getDoc(userStarRatingDocRef).then(docSnap => {
           if (docSnap.exists()) {
             setNewCommentStars(docSnap.data().starValue as StarValue);
-          } else {
-            // Only clear if not already set by local storage to avoid flicker
-            if (newCommentStars === null) {
-              setNewCommentStars(null);
-            }
           }
         }).catch(error => console.error("Error syncing star rating from Firestore:", error));
 
       } else {
-        // Reset for logged out users
         setNewCommentStars(null);
         setIsGuestInfoSet(false);
         setTempGuestUsername("");
         setTempGuestGender("");
       }
-    }, [figure?.id, currentUser, loadLocalStarRating]);
+    }, [figure?.id, currentUser, loadLocalStarRating, isAnonymous]);
 
 
     React.useEffect(() => {
         const fetchCountryCode = async () => {
-        if (currentUser && currentUser.isAnonymous && !anonymousUserCountryCode) {
+        if (currentUser && isAnonymous && !anonymousUserCountryCode) {
             try {
             const response = await fetch('https://ipapi.co/country_code/');
             if (response.ok) {
@@ -236,7 +231,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         }
         };
         fetchCountryCode();
-    }, [currentUser, anonymousUserCountryCode]);
+    }, [currentUser, isAnonymous, anonymousUserCountryCode]);
 
 
     const fetchComments = React.useCallback(async () => {
@@ -426,7 +421,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
             toast({ title: "Error", description: "Debes estar conectado para opinar.", variant: "destructive" });
             return;
         }
-        if (currentUser.isAnonymous && !isGuestInfoSet) {
+        if (isAnonymous && !isGuestInfoSet) {
             toast({ title: "Información Requerida", description: "Por favor, define tu identidad de invitado para poder comentar.", variant: "destructive" });
             return;
         }
@@ -440,7 +435,6 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         const commentsCollectionRef = collection(db, 'userComments');
         
         try {
-            // Optimistic UI update for star rating in localStorage
             const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
             let localRatings: UserStarRating[] = localRatingsJSON ? JSON.parse(localRatingsJSON) : [];
             localRatings = localRatings.filter(r => r.figureId !== figure.id);
@@ -454,10 +448,10 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                 id: newCommentRef.id,
                 figureId: figure.id,
                 userId: currentUser.uid,
-                username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
+                username: isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
                 userPhotoURL: currentUser.photoURL || null,
                 text: newComment.trim(),
-                starRatingGiven: newCommentStars, 
+                starRatingGiven: canRateWithStars ? newCommentStars : null, 
                 createdAt: serverTimestamp(),
                 likes: 0,
                 dislikes: 0,
@@ -465,10 +459,10 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                 dislikedBy: [],
                 parentId: null,
                 replyCount: 0,
-                isAnonymous: currentUser.isAnonymous,
+                isAnonymous: isAnonymous,
             };
 
-            if (currentUser.isAnonymous) {
+            if (isAnonymous) {
                 commentData.guestUsername = localStorage.getItem('wikistars5-guestUsername');
                 commentData.guestUsernameLower = localStorage.getItem('wikistars5-guestUsername')?.toLowerCase();
                 commentData.guestGender = localStorage.getItem('wikistars5-guestGender');
@@ -477,25 +471,25 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                 }
             }
             
-            // Client only writes the comment and the separate rating doc.
-            // The Cloud Function trigger will handle updating the counters on the figure document.
             const batch = writeBatch(db);
             batch.set(newCommentRef, commentData);
-            if (newCommentStars) {
-                batch.set(userStarRatingDocRef, { 
-                    userId: currentUser.uid,
-                    figureId: figure.id,
-                    starValue: newCommentStars,
-                    timestamp: serverTimestamp(),
-                });
-            } else {
-                batch.delete(userStarRatingDocRef);
+            if (canRateWithStars) {
+                if (newCommentStars) {
+                    batch.set(userStarRatingDocRef, { 
+                        userId: currentUser.uid,
+                        figureId: figure.id,
+                        starValue: newCommentStars,
+                        timestamp: serverTimestamp(),
+                    });
+                } else {
+                    batch.delete(userStarRatingDocRef);
+                }
             }
             await batch.commit();
         
         updateLocalStreak();
         
-        if (newCommentStars) {
+        if (newCommentStars && canRateWithStars) {
             playSoundEffect(newCommentStars);
         }
 
@@ -508,14 +502,15 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
             ),
         });
         
-        if (!currentUser.isAnonymous) {
-            if (newCommentStars) {
-                const achResult1 = await grantEstrellaBrillanteAchievement(currentUser.uid);
-                if (achResult1.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult1.message });
-            }
+        if (!isAnonymous) {
             const achResult2 = await grantMiPrimeraContribucionAchievement(currentUser.uid);
             if (achResult2.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult2.message });
         }
+        if (isAnonymous && newCommentStars) {
+            const achResult1 = await grantEstrellaBrillanteAchievement(currentUser.uid);
+            if (achResult1.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult1.message });
+        }
+
 
         setNewComment("");
         fetchComments(); 
@@ -540,7 +535,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         setVotingCommentId(commentId);
         
         try {
-            const actorName = currentUser.isAnonymous ? (localStorage.getItem('wikistars5-guestUsername') || "Invitado") : (currentUser.displayName || "Usuario Anónimo");
+            const actorName = isAnonymous ? (localStorage.getItem('wikistars5-guestUsername') || "Invitado") : (currentUser.displayName || "Usuario Anónimo");
             
             const result = await updateCommentLikes(
             commentId,
@@ -594,15 +589,10 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                 return;
             }
     
-            // The Cloud Function onDelete trigger will handle decrementing counters.
-            // Client is now only responsible for deleting the documents.
-    
             const batch = writeBatch(db);
     
-            // Delete the main comment
             batch.delete(commentRef);
     
-            // Find and delete all replies
             const repliesQuery = query(collection(db, 'userComments'), where('parentId', '==', commentToDeleteId));
             const repliesSnapshot = await getDocs(repliesQuery);
             repliesSnapshot.forEach(replyDoc => batch.delete(replyDoc.ref));
@@ -611,7 +601,6 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
     
             toast({ title: "Comentario Eliminado", description: "El comentario y sus respuestas han sido eliminados." });
         
-            // If the deleted comment had a star rating, optimistically update local state.
             const commentToDeleteData = commentToDeleteSnap.data() as UserComment;
             if (commentToDeleteData.starRatingGiven && currentUser.uid === commentToDeleteData.userId) {
                 setNewCommentStars(null);
@@ -661,7 +650,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         toast({ title: "Acción Requerida", description: "Debes estar conectado para responder.", variant: "destructive" });
         return;
         }
-        if (currentUser.isAnonymous && !isGuestInfoSet) {
+        if (isAnonymous && !isGuestInfoSet) {
         toast({ title: "Información Requerida", description: "Por favor, define tu identidad de invitado para poder responder.", variant: "destructive" });
         return;
         }
@@ -674,7 +663,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         const replyData: any = {
         figureId: figure.id,
         userId: currentUser.uid,
-        username: currentUser.isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
+        username: isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
         userPhotoURL: currentUser.photoURL || null,
         text: replyText.trim(),
         starRatingGiven: null,
@@ -685,25 +674,22 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         dislikedBy: [],
         parentId: parentId,
         replyCount: 0,
-        isAnonymous: currentUser.isAnonymous,
+        isAnonymous: isAnonymous,
         };
 
-        if (currentUser.isAnonymous) {
+        if (isAnonymous) {
         replyData.guestUsername = localStorage.getItem('wikistars5-guestUsername');
         replyData.userCountryCode = anonymousUserCountryCode;
         replyData.guestGender = localStorage.getItem('wikistars5-guestGender');
         }
         
         try {
-            // The client just writes the new reply document.
-            // The Cloud Function will handle incrementing the figure's and parent comment's counters,
-            // and creating a notification.
             await addDoc(collection(db, 'userComments'), replyData);
             
             updateLocalStreak();
 
             toast({ title: "Respuesta Enviada", description: "Tu respuesta ha sido guardada." });
-            if (!currentUser.isAnonymous) {
+            if (!isAnonymous) {
                 const achResult = await grantDialogoAbiertoAchievement(currentUser.uid);
                 if (achResult.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult.message });
             }
@@ -843,7 +829,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                     <Button 
                         size="sm" 
                         onClick={() => handleSubmitReply(comment.id)} 
-                        disabled={isSubmittingReply === comment.id || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH || (currentUser?.isAnonymous && !isGuestInfoSet)}
+                        disabled={isSubmittingReply === comment.id || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH || (isAnonymous && !isGuestInfoSet)}
                     >
                         {isSubmittingReply === comment.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Enviar Respuesta
@@ -871,10 +857,12 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                {canCommentOrRate && figure && currentUser !== undefined ? (
+                {canCommentOrRate && figure ? (
                     <form onSubmit={handleSubmitComment} className="space-y-6">
                     <div className="mb-4">
-                        <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">Tu calificación (opcional):</Label>
+                        <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">
+                          {canRateWithStars ? "Tu calificación (opcional):" : "La calificación es solo para invitados"}
+                        </Label>
                         <StarRating
                             rating={newCommentStars || 0}
                             onRatingChange={(rating) => {
@@ -882,9 +870,10 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                             setNewCommentStars(starVal);
                             }}
                             size={32}
+                            readOnly={!canRateWithStars}
                         />
                     </div>
-                    {currentUser?.isAnonymous && !isGuestInfoSet && (
+                    {isAnonymous && !isGuestInfoSet && (
                         <Dialog open={isGuestInfoDialogOpen} onOpenChange={setIsGuestInfoDialogOpen}>
                         <DialogTrigger asChild>
                             <Button variant="outline" className="w-full">
@@ -941,7 +930,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                         placeholder="Escribe tu comentario aquí (obligatorio)..." 
                         rows={4} 
                         className="w-full" 
-                        disabled={isSubmittingComment || (currentUser?.isAnonymous && !isGuestInfoSet)} 
+                        disabled={isSubmittingComment || (isAnonymous && !isGuestInfoSet)} 
                         maxLength={MAX_COMMENT_LENGTH}
                         />
                         <div className="text-right text-sm text-muted-foreground mt-1">
@@ -949,7 +938,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                         </div>
                     </div>
                     <div className="flex justify-end">
-                        <Button type="submit" disabled={isSubmittingComment || !newComment.trim() || newComment.length > MAX_COMMENT_LENGTH || (currentUser?.isAnonymous && !isGuestInfoSet)}>
+                        <Button type="submit" disabled={isSubmittingComment || !newComment.trim() || newComment.length > MAX_COMMENT_LENGTH || (isAnonymous && !isGuestInfoSet)}>
                         <Send className="mr-2 h-4 w-4" />
                         {isSubmittingComment ? "Enviando..." : "Enviar Opinión"}
                         </Button>
@@ -971,7 +960,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                         <TabsList className="flex h-auto w-full flex-wrap justify-center gap-1 sm:w-auto">
                             <TabsTrigger value="newest" className="text-xs sm:text-sm">Más Nuevos</TabsTrigger>
                             <TabsTrigger value="mostVoted" className="text-xs sm:text-sm">Más Votados</TabsTrigger>
-                            {currentUser && !currentUser.isAnonymous && (
+                            {currentUser && !isAnonymous && (
                             <TabsTrigger value="myComment" className="text-xs sm:text-sm">Mi Comentario</TabsTrigger>
                             )}
                         </TabsList>
@@ -1015,5 +1004,3 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         </>
     );
 }
-
-    
