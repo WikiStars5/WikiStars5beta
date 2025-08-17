@@ -80,7 +80,9 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
     let unsubscribeUserVote: (() => void) | undefined;
     if (currentUser) {
-        const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
+        // This is the collection name used for user's individual votes.
+        // It must match a path in firestore.rules.
+        const userVoteDocRef = doc(db, 'userPerceptions', `${currentUser.uid}_${figureId}`);
         unsubscribeUserVote = onSnapshot(userVoteDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 setSelectedEmotion(docSnap.data().emotion as EmotionKey);
@@ -116,7 +118,8 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     
     try {
         const figureDocRef = doc(db, 'figures', figureId);
-        const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
+        // This collection name MUST match firestore.rules
+        const userVoteDocRef = doc(db, 'userPerceptions', `${currentUser.uid}_${figureId}`);
 
         await runTransaction(db, async (transaction) => {
             const figureDoc = await transaction.get(figureDocRef);
@@ -128,7 +131,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
             const userVoteDoc = await transaction.get(userVoteDocRef);
             const previousEmotion = userVoteDoc.exists() ? userVoteDoc.data().emotion as EmotionKey : null;
 
-            // Ensure perceptionCounts is initialized
             const newCounts = { ...defaultPerceptionCountsData, ...figureData.perceptionCounts };
 
             if (previousEmotion) {
@@ -147,12 +149,9 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
             }
         });
 
-
-        // Update local storage for guests and registered users
         try {
             const localKey = 'wikistars5-userEmotions';
-            const localData = localStorage.getItem(localKey);
-            let emotions: EmotionVote[] = localData ? JSON.parse(localData) : [];
+            let emotions: EmotionVote[] = JSON.parse(localStorage.getItem(localKey) || '[]');
             emotions = emotions.filter(e => e.figureId !== figureId); 
             if (newEmotionToSet) {
                 emotions.push({ figureId, emotion: newEmotionToSet, addedAt: new Date().toISOString() });
