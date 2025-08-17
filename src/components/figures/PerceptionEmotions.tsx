@@ -65,7 +65,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     });
 
     if (currentUser) {
-        // Load from localStorage first for instant UI
         try {
             const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
             if (localEmotionsJSON) {
@@ -123,7 +122,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
                 throw new Error("La figura no existe.");
             }
 
-            const previousEmotion = userVoteDoc.exists ? (userVoteDoc.data() as UserPerception).emotion : null;
+            const previousEmotion = userVoteDoc.exists() ? (userVoteDoc.data() as UserPerception).emotion : null;
             const currentCounts = (figureDoc.data()?.perceptionCounts || { ...defaultPerceptionCountsData }) as Record<EmotionKey, number>;
             const newCounts = { ...currentCounts };
 
@@ -138,18 +137,17 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
             
             if (newEmotionToSet) {
                 transaction.set(userVoteDocRef, { userId: currentUser.uid, figureId, emotion: newEmotionToSet, timestamp: serverTimestamp() });
-            } else {
+            } else if (userVoteDoc.exists()){
                 transaction.delete(userVoteDocRef);
             }
         });
 
         setSelectedEmotion(newEmotionToSet); 
       
-        // --- Update Local Storage for instant profile reflection ---
         try {
             const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
             let localEmotions: EmotionVote[] = localEmotionsJSON ? JSON.parse(localEmotionsJSON) : [];
-            localEmotions = localEmotions.filter(e => e.figureId !== figureId); // Remove old emotion
+            localEmotions = localEmotions.filter(e => e.figureId !== figureId); 
             if (newEmotionToSet) {
                 localEmotions.push({ figureId, emotion: newEmotionToSet, addedAt: new Date().toISOString() });
             }

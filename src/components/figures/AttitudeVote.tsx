@@ -127,38 +127,33 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           throw new Error("La figura no existe.");
         }
 
-        const previousAttitude = userVoteDoc.exists ? (userVoteDoc.data() as UserAttitude).attitude : null;
+        const previousAttitude = userVoteDoc.exists() ? (userVoteDoc.data() as UserAttitude).attitude : null;
         const currentCounts = (figureDoc.data()?.attitudeCounts || { ...defaultAttitudeCountsData }) as Record<AttitudeKey, number>;
         const newCounts = { ...currentCounts };
 
-        // Decrement the old vote if it exists
         if (previousAttitude) {
           newCounts[previousAttitude] = Math.max(0, (newCounts[previousAttitude] || 0) - 1);
         }
         
-        // Increment the new vote if it's different from the old one
         if (newAttitudeToSet) {
           newCounts[newAttitudeToSet] = (newCounts[newAttitudeToSet] || 0) + 1;
         }
 
-        // Update the figure document
         transaction.update(figureDocRef, { attitudeCounts: newCounts });
-
-        // Update or delete the user's vote document
+        
         if (newAttitudeToSet) {
           transaction.set(userVoteDocRef, { userId: currentUser.uid, figureId, attitude: newAttitudeToSet, timestamp: serverTimestamp() });
-        } else {
+        } else if (userVoteDoc.exists()) {
           transaction.delete(userVoteDocRef);
         }
       });
       
       setSelectedAttitude(newAttitudeToSet);
 
-      // --- Update Local Storage for instant profile reflection ---
       try {
         const localAttitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
         let localAttitudes: Attitude[] = localAttitudesJSON ? JSON.parse(localAttitudesJSON) : [];
-        localAttitudes = localAttitudes.filter(a => a.figureId !== figureId); // Remove old attitude
+        localAttitudes = localAttitudes.filter(a => a.figureId !== figureId); 
         if (newAttitudeToSet) {
             localAttitudes.push({ figureId, attitude: newAttitudeToSet, addedAt: new Date().toISOString() });
         }
