@@ -1,4 +1,5 @@
 
+
 /**
  * This file is the new home for all server-side logic that requires admin privileges.
  */
@@ -187,9 +188,16 @@ export const updateAttitudeVote = onCall(async (request) => {
             if (!figureDoc.exists) {
                 throw new HttpsError('not-found', 'Figure not found.');
             }
+            const figureData = figureDoc.data()!;
+
+            const newCounts: Record<AttitudeKey, number> = {
+                neutral: figureData.attitudeCounts?.neutral ?? 0,
+                fan: figureData.attitudeCounts?.fan ?? 0,
+                simp: figureData.attitudeCounts?.simp ?? 0,
+                hater: figureData.attitudeCounts?.hater ?? 0,
+            };
 
             const previousAttitude = userVoteDoc.exists ? (userVoteDoc.data() as UserAttitude).attitude : null;
-            const newCounts = { ...(figureDoc.data()?.attitudeCounts || {}) };
 
             if (previousAttitude) {
                 newCounts[previousAttitude] = Math.max(0, (newCounts[previousAttitude] || 1) - 1);
@@ -236,9 +244,8 @@ export const updateEmotionVote = onCall(async (request) => {
             if (!figureDoc.exists) {
                 throw new HttpsError('not-found', 'Figure not found.');
             }
-
             const figureData = figureDoc.data()!;
-            // **CORRECTION START**: Initialize counts safely.
+
             const newCounts: Record<EmotionKey, number> = {
                 alegria: figureData.perceptionCounts?.alegria ?? 0,
                 envidia: figureData.perceptionCounts?.envidia ?? 0,
@@ -250,25 +257,19 @@ export const updateEmotionVote = onCall(async (request) => {
 
             const previousEmotion = userVoteDoc.exists ? (userVoteDoc.data() as UserPerception).emotion : null;
             
-            // Decrement the previous vote count if it exists
-            if (previousEmotion && newCounts[previousEmotion]) {
+            if (previousEmotion) {
                 newCounts[previousEmotion] = Math.max(0, newCounts[previousEmotion] - 1);
             }
 
-            // Increment the new vote count if a new emotion is provided
             if (emotionKey) {
                 newCounts[emotionKey] = (newCounts[emotionKey] || 0) + 1;
             }
-            // **CORRECTION END**
-
-            // Update the figure document with the new counts
+            
             transaction.update(figureDocRef, { perceptionCounts: newCounts });
 
-            // Update the user's individual vote document
             if (emotionKey) {
                 transaction.set(userVoteDocRef, { userId: uid, figureId, emotion: emotionKey, timestamp: admin.firestore.FieldValue.serverTimestamp() });
             } else if (userVoteDoc.exists) {
-                // If the user is un-voting, delete their vote document
                 transaction.delete(userVoteDocRef);
             }
         });
