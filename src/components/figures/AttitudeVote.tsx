@@ -2,11 +2,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Figure, AttitudeKey, Attitude, UserAttitude } from '@/lib/types';
-import { db, app } from '@/lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import type { Figure, AttitudeKey, Attitude } from '@/lib/types';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -17,8 +16,6 @@ import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
 
-const functions = getFunctions(app, 'us-central1');
-const updateAttitudeVoteCallable = httpsCallable(functions, 'updateAttitudeVote');
 
 interface AttitudeVoteProps {
   figureId: string;
@@ -124,18 +121,43 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
     setIsLoadingAttitudeAction(attitudeKeyClicked);
     
-    const previousSelectedAttitude = selectedAttitude;
-    const newAttitudeToSet = previousSelectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
+    const newAttitudeToSet = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
     
-    // Optimistic UI update for the user's selection
-    setSelectedAttitude(newAttitudeToSet);
-
     try {
-      await updateAttitudeVoteCallable({ 
-        figureId, 
-        attitudeKey: newAttitudeToSet,
-        previousAttitude: previousSelectedAttitude
-      });
+        const figureDocRef = doc(db, 'figures', figureId);
+        const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
+
+        await runTransaction(db, async (transaction) => {
+            const figureDoc = await transaction.get(figureDocRef);
+            if (!figureDoc.exists()) {
+                throw new Error("La figura no fue encontrada.");
+            }
+            const figureData = figureDoc.data();
+
+            const userVoteDoc = await transaction.get(userVoteDocRef);
+            const previousAttitude = userVoteDoc.exists() ? userVoteDoc.data().attitude as AttitudeKey : null;
+            
+            // This is the key fix: Initialize counts safely.
+            const newCounts = { ...defaultAttitudeCountsData, ...figureData.attitudeCounts };
+
+            // Decrement previous vote if exists
+            if (previousAttitude) {
+                newCounts[previousAttitude] = Math.max(0, (newCounts[previousAttitude] || 0) - 1);
+            }
+            // Increment new vote if exists
+            if (newAttitudeToSet) {
+                newCounts[newAttitudeToSet] = (newCounts[newAttitudeToSet] || 0) + 1;
+            }
+
+            transaction.update(figureDocRef, { attitudeCounts: newCounts });
+            
+            if (newAttitudeToSet) {
+                transaction.set(userVoteDocRef, { userId: currentUser.uid, figureId, attitude: newAttitudeToSet, addedAt: serverTimestamp() });
+            } else if (userVoteDoc.exists()) {
+                transaction.delete(userVoteDocRef);
+            }
+        });
+
 
       // Update local storage for guests
       try {
@@ -150,6 +172,8 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       } catch (e) {
           console.error("Failed to update attitudes in localStorage", e);
       }
+      
+      setSelectedAttitude(newAttitudeToSet);
 
       if (!currentUser.isAnonymous && newAttitudeToSet) {
           const achievementResult = await grantActitudDefinidaAchievement(currentUser.uid);
@@ -170,10 +194,15 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       }
 
     } catch (error: any) {
-      console.error("Error calling updateAttitudeVote:", error);
-      toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
-      // Revert optimistic update on failure
-      setSelectedAttitude(previousSelectedAttitude);
+      console.error("Error in attitude vote transaction:", error);
+      let errorMessage = "No se pudo registrar tu voto.";
+      if (error.code === 'permission-denied') {
+        errorMessage = "Error de permisos. Revisa tus reglas de seguridad de Firestore.";
+      } else {
+        errorMessage = `Error: ${error.message}`;
+      }
+      toast({ title: "Error al Votar", description: errorMessage, variant: "destructive" });
+
     } finally {
         setIsLoadingAttitudeAction(null);
     }

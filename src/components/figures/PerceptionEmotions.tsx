@@ -3,10 +3,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Figure, EmotionKey, EmotionVote } from '@/lib/types';
-import { db, app } from '@/lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -16,9 +15,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ShareButton } from '../shared/ShareButton';
 import { grantEmocionAlDescubiertoAchievement } from '@/app/actions/achievementActions';
-
-const functions = getFunctions(app, 'us-central1');
-const updateEmotionVoteCallable = httpsCallable(functions, 'updateEmotionVote');
 
 interface PerceptionEmotionsProps {
   figureId: string;
@@ -116,19 +112,43 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     
     setIsLoadingEmotionAction(emotionKeyClicked);
     
-    const previousSelectedEmotion = selectedEmotion;
-    const newEmotionToSet = previousSelectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
-    
-    // Optimistic UI update
-    setSelectedEmotion(newEmotionToSet); 
+    const newEmotionToSet = selectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
     
     try {
-        await updateEmotionVoteCallable({ 
-          figureId, 
-          emotionKey: newEmotionToSet,
-          previousEmotion: previousSelectedEmotion
+        const figureDocRef = doc(db, 'figures', figureId);
+        const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
+
+        await runTransaction(db, async (transaction) => {
+            const figureDoc = await transaction.get(figureDocRef);
+            if (!figureDoc.exists()) {
+                throw new Error("La figura no fue encontrada.");
+            }
+            const figureData = figureDoc.data();
+
+            const userVoteDoc = await transaction.get(userVoteDocRef);
+            const previousEmotion = userVoteDoc.exists() ? userVoteDoc.data().emotion as EmotionKey : null;
+
+            // Ensure perceptionCounts is initialized
+            const newCounts = { ...defaultPerceptionCountsData, ...figureData.perceptionCounts };
+
+            if (previousEmotion) {
+                newCounts[previousEmotion] = Math.max(0, (newCounts[previousEmotion] || 0) - 1);
+            }
+            if (newEmotionToSet) {
+                newCounts[newEmotionToSet] = (newCounts[newEmotionToSet] || 0) + 1;
+            }
+
+            transaction.update(figureDocRef, { perceptionCounts: newCounts });
+
+            if (newEmotionToSet) {
+                transaction.set(userVoteDocRef, { userId: currentUser.uid, figureId, emotion: newEmotionToSet, addedAt: serverTimestamp() });
+            } else if (userVoteDoc.exists()) {
+                transaction.delete(userVoteDocRef);
+            }
         });
 
+
+        // Update local storage for guests and registered users
         try {
             const localKey = 'wikistars5-userEmotions';
             const localData = localStorage.getItem(localKey);
@@ -141,6 +161,8 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         } catch (e) {
             console.error("Failed to update emotions in localStorage", e);
         }
+        
+        setSelectedEmotion(newEmotionToSet);
 
         if (!currentUser.isAnonymous && newEmotionToSet) {
             const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
@@ -161,10 +183,14 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         }
 
     } catch (error: any) {
-        console.error("Error calling updateEmotionVote:", error);
-        toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
-        // Revert optimistic UI on failure
-        setSelectedEmotion(previousSelectedEmotion);
+        console.error("Error in transaction:", error);
+        let errorMessage = "No se pudo registrar tu voto.";
+        if (error.code === 'permission-denied') {
+            errorMessage = "Error de permisos. Revisa tus reglas de seguridad de Firestore.";
+        } else if (error.message) {
+            errorMessage = `Error: ${error.message}`;
+        }
+        toast({ title: "Error al Votar", description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoadingEmotionAction(null);
     }
