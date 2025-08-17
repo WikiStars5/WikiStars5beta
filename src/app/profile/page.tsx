@@ -324,10 +324,10 @@ export default function ProfilePage() {
                       <CardContent>
                         <Tabs defaultValue="fan" className="w-full">
                             <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
-                                <TabsTrigger value="fan" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Fan">😍</span>Fans</TabsTrigger>
-                                <TabsTrigger value="neutral" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Neutral">😐</span>Neutral</TabsTrigger>
-                                <TabsTrigger value="simp" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Simp">🥰</span>Simps</TabsTrigger>
-                                <TabsTrigger value="hater" className="flex-col p-4 text-lg gap-2 h-auto"><span className="text-5xl" role="img" aria-label="Hater">😡</span>Haters</TabsTrigger>
+                                <TabsTrigger value="fan" className="flex-col p-2 text-sm gap-1 h-auto"><span className="text-2xl" role="img" aria-label="Fan">😍</span>Fans</TabsTrigger>
+                                <TabsTrigger value="neutral" className="flex-col p-2 text-sm gap-1 h-auto"><span className="text-2xl" role="img" aria-label="Neutral">😐</span>Neutral</TabsTrigger>
+                                <TabsTrigger value="simp" className="flex-col p-2 text-sm gap-1 h-auto"><span className="text-2xl" role="img" aria-label="Simp">🥰</span>Simps</TabsTrigger>
+                                <TabsTrigger value="hater" className="flex-col p-2 text-sm gap-1 h-auto"><span className="text-2xl" role="img" aria-label="Hater">😡</span>Haters</TabsTrigger>
                             </TabsList>
                             <div className="mt-4">
                               <TabsContent value="fan"><AttitudeList attitudeKey="fan" emptyMessage="Aún no has marcado a nadie como 'Fan'."/></TabsContent>
@@ -460,7 +460,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
-
-    
