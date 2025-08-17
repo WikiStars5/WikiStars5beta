@@ -237,8 +237,11 @@ export const updateEmotionVote = onCall(async (request) => {
                 throw new HttpsError('not-found', 'Figure not found.');
             }
 
-            const previousEmotion = userVoteDoc.exists() ? (userVoteDoc.data() as UserPerception).emotion : null;
-            const newCounts = { ...(figureDoc.data()?.perceptionCounts || {}) };
+            const currentFigureData = figureDoc.data();
+            const newCounts = { ...(currentFigureData?.perceptionCounts || {}) };
+            
+            // This is the crucial check that was missing.
+            const previousEmotion = userVoteDoc.exists ? (userVoteDoc.data() as UserPerception).emotion : null;
 
             if (previousEmotion) {
                 newCounts[previousEmotion] = Math.max(0, (newCounts[previousEmotion] || 1) - 1);
