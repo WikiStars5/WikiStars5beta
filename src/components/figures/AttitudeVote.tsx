@@ -2,10 +2,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import type { Figure, AttitudeKey } from '@/lib/types';
-import { db, app } from '@/lib/firebase'; // Import app for functions
+import type { Figure, AttitudeKey, Attitude } from '@/lib/types';
+import { db, app } from '@/lib/firebase';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions'; // Import functions
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,6 @@ import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
 
-// Create a callable function reference
 const updateAttitudeVoteCallable = httpsCallable(getFunctions(app), 'updateAttitudeVote');
 
 interface AttitudeVoteProps {
@@ -73,6 +72,20 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     });
 
     if (currentUser) {
+        // Load from localStorage first for instant UI
+        try {
+            const localAttitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
+            if (localAttitudesJSON) {
+                const localAttitudes: Attitude[] = JSON.parse(localAttitudesJSON);
+                const currentVote = localAttitudes.find(a => a.figureId === figureId);
+                if (currentVote) {
+                    setSelectedAttitude(currentVote.attitude);
+                }
+            }
+        } catch (e) {
+            console.error("Failed to read attitudes from localStorage", e);
+        }
+
         const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
         getDoc(userVoteDocRef).then(docSnap => {
             if (docSnap.exists()) {
@@ -104,26 +117,26 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
     setIsLoadingAttitudeAction(attitudeKeyClicked);
     
-    // Optimistically update the UI
     const previousAttitude = selectedAttitude;
     const newSelectedAttitude = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
-    setSelectedAttitude(newSelectedAttitude);
     
-    setFigureAttitudeCounts(prevCounts => {
-      const newCounts = { ...prevCounts };
-      if (previousAttitude) {
-        newCounts[previousAttitude] = Math.max(0, (newCounts[previousAttitude] || 0) - 1);
-      }
-      if (newSelectedAttitude) {
-        newCounts[newSelectedAttitude] = (newCounts[newSelectedAttitude] || 0) + 1;
-      }
-       setTotalVotes(Object.values(newCounts).reduce((sum, count) => sum + count, 0));
-      return newCounts;
-    });
-
     try {
-      // Call the Cloud Function
       await updateAttitudeVoteCallable({ figureId, attitude: attitudeKeyClicked });
+      setSelectedAttitude(newSelectedAttitude); // Update state after successful call
+
+      // --- Update Local Storage for instant profile reflection ---
+      try {
+        const localAttitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
+        let localAttitudes: Attitude[] = localAttitudesJSON ? JSON.parse(localAttitudesJSON) : [];
+        localAttitudes = localAttitudes.filter(a => a.figureId !== figureId); // Remove old attitude
+        if (newSelectedAttitude) {
+            localAttitudes.push({ figureId, attitude: newSelectedAttitude, addedAt: new Date().toISOString() });
+        }
+        localStorage.setItem('wikistars5-userAttitudes', JSON.stringify(localAttitudes));
+      } catch (e) {
+          console.error("Failed to update attitudes in localStorage", e);
+      }
+
 
       if (!currentUser.isAnonymous && newSelectedAttitude) {
           const achievementResult = await grantActitudDefinidaAchievement(currentUser.uid);
@@ -146,21 +159,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     } catch (error: any) {
       console.error("Error calling updateAttitudeVote function:", error);
       toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
-      
-      // Revert optimistic UI update on error
-      setSelectedAttitude(previousAttitude);
-      setFigureAttitudeCounts(prevCounts => {
-        const revertedCounts = { ...prevCounts };
-        if (newSelectedAttitude) {
-            revertedCounts[newSelectedAttitude] = Math.max(0, (revertedCounts[newSelectedAttitude] || 0) - 1);
-        }
-        if (previousAttitude) {
-            revertedCounts[previousAttitude] = (revertedCounts[previousAttitude] || 0) + 1;
-        }
-        setTotalVotes(Object.values(revertedCounts).reduce((sum, count) => sum + count, 0));
-        return revertedCounts;
-      });
-
+      setSelectedAttitude(previousAttitude); // Revert UI on error
     } finally {
         setIsLoadingAttitudeAction(null);
     }
@@ -223,6 +222,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
               disabled={!canUserVote || !!isLoadingAttitudeAction}
               style={{ minHeight: '100px' }}
             >
+              {isLoadingAttitudeAction === key && <Loader2 className="absolute h-6 w-6 animate-spin" />}
               <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
               <span className="text-xs font-medium">{label}</span>
               <span className="text-sm font-bold">

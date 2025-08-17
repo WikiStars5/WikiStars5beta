@@ -2,10 +2,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import type { Figure, EmotionKey } from '@/lib/types';
-import { db, app } from '@/lib/firebase'; // Import app for functions
+import type { Figure, EmotionKey, EmotionVote } from '@/lib/types';
+import { db, app } from '@/lib/firebase';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions'; // Import functions
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,6 @@ import Image from 'next/image';
 import { ShareButton } from '../shared/ShareButton';
 import { grantEmocionAlDescubiertoAchievement } from '@/app/actions/achievementActions';
 
-// Create a callable function reference
 const updateEmotionVoteCallable = httpsCallable(getFunctions(app), 'updateEmotionVote');
 
 interface PerceptionEmotionsProps {
@@ -71,6 +70,20 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     });
 
     if (currentUser) {
+        // Load from localStorage first for instant UI
+        try {
+            const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
+            if (localEmotionsJSON) {
+                const localEmotions: EmotionVote[] = JSON.parse(localEmotionsJSON);
+                const currentVote = localEmotions.find(e => e.figureId === figureId);
+                if (currentVote) {
+                    setSelectedEmotion(currentVote.emotion);
+                }
+            }
+        } catch (e) {
+            console.error("Failed to read emotions from localStorage", e);
+        }
+
         const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
         getDoc(userVoteDocRef).then(docSnap => {
             if (docSnap.exists()) {
@@ -101,28 +114,27 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     if (isLoadingEmotionAction) return;
     
     setIsLoadingEmotionAction(emotionKeyClicked);
-
-    // Optimistic UI update
+    
     const previousEmotion = selectedEmotion;
     const newSelectedEmotion = previousEmotion === emotionKeyClicked ? null : emotionKeyClicked;
-    setSelectedEmotion(newSelectedEmotion);
-    
-    setFigurePerceptionCounts(prevCounts => {
-      const newCounts = { ...prevCounts };
-      if (previousEmotion) {
-        newCounts[previousEmotion] = Math.max(0, (newCounts[previousEmotion] || 0) - 1);
-      }
-      if (newSelectedEmotion) {
-        newCounts[newSelectedEmotion] = (newCounts[newSelectedEmotion] || 0) + 1;
-      }
-      setTotalVotes(Object.values(newCounts).reduce((sum, count) => sum + count, 0));
-      return newCounts;
-    });
 
     try {
-        // Call the Cloud Function
         await updateEmotionVoteCallable({ figureId, emotion: emotionKeyClicked });
+        setSelectedEmotion(newSelectedEmotion); // Update state after successful call
       
+        // --- Update Local Storage for instant profile reflection ---
+        try {
+            const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
+            let localEmotions: EmotionVote[] = localEmotionsJSON ? JSON.parse(localEmotionsJSON) : [];
+            localEmotions = localEmotions.filter(e => e.figureId !== figureId); // Remove old emotion
+            if (newSelectedEmotion) {
+                localEmotions.push({ figureId, emotion: newSelectedEmotion, addedAt: new Date().toISOString() });
+            }
+            localStorage.setItem('wikistars5-userEmotions', JSON.stringify(localEmotions));
+        } catch (e) {
+            console.error("Failed to update emotions in localStorage", e);
+        }
+
         if (!currentUser.isAnonymous && newSelectedEmotion) {
             const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
             if (achievementResult.unlocked) {
@@ -144,21 +156,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     } catch (error: any) {
         console.error("Error calling updateEmotionVote function:", error);
         toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
-
-        // Revert optimistic UI update on error
-        setSelectedEmotion(previousEmotion);
-        setFigurePerceptionCounts(prevCounts => {
-            const revertedCounts = { ...prevCounts };
-            if (newSelectedEmotion) {
-                revertedCounts[newSelectedEmotion] = Math.max(0, (revertedCounts[newSelectedEmotion] || 0) - 1);
-            }
-            if (previousEmotion) {
-                revertedCounts[previousEmotion] = (revertedCounts[previousEmotion] || 0) + 1;
-            }
-            setTotalVotes(Object.values(revertedCounts).reduce((sum, count) => sum + count, 0));
-            return revertedCounts;
-        });
-
+        setSelectedEmotion(previousEmotion); // Revert UI on error
     } finally {
       setIsLoadingEmotionAction(null);
     }
@@ -219,6 +217,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
               disabled={!canUserVote || !!isLoadingEmotionAction}
               style={{ minHeight: '120px' }}
             >
+              {isLoadingEmotionAction === key && <Loader2 className="absolute h-6 w-6 animate-spin" />}
               <div className="relative w-10 h-10 mb-1" data-ai-hint={`emoji ${label}`}>
                 <Image
                   src={imageUrl}

@@ -1,4 +1,5 @@
 
+
 /**
  * This file is the new home for all server-side logic that requires admin privileges.
  */
@@ -8,7 +9,7 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
-import type { UserProfile, Attitude, EmotionVote, AttitudeKey, EmotionKey } from "./types";
+import type { UserProfile, AttitudeKey, EmotionKey } from "./types";
 import { COUNTRIES } from "./countries";
 import type { DocumentData, FieldValue } from "firebase-admin/firestore";
 
@@ -34,7 +35,7 @@ setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 export const createProfileOnRegister = onUserCreate(async (event) => {
   const user = event.data; // The user record created in Firebase Auth
   const { uid, email, displayName, photoURL } = user;
-  const isAnonymous = user.providerData.length === 0;
+  const isAnonymous = !email; // A simple check for anonymous users
 
   const userProfile: UserProfile = {
     uid: uid,
@@ -96,7 +97,9 @@ export const updateUserProfile = onCall(async (request) => {
 });
 
 export const updateAttitudeVote = onCall(async (request) => {
-    if (!request.auth) throw new HttpsError('unauthenticated', 'You must be logged in to vote.');
+    // This now allows authenticated requests, which includes anonymous users.
+    if (!request.auth) throw new HttpsError('unauthenticated', 'You must be authenticated to vote.');
+    
     const uid = request.auth.uid;
     const { figureId, attitude } = request.data as { figureId: string, attitude: AttitudeKey };
 
@@ -133,7 +136,9 @@ export const updateAttitudeVote = onCall(async (request) => {
 });
 
 export const updateEmotionVote = onCall(async (request) => {
-    if (!request.auth) throw new HttpsError('unauthenticated', 'You must be logged in to vote.');
+    // This now allows authenticated requests, which includes anonymous users.
+    if (!request.auth) throw new HttpsError('unauthenticated', 'You must be authenticated to vote.');
+
     const uid = request.auth.uid;
     const { figureId, emotion } = request.data as { figureId: string, emotion: EmotionKey };
 
