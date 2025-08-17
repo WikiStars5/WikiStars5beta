@@ -9,7 +9,7 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
-import type { UserProfile, AttitudeKey, EmotionKey, UserAttitude, UserPerception } from "./types";
+import type { UserProfile, AttitudeKey, EmotionKey } from "./types";
 import { COUNTRIES } from "./countries";
 import type { DocumentData } from "firebase-admin/firestore";
 
@@ -165,12 +165,16 @@ export const getAllUsers = onCall(async (request) => {
     }
 });
 
+const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
+  neutral: 0, fan: 0, simp: 0, hater: 0,
+};
 
 export const updateAttitudeVote = onCall(async (request) => {
-    if (!request.auth) {
+    const uid = request.auth?.uid;
+    if (!uid) {
         throw new HttpsError('unauthenticated', 'You must be logged in to vote.');
     }
-    const uid = request.auth.uid;
+    
     const { figureId, attitudeKey, previousAttitude } = request.data as { figureId: string; attitudeKey: AttitudeKey | null, previousAttitude: AttitudeKey | null };
 
     if (!figureId) {
@@ -187,22 +191,25 @@ export const updateAttitudeVote = onCall(async (request) => {
             if (!figureDoc.exists) {
                 throw new HttpsError('not-found', 'Figure not found.');
             }
+            
             const figureData = figureDoc.data() || {};
             
-            const newCounts = {
-                neutral: 0, fan: 0, simp: 0, hater: 0,
-                ...figureData.attitudeCounts
-            };
+            // **THE FIX**: Safely initialize counts, preventing errors on undefined fields.
+            const newCounts = { ...defaultAttitudeCountsData, ...figureData.attitudeCounts };
 
-            if (previousAttitude) {
-                newCounts[previousAttitude] = Math.max(0, (newCounts[previousAttitude] || 1) - 1);
+            // Decrement the previous attitude count if it exists
+            if (previousAttitude && newCounts[previousAttitude] > 0) {
+                newCounts[previousAttitude] -= 1;
             }
+            // Increment the new attitude count if a new one is set
             if (attitudeKey) {
-                newCounts[attitudeKey] = (newCounts[attitudeKey] || 0) + 1;
+                newCounts[attitudeKey] += 1;
             }
 
+            // Update the figure document with the new counts
             transaction.update(figureDocRef, { attitudeCounts: newCounts });
 
+            // Set or delete the user's personal vote document
             if (attitudeKey) {
                 transaction.set(userVoteDocRef, { userId: uid, figureId, attitude: attitudeKey, timestamp: admin.firestore.FieldValue.serverTimestamp() });
             } else {
@@ -217,11 +224,16 @@ export const updateAttitudeVote = onCall(async (request) => {
     }
 });
 
+const defaultPerceptionCountsData: Record<EmotionKey, number> = {
+  alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
+};
+
 export const updateEmotionVote = onCall(async (request) => {
-    if (!request.auth) {
+    const uid = request.auth?.uid;
+    if (!uid) {
         throw new HttpsError('unauthenticated', 'You must be logged in to vote.');
     }
-    const uid = request.auth.uid;
+    
     const { figureId, emotionKey, previousEmotion } = request.data as { figureId: string; emotionKey: EmotionKey | null, previousEmotion: EmotionKey | null };
 
     if (!figureId) {
@@ -234,23 +246,22 @@ export const updateEmotionVote = onCall(async (request) => {
     try {
         await db.runTransaction(async (transaction) => {
             const figureDoc = await transaction.get(figureDocRef);
-
             if (!figureDoc.exists) {
                 throw new HttpsError('not-found', 'Figure not found.');
             }
             const figureData = figureDoc.data() || {};
             
-            const newCounts = {
-                alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
-                ...figureData.perceptionCounts
-            };
-            
-            if (previousEmotion) {
-                newCounts[previousEmotion] = Math.max(0, (newCounts[previousEmotion] || 1) - 1);
-            }
+            // **THE FIX**: Safely initialize counts, preventing errors on undefined fields.
+            const newCounts = { ...defaultPerceptionCountsData, ...figureData.perceptionCounts };
 
+            // Decrement the previous vote if it exists
+            if (previousEmotion && newCounts[previousEmotion] > 0) {
+                newCounts[previousEmotion] -= 1;
+            }
+            
+            // Increment the new vote if it exists
             if (emotionKey) {
-                newCounts[emotionKey] = (newCounts[emotionKey] || 0) + 1;
+                newCounts[emotionKey] += 1;
             }
             
             transaction.update(figureDocRef, { perceptionCounts: newCounts });
@@ -274,5 +285,3 @@ export const updateEmotionVote = onCall(async (request) => {
 import "./notifications";
 // Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.
 import "./triggers";
-
-    

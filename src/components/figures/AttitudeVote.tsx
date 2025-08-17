@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Figure, AttitudeKey, Attitude, UserAttitude } from '@/lib/types';
 import { db, app } from '@/lib/firebase';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
@@ -72,18 +72,37 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       console.error("Error listening to figure document for attitudes:", error);
     });
 
+    // Load local data for instant UI
+    if (currentUser) {
+      const localKey = 'wikistars5-userAttitudes';
+      try {
+        const localData = localStorage.getItem(localKey);
+        if (localData) {
+          const attitudes: Attitude[] = JSON.parse(localData);
+          const currentVote = attitudes.find(a => a.figureId === figureId);
+          if (currentVote) {
+            setSelectedAttitude(currentVote.attitude);
+          }
+        }
+      } catch (e) {
+        console.error("Error reading attitudes from localStorage", e);
+      }
+    }
+
+
+    let unsubscribeUserVote: (() => void) | undefined;
     if (currentUser) {
         const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
-        getDoc(userVoteDocRef).then(docSnap => {
+        unsubscribeUserVote = onSnapshot(userVoteDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 setSelectedAttitude(docSnap.data().attitude as AttitudeKey);
             } else {
                 setSelectedAttitude(null);
             }
-        }).catch(error => {
+             setIsComponentLoading(false);
+        }, (error) => {
              console.error("Error fetching user attitude:", error);
-        }).finally(() => {
-            setIsComponentLoading(false);
+             setIsComponentLoading(false);
         });
     } else {
         setSelectedAttitude(null);
@@ -92,6 +111,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     
     return () => {
       unsubscribeFigure();
+      if(unsubscribeUserVote) unsubscribeUserVote();
     };
   }, [figureId, currentUser]);
 
@@ -107,7 +127,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     const previousSelectedAttitude = selectedAttitude;
     const newAttitudeToSet = previousSelectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
     
-    // Optimistic UI update
+    // Optimistic UI update for the user's selection
     setSelectedAttitude(newAttitudeToSet);
 
     try {
@@ -117,14 +137,16 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         previousAttitude: previousSelectedAttitude
       });
 
+      // Update local storage for guests
       try {
-        const localAttitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
-        let localAttitudes: Attitude[] = localAttitudesJSON ? JSON.parse(localAttitudesJSON) : [];
-        localAttitudes = localAttitudes.filter(a => a.figureId !== figureId); 
+        const localKey = 'wikistars5-userAttitudes';
+        const localData = localStorage.getItem(localKey);
+        let attitudes: Attitude[] = localData ? JSON.parse(localData) : [];
+        attitudes = attitudes.filter(a => a.figureId !== figureId); 
         if (newAttitudeToSet) {
-            localAttitudes.push({ figureId, attitude: newAttitudeToSet, addedAt: new Date().toISOString() });
+            attitudes.push({ figureId, attitude: newAttitudeToSet, addedAt: new Date().toISOString() });
         }
-        localStorage.setItem('wikistars5-userAttitudes', JSON.stringify(localAttitudes));
+        localStorage.setItem(localKey, JSON.stringify(attitudes));
       } catch (e) {
           console.error("Failed to update attitudes in localStorage", e);
       }
@@ -230,5 +252,3 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     </Card>
   );
 };
-
-    

@@ -2,9 +2,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Figure, EmotionKey, EmotionVote, UserPerception } from '@/lib/types';
+import type { Figure, EmotionKey, EmotionVote } from '@/lib/types';
 import { db, app } from '@/lib/firebase';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
@@ -69,17 +69,32 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     });
 
     if (currentUser) {
+      const localKey = 'wikistars5-userEmotions';
+      try {
+        const localData = localStorage.getItem(localKey);
+        if (localData) {
+          const emotions: EmotionVote[] = JSON.parse(localData);
+          const currentVote = emotions.find(e => e.figureId === figureId);
+          if (currentVote) {
+            setSelectedEmotion(currentVote.emotion);
+          }
+        }
+      } catch(e) { console.error("Error reading emotions from localStorage", e); }
+    }
+
+    let unsubscribeUserVote: (() => void) | undefined;
+    if (currentUser) {
         const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
-        getDoc(userVoteDocRef).then(docSnap => {
+        unsubscribeUserVote = onSnapshot(userVoteDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 setSelectedEmotion(docSnap.data().emotion as EmotionKey);
             } else {
                 setSelectedEmotion(null);
             }
-        }).catch(error => {
+             setIsComponentLoading(false);
+        }, (error) => {
             console.error("Error fetching user emotion:", error);
-        }).finally(() => {
-            setIsComponentLoading(false);
+             setIsComponentLoading(false);
         });
     } else {
         setSelectedEmotion(null);
@@ -88,6 +103,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
     return () => {
       unsubscribeFigure();
+      if (unsubscribeUserVote) unsubscribeUserVote();
     };
   }, [figureId, currentUser]);
 
@@ -114,13 +130,14 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         });
 
         try {
-            const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
-            let localEmotions: EmotionVote[] = localEmotionsJSON ? JSON.parse(localEmotionsJSON) : [];
-            localEmotions = localEmotions.filter(e => e.figureId !== figureId); 
+            const localKey = 'wikistars5-userEmotions';
+            const localData = localStorage.getItem(localKey);
+            let emotions: EmotionVote[] = localData ? JSON.parse(localData) : [];
+            emotions = emotions.filter(e => e.figureId !== figureId); 
             if (newEmotionToSet) {
-                localEmotions.push({ figureId, emotion: newEmotionToSet, addedAt: new Date().toISOString() });
+                emotions.push({ figureId, emotion: newEmotionToSet, addedAt: new Date().toISOString() });
             }
-            localStorage.setItem('wikistars5-userEmotions', JSON.stringify(localEmotions));
+            localStorage.setItem(localKey, JSON.stringify(emotions));
         } catch (e) {
             console.error("Failed to update emotions in localStorage", e);
         }
@@ -232,5 +249,3 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     </Card>
   );
 };
-
-    
