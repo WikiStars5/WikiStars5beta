@@ -188,8 +188,9 @@ export const updateAttitudeVote = onCall(async (request) => {
             if (!figureDoc.exists) {
                 throw new HttpsError('not-found', 'Figure not found.');
             }
-            const figureData = figureDoc.data()!;
-
+            const figureData = figureDoc.data() || {};
+            
+            // Safely initialize counts
             const newCounts: Record<AttitudeKey, number> = {
                 neutral: figureData.attitudeCounts?.neutral ?? 0,
                 fan: figureData.attitudeCounts?.fan ?? 0,
@@ -244,8 +245,9 @@ export const updateEmotionVote = onCall(async (request) => {
             if (!figureDoc.exists) {
                 throw new HttpsError('not-found', 'Figure not found.');
             }
-            const figureData = figureDoc.data()!;
-
+            const figureData = figureDoc.data() || {};
+            
+            // Safely initialize counts
             const newCounts: Record<EmotionKey, number> = {
                 alegria: figureData.perceptionCounts?.alegria ?? 0,
                 envidia: figureData.perceptionCounts?.envidia ?? 0,
@@ -258,7 +260,7 @@ export const updateEmotionVote = onCall(async (request) => {
             const previousEmotion = userVoteDoc.exists ? (userVoteDoc.data() as UserPerception).emotion : null;
             
             if (previousEmotion) {
-                newCounts[previousEmotion] = Math.max(0, newCounts[previousEmotion] - 1);
+                newCounts[previousEmotion] = Math.max(0, (newCounts[previousEmotion] || 1) - 1);
             }
 
             if (emotionKey) {
@@ -273,7 +275,7 @@ export const updateEmotionVote = onCall(async (request) => {
                 transaction.delete(userVoteDocRef);
             }
         });
-        return { success: true, message: "Vote processed successfully." };
+        return { success: true };
     } catch (error) {
         console.error("Error in updateEmotionVote transaction:", error);
         if (error instanceof HttpsError) throw error;
@@ -286,5 +288,3 @@ export const updateEmotionVote = onCall(async (request) => {
 import "./notifications";
 // Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.
 import "./triggers";
-
-    
