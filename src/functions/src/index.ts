@@ -237,32 +237,46 @@ export const updateEmotionVote = onCall(async (request) => {
                 throw new HttpsError('not-found', 'Figure not found.');
             }
 
-            const currentFigureData = figureDoc.data();
-            const newCounts = { ...(currentFigureData?.perceptionCounts || {}) };
-            
-            // This is the crucial check that was missing.
-            const previousEmotion = userVoteDoc.exists ? (userVoteDoc.data() as UserPerception).emotion : null;
+            const figureData = figureDoc.data()!;
+            // **CORRECTION START**: Initialize counts safely.
+            const newCounts: Record<EmotionKey, number> = {
+                alegria: figureData.perceptionCounts?.alegria ?? 0,
+                envidia: figureData.perceptionCounts?.envidia ?? 0,
+                tristeza: figureData.perceptionCounts?.tristeza ?? 0,
+                miedo: figureData.perceptionCounts?.miedo ?? 0,
+                desagrado: figureData.perceptionCounts?.desagrado ?? 0,
+                furia: figureData.perceptionCounts?.furia ?? 0,
+            };
 
-            if (previousEmotion) {
-                newCounts[previousEmotion] = Math.max(0, (newCounts[previousEmotion] || 1) - 1);
+            const previousEmotion = userVoteDoc.exists ? (userVoteDoc.data() as UserPerception).emotion : null;
+            
+            // Decrement the previous vote count if it exists
+            if (previousEmotion && newCounts[previousEmotion]) {
+                newCounts[previousEmotion] = Math.max(0, newCounts[previousEmotion] - 1);
             }
+
+            // Increment the new vote count if a new emotion is provided
             if (emotionKey) {
                 newCounts[emotionKey] = (newCounts[emotionKey] || 0) + 1;
             }
+            // **CORRECTION END**
 
+            // Update the figure document with the new counts
             transaction.update(figureDocRef, { perceptionCounts: newCounts });
 
+            // Update the user's individual vote document
             if (emotionKey) {
                 transaction.set(userVoteDocRef, { userId: uid, figureId, emotion: emotionKey, timestamp: admin.firestore.FieldValue.serverTimestamp() });
             } else if (userVoteDoc.exists) {
+                // If the user is un-voting, delete their vote document
                 transaction.delete(userVoteDocRef);
             }
         });
-        return { success: true };
+        return { success: true, message: "Vote processed successfully." };
     } catch (error) {
         console.error("Error in updateEmotionVote transaction:", error);
         if (error instanceof HttpsError) throw error;
-        throw new HttpsError('internal', 'Could not process emotion vote.');
+        throw new HttpsError('internal', 'Could not process emotion vote due to a server error.');
     }
 });
 
@@ -271,3 +285,5 @@ export const updateEmotionVote = onCall(async (request) => {
 import "./notifications";
 // Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.
 import "./triggers";
+
+    
