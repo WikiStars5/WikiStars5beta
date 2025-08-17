@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -203,7 +204,10 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
           if (docSnap.exists()) {
             setNewCommentStars(docSnap.data().starValue as StarValue);
           } else {
-            setNewCommentStars(null);
+            // Only clear if not already set by local storage to avoid flicker
+            if (newCommentStars === null) {
+              setNewCommentStars(null);
+            }
           }
         }).catch(error => console.error("Error syncing star rating from Firestore:", error));
 
@@ -1011,3 +1015,5 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         </>
     );
 }
+
+    
