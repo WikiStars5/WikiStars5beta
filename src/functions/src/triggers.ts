@@ -48,14 +48,10 @@ export const onCommentDeleted = onDocumentDeleted("userComments/{commentId}", as
 });
 
 // This new trigger will atomically update the star rating counters on a figure document.
+// This is the robust, final version.
 export const onStarRatingWritten = onDocumentWritten("userStarRatings/{ratingId}", async (event) => {
     const beforeData = event.data?.before.data();
     const afterData = event.data?.after.data();
-
-    if (!beforeData && !afterData) {
-        console.log("No data found in event, exiting.");
-        return;
-    }
 
     const figureId = (beforeData?.figureId || afterData?.figureId) as string;
     if (!figureId) {
@@ -65,6 +61,15 @@ export const onStarRatingWritten = onDocumentWritten("userStarRatings/{ratingId}
     
     const figureRef = db.collection("figures").doc(figureId);
 
+    // Determine the change in star ratings
+    const oldStar = beforeData?.starValue as number | undefined;
+    const newStar = afterData?.starValue as number | undefined;
+
+    // Do nothing if the star value hasn't changed.
+    if (oldStar === newStar) {
+        return;
+    }
+
     try {
         await db.runTransaction(async (transaction) => {
             const figureDoc = await transaction.get(figureRef);
@@ -73,31 +78,45 @@ export const onStarRatingWritten = onDocumentWritten("userStarRatings/{ratingId}
                 return;
             }
 
-            const currentCounts = figureDoc.data()?.starRatingCounts || { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
-            const newCounts = { ...currentCounts };
+            // Securely initialize counts to avoid errors with undefined fields.
+            const currentCounts = figureDoc.data()?.starRatingCounts || {};
+            const updates: { [key: string]: admin.firestore.FieldValue } = {};
 
-            // Rating was removed
-            if (beforeData && !afterData) {
-                const oldStar = beforeData.starValue.toString() as StarValueAsString;
-                newCounts[oldStar] = Math.max(0, (newCounts[oldStar] || 0) - 1);
+            // If a rating was removed (document deleted)
+            if (oldStar && !newStar) {
+                const oldStarKey: StarValueAsString = oldStar.toString() as StarValueAsString;
+                updates[`starRatingCounts.${oldStarKey}`] = admin.firestore.FieldValue.increment(-1);
             } 
-            // Rating was added
-            else if (!beforeData && afterData) {
-                const newStar = afterData.starValue.toString() as StarValueAsString;
-                newCounts[newStar] = (newCounts[newStar] || 0) + 1;
+            // If a rating was added (document created)
+            else if (!oldStar && newStar) {
+                const newStarKey: StarValueAsString = newStar.toString() as StarValueAsString;
+                updates[`starRatingCounts.${newStarKey}`] = admin.firestore.FieldValue.increment(1);
             }
-            // Rating was changed
-            else if (beforeData && afterData && beforeData.starValue !== afterData.starValue) {
-                const oldStar = beforeData.starValue.toString() as StarValueAsString;
-                const newStar = afterData.starValue.toString() as StarValueAsString;
-                newCounts[oldStar] = Math.max(0, (newCounts[oldStar] || 0) - 1);
-                newCounts[newStar] = (newCounts[newStar] || 0) + 1;
-            } else {
-                // No change in value, no need to update.
-                return;
+            // If a rating was changed (document updated)
+            else if (oldStar && newStar) {
+                const oldStarKey: StarValueAsString = oldStar.toString() as StarValueAsString;
+                const newStarKey: StarValueAsString = newStar.toString() as StarValueAsString;
+                updates[`starRatingCounts.${oldStarKey}`] = admin.firestore.FieldValue.increment(-1);
+                updates[`starRatingCounts.${newStarKey}`] = admin.firestore.FieldValue.increment(1);
             }
             
-            transaction.update(figureRef, { starRatingCounts: newCounts });
+            // Only commit the transaction if there are updates to be made.
+            if (Object.keys(updates).length > 0) {
+                 // Before updating, ensure the count fields exist to avoid errors.
+                const newFigureData = { starRatingCounts: { ...currentCounts } };
+                if (oldStar) {
+                    const oldStarKey = oldStar.toString() as StarValueAsString;
+                    if (!newFigureData.starRatingCounts[oldStarKey]) newFigureData.starRatingCounts[oldStarKey] = 0;
+                }
+                if (newStar) {
+                    const newStarKey = newStar.toString() as StarValueAsString;
+                    if (!newFigureData.starRatingCounts[newStarKey]) newFigureData.starRatingCounts[newStarKey] = 0;
+                }
+                // First, ensure fields exist with a merge
+                transaction.set(figureRef, newFigureData, { merge: true });
+                // Then, apply the atomic increments
+                transaction.update(figureRef, updates);
+            }
         });
         console.log(`Successfully updated star counts for figure ${figureId}.`);
     } catch (e) {
