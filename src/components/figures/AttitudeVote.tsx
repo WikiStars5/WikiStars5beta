@@ -73,19 +73,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     });
 
     if (currentUser) {
-        try {
-            const localAttitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
-            if (localAttitudesJSON) {
-                const localAttitudes: Attitude[] = JSON.parse(localAttitudesJSON);
-                const currentVote = localAttitudes.find(a => a.figureId === figureId);
-                if (currentVote) {
-                    setSelectedAttitude(currentVote.attitude);
-                }
-            }
-        } catch (e) {
-            console.error("Failed to read attitudes from localStorage", e);
-        }
-
         const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
         getDoc(userVoteDocRef).then(docSnap => {
             if (docSnap.exists()) {
@@ -117,13 +104,18 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
     setIsLoadingAttitudeAction(attitudeKeyClicked);
     
-    const newAttitudeToSet = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
-    
     const previousSelectedAttitude = selectedAttitude;
+    const newAttitudeToSet = previousSelectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
+    
+    // Optimistic UI update
     setSelectedAttitude(newAttitudeToSet);
 
     try {
-      await updateAttitudeVoteCallable({ figureId, attitudeKey: newAttitudeToSet });
+      await updateAttitudeVoteCallable({ 
+        figureId, 
+        attitudeKey: newAttitudeToSet,
+        previousAttitude: previousSelectedAttitude
+      });
 
       try {
         const localAttitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
@@ -158,6 +150,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     } catch (error: any) {
       console.error("Error calling updateAttitudeVote:", error);
       toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
+      // Revert optimistic update on failure
       setSelectedAttitude(previousSelectedAttitude);
     } finally {
         setIsLoadingAttitudeAction(null);
@@ -237,3 +230,5 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     </Card>
   );
 };
+
+    

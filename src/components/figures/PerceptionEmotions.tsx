@@ -69,19 +69,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     });
 
     if (currentUser) {
-        try {
-            const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
-            if (localEmotionsJSON) {
-                const localEmotions: EmotionVote[] = JSON.parse(localEmotionsJSON);
-                const currentVote = localEmotions.find(e => e.figureId === figureId);
-                if (currentVote) {
-                    setSelectedEmotion(currentVote.emotion);
-                }
-            }
-        } catch (e) {
-            console.error("Failed to read emotions from localStorage", e);
-        }
-
         const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
         getDoc(userVoteDocRef).then(docSnap => {
             if (docSnap.exists()) {
@@ -113,12 +100,18 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     
     setIsLoadingEmotionAction(emotionKeyClicked);
     
-    const newEmotionToSet = selectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
     const previousSelectedEmotion = selectedEmotion;
+    const newEmotionToSet = previousSelectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
+    
+    // Optimistic UI update
     setSelectedEmotion(newEmotionToSet); 
     
     try {
-        await updateEmotionVoteCallable({ figureId, emotionKey: newEmotionToSet });
+        await updateEmotionVoteCallable({ 
+          figureId, 
+          emotionKey: newEmotionToSet,
+          previousEmotion: previousSelectedEmotion
+        });
 
         try {
             const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
@@ -153,6 +146,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     } catch (error: any) {
         console.error("Error calling updateEmotionVote:", error);
         toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
+        // Revert optimistic UI on failure
         setSelectedEmotion(previousSelectedEmotion);
     } finally {
       setIsLoadingEmotionAction(null);
@@ -238,3 +232,5 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     </Card>
   );
 };
+
+    
