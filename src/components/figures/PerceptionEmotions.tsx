@@ -1,11 +1,10 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import type { Figure, EmotionKey, EmotionVote } from '@/lib/types';
-import { db, app } from '@/lib/firebase';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import React, { useState, useEffect, useCallback } from 'react';
+import type { Figure, EmotionKey, EmotionVote, UserPerception } from '@/lib/types';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot, getDoc, runTransaction, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import type { User } from 'firebase/auth'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,16 +16,12 @@ import Image from 'next/image';
 import { ShareButton } from '../shared/ShareButton';
 import { grantEmocionAlDescubiertoAchievement } from '@/app/actions/achievementActions';
 
-const updateEmotionVoteCallable = httpsCallable(getFunctions(app), 'updateEmotionVote');
-
 interface PerceptionEmotionsProps {
   figureId: string;
   figureName: string;
   initialPerceptionCounts?: Record<EmotionKey, number>;
   currentUser: User | null; 
 }
-
-const FIREBASE_PROJECT_ID = "wikistars5-2yctr"; 
 
 const EMOTIONS_CONFIG: { key: EmotionKey; label: string; imageUrl: string; colorClass: string }[] = [
   { key: 'alegria', label: 'Alegría', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414`, colorClass: 'hover:bg-yellow-400/20 border-yellow-500 text-yellow-600' },
@@ -115,34 +110,62 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     
     setIsLoadingEmotionAction(emotionKeyClicked);
     
-    const previousEmotion = selectedEmotion;
-    const newSelectedEmotion = previousEmotion === emotionKeyClicked ? null : emotionKeyClicked;
-
+    const userVoteDocRef = doc(db, 'userEmotions', `${currentUser.uid}_${figureId}`);
+    const figureDocRef = doc(db, 'figures', figureId);
+    const newEmotionToSet = selectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
+    
     try {
-        await updateEmotionVoteCallable({ figureId, emotion: emotionKeyClicked });
-        setSelectedEmotion(newSelectedEmotion); // Update state after successful call
+        await runTransaction(db, async (transaction) => {
+            const userVoteDoc = await transaction.get(userVoteDocRef);
+            const figureDoc = await transaction.get(figureDocRef);
+
+            if (!figureDoc.exists()) {
+                throw new Error("La figura no existe.");
+            }
+
+            const previousEmotion = userVoteDoc.exists ? (userVoteDoc.data() as UserPerception).emotion : null;
+            const currentCounts = (figureDoc.data()?.perceptionCounts || { ...defaultPerceptionCountsData }) as Record<EmotionKey, number>;
+            const newCounts = { ...currentCounts };
+
+            if (previousEmotion) {
+                newCounts[previousEmotion] = Math.max(0, (newCounts[previousEmotion] || 0) - 1);
+            }
+            if (newEmotionToSet) {
+                newCounts[newEmotionToSet] = (newCounts[newEmotionToSet] || 0) + 1;
+            }
+
+            transaction.update(figureDocRef, { perceptionCounts: newCounts });
+            
+            if (newEmotionToSet) {
+                transaction.set(userVoteDocRef, { userId: currentUser.uid, figureId, emotion: newEmotionToSet, timestamp: serverTimestamp() });
+            } else {
+                transaction.delete(userVoteDocRef);
+            }
+        });
+
+        setSelectedEmotion(newEmotionToSet); 
       
         // --- Update Local Storage for instant profile reflection ---
         try {
             const localEmotionsJSON = localStorage.getItem('wikistars5-userEmotions');
             let localEmotions: EmotionVote[] = localEmotionsJSON ? JSON.parse(localEmotionsJSON) : [];
             localEmotions = localEmotions.filter(e => e.figureId !== figureId); // Remove old emotion
-            if (newSelectedEmotion) {
-                localEmotions.push({ figureId, emotion: newSelectedEmotion, addedAt: new Date().toISOString() });
+            if (newEmotionToSet) {
+                localEmotions.push({ figureId, emotion: newEmotionToSet, addedAt: new Date().toISOString() });
             }
             localStorage.setItem('wikistars5-userEmotions', JSON.stringify(localEmotions));
         } catch (e) {
             console.error("Failed to update emotions in localStorage", e);
         }
 
-        if (!currentUser.isAnonymous && newSelectedEmotion) {
+        if (!currentUser.isAnonymous && newEmotionToSet) {
             const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
             if (achievementResult.unlocked) {
                 toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
             }
         }
         
-        if (newSelectedEmotion) {
+        if (newEmotionToSet) {
             toast({
                 title: "¡Voto Registrado!",
                 description: `Tu percepción ha sido guardada. ¡Invita a otros a votar!`,
@@ -154,9 +177,8 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         }
 
     } catch (error: any) {
-        console.error("Error calling updateEmotionVote function:", error);
+        console.error("Error in emotion vote transaction:", error);
         toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
-        setSelectedEmotion(previousEmotion); // Revert UI on error
     } finally {
       setIsLoadingEmotionAction(null);
     }

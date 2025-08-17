@@ -9,9 +9,9 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
-import type { UserProfile, AttitudeKey, EmotionKey } from "./types";
+import type { UserProfile } from "./types";
 import { COUNTRIES } from "./countries";
-import type { DocumentData, FieldValue } from "firebase-admin/firestore";
+import type { DocumentData } from "firebase-admin/firestore";
 
 // Centralized Admin UID for security checks.
 const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
@@ -94,84 +94,6 @@ export const updateUserProfile = onCall(async (request) => {
         console.error("Error updating user profile:", error);
         throw new HttpsError('internal', 'Could not update profile.');
     }
-});
-
-export const updateAttitudeVote = onCall(async (request) => {
-    // This now allows authenticated requests, which includes anonymous users.
-    if (!request.auth) throw new HttpsError('unauthenticated', 'You must be authenticated to vote.');
-    
-    const uid = request.auth.uid;
-    const { figureId, attitude } = request.data as { figureId: string, attitude: AttitudeKey };
-
-    const userVoteDocRef = db.collection('userAttitudes').doc(`${uid}_${figureId}`);
-    const figureDocRef = db.collection('figures').doc(figureId);
-
-    return db.runTransaction(async (transaction) => {
-        const userVoteDoc = await transaction.get(userVoteDocRef);
-        const previousAttitude = userVoteDoc.exists ? userVoteDoc.data()?.attitude as AttitudeKey : null;
-
-        const updates: { [key: string]: FieldValue } = {};
-        const newVote = previousAttitude === attitude ? null : attitude;
-
-        if (previousAttitude) {
-            updates[`attitudeCounts.${previousAttitude}`] = admin.firestore.FieldValue.increment(-1);
-        }
-        if (newVote) {
-            updates[`attitudeCounts.${newVote}`] = admin.firestore.FieldValue.increment(1);
-        }
-
-        transaction.update(figureDocRef, updates);
-
-        if (newVote) {
-            transaction.set(userVoteDocRef, { userId: uid, figureId, attitude: newVote, timestamp: admin.firestore.FieldValue.serverTimestamp() });
-        } else {
-            transaction.delete(userVoteDocRef);
-        }
-
-        return { success: true, newVote };
-    }).catch(error => {
-        console.error("Attitude vote transaction failed:", error);
-        throw new HttpsError('internal', 'The vote could not be processed.');
-    });
-});
-
-export const updateEmotionVote = onCall(async (request) => {
-    // This now allows authenticated requests, which includes anonymous users.
-    if (!request.auth) throw new HttpsError('unauthenticated', 'You must be authenticated to vote.');
-
-    const uid = request.auth.uid;
-    const { figureId, emotion } = request.data as { figureId: string, emotion: EmotionKey };
-
-    const userVoteDocRef = db.collection('userEmotions').doc(`${uid}_${figureId}`);
-    const figureDocRef = db.collection('figures').doc(figureId);
-
-    return db.runTransaction(async (transaction) => {
-        const userVoteDoc = await transaction.get(userVoteDocRef);
-        const previousEmotion = userVoteDoc.exists ? userVoteDoc.data()?.emotion as EmotionKey : null;
-        
-        const updates: { [key: string]: FieldValue } = {};
-        const newVote = previousEmotion === emotion ? null : emotion;
-
-        if (previousEmotion) {
-            updates[`perceptionCounts.${previousEmotion}`] = admin.firestore.FieldValue.increment(-1);
-        }
-        if (newVote) {
-            updates[`perceptionCounts.${newVote}`] = admin.firestore.FieldValue.increment(1);
-        }
-        
-        transaction.update(figureDocRef, updates);
-
-        if (newVote) {
-            transaction.set(userVoteDocRef, { userId: uid, figureId, emotion: newVote, timestamp: admin.firestore.FieldValue.serverTimestamp() });
-        } else {
-            transaction.delete(userVoteDocRef);
-        }
-        
-        return { success: true, newVote };
-    }).catch(error => {
-        console.error("Emotion vote transaction failed:", error);
-        throw new HttpsError('internal', 'The vote could not be processed.');
-    });
 });
 
 

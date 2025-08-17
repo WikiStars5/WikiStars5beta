@@ -1,11 +1,10 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import type { Figure, AttitudeKey, Attitude } from '@/lib/types';
-import { db, app } from '@/lib/firebase';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import React, { useState, useEffect, useCallback } from 'react';
+import type { Figure, AttitudeKey, Attitude, UserAttitude } from '@/lib/types';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot, getDoc, runTransaction, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,8 +15,6 @@ import Link from 'next/link';
 import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
-
-const updateAttitudeVoteCallable = httpsCallable(getFunctions(app), 'updateAttitudeVote');
 
 interface AttitudeVoteProps {
   figureId: string;
@@ -117,35 +114,67 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
     setIsLoadingAttitudeAction(attitudeKeyClicked);
     
-    const previousAttitude = selectedAttitude;
-    const newSelectedAttitude = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
-    
+    const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
+    const figureDocRef = doc(db, 'figures', figureId);
+    const newAttitudeToSet = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
+
     try {
-      await updateAttitudeVoteCallable({ figureId, attitude: attitudeKeyClicked });
-      setSelectedAttitude(newSelectedAttitude); // Update state after successful call
+      await runTransaction(db, async (transaction) => {
+        const userVoteDoc = await transaction.get(userVoteDocRef);
+        const figureDoc = await transaction.get(figureDocRef);
+
+        if (!figureDoc.exists()) {
+          throw new Error("La figura no existe.");
+        }
+
+        const previousAttitude = userVoteDoc.exists ? (userVoteDoc.data() as UserAttitude).attitude : null;
+        const currentCounts = (figureDoc.data()?.attitudeCounts || { ...defaultAttitudeCountsData }) as Record<AttitudeKey, number>;
+        const newCounts = { ...currentCounts };
+
+        // Decrement the old vote if it exists
+        if (previousAttitude) {
+          newCounts[previousAttitude] = Math.max(0, (newCounts[previousAttitude] || 0) - 1);
+        }
+        
+        // Increment the new vote if it's different from the old one
+        if (newAttitudeToSet) {
+          newCounts[newAttitudeToSet] = (newCounts[newAttitudeToSet] || 0) + 1;
+        }
+
+        // Update the figure document
+        transaction.update(figureDocRef, { attitudeCounts: newCounts });
+
+        // Update or delete the user's vote document
+        if (newAttitudeToSet) {
+          transaction.set(userVoteDocRef, { userId: currentUser.uid, figureId, attitude: newAttitudeToSet, timestamp: serverTimestamp() });
+        } else {
+          transaction.delete(userVoteDocRef);
+        }
+      });
+      
+      setSelectedAttitude(newAttitudeToSet);
 
       // --- Update Local Storage for instant profile reflection ---
       try {
         const localAttitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
         let localAttitudes: Attitude[] = localAttitudesJSON ? JSON.parse(localAttitudesJSON) : [];
         localAttitudes = localAttitudes.filter(a => a.figureId !== figureId); // Remove old attitude
-        if (newSelectedAttitude) {
-            localAttitudes.push({ figureId, attitude: newSelectedAttitude, addedAt: new Date().toISOString() });
+        if (newAttitudeToSet) {
+            localAttitudes.push({ figureId, attitude: newAttitudeToSet, addedAt: new Date().toISOString() });
         }
         localStorage.setItem('wikistars5-userAttitudes', JSON.stringify(localAttitudes));
       } catch (e) {
           console.error("Failed to update attitudes in localStorage", e);
       }
 
-
-      if (!currentUser.isAnonymous && newSelectedAttitude) {
+      if (!currentUser.isAnonymous && newAttitudeToSet) {
           const achievementResult = await grantActitudDefinidaAchievement(currentUser.uid);
           if (achievementResult.unlocked) {
               toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
           }
       }
       
-      if (newSelectedAttitude) {
+      if (newAttitudeToSet) {
           toast({
               title: "¡Voto Registrado!",
               description: "¡Gracias por tu voto! Compártelo para ver qué opinan los demás.",
@@ -157,9 +186,8 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       }
 
     } catch (error: any) {
-      console.error("Error calling updateAttitudeVote function:", error);
+      console.error("Error in attitude vote transaction:", error);
       toast({ title: "Error al Votar", description: error.message || "No se pudo registrar tu voto.", variant: "destructive" });
-      setSelectedAttitude(previousAttitude); // Revert UI on error
     } finally {
         setIsLoadingAttitudeAction(null);
     }
