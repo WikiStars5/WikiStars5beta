@@ -435,14 +435,6 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
         const commentsCollectionRef = collection(db, 'userComments');
         
         try {
-            const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
-            let localRatings: UserStarRating[] = localRatingsJSON ? JSON.parse(localRatingsJSON) : [];
-            localRatings = localRatings.filter(r => r.figureId !== figure.id);
-            if (newCommentStars) {
-                localRatings.push({ userId: currentUser.uid, figureId: figure.id, starValue: newCommentStars, timestamp: new Date() as any });
-            }
-            localStorage.setItem('wikistars5-userStarRatings', JSON.stringify(localRatings));
-
             const newCommentRef = doc(commentsCollectionRef);
             const commentData: any = {
                 id: newCommentRef.id,
@@ -473,18 +465,20 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
             
             const batch = writeBatch(db);
             batch.set(newCommentRef, commentData);
-            if (canRateWithStars) {
-                if (newCommentStars) {
-                    batch.set(userStarRatingDocRef, { 
-                        userId: currentUser.uid,
-                        figureId: figure.id,
-                        starValue: newCommentStars,
-                        timestamp: serverTimestamp(),
-                    });
-                } else {
-                    batch.delete(userStarRatingDocRef);
-                }
+
+            // Only write to userStarRatings if a star value is actually set
+            if (canRateWithStars && newCommentStars) {
+                batch.set(userStarRatingDocRef, { 
+                    userId: currentUser.uid,
+                    figureId: figure.id,
+                    starValue: newCommentStars,
+                    timestamp: serverTimestamp(),
+                });
+            } else if (canRateWithStars && !newCommentStars) {
+                // If the user can rate but has not selected any stars, it means they might be clearing a previous rating.
+                batch.delete(userStarRatingDocRef);
             }
+
             await batch.commit();
         
         updateLocalStreak();
