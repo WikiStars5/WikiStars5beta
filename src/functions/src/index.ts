@@ -1,5 +1,4 @@
 
-
 /**
  * This file is the new home for all server-side logic that requires admin privileges.
  */
@@ -9,7 +8,7 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
-import type { UserProfile } from "./types";
+import type { UserProfile, AttitudeKey, EmotionKey, UserAttitude, UserPerception } from "./types";
 import { COUNTRIES } from "./countries";
 import type { DocumentData } from "firebase-admin/firestore";
 
@@ -165,6 +164,107 @@ export const getAllUsers = onCall(async (request) => {
     }
 });
 
+
+export const updateAttitudeVote = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'You must be logged in to vote.');
+    }
+    const uid = request.auth.uid;
+    const { figureId, attitudeKey } = request.data as { figureId: string; attitudeKey: AttitudeKey | null };
+
+    if (!figureId) {
+        throw new HttpsError('invalid-argument', 'Figure ID is required.');
+    }
+    
+    const userVoteDocRef = db.collection('userAttitudes').doc(`${uid}_${figureId}`);
+    const figureDocRef = db.collection('figures').doc(figureId);
+
+    try {
+        await db.runTransaction(async (transaction) => {
+            const userVoteDoc = await transaction.get(userVoteDocRef);
+            const figureDoc = await transaction.get(figureDocRef);
+
+            if (!figureDoc.exists) {
+                throw new HttpsError('not-found', 'Figure not found.');
+            }
+
+            const previousAttitude = userVoteDoc.exists ? (userVoteDoc.data() as UserAttitude).attitude : null;
+            const newCounts = { ...(figureDoc.data()?.attitudeCounts || {}) };
+
+            if (previousAttitude) {
+                newCounts[previousAttitude] = Math.max(0, (newCounts[previousAttitude] || 1) - 1);
+            }
+            if (attitudeKey) {
+                newCounts[attitudeKey] = (newCounts[attitudeKey] || 0) + 1;
+            }
+
+            transaction.update(figureDocRef, { attitudeCounts: newCounts });
+
+            if (attitudeKey) {
+                transaction.set(userVoteDocRef, { userId: uid, figureId, attitude: attitudeKey, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+            } else if (userVoteDoc.exists) {
+                transaction.delete(userVoteDocRef);
+            }
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error in updateAttitudeVote transaction:", error);
+        if (error instanceof HttpsError) throw error;
+        throw new HttpsError('internal', 'Could not process attitude vote.');
+    }
+});
+
+export const updateEmotionVote = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'You must be logged in to vote.');
+    }
+    const uid = request.auth.uid;
+    const { figureId, emotionKey } = request.data as { figureId: string; emotionKey: EmotionKey | null };
+
+    if (!figureId) {
+        throw new HttpsError('invalid-argument', 'Figure ID is required.');
+    }
+    
+    const userVoteDocRef = db.collection('userEmotions').doc(`${uid}_${figureId}`);
+    const figureDocRef = db.collection('figures').doc(figureId);
+
+    try {
+        await db.runTransaction(async (transaction) => {
+            const userVoteDoc = await transaction.get(userVoteDocRef);
+            const figureDoc = await transaction.get(figureDocRef);
+
+            if (!figureDoc.exists) {
+                throw new HttpsError('not-found', 'Figure not found.');
+            }
+
+            const previousEmotion = userVoteDoc.exists() ? (userVoteDoc.data() as UserPerception).emotion : null;
+            const newCounts = { ...(figureDoc.data()?.perceptionCounts || {}) };
+
+            if (previousEmotion) {
+                newCounts[previousEmotion] = Math.max(0, (newCounts[previousEmotion] || 1) - 1);
+            }
+            if (emotionKey) {
+                newCounts[emotionKey] = (newCounts[emotionKey] || 0) + 1;
+            }
+
+            transaction.update(figureDocRef, { perceptionCounts: newCounts });
+
+            if (emotionKey) {
+                transaction.set(userVoteDocRef, { userId: uid, figureId, emotion: emotionKey, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+            } else if (userVoteDoc.exists) {
+                transaction.delete(userVoteDocRef);
+            }
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error in updateEmotionVote transaction:", error);
+        if (error instanceof HttpsError) throw error;
+        throw new HttpsError('internal', 'Could not process emotion vote.');
+    }
+});
+
+
 // Import notifications logic so it gets deployed
 import "./notifications";
+// Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.
 import "./triggers";
