@@ -16,16 +16,8 @@ interface FigureListItemProps {
 }
 
 export function FigureListItem({ figure, cardStyle = 'default' }: FigureListItemProps) {
-  const counts = figure.starRatingCounts || { "1":0,"2":0,"3":0,"4":0,"5":0 };
-  const totalVotes = Object.values(counts).reduce((sum, count) => sum + count, 0);
-  
-  let weightedSum = 0;
-  for (const starKey in counts) {
-    const starValue = parseInt(starKey) as StarValue;
-    weightedSum += counts[starKey as StarValueAsString] * starValue;
-  }
-  
-  const averageRating = totalVotes > 0 ? parseFloat((weightedSum / totalVotes).toFixed(1)) : 0;
+  const totalVotes = figure.reviewCount ?? 0;
+  const averageRating = figure.overallRating ?? 0;
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
 
   if (cardStyle === 'playstore') {

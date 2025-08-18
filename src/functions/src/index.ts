@@ -165,5 +165,8 @@ export const getAllUsers = onCall(async (request) => {
     }
 });
 
-// Import triggers which now contains the review aggregation logic
+
+// Import notifications logic so it gets deployed
+import "./notifications";
+// Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.
 import "./triggers";
