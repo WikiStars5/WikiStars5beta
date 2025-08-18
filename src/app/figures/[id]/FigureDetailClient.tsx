@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -33,7 +32,6 @@ import {
 } from '@/app/actions/achievementActions';
 import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
-import { CommentSection } from "@/components/comments/CommentSection";
 import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
 import { doc, onSnapshot } from "firebase/firestore";
 import { mapDocToFigure } from "@/lib/placeholder-data";
@@ -135,8 +133,6 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
         </div> 
       </div>
       
-      <CommentSection figure={figure} />
-
       {viewerImageUrl && (
         <ImageGalleryViewer
             imageUrl={viewerImageUrl}
