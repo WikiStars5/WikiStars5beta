@@ -42,13 +42,13 @@ export interface Figure {
   eyeColor?: string; 
   distinctiveFeatures?: string; 
 
-  perceptionCounts?: Record<EmotionKey, number>;
-  attitudeCounts?: Record<AttitudeKey, number>;
+  perceptionCounts: Record<EmotionKey, number>;
+  attitudeCounts: Record<AttitudeKey, number>;
   
-  // New review and rating fields
-  overallRating?: number;
-  reviewCount?: number;
-  ratingDistribution?: Record<StarValueAsString, number>;
+  // New review and rating fields are now mandatory
+  overallRating: number;
+  reviewCount: number;
+  ratingDistribution: Record<StarValueAsString, number>;
 
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 

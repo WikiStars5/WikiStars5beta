@@ -12,7 +12,10 @@ interface RatingSummaryDisplayProps {
 }
 
 export function RatingSummaryDisplay({ figure }: RatingSummaryDisplayProps) {
-  const { overallRating = 0, reviewCount = 0, ratingDistribution } = figure;
+  // Use optional chaining and provide default values to prevent crashes if the fields are missing.
+  const overallRating = figure.overallRating ?? 0;
+  const reviewCount = figure.reviewCount ?? 0;
+  const ratingDistribution = figure.ratingDistribution;
 
   const defaultDistribution: Record<StarValueAsString, number> = { "5": 0, "4": 0, "3": 0, "2": 0, "1": 0 };
   const counts = ratingDistribution || defaultDistribution;

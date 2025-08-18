@@ -31,12 +31,12 @@ export interface Figure {
   eyeColor?: string; 
   distinctiveFeatures?: string; 
 
-  perceptionCounts?: Record<EmotionKey, number>;
-  attitudeCounts?: Record<AttitudeKey, number>;
+  perceptionCounts: Record<EmotionKey, number>;
+  attitudeCounts: Record<AttitudeKey, number>;
   
-  overallRating?: number;
-  reviewCount?: number;
-  ratingDistribution?: Record<StarValueAsString, number>;
+  overallRating: number;
+  reviewCount: number;
+  ratingDistribution: Record<StarValueAsString, number>;
 
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
