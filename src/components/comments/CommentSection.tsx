@@ -102,7 +102,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
   };
 
   const renderReviewItem = (review: Review) => {
-    const canDelete = currentUserProfile && (currentUserProfile.uid === review.userId || currentUserProfile.role === 'admin');
+    const canDelete = firebaseUser && (firebaseUser.uid === review.userId || currentUserProfile?.role === 'admin');
 
     return (
       <div key={review.id} className="flex items-start gap-4 py-4">
