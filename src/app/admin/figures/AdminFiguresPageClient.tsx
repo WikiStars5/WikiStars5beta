@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { Figure } from "@/lib/types";
-import { PlusCircle, Edit3, Star, Search as SearchIcon, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from "lucide-react";
+import { PlusCircle, Edit3, Star, Search as SearchIcon, ChevronLeft, ChevronRight, Loader2, AlertTriangle, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { AdminFigureImage } from "@/components/admin/AdminFigureImage";
 import { AdminDeleteFigureButton } from "@/components/admin/AdminDeleteFigureButton";
@@ -18,6 +18,7 @@ import { toggleFigureFeaturedStatus } from "@/app/actions/adminActions";
 import { getAdminFiguresList } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { DeleteAllFiguresButton } from "@/components/admin/DeleteAllFiguresButton";
 
 
 function AdminFiguresPageComponent() {
@@ -140,11 +141,14 @@ function AdminFiguresPageComponent() {
           <CardTitle className="text-2xl font-headline">Gestionar Figuras</CardTitle>
           <CardDescription>Crea, edita o elimina perfiles de figuras públicas de Firestore.</CardDescription>
         </div>
-        <Button asChild>
-          <Link href="/admin/figures/new">
-            <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nueva Figura
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+            <DeleteAllFiguresButton />
+            <Button asChild>
+              <Link href="/admin/figures/new">
+                <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nueva Figura
+              </Link>
+            </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="mb-6">
