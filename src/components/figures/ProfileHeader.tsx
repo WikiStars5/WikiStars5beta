@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Figure, FanFigure } from "@/lib/types";
@@ -16,8 +15,6 @@ interface ProfileHeaderProps {
   figure: Figure;
   currentUser: User | null;
   currentUserStreak: number | null;
-  isFan: boolean;
-  onFanToggle: () => void;
   onImageClick: (imageUrl: string) => void;
 }
 
@@ -25,24 +22,10 @@ export function ProfileHeader({
   figure, 
   currentUser,
   currentUserStreak,
-  isFan,
-  onFanToggle,
   onImageClick,
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
   const { toast } = useToast();
-
-  const handleFanClick = () => {
-    if (!currentUser) {
-      toast({
-        title: "Función para Fans",
-        description: "Inicia sesión o regístrate para añadir figuras a tu lista de fans.",
-        variant: "destructive"
-      });
-      return;
-    }
-    onFanToggle();
-  };
 
   return (
     <div className="w-full bg-black border border-white/20 p-4 sm:p-6 rounded-lg shadow-md">
@@ -93,18 +76,6 @@ export function ProfileHeader({
                     <span>Racha de días</span>
                   </Badge>
                 )}
-                 <Button 
-                    onClick={handleFanClick}
-                    variant={isFan ? 'default' : 'outline'}
-                    size="sm"
-                    className={cn(
-                        "gap-2 transition-all",
-                        isFan ? "bg-pink-600 hover:bg-pink-700 text-white border-pink-700" : "text-muted-foreground"
-                    )}
-                >
-                    <Heart className={cn("h-4 w-4", isFan && "fill-current")} />
-                    {isFan ? "Fan" : "Hacerse Fan"}
-                </Button>
             </div>
           </div>
         </div>

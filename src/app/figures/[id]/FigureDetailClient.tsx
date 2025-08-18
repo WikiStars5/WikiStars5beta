@@ -52,64 +52,10 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   const { toast } = useToast();
 
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
-  const [currentUserProfile, setCurrentUserProfile] = React.useState<any>(null); // To store Firestore profile
   
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   
   const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
-  const [isFan, setIsFan] = React.useState(false);
-
-  const checkIsFan = React.useCallback(() => {
-    if (!figure) return;
-    try {
-      const fanListJSON = localStorage.getItem('wikistars5-fan-list');
-      if (fanListJSON) {
-        const fanList: FanFigure[] = JSON.parse(fanListJSON);
-        const isFigureFan = fanList.some(f => f.id === figure.id);
-        setIsFan(isFigureFan);
-      } else {
-        setIsFan(false);
-      }
-    } catch (error) {
-      console.error("Error checking fan list:", error);
-      setIsFan(false);
-    }
-  }, [figure]);
-
-  React.useEffect(() => {
-    checkIsFan();
-  }, [checkIsFan]);
-
-  const handleFanToggle = () => {
-    if (!figure) return;
-    try {
-      const fanListJSON = localStorage.getItem('wikistars5-fan-list');
-      let fanList: FanFigure[] = fanListJSON ? JSON.parse(fanListJSON) : [];
-      
-      const isAlreadyFan = fanList.some(f => f.id === figure.id);
-      
-      if (isAlreadyFan) {
-        fanList = fanList.filter(f => f.id !== figure.id);
-        toast({ title: "Eliminado de Fans", description: `${figure.name} ya no está en tu lista de fans.` });
-      } else {
-        const newFan: FanFigure = {
-          id: figure.id,
-          name: figure.name,
-          photoUrl: figure.photoUrl,
-          addedAt: new Date().toISOString(),
-        };
-        fanList.push(newFan);
-        toast({ title: "¡Añadido a Fans!", description: `Has marcado a ${figure.name} como tu fan.` });
-      }
-      
-      localStorage.setItem('wikistars5-fan-list', JSON.stringify(fanList));
-      checkIsFan(); 
-      
-    } catch (error) {
-      console.error("Error toggling fan status:", error);
-      toast({ title: "Error", description: "No se pudo actualizar tu lista de fans.", variant: "destructive" });
-    }
-  };
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
@@ -149,8 +95,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
         figure={figure!} 
         currentUser={currentUser}
         currentUserStreak={null}
-        isFan={isFan}
-        onFanToggle={handleFanToggle}
         onImageClick={handleOpenProfileImage}
       />
 
