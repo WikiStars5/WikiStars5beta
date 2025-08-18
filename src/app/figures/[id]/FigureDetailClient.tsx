@@ -42,7 +42,7 @@ interface FigureDetailClientProps {
   initialFigure: Figure;
 }
 
-export default function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
+export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const routeParams = useParams<{ id: string }>();
   const id = routeParams?.id;
   const router = useRouter();

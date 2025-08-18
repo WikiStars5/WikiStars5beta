@@ -1,6 +1,6 @@
 import { getFigureFromFirestore } from "@/lib/placeholder-data";
 import { notFound } from "next/navigation";
-import FigureDetailClient from "./FigureDetailClient";
+import { FigureDetailClient } from "./FigureDetailClient";
 import type { Metadata, ResolvingMetadata } from 'next';
 
 interface FigurePageProps {
