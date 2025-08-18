@@ -5,10 +5,17 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, deleteDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Review } from '@/lib/types';
-import { getCurrentUser } from '@/app/actions/userActions';
+import type { DecodedIdToken } from 'firebase-admin/auth';
+import { getCurrentUser } from './userActions';
 
-
-export async function deleteReview(reviewId: string, figureId: string): Promise<{ success: boolean; message: string }> {
+// The function now accepts an optional DecodedIdToken.
+// When called from our secure API route, it will have the token.
+// When called from other server components (if any), it will use the header-based method.
+export async function deleteReview(
+  reviewId: string, 
+  figureId: string,
+  decodedToken?: DecodedIdToken
+): Promise<{ success: boolean; message: string }> {
   if (!reviewId) {
     return { success: false, message: 'ID de reseña no proporcionado.' };
   }
@@ -16,7 +23,7 @@ export async function deleteReview(reviewId: string, figureId: string): Promise<
   const reviewRef = doc(db, 'reviews', reviewId);
   
   try {
-    const currentUser = await getCurrentUser();
+    const currentUser = await getCurrentUser(decodedToken); // Pass the token here
     if (!currentUser) {
       return { success: false, message: 'No estás autenticado.' };
     }
@@ -37,7 +44,6 @@ export async function deleteReview(reviewId: string, figureId: string): Promise<
     
     await deleteDoc(reviewRef);
 
-    // This revalidation is now crucial because the trigger will update the figure doc
     revalidatePath(`/figures/${figureId}`);
 
     return { success: true, message: 'Reseña eliminada correctamente.' };

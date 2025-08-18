@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { revalidatePath } from 'next/cache';
 
 interface CommentSectionProps {
   figure: Figure;
@@ -93,18 +94,39 @@ export function CommentSection({ figure }: CommentSectionProps) {
   };
 
   const handleDeleteReview = async (reviewId: string) => {
-    // Optimistic UI update
+    if (!firebaseUser) {
+      toast({ title: "Error", description: "No estás autenticado.", variant: "destructive" });
+      return;
+    }
+
     const originalReviews = [...reviews];
     setReviews(reviews.filter(r => r.id !== reviewId));
 
-    const result = await deleteReview(reviewId, figure.id);
-    
-    if (result.success) {
-      toast({ title: "Reseña Eliminada", description: result.message });
-      // The real-time listener will handle the final state, so no need to manually re-add on failure unless it's critical
-    } else {
-      toast({ title: "Error", description: result.message, variant: "destructive" });
-      setReviews(originalReviews); // Revert if the deletion failed
+    try {
+      // This is the correct way to call a server action that requires authentication.
+      // We must get the token from the client and pass it in the Authorization header.
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch('/api/deleteReview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reviewId, figureId: figure.id }),
+      });
+      
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast({ title: "Reseña Eliminada", description: result.message });
+      } else {
+        toast({ title: "Error", description: result.message || "No se pudo eliminar la reseña.", variant: "destructive" });
+        setReviews(originalReviews); // Revert UI change on failure
+      }
+    } catch (error) {
+      console.error("Error calling delete review action:", error);
+      toast({ title: "Error de Red", description: "No se pudo comunicar con el servidor.", variant: "destructive" });
+      setReviews(originalReviews); // Revert UI change on failure
     }
   };
 
@@ -168,7 +190,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
       <CardContent>
         {isAuthLoading ? (
           <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
-        ) : firebaseUser ? (
+        ) : firebaseUser && !firebaseUser.isAnonymous ? (
           <div className="space-y-4">
             <div>
               <label className="font-medium text-sm">Tu Calificación</label>
