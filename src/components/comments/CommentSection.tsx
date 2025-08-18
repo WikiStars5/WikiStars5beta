@@ -169,24 +169,6 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
         }
     }, [starAudios]);
 
-    const loadLocalStarRating = React.useCallback(() => {
-      if (!currentUser || !figure?.id) return;
-      try {
-        const localRatingsJSON = localStorage.getItem('wikistars5-userStarRatings');
-        if (localRatingsJSON) {
-          const localRatings: UserStarRating[] = JSON.parse(localRatingsJSON);
-          const currentVote = localRatings.find(r => r.figureId === figure.id);
-          if (currentVote) {
-            setNewCommentStars(currentVote.starValue);
-          } else {
-            setNewCommentStars(null);
-          }
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }, [currentUser, figure?.id]);
-
     React.useEffect(() => {
       if (currentUser) {
         if (isAnonymous) {
@@ -198,7 +180,6 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
             setTempGuestGender(savedGuestGender);
           }
         }
-        loadLocalStarRating(); 
 
         const userStarRatingDocRef = doc(db, 'userStarRatings', `${currentUser.uid}_${figure.id}`);
         getDoc(userStarRatingDocRef).then(docSnap => {
@@ -213,7 +194,7 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
         setTempGuestUsername("");
         setTempGuestGender("");
       }
-    }, [figure?.id, currentUser, loadLocalStarRating, isAnonymous]);
+    }, [figure?.id, currentUser, isAnonymous]);
 
 
     React.useEffect(() => {
@@ -431,86 +412,101 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
         }
         setIsSubmittingComment(true);
         
+        const figureRef = doc(db, "figures", figure.id);
         const userStarRatingDocRef = doc(db, "userStarRatings", `${currentUser.uid}_${figure.id}`);
-        const commentsCollectionRef = collection(db, 'userComments');
+        const newCommentRef = doc(collection(db, 'userComments'));
         
         try {
-            const newCommentRef = doc(commentsCollectionRef);
-            const commentData: any = {
-                id: newCommentRef.id,
-                figureId: figure.id,
-                userId: currentUser.uid,
-                username: isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
-                userPhotoURL: currentUser.photoURL || null,
-                text: newComment.trim(),
-                starRatingGiven: canRateWithStars ? newCommentStars : null, 
-                createdAt: serverTimestamp(),
-                likes: 0,
-                dislikes: 0,
-                likedBy: [],
-                dislikedBy: [],
-                parentId: null,
-                replyCount: 0,
-                isAnonymous: isAnonymous,
-            };
+            await runTransaction(db, async (transaction) => {
+                const figureDoc = await transaction.get(figureRef);
+                const userRatingDoc = await transaction.get(userStarRatingDocRef);
 
-            if (isAnonymous) {
-                commentData.guestUsername = localStorage.getItem('wikistars5-guestUsername');
-                commentData.guestUsernameLower = localStorage.getItem('wikistars5-guestUsername')?.toLowerCase();
-                commentData.guestGender = localStorage.getItem('wikistars5-guestGender');
-                if (anonymousUserCountryCode) {
-                    commentData.userCountryCode = anonymousUserCountryCode;
+                if (!figureDoc.exists()) {
+                    throw new Error("La figura no existe.");
                 }
-            }
-            
-            const batch = writeBatch(db);
-            batch.set(newCommentRef, commentData);
 
-            // Only write to userStarRatings if a star value is actually set
-            if (canRateWithStars && newCommentStars) {
-                batch.set(userStarRatingDocRef, { 
-                    userId: currentUser.uid,
+                // Prepare comment data
+                const commentData: any = {
+                    id: newCommentRef.id,
                     figureId: figure.id,
-                    starValue: newCommentStars,
-                    timestamp: serverTimestamp(),
-                });
-            } else if (canRateWithStars && !newCommentStars) {
-                // If the user can rate but has not selected any stars, it means they might be clearing a previous rating.
-                batch.delete(userStarRatingDocRef);
+                    userId: currentUser.uid,
+                    username: isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
+                    userPhotoURL: currentUser.photoURL || null,
+                    text: newComment.trim(),
+                    starRatingGiven: canRateWithStars ? newCommentStars : null,
+                    createdAt: serverTimestamp(),
+                    likes: 0, dislikes: 0, likedBy: [], dislikedBy: [],
+                    parentId: null, replyCount: 0,
+                    isAnonymous: isAnonymous,
+                };
+
+                if (isAnonymous) {
+                    commentData.guestUsername = localStorage.getItem('wikistars5-guestUsername');
+                    commentData.guestUsernameLower = localStorage.getItem('wikistars5-guestUsername')?.toLowerCase();
+                    commentData.guestGender = localStorage.getItem('wikistars5-guestGender');
+                    if (anonymousUserCountryCode) commentData.userCountryCode = anonymousUserCountryCode;
+                }
+
+                // Logic to update star rating counts
+                if (canRateWithStars) {
+                    const currentCounts = figureDoc.data()?.starRatingCounts || { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
+                    const newCounts = { ...currentCounts };
+                    const oldStar = userRatingDoc.exists() ? userRatingDoc.data().starValue.toString() as StarValueAsString : null;
+                    const newStar = newCommentStars ? newCommentStars.toString() as StarValueAsString : null;
+
+                    if (oldStar !== newStar) {
+                        if (oldStar) {
+                            newCounts[oldStar] = Math.max(0, (newCounts[oldStar] || 0) - 1);
+                        }
+                        if (newStar) {
+                            newCounts[newStar] = (newCounts[newStar] || 0) + 1;
+                        }
+                        transaction.update(figureRef, { starRatingCounts: newCounts });
+                    }
+                    
+                    if (newStar) {
+                        transaction.set(userStarRatingDocRef, { 
+                            userId: currentUser.uid,
+                            figureId: figure.id,
+                            starValue: newCommentStars,
+                            timestamp: serverTimestamp(),
+                        });
+                    } else if(oldStar) {
+                        transaction.delete(userStarRatingDocRef);
+                    }
+                }
+                
+                // Set the new comment
+                transaction.set(newCommentRef, commentData);
+            });
+
+            // Post-transaction UI updates
+            updateLocalStreak();
+            if (newCommentStars && canRateWithStars) {
+                playSoundEffect(newCommentStars);
+            }
+            toast({
+                title: "¡Opinión Enviada!",
+                description: "¡Gracias por contribuir! Compártelo para que más gente opine.",
+                duration: 8000,
+                action: <ShareButton figureName={figure.name} figureId={figure.id} showText />,
+            });
+            
+            if (!isAnonymous) {
+                const achResult2 = await grantMiPrimeraContribucionAchievement(currentUser.uid);
+                if (achResult2.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult2.message });
+            }
+            if (isAnonymous && newCommentStars) {
+                const achResult1 = await grantEstrellaBrillanteAchievement(currentUser.uid);
+                if (achResult1.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult1.message });
             }
 
-            await batch.commit();
-        
-        updateLocalStreak();
-        
-        if (newCommentStars && canRateWithStars) {
-            playSoundEffect(newCommentStars);
-        }
-
-        toast({
-            title: "¡Opinión Enviada!",
-            description: "¡Gracias por contribuir! Compártelo para que más gente opine.",
-            duration: 8000,
-            action: (
-            <ShareButton figureName={figure.name} figureId={figure.id} showText />
-            ),
-        });
-        
-        if (!isAnonymous) {
-            const achResult2 = await grantMiPrimeraContribucionAchievement(currentUser.uid);
-            if (achResult2.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult2.message });
-        }
-        if (isAnonymous && newCommentStars) {
-            const achResult1 = await grantEstrellaBrillanteAchievement(currentUser.uid);
-            if (achResult1.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult1.message });
-        }
-
-
-        setNewComment("");
-        fetchComments(); 
-        onNewComment();
+            setNewComment("");
+            fetchComments();
+            onNewComment();
+            router.refresh();
         } catch (error: any) {
-            console.error("Error submitting opinion:", error);
+            console.error("Error submitting opinion transaction:", error);
             let errorMessage = `No se pudo enviar tu opinión. ${error.message}`;
             toast({ title: "Error al Enviar", description: errorMessage, variant: "destructive" });
         } finally {
