@@ -65,7 +65,6 @@ export interface Review {
     rating: StarValue;
     comment: string;
     createdAt: Timestamp;
-    likeCount?: number;
 }
 
 export interface UserPerception {

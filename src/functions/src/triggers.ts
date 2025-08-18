@@ -23,6 +23,15 @@ export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", as
 
     // Use a transaction to ensure atomic updates to the character document.
     return db.runTransaction(async (transaction) => {
+        // First, get the character document to merge with later.
+        const characterDoc = await transaction.get(characterRef);
+        if (!characterDoc.exists) {
+            console.error(`Character with id ${characterId} not found.`);
+            return;
+        }
+
+        const existingFigureData = characterDoc.data() as Figure;
+
         // Get all reviews for the specific character.
         const reviewsSnapshot = await transaction.get(db.collection("reviews").where("characterId", "==", characterId));
 
@@ -44,15 +53,17 @@ export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", as
             overallRating = totalRatingSum / reviewCount;
         }
 
-        // Prepare the data to update on the character's document.
-        const updateData: Partial<Figure> = {
+        // Prepare the data to update on the character's document by merging.
+        const updateData: Figure = {
+            ...existingFigureData,
+            id: characterId, // ensure id is set correctly
             reviewCount,
             overallRating: parseFloat(overallRating.toFixed(2)), // Keep it to 2 decimal places
             ratingDistribution
         };
         
         // Update the character document within the transaction.
-        transaction.update(characterRef, updateData);
+        transaction.set(characterRef, updateData);
         console.log(`Successfully updated ratings for character ${characterId}. Review count: ${reviewCount}, New average: ${overallRating}.`);
     }).catch(error => {
         console.error(`Transaction failed for character ${characterId}:`, error);
