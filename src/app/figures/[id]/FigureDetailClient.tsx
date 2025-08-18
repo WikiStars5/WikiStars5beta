@@ -24,7 +24,7 @@ import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
-import { auth as firebaseAuth } from "@/lib/firebase";
+import { auth as firebaseAuth, db } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { ShareButton } from "@/components/shared/ShareButton";
 import type { Figure } from "@/lib/types";
@@ -35,6 +35,8 @@ import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
 import { CommentSection } from "@/components/comments/CommentSection";
 import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
+import { doc, onSnapshot } from "firebase/firestore";
+import { mapDocToFigure } from "@/lib/placeholder-data";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -47,10 +49,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
   
-  React.useEffect(() => {
-      setFigure(initialFigure);
-  }, [initialFigure]);
-
   const { toast } = useToast();
 
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
@@ -75,6 +73,25 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     });
     return () => unsubscribe();
   }, [toast]); 
+
+  // Add a real-time listener to the figure document
+  React.useEffect(() => {
+    if (!id) return;
+    const figureDocRef = doc(db, 'figures', id);
+
+    const unsubscribe = onSnapshot(figureDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            setFigure(mapDocToFigure(docSnap));
+        } else {
+            console.warn(`Figure with id ${id} not found.`);
+            setFigure(null);
+        }
+    }, (error) => {
+        console.error("Error listening to figure document:", error);
+    });
+
+    return () => unsubscribe();
+  }, [id]);
 
 
   const handleOpenProfileImage = (imageUrl: string) => {
