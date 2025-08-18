@@ -1,7 +1,7 @@
 
 "use client";
 
-import * as React from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2, ImageOff, XCircle } from 'lucide-react';
@@ -36,15 +36,15 @@ export function SearchBar({
   className,
   onResultClick
 }: SearchBarProps) {
-  const [query, setQuery] = React.useState(initialQuery);
-  const [results, setResults] = React.useState<Figure[]>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
-  const [isInputActive, setIsInputActive] = React.useState(!startAsIcon);
-  const searchContainerRef = React.useRef<HTMLDivElement>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState(initialQuery);
+  const [results, setResults] = useState<Figure[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isInputActive, setIsInputActive] = useState(!startAsIcon);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const debouncedSearch = React.useCallback(
+  const debouncedSearch = useCallback(
     debounce(async (searchTerm: string) => {
       if (searchTerm.trim().length < 2) {
         setResults([]);
@@ -71,14 +71,14 @@ export function SearchBar({
     []
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isInputActive && initialQuery.trim().length >= 2) {
       debouncedSearch(initialQuery);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInputActive, initialQuery]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isInputActive && query.trim() === '') {
       setResults([]);
       setIsLoading(false);
@@ -90,7 +90,7 @@ export function SearchBar({
     }
   }, [query, debouncedSearch, isInputActive]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
