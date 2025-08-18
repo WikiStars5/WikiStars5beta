@@ -16,7 +16,7 @@ interface FiguresPageClientProps {
   endCursor: string | null;
 }
 
-export default function FiguresPageClient({
+export function FiguresPageClient({
   initialFigures,
   hasPrevPage,
   hasNextPage,

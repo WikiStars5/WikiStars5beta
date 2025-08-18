@@ -1,6 +1,6 @@
 
 import { getPublicFiguresList } from "@/lib/placeholder-data";
-import FiguresPageClient from "@/app/figures/FiguresPageClient";
+import { FiguresPageClient } from "@/app/figures/FiguresPageClient";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
