@@ -87,8 +87,8 @@ export function CommentSection({ figure }: CommentSectionProps) {
     }
     setIsSubmitting(true);
     try {
-        const idToken = await firebaseUser.getIdToken();
-        const result = await addReview(figure.id, comment, idToken);
+        // SIMPLIFIED: Direct call to the server action. Auth is handled on the server.
+        const result = await addReview(figure.id, comment);
         if (result.success) {
           setComment('');
           toast({ title: 'Éxito', description: result.message });
@@ -107,8 +107,8 @@ export function CommentSection({ figure }: CommentSectionProps) {
       toast({ title: 'Error', description: 'Debes estar autenticado para borrar.', variant: 'destructive' });
       return;
     }
-    const idToken = await firebaseUser.getIdToken();
-    const result = await deleteReview(reviewId, idToken);
+    // SIMPLIFIED: Direct call.
+    const result = await deleteReview(reviewId);
      if (result.success) {
       toast({ title: 'Éxito', description: result.message });
     } else {
