@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { Figure } from "@/lib/types";
-import { PlusCircle, Edit3, MessageSquare, Star, Search as SearchIcon, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from "lucide-react";
+import { PlusCircle, Edit3, Star, Search as SearchIcon, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { AdminFigureImage } from "@/components/admin/AdminFigureImage";
 import { AdminDeleteFigureButton } from "@/components/admin/AdminDeleteFigureButton";
@@ -168,7 +168,6 @@ function AdminFiguresPageComponent() {
                   <TableHead className="w-[80px] p-3">Imagen</TableHead>
                   <TableHead className="p-3">Nombre</TableHead>
                   <TableHead className="w-[130px] text-center p-3">Destacada</TableHead>
-                  <TableHead className="w-[130px] text-center p-3">Comentarios</TableHead>
                   <TableHead className="text-right w-[100px] p-3">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -193,12 +192,6 @@ function AdminFiguresPageComponent() {
                           aria-label={figure.isFeatured ? "Desmarcar como destacada" : "Marcar como destacada"}
                         />
                         {figure.isFeatured && <Star className="ml-2 h-4 w-4 text-yellow-400 fill-yellow-400" />}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center p-3">
-                      <div className="flex items-center justify-center">
-                        <MessageSquare className="h-4 w-4 mr-1 text-muted-foreground" />
-                        {figure.commentCount || 0}
                       </div>
                     </TableCell>
                     <TableCell className="text-right p-3">

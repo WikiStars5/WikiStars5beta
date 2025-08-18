@@ -1,6 +1,7 @@
+
 "use client";
 
-import type { Figure, FanFigure } from "@/lib/types";
+import type { Figure } from "@/lib/types";
 import Image from "next/image";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { correctMalformedUrl, cn } from "@/lib/utils";
@@ -13,15 +14,11 @@ import * as React from "react";
 
 interface ProfileHeaderProps {
   figure: Figure;
-  currentUser: User | null;
-  currentUserStreak: number | null;
   onImageClick: (imageUrl: string) => void;
 }
 
 export function ProfileHeader({ 
   figure, 
-  currentUser,
-  currentUserStreak,
   onImageClick,
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
@@ -68,15 +65,6 @@ export function ProfileHeader({
               </div>
             </div>
             
-            <div className="mt-4 flex items-center gap-4">
-                {currentUserStreak && (
-                  <Badge variant="secondary" className="border-orange-500/50 text-base gap-2 px-3 py-1 bg-orange-500/10 text-orange-400">
-                    <Flame className="h-4 w-4" />
-                    <span className="font-bold">{currentUserStreak}</span>
-                    <span>Racha de días</span>
-                  </Badge>
-                )}
-            </div>
           </div>
         </div>
     </div>

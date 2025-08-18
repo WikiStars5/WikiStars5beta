@@ -27,7 +27,7 @@ import { useParams, useRouter } from "next/navigation";
 import { auth as firebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { ShareButton } from "@/components/shared/ShareButton";
-import type { Figure, FanFigure } from "@/lib/types";
+import type { Figure } from "@/lib/types";
 import { 
   grantFirstGlanceAchievement,
 } from '@/app/actions/achievementActions';
@@ -93,8 +93,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       
       <ProfileHeader 
         figure={figure!} 
-        currentUser={currentUser}
-        currentUserStreak={null}
         onImageClick={handleOpenProfileImage}
       />
 

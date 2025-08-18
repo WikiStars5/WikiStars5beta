@@ -46,7 +46,6 @@ export interface Figure {
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
   starRatingCounts?: Record<StarValueAsString, number>;
-  commentCount?: number; 
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
@@ -102,46 +101,10 @@ export interface UserProfile {
   isAnonymous?: boolean;
 }
 
-export interface LocalUserStreak {
-  figureId: string;
-  figureName: string;
-  figurePhotoUrl: string;
-  currentStreak: number;
-  lastCommentDate: string; // Stored as 'YYYY-MM-DD'
-}
-
-export interface FanFigure {
-  id: string;
-  name: string;
-  photoUrl: string;
-  addedAt: string; // Stored as ISO string
-}
-
-
 export interface GenderOption {
   value: string;
   label: string;
   symbol?: string; // e.g., '♂', '♀'
-}
-
-export interface Notification {
-  id: string;
-  userId: string; // ID of the user to notify
-  actorId: string; // ID of the user who performed the action
-  actorName: string;
-  actorPhotoUrl: string | null;
-  type: 'reply' | 'like';
-  isRead: boolean;
-  figureId: string;
-  figureName: string;
-  commentId: string; // ID of the comment that was replied to or liked
-  replyId?: string; // ID of the reply itself, if applicable
-  createdAt: Timestamp;
-}
-
-// Definition for local notifications for guest users
-export interface GuestNotification extends Omit<Notification, 'createdAt'> {
-  createdAt: string; // ISO string for local storage
 }
 
 export interface CategoryOption {

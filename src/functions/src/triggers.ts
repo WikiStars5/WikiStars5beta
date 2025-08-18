@@ -1,3 +1,4 @@
 
-// All triggers related to comments and ratings have been removed as the feature was eliminated from the UI.
-// This file is kept in case other triggers are needed in the future.
+// This file is intentionally left blank.
+// All logic related to comments, ratings, and other triggers has been removed or relocated
+// to onCall functions to simplify the application and resolve previous issues.

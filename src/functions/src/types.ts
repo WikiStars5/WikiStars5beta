@@ -1,4 +1,5 @@
 
+
 // This file contains type definitions used exclusively by the Cloud Functions.
 // It is a copy of the relevant types from the main application's /lib/types.ts
 // to ensure the functions directory is completely isolated and has no external dependencies.
@@ -62,18 +63,4 @@ export interface Country {
   name: string;
   code: string;
   emoji: string;
-}
-
-// Type for storing attitude in localStorage or returning from Function
-export interface Attitude {
-  figureId: string;
-  attitude: AttitudeKey;
-  addedAt: string; // ISO String for the date
-}
-
-// Type for storing emotion vote in localStorage or returning from Function
-export interface EmotionVote {
-  figureId: string;
-  emotion: EmotionKey;
-  addedAt: string; // ISO String for the date
 }

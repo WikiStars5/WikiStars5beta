@@ -100,19 +100,3 @@ export async function grantCompartiendoLaVerdadAchievement(userId: string): Prom
         '¡La verdad se comparte! Has llevado la percepción real al mundo. ¡Gracias por difundir!'
     );
 }
-
-export async function grantMiPrimeraContribucionAchievement(userId: string): Promise<AchievementResult> {
-    return grantAchievement(
-        userId,
-        'primera_contribucion',
-        '¡El debate comienza! Tu comentario ha sido publicado. ¡Participa en la conversación!'
-    );
-}
-
-export async function grantDialogoAbiertoAchievement(userId: string): Promise<AchievementResult> {
-    return grantAchievement(
-        userId,
-        'dialogo_abierto',
-        '¡Interacción clave! Has enriquecido el diálogo. ¡La comunidad te lo agradece!'
-    );
-}
