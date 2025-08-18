@@ -27,7 +27,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { revalidatePath } from 'next/cache';
 
 interface CommentSectionProps {
   figure: Figure;
