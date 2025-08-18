@@ -1,7 +1,7 @@
 
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
-import type { Figure, StarValue, StarValueAsString } from "./types";
+import type { StarValue, StarValueAsString } from "./types";
 
 const db = admin.firestore();
 
@@ -45,16 +45,13 @@ export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", as
         }
 
         // Prepare the data to update on the character's document.
-        // This object ONLY contains the fields we want to change.
         const updateData = {
             reviewCount,
             overallRating: parseFloat(overallRating.toFixed(2)), // Keep it to 2 decimal places
-            ratingDistribution
+            ratingDistribution,
+            starRatingCounts: admin.firestore.FieldValue.delete(), // Explicitly delete the old field
         };
         
-        // Use `update` to modify only the specified fields, leaving the rest of the document intact.
-        // This was the critical fix. `set` with merge was not being used, so it was overwriting the doc.
-        // `update` is safer and more explicit for this use case.
         transaction.update(characterRef, updateData);
         console.log(`Successfully updated ratings for character ${characterId}. Review count: ${reviewCount}, New average: ${overallRating}.`);
     }).catch(error => {
