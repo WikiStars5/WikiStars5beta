@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Sparkles, Loader2 } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Figure, EmotionKey, AttitudeKey, StarValueAsString } from '@/lib/types';
+import type { Figure, EmotionKey, AttitudeKey } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,10 +28,6 @@ const defaultPerceptionCounts: Record<EmotionKey, number> = {
 
 const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
-};
-
-const defaultRatingDistribution: Record<StarValueAsString, number> = {
-  "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
 };
 
 const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
@@ -184,9 +180,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         isFeatured: isFeatured,
         perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
         attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
-        overallRating: initialData?.overallRating || 0,
-        reviewCount: initialData?.reviewCount || 0,
-        ratingDistribution: initialData?.ratingDistribution || {...defaultRatingDistribution},
         status: initialData?.status || 'approved',
       };
 

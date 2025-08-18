@@ -45,14 +45,14 @@ export interface Figure {
   perceptionCounts: Record<EmotionKey, number>;
   attitudeCounts: Record<AttitudeKey, number>;
   
-  // New review and rating fields are now mandatory
-  overallRating: number;
-  reviewCount: number;
-  ratingDistribution: Record<StarValueAsString, number>;
-  
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
+
+  // Rating fields are being removed
+  overallRating?: number;
+  reviewCount?: number;
+  ratingDistribution?: Record<StarValueAsString, number>;
 }
 
 

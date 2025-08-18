@@ -134,8 +134,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
           </Tabs>
         </div> 
       </div>
-
-      <RatingSummaryDisplay figure={figure} />
+      
       <CommentSection figure={figure} />
 
       {viewerImageUrl && (

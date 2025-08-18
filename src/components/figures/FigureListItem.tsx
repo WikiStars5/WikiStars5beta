@@ -1,14 +1,12 @@
 
 "use client";
 
-import type { Figure, StarValue, StarValueAsString } from "@/lib/types";
+import type { Figure } from "@/lib/types";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImageOff, Star } from "lucide-react";
-import { StarRating } from "@/components/shared/StarRating";
 import { correctMalformedUrl } from "@/lib/utils";
-import { cn } from "@/lib/utils";
 
 interface FigureListItemProps {
   figure: Figure;
@@ -16,8 +14,6 @@ interface FigureListItemProps {
 }
 
 export function FigureListItem({ figure, cardStyle = 'default' }: FigureListItemProps) {
-  const totalVotes = figure.reviewCount ?? 0;
-  const averageRating = figure.overallRating ?? 0;
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
 
   if (cardStyle === 'playstore') {
@@ -46,14 +42,7 @@ export function FigureListItem({ figure, cardStyle = 'default' }: FigureListItem
           <div className="flex flex-col">
             <p className="text-sm font-medium text-foreground truncate group-hover:text-primary">{figure.name}</p>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              {totalVotes > 0 ? (
-                <>
-                  <span>{averageRating.toFixed(1)}</span>
-                  <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                </>
-              ) : (
-                <span>Sin calificar</span>
-              )}
+               <span className="text-xs text-muted-foreground">{figure.category || 'Sin categoría'}</span>
             </div>
           </div>
         </div>
@@ -85,14 +74,7 @@ export function FigureListItem({ figure, cardStyle = 'default' }: FigureListItem
         <CardContent className="p-4 flex-grow flex flex-col">
            <h3 className="text-lg font-headline mb-1 group-hover:text-primary flex-grow">{figure.name}</h3>
           <div className="flex items-center gap-1.5 text-sm mt-2 pt-2 border-t">
-            {totalVotes > 0 ? (
-              <>
-                <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
-                <span className="font-semibold text-foreground">{averageRating.toFixed(1)}</span>
-              </>
-            ) : (
-              <span className="text-xs text-muted-foreground">Sin calificar</span>
-            )}
+              <span className="text-xs text-muted-foreground">{figure.category || 'Sin categoría'}</span>
           </div>
         </CardContent>
       </Card>

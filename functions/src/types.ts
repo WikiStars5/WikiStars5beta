@@ -33,11 +33,12 @@ export interface Figure {
 
   perceptionCounts: Record<EmotionKey, number>;
   attitudeCounts: Record<AttitudeKey, number>;
-  
-  overallRating: number;
-  reviewCount: number;
-  ratingDistribution: Record<StarValueAsString, number>;
-  
+
+  // Rating fields removed
+  // overallRating: number;
+  // reviewCount: number;
+  // ratingDistribution: Record<StarValueAsString, number>;
+
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;

@@ -1,11 +1,11 @@
 
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
-import type { StarValue, StarValueAsString } from "./types";
 
 const db = admin.firestore();
 
-// This single, robust trigger handles creation, updates, and deletions in the 'reviews' collection.
+// This trigger is now simplified. Its main purpose of updating ratings has been removed
+// as the feature was proving to be problematic. It can be repurposed later if needed.
 export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", async (event) => {
     const reviewId = event.params.reviewId;
     const beforeData = event.data?.before.data();
@@ -21,43 +21,26 @@ export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", as
 
     const characterRef = db.collection("figures").doc(characterId);
 
-    // Use a transaction to ensure atomic updates to the character document.
-    return db.runTransaction(async (transaction) => {
-        // First, get all reviews for the specific character.
-        const reviewsSnapshot = await transaction.get(db.collection("reviews").where("characterId", "==", characterId));
-
-        const reviewCount = reviewsSnapshot.size;
-        
-        const ratingDistribution: Record<StarValueAsString, number> = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
-        let totalRatingSum = 0;
-
-        if (reviewCount > 0) {
-            reviewsSnapshot.forEach(doc => {
-                const review = doc.data();
-                const rating = review.rating as StarValue;
-                if (rating >= 1 && rating <= 5) {
-                    ratingDistribution[rating.toString() as StarValueAsString]++;
-                    totalRatingSum += rating;
-                }
-            });
-        }
-        
-        // Correctly calculate the average rating, handling the case of 0 reviews.
-        const overallRating = reviewCount > 0 ? parseFloat((totalRatingSum / reviewCount).toFixed(2)) : 0;
-
-        // Prepare the data to update on the character's document.
-        // This only includes the fields we want to manage.
-        const updateData = {
-            reviewCount: reviewCount,
-            overallRating: overallRating,
-            ratingDistribution: ratingDistribution,
-            starRatingCounts: admin.firestore.FieldValue.delete(), // Explicitly delete the old field
+    // The transaction logic for updating ratings has been removed.
+    // We will now perform a simple update to delete the obsolete fields if they exist.
+    try {
+        const updateData: {[key: string]: any} = {
+            // Remove obsolete fields if they exist on the document
+            ratingDistribution: admin.firestore.FieldValue.delete(),
+            overallRating: admin.firestore.FieldValue.delete(),
+            reviewCount: admin.firestore.FieldValue.delete(),
+            starRatingCounts: admin.firestore.FieldValue.delete()
         };
-        
-        // Use `update` to modify only the specified fields, leaving others untouched.
-        transaction.update(characterRef, updateData);
-        console.log(`Successfully updated ratings for character ${characterId}. Review count: ${reviewCount}, New average: ${overallRating}.`);
-    }).catch(error => {
-        console.error(`Transaction failed for character ${characterId}:`, error);
-    });
+
+        // We only perform a write if there's actually a review being added/deleted.
+        // This prevents the trigger from running unnecessarily on other potential field updates.
+        if (beforeData || afterData) {
+            await characterRef.update(updateData);
+            console.log(`Review written for character ${characterId}. Obsolete rating fields cleaned up.`);
+        }
+
+    } catch (error) {
+        // We log the error but don't re-throw, as failing to delete old fields shouldn't block the review process.
+        console.error(`Error cleaning up old fields for character ${characterId}:`, error);
+    }
 });

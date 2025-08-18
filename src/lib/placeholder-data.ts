@@ -27,11 +27,6 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   hater: 0,
 };
 
-const defaultRatingDistribution: Record<StarValueAsString, number> = {
-  "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
-};
-
-
 export const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot): Figure => {
   const data = docSnap.data() as DocumentData;
   const createdAtTimestamp = data.createdAt;
@@ -61,9 +56,6 @@ export const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot
     distinctiveFeatures: data.distinctiveFeatures || "",
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
-    overallRating: data.overallRating || 0,
-    reviewCount: data.reviewCount || 0,
-    ratingDistribution: data.ratingDistribution || { ...defaultRatingDistribution },
     createdAt: createdAtTimestamp && typeof createdAtTimestamp.toDate === 'function' 
                  ? createdAtTimestamp.toDate().toISOString() 
                  : undefined,
@@ -184,9 +176,6 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
       attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
-      reviewCount: figure.reviewCount || 0,
-      overallRating: figure.overallRating || 0,
-      ratingDistribution: figure.ratingDistribution || { ...defaultRatingDistribution },
       isFeatured: figure.isFeatured || false, 
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
@@ -202,6 +191,7 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: string }): Promise<void> => {
   try {
     const figureRef = doc(db, "figures", figure.id);
+    // Destructure all known fields to separate them from the rest
     const { 
         id, createdAt, nameLower, perceptionCounts, attitudeCounts, 
         name, photoUrl, description, nationality, occupation, gender, alias, species,
@@ -211,7 +201,6 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
     } = figure;
 
     const updatePayload: { [key: string]: any } = {};
-
 
     if (name !== undefined) updatePayload.name = name;
     if (photoUrl !== undefined) updatePayload.photoUrl = photoUrl;
@@ -236,12 +225,8 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
     if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured;
     if (category !== undefined) updatePayload.category = category;
     if (sportSubcategory !== undefined) updatePayload.sportSubcategory = sportSubcategory;
-
     if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
     if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
-    if (reviewCount !== undefined) updatePayload.reviewCount = reviewCount;
-    if (overallRating !== undefined) updatePayload.overallRating = overallRating;
-    if (ratingDistribution) updatePayload.ratingDistribution = ratingDistribution;
     
     if (Object.keys(rest).length > 0) {
       console.warn("Unknown fields in updateFigureInFirestore:", rest);
@@ -287,8 +272,6 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
 
   try {
     while (true) {
-      // Use orderBy('name') for consistency with other paginated functions.
-      // This is more robust and may require a Firestore index on the 'name' field.
       const q = lastVisible
         ? query(figuresCollectionRef, orderBy('name'), firestoreStartAfter(lastVisible), limit(batchSize))
         : query(figuresCollectionRef, orderBy('name'), limit(batchSize));
@@ -296,7 +279,7 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        break; // No more documents to fetch
+        break; 
       }
 
       querySnapshot.forEach((docSnap) => {
@@ -314,7 +297,6 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
       }
     }
     
-    // The list is already sorted by name from the query.
     return allFigures;
 
   } catch (error: any) {
@@ -333,7 +315,6 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
 export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
-    // Query for figures where isFeatured is true
     const q = query(
       figuresCollectionRef, 
       where("isFeatured", "==", true), 
