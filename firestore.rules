@@ -3,63 +3,48 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // =================================================================
-    // ADVERTENCIA: REGLAS INSEGURAS - SOLO PARA DESARROLLO
-    // Estas reglas son extremadamente permisivas y están destinadas
-    // ÚNICAMENTE para la fase de desarrollo y pruebas para evitar
-    // errores de permisos.
-    // NO UTILICES ESTAS REGLAS EN UN ENTORNO DE PRODUCCIÓN.
-    // =================================================================
-
-    function isAdmin() {
-      // Un administrador es aquel cuyo UID coincide con el ID de administrador predefinido.
-      return request.auth != null && request.auth.uid == 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
-    }
-
-    // Reglas para la colección de figuras.
+    // Figures can be read by anyone, but only admins (via Cloud Functions) can write.
     match /figures/{figureId} {
-      // Cualquiera puede leer la información de las figuras.
       allow read: if true;
-      // Cualquiera puede escribir/actualizar. CUIDADO EN PRODUCCIÓN.
-      allow write: if request.auth != null;
+      // Admin-only write access is enforced by Cloud Functions running with a service account.
+      // We deny direct client writes for security.
+      allow write: if false; 
     }
-
-    // Reglas para los perfiles de usuario.
+    
+    // User profiles can be read by anyone.
+    // Users can only update their own profile. Creation is handled by Cloud Functions.
     match /users/{userId} {
-       // Cualquiera puede leer/escribir. CUIDADO EN PRODUCCIÓN.
-      allow read, write: if request.auth != null;
-    }
-
-    // Reglas para los comentarios de los usuarios.
-    match /userComments/{commentId} {
-      // Cualquiera puede leer.
       allow read: if true;
-      // Cualquiera puede crear, actualizar y borrar. CUIDADO EN PRODUCCIÓN.
-      allow write: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow create, delete: if false;
     }
 
-    // Reglas para las calificaciones con estrellas.
-    match /userStarRatings/{ratingId} {
-      // Cualquiera puede leer y escribir. CUIDADO EN PRODUCCIÓN.
-      allow read, write: if request.auth != null;
+    // New rule for reviews collection
+    match /reviews/{reviewId} {
+      // Anyone can read reviews
+      allow read: if true;
+      // Any authenticated user (including anonymous) can create a review
+      allow create: if request.auth != null;
+      // Only the user who created the review can update or delete it.
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
-    // Reglas para los votos de actitud.
-    match /userAttitudes/{attitudeId} {
-       // Cualquiera puede leer y escribir. CUIDADO EN PRODUCCIÓN.
-      allow read, write: if request.auth != null;
-    }
-
-    // Reglas para los votos de percepción emocional.
-    match /userPerceptions/{perceptionId} {
-       // Cualquiera puede leer y escribir. CUIDADO EN PRODUCCIÓN.
-      allow read, write: if request.auth != null;
-    }
-
-    // Reglas para las notificaciones.
+    // Notifications are private to each user.
     match /notifications/{notificationId} {
-       // Cualquiera puede leer y escribir. CUIDADO EN PRODUCCIÓN.
-      allow read, write: if request.auth != null;
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if true; // Notifications are created by server-side logic (triggers).
     }
+    
+    // User perceptions and attitudes are private write, public read.
+    match /userPerceptions/{voteId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+
+    match /userAttitudes/{voteId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+
   }
 }
