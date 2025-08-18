@@ -6,22 +6,16 @@ import { initializeApp, getApps, type FirebaseApp } from 'firebase-admin/app';
 import { getAuth, type DecodedIdToken } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import type { UserProfile } from '@/lib/types';
-import { credential } from 'firebase-admin';
+import { credential }from 'firebase-admin';
 
 // --- Firebase Admin Initialization ---
 // This setup ensures that we initialize the admin app only once.
 let adminApp: FirebaseApp;
 
-// Safely parse the service account key from environment variables.
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-  : undefined;
-
 if (!getApps().length) {
-  adminApp = initializeApp({
-    // Use the service account credentials if available.
-    credential: serviceAccount ? credential.cert(serviceAccount) : undefined,
-  });
+  // Initialize without arguments to use Application Default Credentials
+  // in the App Hosting environment. This is the correct and secure way.
+  adminApp = initializeApp();
 } else {
   adminApp = getApps()[0];
 }
