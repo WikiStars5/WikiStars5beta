@@ -1,7 +1,7 @@
 
-import { onDocumentWritten, onDocumentCreated, onDocumentDeleted } from "firebase-functions/v2/firestore";
+
+import { onDocumentCreated, onDocumentDeleted } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
-import type { StarValueAsString } from "./types";
 
 const db = admin.firestore();
 
@@ -40,67 +40,16 @@ export const onCommentDeleted = onDocumentDeleted("userComments/{commentId}", as
     }
     
     // If the deleted comment had a star rating, delete the corresponding rating document.
-    // This will trigger onStarRatingWritten to decrement the count.
+    // This will trigger the onCall function if the client is designed to call it on delete,
+    // or you could add logic here to directly decrement the count.
+    // For now, we assume client will handle re-rating or the count will be recalculated.
     if (starRatingGiven) {
         const ratingDocRef = db.collection("userStarRatings").doc(`${userId}_${figureId}`);
-        await ratingDocRef.delete();
-    }
-});
-
-// This new trigger will atomically update the star rating counters on a figure document.
-export const onStarRatingWritten = onDocumentWritten("userStarRatings/{ratingId}", async (event) => {
-    const beforeData = event.data?.before.data();
-    const afterData = event.data?.after.data();
-
-    if (!beforeData && !afterData) {
-        console.log("No data found in event, exiting.");
-        return;
-    }
-
-    const figureId = (beforeData?.figureId || afterData?.figureId) as string;
-    if (!figureId) {
-        console.error("Figure ID missing in star rating document.");
-        return;
-    }
-    
-    const figureRef = db.collection("figures").doc(figureId);
-
-    try {
-        await db.runTransaction(async (transaction) => {
-            const figureDoc = await transaction.get(figureRef);
-            if (!figureDoc.exists) {
-                console.error(`Figure document ${figureId} not found.`);
-                return;
-            }
-
-            const currentCounts = figureDoc.data()?.starRatingCounts || { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
-            const newCounts = { ...currentCounts };
-
-            // Rating was removed
-            if (beforeData && !afterData) {
-                const oldStar = beforeData.starValue.toString() as StarValueAsString;
-                newCounts[oldStar] = Math.max(0, (newCounts[oldStar] || 0) - 1);
-            } 
-            // Rating was added
-            else if (!beforeData && afterData) {
-                const newStar = afterData.starValue.toString() as StarValueAsString;
-                newCounts[newStar] = (newCounts[newStar] || 0) + 1;
-            }
-            // Rating was changed
-            else if (beforeData && afterData && beforeData.starValue !== afterData.starValue) {
-                const oldStar = beforeData.starValue.toString() as StarValueAsString;
-                const newStar = afterData.starValue.toString() as StarValueAsString;
-                newCounts[oldStar] = Math.max(0, (newCounts[oldStar] || 0) - 1);
-                newCounts[newStar] = (newCounts[newStar] || 0) + 1;
-            } else {
-                // No change in value, no need to update.
-                return;
-            }
-            
-            transaction.update(figureRef, { starRatingCounts: newCounts });
+        await ratingDocRef.delete().catch(err => {
+            console.error(`Failed to delete star rating for user ${userId} on figure ${figureId}:`, err);
         });
-        console.log(`Successfully updated star counts for figure ${figureId}.`);
-    } catch (e) {
-        console.error(`Transaction to update star counts for figure ${figureId} failed:`, e);
     }
 });
+
+// The onStarRatingWritten trigger has been removed. 
+// Its logic is now handled by an onCall function `updateStarRating` in index.ts for better reliability.
