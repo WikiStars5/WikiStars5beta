@@ -9,7 +9,7 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
-import type { UserProfile, StarValueAsString } from "./types";
+import type { UserProfile } from "./types";
 import { COUNTRIES } from "./countries";
 import type { DocumentData } from "firebase-admin/firestore";
 
@@ -162,6 +162,79 @@ export const getAllUsers = onCall(async (request) => {
             return { success: false, error: 'Error de permisos de Firestore en la Cloud Function. Revisa las reglas de seguridad o los permisos de la cuenta de servicio.' };
         }
         return { success: false, error: error.message || 'Un error desconocido ocurrió en la Cloud Function.' };
+    }
+});
+
+export const addReview = onCall(async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+        throw new HttpsError('unauthenticated', 'Debes estar autenticado para dejar una reseña.');
+    }
+    const { characterId, comment } = request.data;
+    if (!characterId || !comment) {
+        throw new HttpsError('invalid-argument', 'Faltan datos para crear la reseña.');
+    }
+    if (comment.trim().length < 5 || comment.trim().length > 1000) {
+        throw new HttpsError('invalid-argument', 'El comentario debe tener entre 5 y 1000 caracteres.');
+    }
+
+    const user = await auth.getUser(uid);
+    const userProfileDoc = await db.collection('users').doc(uid).get();
+    const username = userProfileDoc.exists() ? userProfileDoc.data()?.username : (user.displayName || 'Usuario');
+
+    try {
+        await db.collection('reviews').add({
+            characterId,
+            userId: uid,
+            username: username,
+            userPhotoUrl: user.photoURL || null,
+            comment: comment.trim(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            likes: [],
+            replyCount: 0,
+        });
+        return { success: true, message: 'Tu reseña ha sido publicada.' };
+    } catch (error) {
+        console.error('Error adding review in Cloud Function:', error);
+        throw new HttpsError('internal', 'No se pudo publicar tu reseña.');
+    }
+});
+
+export const deleteReview = onCall(async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+        throw new HttpsError('unauthenticated', 'No estás autenticado.');
+    }
+    const { reviewId } = request.data;
+    if (!reviewId) {
+        throw new HttpsError('invalid-argument', 'Falta el ID de la reseña.');
+    }
+    
+    const reviewRef = db.collection('reviews').doc(reviewId);
+    const userDoc = await db.collection('users').doc(uid).get();
+
+    try {
+        const reviewSnap = await reviewRef.get();
+        if (!reviewSnap.exists()) {
+            throw new HttpsError('not-found', 'La reseña no existe.');
+        }
+
+        const reviewData = reviewSnap.data()!;
+        const userIsAdmin = userDoc.exists() && userDoc.data()?.role === 'admin';
+
+        if (reviewData.userId !== uid && !userIsAdmin) {
+            throw new HttpsError('permission-denied', 'No tienes permiso para eliminar esta reseña.');
+        }
+
+        await reviewRef.delete();
+        return { success: true, message: 'Reseña eliminada correctamente.' };
+
+    } catch (error: any) {
+        console.error("Error deleting review in Cloud Function:", error);
+        if (error instanceof HttpsError) {
+            throw error; // Re-throw HttpsError directly
+        }
+        throw new HttpsError('internal', 'Ocurrió un error al eliminar la reseña.');
     }
 });
 

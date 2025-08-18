@@ -4,15 +4,15 @@
 import { useState, useEffect } from 'react';
 import type { Figure, Review } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { db, app } from '@/lib/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { collection, query, where, orderBy, onSnapshot, Timestamp, deleteDoc, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, Send, Trash2, LogIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { addReview, deleteReview } from '@/app/actions/reviewActions';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { correctMalformedUrl, cn } from '@/lib/utils';
@@ -31,6 +31,12 @@ import {
 interface CommentSectionProps {
   figure: Figure;
 }
+
+// Callable Firebase Functions
+const functions = getFunctions(app, 'us-central1');
+const addReviewCallable = httpsCallable(functions, 'addReview');
+const deleteReviewCallable = httpsCallable(functions, 'deleteReview');
+
 
 function timeSince(date: Date): string {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -87,32 +93,33 @@ export function CommentSection({ figure }: CommentSectionProps) {
     }
     setIsSubmitting(true);
     try {
-        // SIMPLIFIED: Direct call to the server action. Auth is handled on the server.
-        const result = await addReview(figure.id, comment);
-        if (result.success) {
+        const result = await addReviewCallable({ characterId: figure.id, comment: comment.trim() });
+        const data = result.data as { success: boolean, message: string };
+
+        if (data.success) {
           setComment('');
-          toast({ title: 'Éxito', description: result.message });
+          toast({ title: 'Éxito', description: data.message });
         } else {
-          toast({ title: 'Error', description: result.message, variant: 'destructive' });
+          toast({ title: 'Error', description: data.message, variant: 'destructive' });
         }
     } catch (error: any) {
-        toast({ title: 'Error Inesperado', description: error.message, variant: 'destructive' });
+        toast({ title: 'Error Inesperado', description: error.message || "No se pudo conectar con el servidor.", variant: 'destructive' });
     } finally {
         setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (reviewId: string) => {
-    if (!firebaseUser) {
-      toast({ title: 'Error', description: 'Debes estar autenticado para borrar.', variant: 'destructive' });
-      return;
-    }
-    // SIMPLIFIED: Direct call.
-    const result = await deleteReview(reviewId);
-     if (result.success) {
-      toast({ title: 'Éxito', description: result.message });
-    } else {
-      toast({ title: 'Error', description: result.message, variant: 'destructive' });
+    try {
+      const result = await deleteReviewCallable({ reviewId });
+      const data = result.data as { success: boolean, message: string };
+      if (data.success) {
+        toast({ title: 'Éxito', description: data.message });
+      } else {
+        toast({ title: 'Error', description: data.message, variant: 'destructive' });
+      }
+    } catch (error: any) {
+        toast({ title: 'Error al Eliminar', description: error.message || "No se pudo conectar con el servidor.", variant: 'destructive' });
     }
   }
 
