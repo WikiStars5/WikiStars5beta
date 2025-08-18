@@ -24,31 +24,30 @@ import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
-import { auth as firebaseAuth } from "@/lib/firebase";
+import { auth as firebaseAuth, db } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { ShareButton } from "@/components/shared/ShareButton";
-import type { Figure, FanFigure } from "@/lib/types";
+import type { Figure } from "@/lib/types";
 import { 
   grantFirstGlanceAchievement,
 } from '@/app/actions/achievementActions';
 import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
+import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
+import { doc, onSnapshot } from "firebase/firestore";
+import { mapDocToFigure } from "@/lib/placeholder-data";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
 }
 
-export default function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
+export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const routeParams = useParams<{ id: string }>();
   const id = routeParams?.id;
   const router = useRouter();
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
   
-  React.useEffect(() => {
-      setFigure(initialFigure);
-  }, [initialFigure]);
-
   const { toast } = useToast();
 
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
@@ -74,6 +73,25 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
     return () => unsubscribe();
   }, [toast]); 
 
+  // Add a real-time listener to the figure document
+  React.useEffect(() => {
+    if (!id) return;
+    const figureDocRef = doc(db, 'figures', id);
+
+    const unsubscribe = onSnapshot(figureDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            setFigure(mapDocToFigure(docSnap));
+        } else {
+            console.warn(`Figure with id ${id} not found.`);
+            setFigure(null);
+        }
+    }, (error) => {
+        console.error("Error listening to figure document:", error);
+    });
+
+    return () => unsubscribe();
+  }, [id]);
+
 
   const handleOpenProfileImage = (imageUrl: string) => {
     if (imageUrl) {
@@ -82,6 +100,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   };
 
   if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!figure) return <div>Figura no encontrada.</div>;
 
   return (
     <div className="space-y-8 lg:space-y-12">
@@ -92,9 +111,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       />
       
       <ProfileHeader 
-        figure={figure!} 
-        currentUser={currentUser}
-        currentUserStreak={null} // Streak logic removed
+        figure={figure}
         onImageClick={handleOpenProfileImage}
       />
 
@@ -108,7 +125,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
             </TabsList>
 
             <TabsContent value="personal-info">
-                <FigureInfo figure={figure!} currentUser={currentUser} />
+                <FigureInfo figure={figure} currentUser={currentUser} />
             </TabsContent>
 
             <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
@@ -116,7 +133,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           </Tabs>
         </div> 
       </div>
-
+      
       {viewerImageUrl && (
         <ImageGalleryViewer
             imageUrl={viewerImageUrl}
