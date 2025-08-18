@@ -166,61 +166,7 @@ export const getAllUsers = onCall(async (request) => {
 });
 
 
-export const updateStarRating = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'You must be logged in to rate.');
-    }
-    const uid = request.auth.uid;
-    const { figureId, starValue } = request.data;
-
-    if (!figureId || typeof starValue !== 'number' || starValue < 1 || starValue > 5) {
-        throw new HttpsError('invalid-argument', 'Figure ID and a valid star rating (1-5) are required.');
-    }
-
-    const figureRef = db.collection('figures').doc(figureId);
-    const userRatingRef = db.collection('userStarRatings').doc(`${uid}_${figureId}`);
-
-    try {
-        await db.runTransaction(async (transaction) => {
-            const figureDoc = await transaction.get(figureRef);
-            const userRatingDoc = await transaction.get(userRatingRef);
-
-            if (!figureDoc.exists) {
-                throw new HttpsError('not-found', 'Figure not found.');
-            }
-
-            const oldStar = userRatingDoc.exists() ? userRatingDoc.data()?.starValue as StarValueAsString : null;
-            const newStar = starValue.toString() as StarValueAsString;
-            
-            // This logic is simplified to be more robust.
-            const currentCounts = figureDoc.data()?.starRatingCounts || { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
-            
-            const updates: {[key: string]: admin.firestore.FieldValue} = {};
-
-            if (oldStar && oldStar !== newStar) {
-                updates[`starRatingCounts.${oldStar}`] = admin.firestore.FieldValue.increment(-1);
-            }
-            if (newStar && oldStar !== newStar) {
-                updates[`starRatingCounts.${newStar}`] = admin.firestore.FieldValue.increment(1);
-            }
-            
-            if(Object.keys(updates).length > 0) {
-              transaction.update(figureRef, updates);
-            }
-            
-            // Set the user's individual rating document
-            transaction.set(userRatingRef, { userId: uid, figureId: figureId, starValue: starValue, timestamp: admin.firestore.FieldValue.serverTimestamp() });
-        });
-        return { success: true, message: 'Rating updated successfully.' };
-    } catch (error) {
-        console.error("Error in updateStarRating transaction:", error);
-        if (error instanceof HttpsError) {
-            throw error;
-        }
-        throw new HttpsError('internal', 'Could not update rating.');
-    }
-});
-
+// Star rating logic is completely removed.
 
 // Import notifications logic so it gets deployed
 import "./notifications";

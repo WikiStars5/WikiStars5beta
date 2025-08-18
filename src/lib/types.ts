@@ -1,4 +1,5 @@
 
+
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -78,37 +79,6 @@ export interface EmotionVote {
   emotion: EmotionKey;
   addedAt: string; // ISO String for the date
 }
-
-export interface UserStarRating {
-  userId: string;
-  figureId: string;
-  starValue: StarValue; 
-  timestamp: Timestamp; 
-}
-
-export interface UserComment {
-  id: string; 
-  figureId: string;
-  userId: string;
-  username: string; 
-  guestUsername?: string | null;
-  guestUsernameLower?: string | null;
-  guestGender?: string;
-  userPhotoURL: string | null; 
-  text: string;
-  starRatingGiven: StarValue | null; 
-  createdAt: Timestamp; 
-  updatedAt?: Timestamp | null;
-  likes: number;
-  dislikes: number;
-  likedBy: string[]; 
-  dislikedBy: string[];
-  parentId?: string | null; // ID of the parent comment if this is a reply
-  replyCount?: number; // Number of replies this comment has
-  userCountryCode?: string | null;
-  isAnonymous?: boolean;
-}
-
 
 export interface Country {
   name: string;

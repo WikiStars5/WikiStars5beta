@@ -21,7 +21,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import * as React from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
-import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
@@ -33,7 +32,6 @@ import {
   grantFirstGlanceAchievement,
 } from '@/app/actions/achievementActions';
 import { StreakAnimation } from "@/components/shared/StreakAnimation";
-import { CommentSection } from '@/components/comments/CommentSection';
 import { FigureInfo } from '@/components/figures/FigureInfo';
 
 interface FigureDetailClientProps {
@@ -58,45 +56,8 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   
-  const [currentUserStreak, setCurrentUserStreak] = React.useState<number | null>(null);
   const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
   const [isFan, setIsFan] = React.useState(false);
-
-  const fetchCurrentUserStreak = React.useCallback(() => {
-    if (!figure?.id) return;
-    try {
-      const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
-      if (streaksJSON) {
-        const streaks = JSON.parse(streaksJSON);
-        const figureStreak = streaks.find((s: any) => s.figureId === figure.id);
-
-        if (figureStreak) {
-          const today = new Date();
-          const yesterday = new Date(today);
-          yesterday.setDate(today.getDate() - 1);
-          const lastDate = new Date(figureStreak.lastCommentDate);
-
-          if (lastDate.toDateString() === today.toDateString() || lastDate.toDateString() === yesterday.toDateString()) {
-            setCurrentUserStreak(figureStreak.currentStreak);
-          } else {
-            setCurrentUserStreak(null); 
-          }
-        } else {
-          setCurrentUserStreak(null);
-        }
-      } else {
-        setCurrentUserStreak(null); 
-      }
-    } catch (error) {
-      console.error("Error fetching current streak:", error);
-      setCurrentUserStreak(null);
-    }
-  }, [figure?.id]);
-
-
-  React.useEffect(() => {
-    fetchCurrentUserStreak();
-  }, [fetchCurrentUserStreak]);
 
   const checkIsFan = React.useCallback(() => {
     if (!figure) return;
@@ -187,7 +148,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       <ProfileHeader 
         figure={figure!} 
         currentUser={currentUser}
-        currentUserStreak={currentUserStreak}
+        currentUserStreak={null}
         isFan={isFan}
         onFanToggle={handleFanToggle}
         onImageClick={handleOpenProfileImage}
@@ -209,19 +170,6 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
             <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
             <TabsContent value="perception-emotions">{figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
           </Tabs>
-          
-          {figure && (<RatingSummaryDisplay figureName={figure.name} starRatingCounts={figure.starRatingCounts} />)}
-
-          {figure && <CommentSection 
-            figure={figure} 
-            currentUser={currentUser} 
-            onNewComment={() => {
-                fetchCurrentUserStreak(); 
-                router.refresh();
-            }}
-            setAnimationStreak={setAnimationStreak}
-          />}
-          
         </div> 
       </div>
 

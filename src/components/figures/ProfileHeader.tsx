@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Figure } from "@/lib/types";
+import type { Figure, FanFigure } from "@/lib/types";
 import Image from "next/image";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { correctMalformedUrl, cn } from "@/lib/utils";
@@ -9,11 +9,15 @@ import type { User } from 'firebase/auth';
 import { Badge } from "@/components/ui/badge";
 import { Flame, Heart } from "lucide-react";
 import { Button } from "../ui/button";
+import { useToast } from "@/hooks/use-toast";
+import * as React from "react";
 
 interface ProfileHeaderProps {
   figure: Figure;
   currentUser: User | null;
   currentUserStreak: number | null;
+  isFan: boolean;
+  onFanToggle: () => void;
   onImageClick: (imageUrl: string) => void;
 }
 
@@ -21,9 +25,24 @@ export function ProfileHeader({
   figure, 
   currentUser,
   currentUserStreak,
+  isFan,
+  onFanToggle,
   onImageClick,
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
+  const { toast } = useToast();
+
+  const handleFanClick = () => {
+    if (!currentUser) {
+      toast({
+        title: "Función para Fans",
+        description: "Inicia sesión o regístrate para añadir figuras a tu lista de fans.",
+        variant: "destructive"
+      });
+      return;
+    }
+    onFanToggle();
+  };
 
   return (
     <div className="w-full bg-black border border-white/20 p-4 sm:p-6 rounded-lg shadow-md">
@@ -66,6 +85,27 @@ export function ProfileHeader({
               </div>
             </div>
             
+            <div className="mt-4 flex items-center gap-4">
+                {currentUserStreak && (
+                  <Badge variant="secondary" className="border-orange-500/50 text-base gap-2 px-3 py-1 bg-orange-500/10 text-orange-400">
+                    <Flame className="h-4 w-4" />
+                    <span className="font-bold">{currentUserStreak}</span>
+                    <span>Racha de días</span>
+                  </Badge>
+                )}
+                 <Button 
+                    onClick={handleFanClick}
+                    variant={isFan ? 'default' : 'outline'}
+                    size="sm"
+                    className={cn(
+                        "gap-2 transition-all",
+                        isFan ? "bg-pink-600 hover:bg-pink-700 text-white border-pink-700" : "text-muted-foreground"
+                    )}
+                >
+                    <Heart className={cn("h-4 w-4", isFan && "fill-current")} />
+                    {isFan ? "Fan" : "Hacerse Fan"}
+                </Button>
+            </div>
           </div>
         </div>
     </div>
