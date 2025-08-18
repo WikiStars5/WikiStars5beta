@@ -1,55 +1,60 @@
 
-
-import { onDocumentCreated, onDocumentDeleted } from "firebase-functions/v2/firestore";
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
+import type { StarValue, StarValueAsString } from "./types";
 
 const db = admin.firestore();
 
-// Trigger to update commentCount when a comment is created or deleted
-export const onCommentCreated = onDocumentCreated("userComments/{commentId}", async (event) => {
-    const snapshot = event.data;
-    if (!snapshot) return;
-    const data = snapshot.data();
-    const figureId = data.figureId;
-    const parentId = data.parentId;
+// This single, robust trigger handles creation, updates, and deletions in the 'reviews' collection.
+export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", async (event) => {
+    const reviewId = event.params.reviewId;
+    const beforeData = event.data?.before.data();
+    const afterData = event.data?.after.data();
 
-    const figureRef = db.collection("figures").doc(figureId);
-    await figureRef.update({ commentCount: admin.firestore.FieldValue.increment(1) });
-
-    if (parentId) {
-        const parentCommentRef = db.collection("userComments").doc(parentId);
-        await parentCommentRef.update({ replyCount: admin.firestore.FieldValue.increment(1) });
-    }
-});
-
-export const onCommentDeleted = onDocumentDeleted("userComments/{commentId}", async (event) => {
-    const snapshot = event.data;
-    if (!snapshot) return;
-    const data = snapshot.data();
-    const figureId = data.figureId;
-    const parentId = data.parentId;
-    const userId = data.userId;
-    const starRatingGiven = data.starRatingGiven;
-
-    const figureRef = db.collection("figures").doc(figureId);
-    await figureRef.update({ commentCount: admin.firestore.FieldValue.increment(-1) });
-
-    if (parentId) {
-        const parentCommentRef = db.collection("userComments").doc(parentId);
-        await parentCommentRef.update({ replyCount: admin.firestore.FieldValue.increment(-1) });
-    }
+    // Determine the characterId from the new data or the old data (in case of deletion)
+    const characterId = afterData?.characterId || beforeData?.characterId;
     
-    // If the deleted comment had a star rating, delete the corresponding rating document.
-    // This will trigger the onCall function if the client is designed to call it on delete,
-    // or you could add logic here to directly decrement the count.
-    // For now, we assume client will handle re-rating or the count will be recalculated.
-    if (starRatingGiven) {
-        const ratingDocRef = db.collection("userStarRatings").doc(`${userId}_${figureId}`);
-        await ratingDocRef.delete().catch(err => {
-            console.error(`Failed to delete star rating for user ${userId} on figure ${figureId}:`, err);
-        });
+    if (!characterId) {
+        console.log(`Review ${reviewId} has no characterId. Exiting function.`);
+        return;
     }
-});
 
-// The onStarRatingWritten trigger has been removed. 
-// Its logic is now handled by an onCall function `updateStarRating` in index.ts for better reliability.
+    const characterRef = db.collection("figures").doc(characterId);
+
+    // Use a transaction to ensure atomic updates to the character document.
+    return db.runTransaction(async (transaction) => {
+        // First, get all reviews for the specific character.
+        const reviewsSnapshot = await transaction.get(db.collection("reviews").where("characterId", "==", characterId));
+
+        const reviewCount = reviewsSnapshot.size;
+        
+        let overallRating = 0;
+        const ratingDistribution: Record<StarValueAsString, number> = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
+        let totalRatingSum = 0;
+
+        if (reviewCount > 0) {
+            reviewsSnapshot.forEach(doc => {
+                const review = doc.data();
+                const rating = review.rating as StarValue;
+                if (rating >= 1 && rating <= 5) {
+                    ratingDistribution[rating.toString() as StarValueAsString]++;
+                    totalRatingSum += rating;
+                }
+            });
+            overallRating = totalRatingSum / reviewCount;
+        }
+
+        // Prepare the data to update on the character's document.
+        const updateData = {
+            reviewCount,
+            overallRating: parseFloat(overallRating.toFixed(2)), // Keep it to 2 decimal places
+            ratingDistribution,
+            starRatingCounts: admin.firestore.FieldValue.delete(), // Explicitly delete the old field
+        };
+        
+        transaction.update(characterRef, updateData);
+        console.log(`Successfully updated ratings for character ${characterId}. Review count: ${reviewCount}, New average: ${overallRating}.`);
+    }).catch(error => {
+        console.error(`Transaction failed for character ${characterId}:`, error);
+    });
+});

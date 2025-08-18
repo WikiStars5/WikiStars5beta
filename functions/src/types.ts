@@ -1,7 +1,5 @@
 
-// This file contains type definitions used exclusively by the Cloud Functions.
-// It is a copy of the relevant types from the main application's /lib/types.ts
-// to ensure the functions directory is completely isolated and has no external dependencies.
+
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 export type StarValue = 1 | 2 | 3 | 4 | 5;
@@ -33,14 +31,30 @@ export interface Figure {
   eyeColor?: string; 
   distinctiveFeatures?: string; 
 
-  perceptionCounts?: Record<EmotionKey, number>;
-  attitudeCounts?: Record<AttitudeKey, number>;
-  starRatingCounts?: Record<StarValueAsString, number>;
+  perceptionCounts: Record<EmotionKey, number>;
+  attitudeCounts: Record<AttitudeKey, number>;
+  
+  overallRating: number;
+  reviewCount: number;
+  ratingDistribution: Record<StarValueAsString, number>;
   commentCount?: number; 
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
 }
+
+
+export interface Review {
+    id: string;
+    characterId: string;
+    userId: string;
+    username: string;
+    userPhotoUrl?: string | null;
+    rating: StarValue;
+    comment: string;
+    createdAt: any; // Using any for Firestore Admin Timestamp flexibility
+}
+
 
 export interface UserProfile {
   uid: string;
@@ -55,6 +69,7 @@ export interface UserProfile {
   lastLoginAt?: string;
   fcmToken?: string;
   achievements?: string[];
+  isAnonymous?: boolean;
 }
 
 export interface Country {
