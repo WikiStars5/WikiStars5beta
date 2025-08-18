@@ -192,21 +192,24 @@ export const updateStarRating = onCall(async (request) => {
             const oldStar = userRatingDoc.exists() ? userRatingDoc.data()?.starValue as StarValueAsString : null;
             const newStar = starValue.toString() as StarValueAsString;
             
+            // This logic is simplified to be more robust.
             const currentCounts = figureDoc.data()?.starRatingCounts || { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
-            const newCounts = { ...currentCounts };
+            
+            const updates: {[key: string]: admin.firestore.FieldValue} = {};
 
-            // Only proceed if the vote is different
-            if (oldStar !== newStar) {
-                // Decrement old star count if it existed
-                if (oldStar) {
-                    newCounts[oldStar] = Math.max(0, (newCounts[oldStar] || 0) - 1);
-                }
-                // Increment new star count
-                newCounts[newStar] = (newCounts[newStar] || 0) + 1;
-
-                transaction.update(figureRef, { starRatingCounts: newCounts });
-                transaction.set(userRatingRef, { userId: uid, figureId: figureId, starValue: starValue, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+            if (oldStar && oldStar !== newStar) {
+                updates[`starRatingCounts.${oldStar}`] = admin.firestore.FieldValue.increment(-1);
             }
+            if (newStar && oldStar !== newStar) {
+                updates[`starRatingCounts.${newStar}`] = admin.firestore.FieldValue.increment(1);
+            }
+            
+            if(Object.keys(updates).length > 0) {
+              transaction.update(figureRef, updates);
+            }
+            
+            // Set the user's individual rating document
+            transaction.set(userRatingRef, { userId: uid, figureId: figureId, starValue: starValue, timestamp: admin.firestore.FieldValue.serverTimestamp() });
         });
         return { success: true, message: 'Rating updated successfully.' };
     } catch (error) {

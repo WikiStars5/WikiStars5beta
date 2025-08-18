@@ -111,7 +111,6 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
     const MAX_COMMENT_LENGTH = 1000;
     const COMMENT_TRUNCATE_LENGTH = 350;
 
-    // Logic explicitly for guests, as per user requirement.
     const canCommentAndRate = currentUser?.isAnonymous ?? false;
 
     const displayedComments = React.useMemo(() => {
@@ -439,11 +438,24 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         try {
             await addDoc(collection(db, 'userComments'), commentData);
 
+            // This is the CRITICAL FIX: Only call the function if stars were given
             if (newCommentStars !== null) {
-                await updateStarRatingCallable({ figureId: figure.id, starValue: newCommentStars });
-                playSoundEffect(newCommentStars);
-            }
+                try {
+                    await updateStarRatingCallable({ figureId: figure.id, starValue: newCommentStars });
+                    playSoundEffect(newCommentStars);
+                     const achResult1 = await grantEstrellaBrillanteAchievement(currentUser.uid);
+                    if (achResult1.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult1.message });
 
+                } catch (functionError: any) {
+                    console.error("Error calling updateStarRating function:", functionError);
+                    toast({
+                        title: "Error al Calificar",
+                        description: `Tu comentario fue guardado, pero no se pudo registrar la calificación. Detalles: ${functionError.message}`,
+                        variant: "destructive"
+                    });
+                }
+            }
+            
             updateLocalStreak();
             
             toast({
@@ -452,9 +464,6 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                 duration: 8000,
                 action: <ShareButton figureName={figure.name} figureId={figure.id} showText />,
             });
-            
-            const achResult1 = await grantEstrellaBrillanteAchievement(currentUser.uid);
-            if (achResult1.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult1.message });
 
             const achResult2 = await grantMiPrimeraContribucionAchievement(currentUser.uid);
             if (achResult2.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult2.message });
@@ -464,7 +473,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
             onNewComment();
             router.refresh();
         } catch (error: any) {
-            console.error("Error submitting opinion:", error);
+            console.error("Error submitting comment:", error);
             let errorMessage = `No se pudo enviar tu opinión. ${error.message}`;
             if (error.details) {
                 errorMessage += ` Detalles: ${JSON.stringify(error.details)}`;
