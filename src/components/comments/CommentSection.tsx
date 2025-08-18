@@ -60,6 +60,7 @@ interface CommentSectionProps {
     setAnimationStreak: (streak: number | null) => void;
 }
 
+// Re-established callable function to the new robust onCall function
 const updateStarRatingCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateStarRating');
 
 const STAR_SOUND_URLS: Record<StarValue, string> = {
@@ -110,7 +111,8 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
     const MAX_COMMENT_LENGTH = 1000;
     const COMMENT_TRUNCATE_LENGTH = 350;
 
-    const canCommentOrRate = !!currentUser && isAnonymous;
+    // Logic explicitly for guests, as per user requirement.
+    const canCommentAndRate = currentUser?.isAnonymous ?? false;
 
     const displayedComments = React.useMemo(() => {
         if (isLoadingComments) return [];
@@ -402,11 +404,11 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
 
     const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!canCommentOrRate || !currentUser) {
+        if (!canCommentAndRate || !currentUser) {
             toast({ title: "Error", description: "Solo los invitados pueden comentar y calificar.", variant: "destructive" });
             return;
         }
-        if (isAnonymous && !isGuestInfoSet) {
+        if (!isGuestInfoSet) {
             toast({ title: "Información Requerida", description: "Por favor, define tu identidad de invitado para poder comentar.", variant: "destructive" });
             return;
         }
@@ -416,7 +418,6 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         }
         setIsSubmittingComment(true);
         
-        // Prepare comment data
         const commentData: any = {
             figureId: figure.id,
             userId: currentUser.uid,
@@ -458,7 +459,6 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
             const achResult2 = await grantMiPrimeraContribucionAchievement(currentUser.uid);
             if (achResult2.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult2.message });
             
-
             setNewComment("");
             fetchComments();
             onNewComment();
@@ -591,11 +591,11 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
     };
 
     const handleSubmitReply = async (parentId: string) => {
-        if (!canCommentOrRate || !currentUser || !figure) {
+        if (!canCommentAndRate || !currentUser || !figure) {
         toast({ title: "Acción Requerida", description: "Debes estar conectado para responder.", variant: "destructive" });
         return;
         }
-        if (isAnonymous && !isGuestInfoSet) {
+        if (!isGuestInfoSet) {
         toast({ title: "Información Requerida", description: "Por favor, define tu identidad de invitado para poder responder.", variant: "destructive" });
         return;
         }
@@ -608,7 +608,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         const replyData: any = {
         figureId: figure.id,
         userId: currentUser.uid,
-        username: isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
+        username: "Invitado",
         userPhotoURL: currentUser.photoURL || null,
         text: replyText.trim(),
         starRatingGiven: null,
@@ -619,7 +619,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         dislikedBy: [],
         parentId: parentId,
         replyCount: 0,
-        isAnonymous: isAnonymous,
+        isAnonymous: true,
         };
 
         if (isAnonymous) {
@@ -743,7 +743,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                     <ThumbsDown className={cn("h-4 w-4 mr-1", userHasDisliked && "fill-red-500 text-red-500")} /> {comment.dislikes}
                 </Button>
                 {level < MAX_NESTING_LEVEL && (
-                    <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleReplyClick(comment.id)} disabled={!currentUser}>
+                    <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleReplyClick(comment.id)} disabled={!canCommentAndRate}>
                     <MessageSquareReply className="h-4 w-4 mr-1" /> Responder
                     </Button>
                 )}
@@ -774,7 +774,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                     <Button 
                         size="sm" 
                         onClick={() => handleSubmitReply(comment.id)} 
-                        disabled={isSubmittingReply === comment.id || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH || !currentUser || (isAnonymous && !isGuestInfoSet)}
+                        disabled={isSubmittingReply === comment.id || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH || !canCommentAndRate || !isGuestInfoSet}
                     >
                         {isSubmittingReply === comment.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Enviar Respuesta
@@ -803,7 +803,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                 </CardHeader>
                 <CardContent className="space-y-6">
                 {currentUser ? (
-                    canCommentOrRate ? (
+                    canCommentAndRate ? (
                         <form onSubmit={handleSubmitComment} className="space-y-6">
                         <div className="mb-4">
                             <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">
@@ -816,7 +816,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                                 setNewCommentStars(starVal);
                                 }}
                                 size={32}
-                                readOnly={!canCommentOrRate}
+                                readOnly={!canCommentAndRate}
                             />
                         </div>
                         {isAnonymous && !isGuestInfoSet && (
@@ -876,7 +876,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                             placeholder="Escribe tu comentario aquí (obligatorio)..." 
                             rows={4} 
                             className="w-full" 
-                            disabled={isSubmittingComment || (isAnonymous && !isGuestInfoSet)} 
+                            disabled={isSubmittingComment || !isGuestInfoSet} 
                             maxLength={MAX_COMMENT_LENGTH}
                             />
                             <div className="text-right text-sm text-muted-foreground mt-1">
@@ -884,7 +884,7 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
                             </div>
                         </div>
                         <div className="flex justify-end">
-                            <Button type="submit" disabled={isSubmittingComment || !newComment.trim() || newComment.length > MAX_COMMENT_LENGTH || (isAnonymous && !isGuestInfoSet)}>
+                            <Button type="submit" disabled={isSubmittingComment || !newComment.trim() || newComment.length > MAX_COMMENT_LENGTH || !isGuestInfoSet}>
                             <Send className="mr-2 h-4 w-4" />
                             {isSubmittingComment ? "Enviando..." : "Enviar Opinión"}
                             </Button>
@@ -959,4 +959,3 @@ export function CommentSection({ figure, currentUser, onNewComment, setAnimation
         </>
     );
 }
-

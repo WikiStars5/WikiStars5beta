@@ -9,7 +9,7 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
-import type { UserProfile } from "./types";
+import type { UserProfile, StarValueAsString } from "./types";
 import { COUNTRIES } from "./countries";
 import type { DocumentData } from "firebase-admin/firestore";
 
@@ -162,6 +162,59 @@ export const getAllUsers = onCall(async (request) => {
             return { success: false, error: 'Error de permisos de Firestore en la Cloud Function. Revisa las reglas de seguridad o los permisos de la cuenta de servicio.' };
         }
         return { success: false, error: error.message || 'Un error desconocido ocurrió en la Cloud Function.' };
+    }
+});
+
+
+export const updateStarRating = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'You must be logged in to rate.');
+    }
+    const uid = request.auth.uid;
+    const { figureId, starValue } = request.data;
+
+    if (!figureId || typeof starValue !== 'number' || starValue < 1 || starValue > 5) {
+        throw new HttpsError('invalid-argument', 'Figure ID and a valid star rating (1-5) are required.');
+    }
+
+    const figureRef = db.collection('figures').doc(figureId);
+    const userRatingRef = db.collection('userStarRatings').doc(`${uid}_${figureId}`);
+
+    try {
+        await db.runTransaction(async (transaction) => {
+            const figureDoc = await transaction.get(figureRef);
+            const userRatingDoc = await transaction.get(userRatingRef);
+
+            if (!figureDoc.exists) {
+                throw new HttpsError('not-found', 'Figure not found.');
+            }
+
+            const oldStar = userRatingDoc.exists() ? userRatingDoc.data()?.starValue as StarValueAsString : null;
+            const newStar = starValue.toString() as StarValueAsString;
+            
+            const currentCounts = figureDoc.data()?.starRatingCounts || { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
+            const newCounts = { ...currentCounts };
+
+            // Only proceed if the vote is different
+            if (oldStar !== newStar) {
+                // Decrement old star count if it existed
+                if (oldStar) {
+                    newCounts[oldStar] = Math.max(0, (newCounts[oldStar] || 0) - 1);
+                }
+                // Increment new star count
+                newCounts[newStar] = (newCounts[newStar] || 0) + 1;
+
+                transaction.update(figureRef, { starRatingCounts: newCounts });
+                transaction.set(userRatingRef, { userId: uid, figureId: figureId, starValue: starValue, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+            }
+        });
+        return { success: true, message: 'Rating updated successfully.' };
+    } catch (error) {
+        console.error("Error in updateStarRating transaction:", error);
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+        throw new HttpsError('internal', 'Could not update rating.');
     }
 });
 
