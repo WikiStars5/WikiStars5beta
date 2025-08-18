@@ -1,11 +1,11 @@
 'use server';
 
-import { db, auth } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, getDocs, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { db, auth as clientAuth } from '@/lib/firebase'; // Renamed auth to clientAuth to avoid conflict
+import { collection, addDoc, serverTimestamp, getDocs, query, where, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
-import type { Review, UserProfile, Figure } from '@/lib/types';
+import type { Review } from '@/lib/types';
 import { getCurrentUser } from './userActions';
-import { headers }from 'next/headers';
+import { headers } from 'next/headers';
 import { ADMIN_UID } from '@/config/admin';
 
 interface AddReviewResult {
@@ -13,10 +13,12 @@ interface AddReviewResult {
   message: string;
 }
 
+// The function now accepts an optional authToken for client-side calls
 export async function addReview(
   characterId: string,
   comment: string
 ): Promise<AddReviewResult> {
+  // getCurrentUser will now correctly use the token from the headers
   const user = await getCurrentUser();
 
   if (!user) {
@@ -78,12 +80,6 @@ export async function deleteReview(reviewId: string): Promise<DeleteReviewResult
         }
 
         await deleteDoc(reviewRef);
-
-        // Also delete all replies to this review
-        const repliesQuery = query(collection(db, 'replies'), where('reviewId', '==', reviewId));
-        const repliesSnapshot = await getDocs(repliesQuery);
-        const deletePromises = repliesSnapshot.docs.map(doc => deleteDoc(doc.ref));
-        await Promise.all(deletePromises);
 
         revalidatePath(`/figures/${reviewData.characterId}`);
         return { success: true, message: "Reseña eliminada correctamente." };

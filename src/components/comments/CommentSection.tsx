@@ -78,7 +78,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firebaseUser) {
-      toast({ title: 'Acción Requerida', description: 'Debes iniciar sesión para comentar.', variant: 'destructive' });
+      toast({ title: 'Acción Requerida', description: 'Debes estar autenticado para dejar una reseña.', variant: 'destructive' });
       return;
     }
     if (comment.trim().length < 5) {
@@ -86,14 +86,19 @@ export function CommentSection({ figure }: CommentSectionProps) {
         return;
     }
     setIsSubmitting(true);
-    const result = await addReview(figure.id, comment);
-    if (result.success) {
-      setComment('');
-      toast({ title: 'Éxito', description: result.message });
-    } else {
-      toast({ title: 'Error', description: result.message, variant: 'destructive' });
+    try {
+        const result = await addReview(figure.id, comment);
+        if (result.success) {
+          setComment('');
+          toast({ title: 'Éxito', description: result.message });
+        } else {
+          toast({ title: 'Error', description: result.message, variant: 'destructive' });
+        }
+    } catch (error: any) {
+        toast({ title: 'Error Inesperado', description: error.message, variant: 'destructive' });
+    } finally {
+        setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   const handleDelete = async (reviewId: string) => {
@@ -178,7 +183,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
                 <LogIn className="h-4 w-4" />
                 <AlertTitle>Únete a la conversación</AlertTitle>
                 <AlertDescription>
-                   <Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión</Link> o continúa como invitado para dejar un comentario.
+                   <Link href="/login" className="font-semibold text-primary hover:underline">Inicia sesión</Link> o regístrate para dejar un comentario.
                 </AlertDescription>
             </Alert>
         )}
