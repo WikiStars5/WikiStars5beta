@@ -11,10 +11,22 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { StarRating } from "@/components/shared/StarRating";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, User } from "lucide-react";
+import { Loader2, User, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
+import { deleteReview } from '@/app/actions/reviewActions';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface CommentSectionProps {
   figure: Figure;
@@ -80,26 +92,65 @@ export function CommentSection({ figure }: CommentSectionProps) {
     }
   };
 
-  const renderReviewItem = (review: Review) => (
-    <div key={review.id} className="flex items-start gap-4 py-4">
-      <Avatar>
-        <AvatarImage src={correctMalformedUrl(review.userPhotoUrl) || undefined} alt={review.username} />
-        <AvatarFallback>{review.username ? review.username.charAt(0).toUpperCase() : <User />}</AvatarFallback>
-      </Avatar>
-      <div className="flex-1">
-        <div className="flex items-center justify-between">
-          <p className="font-semibold">{review.username}</p>
-          <p className="text-xs text-muted-foreground">
-            {review.createdAt ? new Date(review.createdAt.toDate()).toLocaleDateString() : ''}
-          </p>
+  const handleDeleteReview = async (reviewId: string) => {
+    const result = await deleteReview(reviewId, figure.id);
+    if (result.success) {
+      toast({ title: "Reseña Eliminada", description: result.message });
+    } else {
+      toast({ title: "Error", description: result.message, variant: "destructive" });
+    }
+  };
+
+  const renderReviewItem = (review: Review) => {
+    const canDelete = currentUserProfile && (currentUserProfile.uid === review.userId || currentUserProfile.role === 'admin');
+
+    return (
+      <div key={review.id} className="flex items-start gap-4 py-4">
+        <Avatar>
+          <AvatarImage src={correctMalformedUrl(review.userPhotoUrl) || undefined} alt={review.username} />
+          <AvatarFallback>{review.username ? review.username.charAt(0).toUpperCase() : <User />}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <p className="font-semibold">{review.username}</p>
+                {canDelete && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                       <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive">
+                         <Trash2 className="h-3 w-3" />
+                         <span className="sr-only">Eliminar comentario</span>
+                       </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Confirmar Eliminación?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta acción no se puede deshacer. El comentario será eliminado permanentemente.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeleteReview(review.id)}>
+                          Eliminar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {review.createdAt ? new Date(review.createdAt.toDate()).toLocaleDateString() : ''}
+            </p>
+          </div>
+          <div className="my-1">
+            <StarRating rating={review.rating} readOnly size={16} />
+          </div>
+          <p className="text-sm text-foreground/90 whitespace-pre-wrap">{review.comment}</p>
         </div>
-        <div className="my-1">
-          <StarRating rating={review.rating} readOnly size={16} />
-        </div>
-        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{review.comment}</p>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <Card className="mt-8 w-full border border-white/20 bg-black">

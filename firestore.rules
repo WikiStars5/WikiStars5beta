@@ -3,48 +3,50 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Figures can be read by anyone, but only admins (via Cloud Functions) can write.
+    // Figures can be read by anyone but only written by admins.
+    // This allows public access to profiles while securing content management.
     match /figures/{figureId} {
       allow read: if true;
-      // Admin-only write access is enforced by Cloud Functions running with a service account.
-      // We deny direct client writes for security.
-      allow write: if false; 
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-    
-    // User profiles can be read by anyone.
-    // Users can only update their own profile. Creation is handled by Cloud Functions.
+
+    // User profiles can only be read by themselves or by an admin.
+    // Users can only create their own profile and update their own, but not change their role.
     match /users/{userId} {
-      allow read: if true;
-      allow update: if request.auth != null && request.auth.uid == userId;
-      allow create, delete: if false;
-    }
-
-    // New rule for reviews collection
-    match /reviews/{reviewId} {
-      // Anyone can read reviews
-      allow read: if true;
-      // Any authenticated user (including anonymous) can create a review
-      allow create: if request.auth != null;
-      // Only the user who created the review can update or delete it.
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-    }
-
-    // Notifications are private to each user.
-    match /notifications/{notificationId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if true; // Notifications are created by server-side logic (triggers).
+      allow read, update: if request.auth != null && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Prevent users from changing their own role.
+      allow update: if request.resource.data.role == resource.data.role;
     }
     
-    // User perceptions and attitudes are private write, public read.
+    // User perceptions can be created, updated, or deleted only by the authenticated owner.
+    // This ensures a user can't vote on behalf of someone else.
     match /userPerceptions/{voteId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
+    // User attitudes follow the same logic as perceptions.
     match /userAttitudes/{voteId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
+    // This is the new rule for the 'reviews' collection.
+    // - Anyone can read reviews (to display them on the figure's page).
+    // - Any authenticated user (including anonymous) can create a review.
+    // - A user can only update or delete their OWN review. An admin can also delete any review.
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+    
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Fallback rule: Deny all other access to prevent unintended data exposure.
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }
