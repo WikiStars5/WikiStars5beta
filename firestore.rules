@@ -2,66 +2,15 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+  
+    // WARNING: These rules are simplified for development and debugging.
+    // They allow broad access and should be secured before moving to production.
 
-    // Reglas para la colección 'figures'
-    match /figures/{figureId} {
-      // Todos pueden leer la información de las figuras.
+    // Allow read access to everyone for all documents.
+    // Allow write access to any authenticated user (including anonymous) for all documents.
+    match /{document=**} {
       allow read: if true;
-      // Solo los administradores autenticados pueden crear, actualizar o borrar figuras.
-      allow write: if request.auth != null && request.auth.token.role == 'admin';
-    }
-
-    // Reglas para la colección 'users'
-    match /users/{userId} {
-      // Cualquiera puede crear su propio perfil de usuario.
-      allow create: if request.auth.uid == userId;
-      // Los usuarios solo pueden leer y actualizar su propio perfil.
-      allow read, update: if request.auth.uid == userId;
-      // Solo los administradores pueden borrar perfiles (si es necesario).
-      allow delete: if request.auth != null && request.auth.token.role == 'admin';
-      // Los administradores pueden leer todos los perfiles.
-      allow list: if request.auth != null && request.auth.token.role == 'admin';
-    }
-    
-    // Reglas para la colección 'reviews'
-    match /reviews/{reviewId} {
-        // Cualquiera puede leer las reseñas.
-        allow read: if true;
-        // Cualquier usuario autenticado (incluidos anónimos) puede crear una reseña.
-        allow create: if request.auth != null;
-        // Los usuarios no pueden actualizar reseñas, solo crearlas o borrarlas.
-        allow update: if false;
-
-        // CORRECCIÓN: La regla `delete` ahora es más robusta y segura.
-        // Permite borrar al autor original de la reseña O a un administrador.
-        // `get()` se usa para leer el documento de forma segura antes de la operación de borrado.
-        allow delete: if get(/databases/$(database)/documents/reviews/$(reviewId)).data.userId == request.auth.uid 
-                      || request.auth.token.role == 'admin';
-    }
-    
-    match /userPerceptions/{voteId} {
-        // Los usuarios pueden leer su propio voto de percepción.
-        allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-        // Los usuarios pueden crear o actualizar su propio voto.
-        allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
-    }
-
-    match /userAttitudes/{voteId} {
-        // Los usuarios pueden leer su propio voto de actitud.
-        allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-        // Los usuarios pueden crear o actualizar su propio voto.
-        allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
-    }
-    
-    match /userStarRatings/{ratingId} {
-      // Los usuarios pueden crear o actualizar sus propias calificaciones de estrellas.
-      allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      // Los usuarios pueden leer su propia calificación.
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-    }
-    
-    match /notifications/{notificationId} {
-      allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.uid == resource.data.userId;
+      allow write: if request.auth != null;
     }
   }
 }
