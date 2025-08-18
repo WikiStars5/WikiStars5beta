@@ -34,6 +34,7 @@ import {
 import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { doc, onSnapshot } from "firebase/firestore";
 import { mapDocToFigure } from "@/lib/placeholder-data";
+import { CommentSection } from "@/components/comments/CommentSection";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -119,10 +120,19 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
             <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20"> 
               <TabsTrigger value="attitude-poll" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><MessageSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
+              <TabsTrigger value="comments" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><MessagesSquare className="h-4 sm:h-5 w-4 sm:w-5" />Comentarios</TabsTrigger>
             </TabsList>
 
             <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
             <TabsContent value="perception-emotions">{figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
+            <TabsContent value="comments">
+              {figure && currentUser !== undefined && (
+                <CommentSection figure={figure} />
+              )}
+              {(!figure || currentUser === undefined) && (
+                <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+              )}
+            </TabsContent>
           </Tabs>
         </div> 
       </div>

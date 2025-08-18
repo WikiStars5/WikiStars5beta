@@ -48,11 +48,6 @@ export interface Figure {
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
-
-  // Rating fields are being removed
-  overallRating?: number;
-  reviewCount?: number;
-  ratingDistribution?: Record<StarValueAsString, number>;
 }
 
 
@@ -62,9 +57,10 @@ export interface Review {
     userId: string;
     username: string;
     userPhotoUrl?: string | null;
-    rating: StarValue;
     comment: string;
     createdAt: Timestamp;
+    likes: string[];
+    replyCount: number;
 }
 
 export interface UserPerception {
