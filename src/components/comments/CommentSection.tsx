@@ -87,7 +87,8 @@ export function CommentSection({ figure }: CommentSectionProps) {
     }
     setIsSubmitting(true);
     try {
-        const result = await addReview(figure.id, comment);
+        const idToken = await firebaseUser.getIdToken();
+        const result = await addReview(figure.id, comment, idToken);
         if (result.success) {
           setComment('');
           toast({ title: 'Éxito', description: result.message });
@@ -102,7 +103,12 @@ export function CommentSection({ figure }: CommentSectionProps) {
   };
 
   const handleDelete = async (reviewId: string) => {
-    const result = await deleteReview(reviewId);
+    if (!firebaseUser) {
+      toast({ title: 'Error', description: 'Debes estar autenticado para borrar.', variant: 'destructive' });
+      return;
+    }
+    const idToken = await firebaseUser.getIdToken();
+    const result = await deleteReview(reviewId, idToken);
      if (result.success) {
       toast({ title: 'Éxito', description: result.message });
     } else {

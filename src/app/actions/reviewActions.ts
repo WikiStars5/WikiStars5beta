@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db, auth as clientAuth } from '@/lib/firebase'; // Renamed auth to clientAuth to avoid conflict
@@ -7,6 +8,8 @@ import type { Review } from '@/lib/types';
 import { getCurrentUser } from './userActions';
 import { headers } from 'next/headers';
 import { ADMIN_UID } from '@/config/admin';
+import type { DecodedIdToken } from 'firebase-admin/auth';
+import { getAuth } from 'firebase-admin/auth';
 
 interface AddReviewResult {
   success: boolean;
@@ -16,10 +19,22 @@ interface AddReviewResult {
 // The function now accepts an optional authToken for client-side calls
 export async function addReview(
   characterId: string,
-  comment: string
+  comment: string,
+  idToken?: string // Accepting the token directly
 ): Promise<AddReviewResult> {
-  // getCurrentUser will now correctly use the token from the headers
-  const user = await getCurrentUser();
+  
+  let decodedToken: DecodedIdToken | null = null;
+  if (idToken) {
+    try {
+      // We need to initialize admin auth here to verify the token
+      decodedToken = await getAuth().verifyIdToken(idToken);
+    } catch (error) {
+      console.error("Error verifying ID token in addReview:", error);
+      return { success: false, message: 'Token de autenticación inválido.' };
+    }
+  }
+
+  const user = await getCurrentUser(decodedToken ?? undefined);
 
   if (!user) {
     return { success: false, message: 'Debes estar autenticado para dejar una reseña.' };
@@ -57,8 +72,19 @@ interface DeleteReviewResult {
     message: string;
 }
 
-export async function deleteReview(reviewId: string): Promise<DeleteReviewResult> {
-    const user = await getCurrentUser();
+export async function deleteReview(reviewId: string, idToken?: string): Promise<DeleteReviewResult> {
+    
+    let decodedToken: DecodedIdToken | null = null;
+    if (idToken) {
+        try {
+            decodedToken = await getAuth().verifyIdToken(idToken);
+        } catch (error) {
+            console.error("Error verifying ID token in deleteReview:", error);
+            return { success: false, message: 'Token de autenticación inválido.' };
+        }
+    }
+    
+    const user = await getCurrentUser(decodedToken ?? undefined);
     
     if (!user) {
         return { success: false, message: "No estás autenticado." };
