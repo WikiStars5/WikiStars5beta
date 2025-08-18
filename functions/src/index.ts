@@ -180,7 +180,10 @@ export const addReview = onCall(async (request) => {
 
     const user = await auth.getUser(uid);
     const userProfileDoc = await db.collection('users').doc(uid).get();
-    const username = userProfileDoc.exists() ? userProfileDoc.data()?.username : (user.displayName || 'Usuario');
+    // Safely determine username
+    const username = userProfileDoc.exists() 
+        ? userProfileDoc.data()?.username 
+        : (user.displayName || 'Invitado');
 
     try {
         await db.collection('reviews').add({
@@ -243,3 +246,5 @@ export const deleteReview = onCall(async (request) => {
 import "./notifications";
 // Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.
 import "./triggers";
+
+    
