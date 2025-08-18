@@ -2,15 +2,15 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Figure, Review, UserProfile } from '@/lib/types';
+import type { Figure, Review } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, onSnapshot, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Send, Trash2, LogIn, User } from 'lucide-react';
+import { Loader2, Send, Trash2, LogIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addReview, deleteReview } from '@/app/actions/reviewActions';
 import Link from 'next/link';
@@ -169,7 +169,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
                 placeholder="Escribe tu opinión... (máx 1000 caracteres)"
                 rows={4}
                 maxLength={1000}
-                className="bg-muted border-white/30"
+                className="bg-black border-white"
               />
               <p className="text-xs text-right text-muted-foreground mt-1">{comment.length} / 1000</p>
             </div>
