@@ -46,14 +46,16 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-    MessagesSquare, Send, Trash2, ThumbsUp, ThumbsDown, MessageSquareReply, Loader2, UserPlus, LogIn
+    MessagesSquare, Send, Trash2, ThumbsUp, ThumbsDown, MessageSquareReply, Loader2, UserPlus, LogIn, UserCheck
 } from "lucide-react";
 import Link from 'next/link';
 import NextImage from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
+import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 
 interface CommentSectionProps {
     figure: Figure;
+    currentUser: User | null;
     onNewComment: () => void;
     setAnimationStreak: (streak: number | null) => void;
 }
@@ -69,8 +71,8 @@ const STAR_SOUND_URLS: Record<StarValue, string> = {
 };
 
 
-export function CommentSection({ figure, onNewComment, setAnimationStreak }: CommentSectionProps) {
-    const { firebaseUser: currentUser, isAnonymous } = useAuth();
+export function CommentSection({ figure, currentUser, onNewComment, setAnimationStreak }: CommentSectionProps) {
+    const { isAnonymous } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
 
@@ -108,8 +110,7 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
     const MAX_COMMENT_LENGTH = 1000;
     const COMMENT_TRUNCATE_LENGTH = 350;
 
-    const canCommentOrRate = !!currentUser;
-    const canRateWithStars = !!currentUser && isAnonymous;
+    const canCommentOrRate = !!currentUser && isAnonymous;
 
     const displayedComments = React.useMemo(() => {
         if (isLoadingComments) return [];
@@ -402,7 +403,7 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
     const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!canCommentOrRate || !currentUser) {
-            toast({ title: "Error", description: "Debes estar conectado para opinar.", variant: "destructive" });
+            toast({ title: "Error", description: "Solo los invitados pueden comentar y calificar.", variant: "destructive" });
             return;
         }
         if (isAnonymous && !isGuestInfoSet) {
@@ -419,36 +420,31 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
         const commentData: any = {
             figureId: figure.id,
             userId: currentUser.uid,
-            username: isAnonymous ? "Invitado" : (currentUser.displayName || "Usuario Anónimo"),
+            username: "Invitado",
             userPhotoURL: currentUser.photoURL || null,
             text: newComment.trim(),
-            starRatingGiven: canRateWithStars ? newCommentStars : null,
+            starRatingGiven: newCommentStars,
             createdAt: serverTimestamp(),
             likes: 0, dislikes: 0, likedBy: [], dislikedBy: [],
             parentId: null, replyCount: 0,
-            isAnonymous: isAnonymous,
+            isAnonymous: true,
+            guestUsername: localStorage.getItem('wikistars5-guestUsername'),
+            guestUsernameLower: localStorage.getItem('wikistars5-guestUsername')?.toLowerCase(),
+            guestGender: localStorage.getItem('wikistars5-guestGender'),
         };
+        if (anonymousUserCountryCode) commentData.userCountryCode = anonymousUserCountryCode;
 
-        if (isAnonymous) {
-            commentData.guestUsername = localStorage.getItem('wikistars5-guestUsername');
-            commentData.guestUsernameLower = localStorage.getItem('wikistars5-guestUsername')?.toLowerCase();
-            commentData.guestGender = localStorage.getItem('wikistars5-guestGender');
-            if (anonymousUserCountryCode) commentData.userCountryCode = anonymousUserCountryCode;
-        }
 
         try {
             await addDoc(collection(db, 'userComments'), commentData);
 
-            // If a star rating was given, call the Cloud Function to update counts
-            if (canRateWithStars && newCommentStars !== null) {
+            if (newCommentStars !== null) {
                 await updateStarRatingCallable({ figureId: figure.id, starValue: newCommentStars });
-            }
-
-            // Post-transaction UI updates
-            updateLocalStreak();
-            if (newCommentStars && canRateWithStars) {
                 playSoundEffect(newCommentStars);
             }
+
+            updateLocalStreak();
+            
             toast({
                 title: "¡Opinión Enviada!",
                 description: "¡Gracias por contribuir! Compártelo para que más gente opine.",
@@ -456,14 +452,12 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
                 action: <ShareButton figureName={figure.name} figureId={figure.id} showText />,
             });
             
-            if (!isAnonymous) {
-                const achResult2 = await grantMiPrimeraContribucionAchievement(currentUser.uid);
-                if (achResult2.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult2.message });
-            }
-            if (isAnonymous && newCommentStars) {
-                const achResult1 = await grantEstrellaBrillanteAchievement(currentUser.uid);
-                if (achResult1.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult1.message });
-            }
+            const achResult1 = await grantEstrellaBrillanteAchievement(currentUser.uid);
+            if (achResult1.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult1.message });
+
+            const achResult2 = await grantMiPrimeraContribucionAchievement(currentUser.uid);
+            if (achResult2.unlocked) toast({ title: "¡Logro Desbloqueado!", description: achResult2.message });
+            
 
             setNewComment("");
             fetchComments();
@@ -483,9 +477,9 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
 
 
     const handleLikeDislike = async (commentId: string, action: 'like' | 'dislike', parentCommentId: string | null = null) => {
-        if (!currentUser || !figure) {
-        toast({ title: 'Acción Requerida', description: 'Debes estar conectado para votar.' });
-        return;
+        if (!currentUser) {
+            toast({ title: 'Acción Requerida', description: 'Debes estar conectado para votar.' });
+            return;
         }
         if (votingCommentId) return;
 
@@ -742,14 +736,14 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
                 </div>
                 )}
                 <div className="flex items-center gap-1 mt-2">
-                <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'like', comment.parentId)} disabled={!canCommentOrRate || isVoting}>
+                <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'like', comment.parentId)} disabled={!currentUser || isVoting}>
                     <ThumbsUp className={cn("h-4 w-4 mr-1", userHasLiked && "fill-blue-500 text-blue-500")} /> {comment.likes}
                 </Button>
-                <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'dislike', comment.parentId)} disabled={!canCommentOrRate || isVoting}>
+                <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleLikeDislike(comment.id, 'dislike', comment.parentId)} disabled={!currentUser || isVoting}>
                     <ThumbsDown className={cn("h-4 w-4 mr-1", userHasDisliked && "fill-red-500 text-red-500")} /> {comment.dislikes}
                 </Button>
                 {level < MAX_NESTING_LEVEL && (
-                    <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleReplyClick(comment.id)} disabled={!canCommentOrRate}>
+                    <Button variant="ghost" size="sm" className="px-2 py-1 h-auto text-xs" onClick={() => handleReplyClick(comment.id)} disabled={!currentUser}>
                     <MessageSquareReply className="h-4 w-4 mr-1" /> Responder
                     </Button>
                 )}
@@ -780,7 +774,7 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
                     <Button 
                         size="sm" 
                         onClick={() => handleSubmitReply(comment.id)} 
-                        disabled={isSubmittingReply === comment.id || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH || (isAnonymous && !isGuestInfoSet)}
+                        disabled={isSubmittingReply === comment.id || !replyText.trim() || replyText.length > MAX_COMMENT_LENGTH || !currentUser || (isAnonymous && !isGuestInfoSet)}
                     >
                         {isSubmittingReply === comment.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Enviar Respuesta
@@ -808,93 +802,103 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                {canCommentOrRate && figure ? (
-                    <form onSubmit={handleSubmitComment} className="space-y-6">
-                    <div className="mb-4">
-                        <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">
-                          {canRateWithStars ? "Tu calificación (opcional):" : "La calificación es solo para invitados"}
-                        </Label>
-                        <StarRating
-                            rating={newCommentStars || 0}
-                            onRatingChange={(rating) => {
-                            const starVal = rating as StarValue;
-                            setNewCommentStars(starVal);
-                            }}
-                            size={32}
-                            readOnly={!canRateWithStars}
-                        />
-                    </div>
-                    {isAnonymous && !isGuestInfoSet && (
-                        <Dialog open={isGuestInfoDialogOpen} onOpenChange={setIsGuestInfoDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className="w-full">
-                            <UserPlus className="mr-2 h-4 w-4" />
-                            Continuar como Invitado para Comentar
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                            <DialogTitle>Definir Identidad de Invitado</DialogTitle>
-                            <DialogDescription>
-                                Para comentar, elige un nombre de invitado y un sexo. Esta información se guardará en tu perfil y navegador.
-                            </DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleSaveGuestInfo} className="space-y-4">
-                                <div>
-                                <Label htmlFor="guestUsernameDialog">Nombre de Invitado (Requerido)</Label>
-                                <Input
-                                    id="guestUsernameDialog"
-                                    value={tempGuestUsername}
-                                    onChange={(e) => setTempGuestUsername(e.target.value)}
-                                    placeholder="Elige un nombre"
-                                    maxLength={50}
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="guestGenderDialog">Sexo (Requerido)</Label>
-                                <Select onValueChange={setTempGuestGender} value={tempGuestGender} required>
-                                    <SelectTrigger id="guestGenderDialog">
-                                    <SelectValue placeholder="Selecciona tu sexo" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                    {GENDER_OPTIONS.filter(g => g.value === 'male' || g.value === 'female').map((gender) => (
-                                        <SelectItem key={gender.value} value={gender.value}>
-                                        {gender.symbol && <span aria-hidden="true" className="mr-2">{gender.symbol}</span>}
-                                        {gender.label}
-                                        </SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <Button type="submit" className="w-full">Guardar Identidad</Button>
-                            </form>
-                        </DialogContent>
-                        </Dialog>
-                    )}
-                    <div>
-                        <Label htmlFor="newComment" className="sr-only">Tu comentario</Label>
-                        <Textarea 
-                        id="newComment" 
-                        value={newComment} 
-                        onChange={(e) => setNewComment(e.target.value)} 
-                        placeholder="Escribe tu comentario aquí (obligatorio)..." 
-                        rows={4} 
-                        className="w-full" 
-                        disabled={isSubmittingComment || (isAnonymous && !isGuestInfoSet)} 
-                        maxLength={MAX_COMMENT_LENGTH}
-                        />
-                        <div className="text-right text-sm text-muted-foreground mt-1">
-                        {newComment.length} / {MAX_COMMENT_LENGTH}
+                {currentUser ? (
+                    canCommentOrRate ? (
+                        <form onSubmit={handleSubmitComment} className="space-y-6">
+                        <div className="mb-4">
+                            <Label htmlFor="newCommentStars" className="block text-sm font-medium text-foreground mb-2">
+                            Tu calificación (opcional):
+                            </Label>
+                            <StarRating
+                                rating={newCommentStars || 0}
+                                onRatingChange={(rating) => {
+                                const starVal = rating as StarValue;
+                                setNewCommentStars(starVal);
+                                }}
+                                size={32}
+                                readOnly={!canCommentOrRate}
+                            />
                         </div>
-                    </div>
-                    <div className="flex justify-end">
-                        <Button type="submit" disabled={isSubmittingComment || !newComment.trim() || newComment.length > MAX_COMMENT_LENGTH || (isAnonymous && !isGuestInfoSet)}>
-                        <Send className="mr-2 h-4 w-4" />
-                        {isSubmittingComment ? "Enviando..." : "Enviar Opinión"}
-                        </Button>
-                    </div>
-                    </form>
+                        {isAnonymous && !isGuestInfoSet && (
+                            <Dialog open={isGuestInfoDialogOpen} onOpenChange={setIsGuestInfoDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" className="w-full">
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Continuar como Invitado para Comentar
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                <DialogTitle>Definir Identidad de Invitado</DialogTitle>
+                                <DialogDescription>
+                                    Para comentar, elige un nombre de invitado y un sexo. Esta información se guardará en tu perfil y navegador.
+                                </DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleSaveGuestInfo} className="space-y-4">
+                                    <div>
+                                    <Label htmlFor="guestUsernameDialog">Nombre de Invitado (Requerido)</Label>
+                                    <Input
+                                        id="guestUsernameDialog"
+                                        value={tempGuestUsername}
+                                        onChange={(e) => setTempGuestUsername(e.target.value)}
+                                        placeholder="Elige un nombre"
+                                        maxLength={50}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="guestGenderDialog">Sexo (Requerido)</Label>
+                                    <Select onValueChange={setTempGuestGender} value={tempGuestGender} required>
+                                        <SelectTrigger id="guestGenderDialog">
+                                        <SelectValue placeholder="Selecciona tu sexo" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                        {GENDER_OPTIONS.filter(g => g.value === 'male' || g.value === 'female').map((gender) => (
+                                            <SelectItem key={gender.value} value={gender.value}>
+                                            {gender.symbol && <span aria-hidden="true" className="mr-2">{gender.symbol}</span>}
+                                            {gender.label}
+                                            </SelectItem>
+                                        ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button type="submit" className="w-full">Guardar Identidad</Button>
+                                </form>
+                            </DialogContent>
+                            </Dialog>
+                        )}
+                        <div>
+                            <Label htmlFor="newComment" className="sr-only">Tu comentario</Label>
+                            <Textarea 
+                            id="newComment" 
+                            value={newComment} 
+                            onChange={(e) => setNewComment(e.target.value)} 
+                            placeholder="Escribe tu comentario aquí (obligatorio)..." 
+                            rows={4} 
+                            className="w-full" 
+                            disabled={isSubmittingComment || (isAnonymous && !isGuestInfoSet)} 
+                            maxLength={MAX_COMMENT_LENGTH}
+                            />
+                            <div className="text-right text-sm text-muted-foreground mt-1">
+                            {newComment.length} / {MAX_COMMENT_LENGTH}
+                            </div>
+                        </div>
+                        <div className="flex justify-end">
+                            <Button type="submit" disabled={isSubmittingComment || !newComment.trim() || newComment.length > MAX_COMMENT_LENGTH || (isAnonymous && !isGuestInfoSet)}>
+                            <Send className="mr-2 h-4 w-4" />
+                            {isSubmittingComment ? "Enviando..." : "Enviar Opinión"}
+                            </Button>
+                        </div>
+                        </form>
+                    ) : (
+                        <Alert variant="default">
+                            <UserCheck className="h-4 w-4" />
+                            <AlertTitle>Comentarios solo para invitados</AlertTitle>
+                            <AlertDescription>
+                                Como usuario registrado, tu voz es importante en otras áreas, pero esta sección está reservada para los invitados. ¡Gracias por tu comprensión!
+                            </AlertDescription>
+                        </Alert>
+                    )
                 ) : ( 
                     <div className="text-center py-6 text-muted-foreground">
                         <LogIn className="mx-auto h-8 w-8 mb-2" />
@@ -955,3 +959,4 @@ export function CommentSection({ figure, onNewComment, setAnimationStreak }: Com
         </>
     );
 }
+
