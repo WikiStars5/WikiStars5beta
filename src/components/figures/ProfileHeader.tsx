@@ -63,12 +63,6 @@ export function ProfileHeader({
                 <div className="flex items-center gap-2">
                     <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
                 </div>
-                {currentUserStreak && currentUserStreak > 0 && (
-                  <div className="flex items-center gap-2 text-orange-400 font-semibold bg-orange-400/10 px-3 py-1 rounded-full text-sm">
-                    <Flame className="h-5 w-5" />
-                    <span>Racha actual: {currentUserStreak} {currentUserStreak === 1 ? 'día' : 'días'}</span>
-                  </div>
-                )}
               </div>
             </div>
             
@@ -77,5 +71,3 @@ export function ProfileHeader({
     </div>
   );
 }
-
-    
