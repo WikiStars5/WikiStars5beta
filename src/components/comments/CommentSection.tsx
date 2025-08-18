@@ -33,7 +33,7 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({ figure }: CommentSectionProps) {
-  const { firebaseUser, user: currentUserProfile, isLoading: isAuthLoading } = useAuth();
+  const { user: currentUserProfile, firebaseUser, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
 
   const [reviews, setReviews] = React.useState<Review[]>([]);
@@ -93,16 +93,24 @@ export function CommentSection({ figure }: CommentSectionProps) {
   };
 
   const handleDeleteReview = async (reviewId: string) => {
+    // Optimistic UI update
+    const originalReviews = [...reviews];
+    setReviews(reviews.filter(r => r.id !== reviewId));
+
     const result = await deleteReview(reviewId, figure.id);
+    
     if (result.success) {
       toast({ title: "Reseña Eliminada", description: result.message });
+      // The real-time listener will handle the final state, so no need to manually re-add on failure unless it's critical
     } else {
       toast({ title: "Error", description: result.message, variant: "destructive" });
+      setReviews(originalReviews); // Revert if the deletion failed
     }
   };
 
   const renderReviewItem = (review: Review) => {
-    const canDelete = firebaseUser && (firebaseUser.uid === review.userId || currentUserProfile?.role === 'admin');
+    // Correct permission check logic
+    const canDelete = firebaseUser && (firebaseUser.uid === review.userId || (currentUserProfile?.role === 'admin'));
 
     return (
       <div key={review.id} className="flex items-start gap-4 py-4">

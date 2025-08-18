@@ -28,7 +28,6 @@ export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", as
 
         const reviewCount = reviewsSnapshot.size;
         
-        let overallRating = 0;
         const ratingDistribution: Record<StarValueAsString, number> = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
         let totalRatingSum = 0;
 
@@ -41,17 +40,20 @@ export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", as
                     totalRatingSum += rating;
                 }
             });
-            overallRating = totalRatingSum / reviewCount;
         }
+        
+        // Correctly calculate the average rating, handling the case of 0 reviews.
+        const overallRating = reviewCount > 0 ? parseFloat((totalRatingSum / reviewCount).toFixed(2)) : 0;
 
         // Prepare the data to update on the character's document.
+        // This only includes the fields we want to manage.
         const updateData = {
-            reviewCount,
-            overallRating: parseFloat(overallRating.toFixed(2)), // Keep it to 2 decimal places
-            ratingDistribution,
-            starRatingCounts: admin.firestore.FieldValue.delete(), // Explicitly delete the old field
+            reviewCount: reviewCount,
+            overallRating: overallRating,
+            ratingDistribution: ratingDistribution,
         };
         
+        // Use `update` to modify only the specified fields, leaving others untouched.
         transaction.update(characterRef, updateData);
         console.log(`Successfully updated ratings for character ${characterId}. Review count: ${reviewCount}, New average: ${overallRating}.`);
     }).catch(error => {

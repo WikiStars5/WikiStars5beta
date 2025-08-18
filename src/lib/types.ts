@@ -49,7 +49,7 @@ export interface Figure {
   overallRating: number;
   reviewCount: number;
   ratingDistribution: Record<StarValueAsString, number>;
-  commentCount?: number; 
+  
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
@@ -124,4 +124,27 @@ export interface GenderOption {
 export interface CategoryOption {
   value: string;
   label: string;
+}
+
+export interface LocalUserStreak {
+    figureId: string;
+    figureName: string;
+    figurePhotoUrl?: string;
+    currentStreak: number;
+    lastCommentDate: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  actorId: string;
+  actorName: string;
+  actorPhotoUrl?: string;
+  type: 'reply' | 'like';
+  figureId: string;
+  figureName: string;
+  commentId: string;
+  replyId?: string; // Only for 'reply' type
+  isRead: boolean;
+  createdAt: Timestamp;
 }

@@ -12,12 +12,12 @@ interface RatingSummaryDisplayProps {
 }
 
 export function RatingSummaryDisplay({ figure }: RatingSummaryDisplayProps) {
+  // Ensure we have defaults for all rating fields to prevent crashes
   const overallRating = figure.overallRating ?? 0;
   const reviewCount = figure.reviewCount ?? 0;
-  const ratingDistribution = figure.ratingDistribution;
-
+  
   const defaultDistribution: Record<StarValueAsString, number> = { "5": 0, "4": 0, "3": 0, "2": 0, "1": 0 };
-  const counts = ratingDistribution || defaultDistribution;
+  const counts = figure.ratingDistribution || defaultDistribution;
 
   const descriptionText = reviewCount > 0 
     ? `Basado en ${reviewCount} reseña${reviewCount !== 1 ? 's' : ''}.`

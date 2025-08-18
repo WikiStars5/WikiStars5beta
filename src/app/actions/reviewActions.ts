@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -36,9 +37,8 @@ export async function deleteReview(reviewId: string, figureId: string): Promise<
     
     await deleteDoc(reviewRef);
 
+    // This revalidation is now crucial because the trigger will update the figure doc
     revalidatePath(`/figures/${figureId}`);
-    revalidatePath(`/figures/${figureId}`, 'page');
-
 
     return { success: true, message: 'Reseña eliminada correctamente.' };
 

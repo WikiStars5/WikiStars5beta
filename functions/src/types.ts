@@ -37,12 +37,11 @@ export interface Figure {
   overallRating: number;
   reviewCount: number;
   ratingDistribution: Record<StarValueAsString, number>;
-  commentCount?: number; 
+  
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
 }
-
 
 export interface Review {
     id: string;
