@@ -1,8 +1,155 @@
 
-// This component is intentionally left blank.
-// The entire comment and rating functionality was removed from the UI as per user request
-// to resolve persistent issues and simplify the feature set.
-// Keeping the file avoids breaking any potential lingering imports but contains no active code.
-export function CommentSection() {
-    return null;
+"use client";
+
+import * as React from 'react';
+import type { Figure, Review, StarValue } from "@/lib/types";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { StarRating } from "@/components/shared/StarRating";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Loader2, User } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { correctMalformedUrl } from '@/lib/utils';
+import Link from 'next/link';
+
+interface CommentSectionProps {
+  figure: Figure;
+}
+
+export function CommentSection({ figure }: CommentSectionProps) {
+  const { firebaseUser, user: currentUserProfile, isLoading: isAuthLoading } = useAuth();
+  const { toast } = useToast();
+
+  const [reviews, setReviews] = React.useState<Review[]>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = React.useState(true);
+  const [newComment, setNewComment] = React.useState("");
+  const [newRating, setNewRating] = React.useState<StarValue | 0>(0);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const canSubmit = newComment.trim().length > 0 && newRating > 0 && !!firebaseUser;
+
+  React.useEffect(() => {
+    if (!figure.id) return;
+    setIsLoadingReviews(true);
+    const reviewsRef = collection(db, 'reviews');
+    const q = query(reviewsRef, where("characterId", "==", figure.id), orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedReviews = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
+      setReviews(fetchedReviews);
+      setIsLoadingReviews(false);
+    }, (error) => {
+      console.error("Error fetching reviews:", error);
+      setIsLoadingReviews(false);
+    });
+
+    return () => unsubscribe();
+  }, [figure.id]);
+
+  const handleSubmitReview = async () => {
+    if (!canSubmit) {
+      toast({ title: "Acción Requerida", description: "Debes dejar una calificación (1-5 estrellas) y un comentario para enviar tu reseña.", variant: "destructive" });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const reviewsRef = collection(db, 'reviews');
+      await addDoc(reviewsRef, {
+        characterId: figure.id,
+        userId: firebaseUser.uid,
+        username: currentUserProfile?.username || "Invitado",
+        userPhotoUrl: currentUserProfile?.photoURL || null,
+        rating: newRating,
+        comment: newComment,
+        createdAt: serverTimestamp(),
+      });
+
+      toast({ title: "¡Reseña Enviada!", description: "Gracias por tu contribución. Tu reseña ha sido publicada." });
+      setNewComment("");
+      setNewRating(0);
+    } catch (error) {
+      console.error("Error submitting review:", error);
+      toast({ title: "Error", description: "No se pudo enviar tu reseña. Por favor, inténtalo de nuevo.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderReviewItem = (review: Review) => (
+    <div key={review.id} className="flex items-start gap-4 py-4">
+      <Avatar>
+        <AvatarImage src={correctMalformedUrl(review.userPhotoUrl) || undefined} alt={review.username} />
+        <AvatarFallback>{review.username ? review.username.charAt(0).toUpperCase() : <User />}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1">
+        <div className="flex items-center justify-between">
+          <p className="font-semibold">{review.username}</p>
+          <p className="text-xs text-muted-foreground">
+            {review.createdAt ? new Date(review.createdAt.toDate()).toLocaleDateString() : ''}
+          </p>
+        </div>
+        <div className="my-1">
+          <StarRating rating={review.rating} readOnly size={16} />
+        </div>
+        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{review.comment}</p>
+      </div>
+    </div>
+  );
+
+  return (
+    <Card className="mt-8 w-full border border-white/20 bg-black">
+      <CardHeader>
+        <CardTitle>Calificaciones y Reseñas de {figure.name}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isAuthLoading ? (
+          <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+        ) : firebaseUser ? (
+          <div className="space-y-4">
+            <div>
+              <label className="font-medium text-sm">Tu Calificación</label>
+              <StarRating rating={newRating} onRatingChange={(r) => setNewRating(r as StarValue)} size={24} />
+            </div>
+            <div>
+              <label htmlFor="comment" className="font-medium text-sm">Tu Reseña</label>
+              <Textarea
+                id="comment"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder={`¿Qué opinas de ${figure.name}?`}
+                maxLength={1000}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground text-right mt-1">{newComment.length} / 1000</p>
+            </div>
+            <Button onClick={handleSubmitReview} disabled={!canSubmit || isSubmitting}>
+              {isSubmitting ? <Loader2 className="animate-spin" /> : "Enviar Reseña"}
+            </Button>
+          </div>
+        ) : (
+          <div className="text-center text-muted-foreground p-6 border rounded-md">
+            <p>Debes <Link href="/login" className="text-primary hover:underline">iniciar sesión</Link> o registrarte para dejar una reseña.</p>
+          </div>
+        )}
+
+        <div className="mt-8">
+          <h3 className="text-lg font-semibold">Todas las reseñas ({reviews.length})</h3>
+          {isLoadingReviews ? (
+             <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+          ) : reviews.length > 0 ? (
+            <div className="divide-y divide-border">
+              {reviews.map(renderReviewItem)}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center p-8">Sé el primero en dejar una reseña para {figure.name}.</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }

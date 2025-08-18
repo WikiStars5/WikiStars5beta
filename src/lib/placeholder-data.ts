@@ -1,3 +1,4 @@
+
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, StarValueAsString } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -26,7 +27,7 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   hater: 0,
 };
 
-const defaultStarRatingCounts: Record<StarValueAsString, number> = {
+const defaultRatingDistribution: Record<StarValueAsString, number> = {
   "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
 };
 
@@ -60,8 +61,9 @@ export const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot
     distinctiveFeatures: data.distinctiveFeatures || "",
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
-    starRatingCounts: data.starRatingCounts || { ...defaultStarRatingCounts },
-    commentCount: data.commentCount || 0,
+    overallRating: data.overallRating || 0,
+    reviewCount: data.reviewCount || 0,
+    ratingDistribution: data.ratingDistribution || { ...defaultRatingDistribution },
     createdAt: createdAtTimestamp && typeof createdAtTimestamp.toDate === 'function' 
                  ? createdAtTimestamp.toDate().toISOString() 
                  : undefined,
@@ -182,9 +184,10 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
       attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
-      starRatingCounts: figure.starRatingCounts || { ...defaultStarRatingCounts },
-      commentCount: figure.commentCount || 0,
-      isFeatured: figure.isFeatured || false, // Ensure isFeatured is set
+      reviewCount: figure.reviewCount || 0,
+      overallRating: figure.overallRating || 0,
+      ratingDistribution: figure.ratingDistribution || { ...defaultRatingDistribution },
+      isFeatured: figure.isFeatured || false, 
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
 
@@ -200,11 +203,11 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
   try {
     const figureRef = doc(db, "figures", figure.id);
     const { 
-        id, createdAt, nameLower, perceptionCounts, attitudeCounts, starRatingCounts, commentCount, 
+        id, createdAt, nameLower, perceptionCounts, attitudeCounts, 
         name, photoUrl, description, nationality, occupation, gender, alias, species,
         firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
         height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
-        category, sportSubcategory, ...rest
+        category, sportSubcategory, reviewCount, overallRating, ratingDistribution, ...rest
     } = figure;
 
     const updatePayload: { [key: string]: any } = {};
@@ -230,14 +233,15 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
     if (distinctiveFeatures !== undefined) updatePayload.distinctiveFeatures = distinctiveFeatures;
     if (status !== undefined) updatePayload.status = status;
     if (nameLower !== undefined) updatePayload.nameLower = nameLower;
-    if (commentCount !== undefined) updatePayload.commentCount = commentCount; 
     if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured;
     if (category !== undefined) updatePayload.category = category;
     if (sportSubcategory !== undefined) updatePayload.sportSubcategory = sportSubcategory;
 
     if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
     if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
-    if (starRatingCounts) updatePayload.starRatingCounts = starRatingCounts;
+    if (reviewCount !== undefined) updatePayload.reviewCount = reviewCount;
+    if (overallRating !== undefined) updatePayload.overallRating = overallRating;
+    if (ratingDistribution) updatePayload.ratingDistribution = ratingDistribution;
     
     if (Object.keys(rest).length > 0) {
       console.warn("Unknown fields in updateFigureInFirestore:", rest);
@@ -334,8 +338,6 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
       figuresCollectionRef, 
       where("isFeatured", "==", true), 
       limit(count)
-      // Consider adding an orderBy clause here if you want a specific order for featured figures
-      // e.g., orderBy("name", "asc") or orderBy("featuredAt", "desc") if you add such a field
     );
     const querySnapshot = await getDocs(q);
     let figures: Figure[] = [];
@@ -343,11 +345,6 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
       figures.push(mapDocToFigure(docSnap));
     });
 
-    // If no figures are marked as featured, or less than 'count' are featured, 
-    // this will return only those that are actually featured.
-    // The old fallback logic to fill with any figures is removed to strictly show only featured ones.
-
-    // Ensure unique figures if limit is high and there are duplicates (though unlikely with Firestore IDs)
     const uniqueFigureIds = new Set<string>();
     figures = figures.filter(figure => {
         if (uniqueFigureIds.has(figure.id)) {
@@ -357,10 +354,7 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
         return true;
     });
     
-    // Optional: sort client-side if not ordered by Firestore and a specific order is desired
-    // figures.sort((a,b) => a.name.localeCompare(b.name)); 
-
-    return figures.slice(0, count); // Ensure we don't exceed the count due to client-side manipulations
+    return figures.slice(0, count);
   } catch (error) {
     console.error("Error fetching featured figures from Firestore: ", error);
     if (String(error).toLowerCase().includes("index") || String(error).toLowerCase().includes("permission")) {
@@ -376,8 +370,6 @@ export const getFiguresByIds = async (ids: string[]): Promise<Figure[]> => {
     return [];
   }
   
-  // Firestore 'in' queries are limited to 30 items per query.
-  // We need to batch the requests if there are more than 30 IDs.
   const figures: Figure[] = [];
   const batches: string[][] = [];
   
@@ -398,8 +390,6 @@ export const getFiguresByIds = async (ids: string[]): Promise<Figure[]> => {
       }
     }
     
-    // The order from Firestore 'in' query is not guaranteed, so we sort it
-    // based on the original `ids` array order.
     const figureMap = new Map(figures.map(f => [f.id, f]));
     const sortedFigures = ids.map(id => figureMap.get(id)).filter((f): f is Figure => !!f);
 

@@ -33,6 +33,8 @@ import {
 } from '@/app/actions/achievementActions';
 import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
+import { CommentSection } from "@/components/comments/CommentSection";
+import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -82,6 +84,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
   };
 
   if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!figure) return <div>Figura no encontrada.</div>;
 
   return (
     <div className="space-y-8 lg:space-y-12">
@@ -92,7 +95,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
       />
       
       <ProfileHeader 
-        figure={figure!} 
+        figure={figure}
         onImageClick={handleOpenProfileImage}
       />
 
@@ -106,7 +109,7 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
             </TabsList>
 
             <TabsContent value="personal-info">
-                <FigureInfo figure={figure!} currentUser={currentUser} />
+                <FigureInfo figure={figure} currentUser={currentUser} />
             </TabsContent>
 
             <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
@@ -114,6 +117,9 @@ export default function FigureDetailClient({ initialFigure }: FigureDetailClient
           </Tabs>
         </div> 
       </div>
+
+      <RatingSummaryDisplay figure={figure} />
+      <CommentSection figure={figure} />
 
       {viewerImageUrl && (
         <ImageGalleryViewer

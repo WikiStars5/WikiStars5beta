@@ -30,7 +30,7 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-const defaultStarRatingCounts: Record<StarValueAsString, number> = {
+const defaultRatingDistribution: Record<StarValueAsString, number> = {
   "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
 };
 
@@ -65,7 +65,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
   const [perceptionCounts, setPerceptionCounts] = useState(initialData?.perceptionCounts || { ...defaultPerceptionCounts });
   const [attitudeCounts, setAttitudeCounts] = useState(initialData?.attitudeCounts || { ...defaultAttitudeCounts });
-  const [starRatingCounts, setStarRatingCounts] = useState(initialData?.starRatingCounts || { ...defaultStarRatingCounts });
   
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +98,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
       setPerceptionCounts(initialData.perceptionCounts || { ...defaultPerceptionCounts });
       setAttitudeCounts(initialData.attitudeCounts || { ...defaultAttitudeCounts });
-      setStarRatingCounts(initialData.starRatingCounts || { ...defaultStarRatingCounts });
       
     } else {
       // Reset all fields for new figure form
@@ -126,7 +124,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setIsFeatured(false);
       setPerceptionCounts({ ...defaultPerceptionCounts });
       setAttitudeCounts({ ...defaultAttitudeCounts });
-      setStarRatingCounts({ ...defaultStarRatingCounts });
     }
   }, [initialData]);
 
@@ -187,7 +184,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         isFeatured: isFeatured,
         perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
         attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
-        starRatingCounts: starRatingCounts || { ...defaultStarRatingCounts },
+        overallRating: initialData?.overallRating || 0,
+        reviewCount: initialData?.reviewCount || 0,
+        ratingDistribution: initialData?.ratingDistribution || {...defaultRatingDistribution},
         status: initialData?.status || 'approved',
       };
 

@@ -165,10 +165,5 @@ export const getAllUsers = onCall(async (request) => {
     }
 });
 
-
-// Star rating logic is completely removed.
-
-// Import notifications logic so it gets deployed
-// import "./notifications";
-// Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.
+// Import triggers which now contains the review aggregation logic
 import "./triggers";

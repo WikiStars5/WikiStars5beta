@@ -27,9 +27,8 @@ export interface Figure {
   occupation?: string;
   gender?: string;
   category?: string;
-  sportSubcategory?: string; // New field for sport details
+  sportSubcategory?: string; 
 
-  // Detailed fields (previously distinct, now integrated)
   alias?: string;
   species?: string; 
   firstAppearance?: string; 
@@ -45,10 +44,28 @@ export interface Figure {
 
   perceptionCounts?: Record<EmotionKey, number>;
   attitudeCounts?: Record<AttitudeKey, number>;
-  starRatingCounts?: Record<StarValueAsString, number>;
+  
+  // New review and rating fields
+  overallRating?: number;
+  reviewCount?: number;
+  ratingDistribution?: Record<StarValueAsString, number>;
+
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
+}
+
+
+export interface Review {
+    id: string;
+    characterId: string;
+    userId: string;
+    username: string;
+    userPhotoUrl?: string | null;
+    rating: StarValue;
+    comment: string;
+    createdAt: Timestamp;
+    likeCount?: number;
 }
 
 export interface UserPerception {
@@ -65,18 +82,16 @@ export interface UserAttitude {
   timestamp: Timestamp; 
 }
 
-// Type for storing attitude vote in Firestore or returning from Function
 export interface Attitude {
   figureId: string;
   attitude: AttitudeKey;
-  addedAt: string; // ISO String for the date
+  addedAt: string; 
 }
 
-// Type for storing emotion vote in Firestore or returning from Function
 export interface EmotionVote {
   figureId: string;
   emotion: EmotionKey;
-  addedAt: string; // ISO String for the date
+  addedAt: string; 
 }
 
 export interface Country {
@@ -96,15 +111,15 @@ export interface UserProfile {
   role: 'user' | 'admin';
   createdAt: string; 
   lastLoginAt?: string;
-  fcmToken?: string; // Field to store the Firebase Cloud Messaging token
-  achievements?: string[]; // Array of unlocked achievement IDs
+  fcmToken?: string;
+  achievements?: string[];
   isAnonymous?: boolean;
 }
 
 export interface GenderOption {
   value: string;
   label: string;
-  symbol?: string; // e.g., '♂', '♀'
+  symbol?: string; 
 }
 
 export interface CategoryOption {
