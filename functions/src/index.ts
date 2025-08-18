@@ -166,59 +166,6 @@ export const getAllUsers = onCall(async (request) => {
 });
 
 
-export const updateStarRating = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'You must be logged in to rate.');
-    }
-    const uid = request.auth.uid;
-    const { figureId, starValue } = request.data;
-
-    if (!figureId || typeof starValue !== 'number' || starValue < 1 || starValue > 5) {
-        throw new HttpsError('invalid-argument', 'Figure ID and a valid star rating (1-5) are required.');
-    }
-
-    const figureRef = db.collection('figures').doc(figureId);
-    const userRatingRef = db.collection('userStarRatings').doc(`${uid}_${figureId}`);
-
-    try {
-        await db.runTransaction(async (transaction) => {
-            const figureDoc = await transaction.get(figureRef);
-            const userRatingDoc = await transaction.get(userRatingRef);
-
-            if (!figureDoc.exists) {
-                throw new HttpsError('not-found', 'Figure not found.');
-            }
-
-            const oldStar = userRatingDoc.exists() ? userRatingDoc.data()?.starValue as StarValueAsString : null;
-            const newStar = starValue.toString() as StarValueAsString;
-            
-            const currentCounts = figureDoc.data()?.starRatingCounts || { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
-            const newCounts = { ...currentCounts };
-
-            // Only proceed if the vote is different
-            if (oldStar !== newStar) {
-                // Decrement old star count if it existed
-                if (oldStar) {
-                    newCounts[oldStar] = Math.max(0, (newCounts[oldStar] || 0) - 1);
-                }
-                // Increment new star count
-                newCounts[newStar] = (newCounts[newStar] || 0) + 1;
-
-                transaction.update(figureRef, { starRatingCounts: newCounts });
-                transaction.set(userRatingRef, { userId: uid, figureId: figureId, starValue: starValue, timestamp: admin.firestore.FieldValue.serverTimestamp() });
-            }
-        });
-        return { success: true, message: 'Rating updated successfully.' };
-    } catch (error) {
-        console.error("Error in updateStarRating transaction:", error);
-        if (error instanceof HttpsError) {
-            throw error;
-        }
-        throw new HttpsError('internal', 'Could not update rating.');
-    }
-});
-
-
 // Import notifications logic so it gets deployed
 import "./notifications";
 // Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.

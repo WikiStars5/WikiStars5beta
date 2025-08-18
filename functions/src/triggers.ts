@@ -51,6 +51,7 @@ export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", as
             reviewCount: reviewCount,
             overallRating: overallRating,
             ratingDistribution: ratingDistribution,
+            starRatingCounts: admin.firestore.FieldValue.delete(), // Explicitly delete the old field
         };
         
         // Use `update` to modify only the specified fields, leaving others untouched.
