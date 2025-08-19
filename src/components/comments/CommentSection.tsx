@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { StarRating } from '@/components/shared/StarRating';
-import { type Review, type StarValue, type Figure, type UserProfile } from '@/lib/types';
+import { type Review, type StarValue, type Figure } from '@/lib/types';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app, db } from '@/lib/firebase';
 import { Loader2, Send, MessageSquare, LogIn } from 'lucide-react';

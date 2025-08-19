@@ -2,12 +2,12 @@
 import { onDocumentWritten, FirestoreEvent } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import type { StarValue, StarValueAsString, Review } from "./types";
-import { DocumentSnapshot, Change } from "firebase-functions/v1/firestore";
+import type { DocumentSnapshot } from "firebase-admin/firestore";
 
 const db = admin.firestore();
 
 // This single, robust trigger handles creation, updates, and deletions in the 'reviews' collection.
-export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", (event: FirestoreEvent<Change<DocumentSnapshot> | undefined, { reviewId: string; }>) => {
+export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", (event: FirestoreEvent<{ before: DocumentSnapshot; after: DocumentSnapshot; } | { before: DocumentSnapshot; after: DocumentSnapshot; } | undefined, { reviewId: string; }>) => {
     const reviewId = event.params.reviewId;
 
     // Securely get before and after data
