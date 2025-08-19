@@ -4,7 +4,6 @@
 import * as React from 'react';
 import type { Review, UserProfile } from '@/lib/types';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { StarRating } from '@/components/shared/StarRating';
 import { ThumbsUp, ThumbsDown, MessageSquareReply, Trash2, Loader2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -119,7 +118,6 @@ export function CommentItem({ review, figureId, currentUser }: CommentItemProps)
               {review.createdAt ? timeAgo(review.createdAt.toDate()) : ''}
             </p>
           </div>
-          <StarRating rating={review.rating} size={16} readOnly />
         </div>
         <p className="text-sm mt-2 whitespace-pre-wrap">{review.comment}</p>
         <div className="flex items-center gap-4 mt-3 text-muted-foreground">

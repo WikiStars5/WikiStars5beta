@@ -7,8 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { StarRating } from '@/components/shared/StarRating';
-import { type Review, type StarValue, type Figure } from '@/lib/types';
+import { type Review, type Figure } from '@/lib/types';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app, db } from '@/lib/firebase';
 import { Loader2, Send, MessageSquare, LogIn } from 'lucide-react';
@@ -17,7 +16,7 @@ import { CommentItem } from './CommentItem';
 import Link from 'next/link';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 
-const addReviewCallable = httpsCallable<{ characterId: string; comment: string; rating: StarValue }, { success: boolean; reviewId: string }>(getFunctions(app, 'us-central1'), 'addReview');
+const addReviewCallable = httpsCallable<{ characterId: string; comment: string; }, { success: boolean; reviewId: string }>(getFunctions(app, 'us-central1'), 'addReview');
 
 interface CommentSectionProps {
   figure: Figure;
@@ -28,7 +27,6 @@ export function CommentSection({ figure }: CommentSectionProps) {
   const { toast } = useToast();
 
   const [commentText, setCommentText] = React.useState('');
-  const [rating, setRating] = React.useState<StarValue>(0 as StarValue);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const [reviews, setReviews] = React.useState<Review[]>([]);
@@ -74,21 +72,15 @@ export function CommentSection({ figure }: CommentSectionProps) {
       toast({ title: "Comentario Vacío", description: "Por favor, escribe algo antes de enviar.", variant: "destructive" });
       return;
     }
-    if (rating === 0) {
-      toast({ title: "Calificación Requerida", description: "Por favor, selecciona una calificación de estrellas.", variant: "destructive" });
-      return;
-    }
 
     setIsSubmitting(true);
     try {
       await addReviewCallable({
         characterId: figure.id,
         comment: commentText,
-        rating: rating,
       });
 
       setCommentText('');
-      setRating(0 as StarValue);
       toast({ title: "¡Gracias!", description: "Tu comentario ha sido publicado." });
 
     } catch (error: any) {
@@ -134,7 +126,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
       <CardHeader>
         <CardTitle>Comentarios sobre {figure.name}</CardTitle>
         <CardDescription>
-          Comparte tu opinión y califica a esta figura. Tu perspectiva es importante.
+          Comparte tu opinión. Tu perspectiva es importante.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -142,10 +134,6 @@ export function CommentSection({ figure }: CommentSectionProps) {
             <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
         ) : firebaseUser ? (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-                <span className="font-medium">Tu Calificación:</span>
-                <StarRating rating={rating} onRatingChange={(r) => setRating(r as StarValue)} size={24} />
-            </div>
             <Textarea
               placeholder="Escribe tu comentario aquí..."
               value={commentText}

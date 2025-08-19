@@ -44,7 +44,6 @@ export interface Review {
     userId: string;
     username: string;
     userPhotoUrl?: string | null;
-    rating: StarValue;
     comment: string;
     createdAt: any; // Using any for Firestore Admin Timestamp flexibility
     likes: number;

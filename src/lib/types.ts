@@ -55,7 +55,6 @@ export interface Review {
   userId: string;
   username: string;
   userPhotoUrl?: string | null;
-  rating: StarValue;
   comment: string;
   createdAt: Timestamp; // Keep as Timestamp for server-side
   likes: number;

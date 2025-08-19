@@ -33,10 +33,10 @@ export const addReview = onCall(async (request) => {
         throw new HttpsError('unauthenticated', 'You must be logged in to leave a review.');
     }
     const { uid } = request.auth;
-    const { characterId, comment, rating } = request.data;
+    const { characterId, comment } = request.data;
 
-    if (!characterId || !comment || typeof rating !== 'number' || rating < 1 || rating > 5) {
-        throw new HttpsError('invalid-argument', 'Request data is invalid.');
+    if (!characterId || !comment) {
+        throw new HttpsError('invalid-argument', 'Request data is invalid. Missing characterId or comment.');
     }
 
     try {
@@ -56,7 +56,6 @@ export const addReview = onCall(async (request) => {
             userId: uid,
             username,
             userPhotoUrl: photoURL,
-            rating: rating,
             comment,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             likes: 0,
