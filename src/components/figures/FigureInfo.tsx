@@ -1,5 +1,7 @@
+
 "use client";
 
+import { useState } from 'react';
 import type { Figure } from "@/lib/types";
 import {
   Card,
@@ -9,28 +11,19 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  BookOpen,
-  Cake,
-  MapPin,
-  Activity,
-  HeartHandshake,
-  StretchVertical,
-  Scale,
-  Palette,
-  Eye,
-  Scan,
-  NotepadText,
-  Zap,
-  UserCircle,
-  Briefcase,
-  Globe,
-  Users,
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2
 } from "lucide-react";
 import type { User } from 'firebase/auth';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { updateFigureInFirestore } from '@/lib/placeholder-data';
+import { correctMalformedUrl } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 interface FigureInfoProps {
   figure: Figure;
-  currentUser: User | null;
 }
 
 interface InfoItemProps {
@@ -52,7 +45,39 @@ const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value }) => {
   );
 };
 
-export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
+export function FigureInfo({ figure }: FigureInfoProps) {
+  const { user: currentUser, isAnonymous } = useAuth();
+  const { toast } = useToast();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState(figure.photoUrl || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const isAdmin = currentUser?.role === 'admin' && !isAnonymous;
+
+  const handleSave = async () => {
+    if (!isAdmin) return;
+    setIsSaving(true);
+    try {
+      const correctedUrl = correctMalformedUrl(photoUrl);
+      await updateFigureInFirestore({ id: figure.id, photoUrl: correctedUrl });
+      toast({
+        title: "Imagen Actualizada",
+        description: `La foto de perfil de ${figure.name} ha sido actualizada.`,
+      });
+      setIsEditing(false);
+    } catch (error: any) {
+      console.error("Error updating photo URL:", error);
+      toast({
+        title: "Error al Guardar",
+        description: error.message || "No se pudo actualizar la imagen.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const hasBasicInfo = figure.occupation || figure.nationality || figure.gender || figure.category;
   const hasDetailedInfo =
     figure.alias ||
@@ -73,14 +98,44 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
 
   return (
     <Card className="border border-white/20 bg-black">
-      <CardHeader>
-        <CardTitle>Información Detallada</CardTitle>
-        <CardDescription>
-          Datos biográficos y descriptivos de {figure.name}.
-        </CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Información Detallada</CardTitle>
+          <CardDescription>
+            Datos biográficos y descriptivos de {figure.name}.
+          </CardDescription>
+        </div>
+        {isAdmin && !isEditing && (
+          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+            <Edit className="mr-2 h-4 w-4" /> Editar
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
-        {!hasAnyInfo ? (
+        {isEditing ? (
+          <div className="space-y-4 p-4 border-dashed border rounded-md">
+            <h3 className="font-semibold">Modo de Edición</h3>
+            <div>
+              <Label htmlFor="photoUrl">URL de la Imagen de Perfil</Label>
+              <Input 
+                id="photoUrl" 
+                value={photoUrl} 
+                onChange={(e) => setPhotoUrl(e.target.value)} 
+                placeholder="https://..."
+              />
+               <p className="text-xs text-muted-foreground mt-1">Pega un enlace de Wikimedia, Pinterest, etc.</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>
+                <X className="mr-2 h-4 w-4" /> Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Guardar Imagen
+              </Button>
+            </div>
+          </div>
+        ) : !hasAnyInfo ? (
            <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">No hay información detallada disponible para esta figura.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
