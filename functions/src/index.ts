@@ -163,9 +163,3 @@ export const getAllUsers = onCall(async (request) => {
         return { success: false, error: error.message || 'Un error desconocido ocurrió en la Cloud Function.' };
     }
 });
-
-
-// Import notifications logic so it gets deployed
-import "./notifications";
-// Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.
-import "./triggers";

@@ -1,3 +1,4 @@
+
 "use client"; 
 
 import { Logo } from '@/components/shared/Logo';
@@ -6,8 +7,6 @@ import Link from 'next/link';
 import { MobileSearchButton } from './MobileSearchButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
 import { useState } from 'react';
-import { NotificationBell } from './NotificationBell';
-import { GuestNotificationBell } from './GuestNotificationBell'; // Import the new component
 import { InstallPwaButton } from './InstallPwaButton';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -44,11 +43,6 @@ export function Header() {
           <InstallPwaButton />
           <MobileSearchButton />
           
-          {/* Conditional rendering for notification bells */}
-          {!isLoading && (
-            isAnonymous ? <GuestNotificationBell /> : <NotificationBell />
-          )}
-
           <UserNav />
         </div>
       </div>

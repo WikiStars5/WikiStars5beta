@@ -84,11 +84,3 @@ export async function grantEmocionAlDescubiertoAchievement(userId: string): Prom
         '¡Conectando emociones! Has expresado cómo te sientes. ¡Tu empatía es valiosa!'
     );
 }
-
-export async function grantCompartiendoLaVerdadAchievement(userId: string): Promise<AchievementResult> {
-    return grantAchievement(
-        userId,
-        'compartiendo_verdad',
-        '¡La verdad se comparte! Has llevado la percepción real al mundo. ¡Gracias por difundir!'
-    );
-}
