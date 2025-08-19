@@ -1,7 +1,7 @@
 
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
-import type { StarValue, StarValueAsString } from "./types";
+import type { StarValue, StarValueAsString, Review } from "./types";
 
 const db = admin.firestore();
 
@@ -34,7 +34,7 @@ export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", as
 
         if (reviewCount > 0) {
             reviewsSnapshot.forEach(doc => {
-                const review = doc.data();
+                const review = doc.data() as Review;
                 const rating = review.rating as StarValue;
                 if (rating >= 1 && rating <= 5) {
                     ratingDistribution[rating.toString() as StarValueAsString]++;
@@ -49,12 +49,13 @@ export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", as
             reviewCount,
             overallRating: parseFloat(overallRating.toFixed(2)), // Keep it to 2 decimal places
             ratingDistribution,
-            starRatingCounts: admin.firestore.FieldValue.delete(), // Explicitly delete the old field
         };
         
         transaction.update(characterRef, updateData);
         console.log(`Successfully updated ratings for character ${characterId}. Review count: ${reviewCount}, New average: ${overallRating}.`);
     }).catch(error => {
         console.error(`Transaction failed for character ${characterId}:`, error);
+        // It's important to re-throw the error to signal a function failure.
+        throw new Error(`Failed to update ratings for character ${characterId}`);
     });
 });

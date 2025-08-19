@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -14,7 +15,7 @@ export async function updateCommentLikes(
     return { success: false, message: 'Información incompleta.' };
   }
 
-  const commentRef = doc(db, 'userComments', commentId);
+  const commentRef = doc(db, 'reviews', commentId);
 
   try {
     let newLikes: number | undefined;
@@ -77,10 +78,6 @@ export async function updateCommentLikes(
     
     // Revalidate paths for both non-locale and locale-based routing
     revalidatePath(`/figures/${figureId}`);
-    revalidatePath(`/es/figures/${figureId}`);
-    revalidatePath(`/en/figures/${figureId}`);
-    revalidatePath(`/pt/figures/${figureId}`);
-
 
     return { success: true, message: 'Voto actualizado.', newLikes, newDislikes };
   } catch (error: any) {

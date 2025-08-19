@@ -1,5 +1,4 @@
 
-
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -13,6 +12,8 @@ export interface PerceptionOption {
 
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
+export type StarValue = 1 | 2 | 3 | 4 | 5;
+export type StarValueAsString = "1" | "2" | "3" | "4" | "5";
 
 export interface Figure {
   id: string;
@@ -43,9 +44,40 @@ export interface Figure {
   perceptionCounts: Record<EmotionKey, number>;
   attitudeCounts: Record<AttitudeKey, number>;
   
+  // Obsolete fields, will be removed by trigger
+  overallRating?: number;
+  reviewCount?: number;
+  ratingDistribution?: Record<StarValueAsString, number>;
+  starRatingCounts?: Record<StarValueAsString, number>;
+
+
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
+}
+
+export interface Review {
+  id: string;
+  characterId: string;
+  userId: string;
+  username: string;
+  userPhotoUrl?: string | null;
+  rating: StarValue;
+  comment: string;
+  createdAt: Timestamp; // Keep as Timestamp for server-side
+  likes: number;
+  dislikes: number;
+  likedBy: string[];
+  dislikedBy: string[];
+  replies?: Review[];
+  replyTo?: string; // ID of the comment this is a reply to
+}
+
+export interface UserStarRating {
+    userId: string;
+    figureId: string;
+    starValue: StarValue;
+    timestamp: Timestamp;
 }
 
 export interface UserPerception {
