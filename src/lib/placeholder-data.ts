@@ -1,8 +1,8 @@
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, StarValueAsString } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction } from "firebase/firestore";
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -189,53 +189,60 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
 };
 
 export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: string }): Promise<void> => {
+  const figureRef = doc(db, "figures", figure.id);
   try {
-    const figureRef = doc(db, "figures", figure.id);
-    // Destructure all known fields to separate them from the rest
-    const { 
-        id, createdAt, nameLower, perceptionCounts, attitudeCounts, 
-        name, photoUrl, description, nationality, occupation, gender, alias, species,
-        firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
-        height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
-        category, sportSubcategory, ...rest
-    } = figure;
+    await runTransaction(db, async (transaction) => {
+      const sfDoc = await transaction.get(figureRef);
+      if (!sfDoc.exists()) {
+        throw "Document does not exist!";
+      }
 
-    const updatePayload: { [key: string]: any } = {};
+      // Destructure all known fields to separate them from the rest
+      const { 
+          id, createdAt, nameLower, perceptionCounts, attitudeCounts, 
+          name, photoUrl, description, nationality, occupation, gender, alias, species,
+          firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
+          height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
+          category, sportSubcategory, ...rest
+      } = figure;
 
-    if (name !== undefined) updatePayload.name = name;
-    if (photoUrl !== undefined) updatePayload.photoUrl = photoUrl;
-    if (description !== undefined) updatePayload.description = description;
-    if (nationality !== undefined) updatePayload.nationality = nationality;
-    if (occupation !== undefined) updatePayload.occupation = occupation;
-    if (gender !== undefined) updatePayload.gender = gender;
-    if (alias !== undefined) updatePayload.alias = alias;
-    if (species !== undefined) updatePayload.species = species;
-    if (firstAppearance !== undefined) updatePayload.firstAppearance = firstAppearance;
-    if (birthDateOrAge !== undefined) updatePayload.birthDateOrAge = birthDateOrAge;
-    if (birthPlace !== undefined) updatePayload.birthPlace = birthPlace;
-    if (statusLiveOrDead !== undefined) updatePayload.statusLiveOrDead = statusLiveOrDead;
-    if (maritalStatus !== undefined) updatePayload.maritalStatus = maritalStatus;
-    if (height !== undefined) updatePayload.height = height;
-    if (weight !== undefined) updatePayload.weight = weight;
-    if (hairColor !== undefined) updatePayload.hairColor = hairColor;
-    if (eyeColor !== undefined) updatePayload.eyeColor = eyeColor;
-    if (distinctiveFeatures !== undefined) updatePayload.distinctiveFeatures = distinctiveFeatures;
-    if (status !== undefined) updatePayload.status = status;
-    if (nameLower !== undefined) updatePayload.nameLower = nameLower;
-    if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured;
-    if (category !== undefined) updatePayload.category = category;
-    if (sportSubcategory !== undefined) updatePayload.sportSubcategory = sportSubcategory;
-    if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
-    if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
-    
-    if (Object.keys(rest).length > 0) {
-      console.warn("Unknown fields in updateFigureInFirestore:", rest);
-    }
+      const updatePayload: { [key: string]: any } = {};
 
-    await updateDoc(figureRef, updatePayload);
+      if (name !== undefined) updatePayload.name = name;
+      if (photoUrl !== undefined) updatePayload.photoUrl = photoUrl;
+      if (description !== undefined) updatePayload.description = description;
+      if (nationality !== undefined) updatePayload.nationality = nationality;
+      if (occupation !== undefined) updatePayload.occupation = occupation;
+      if (gender !== undefined) updatePayload.gender = gender;
+      if (alias !== undefined) updatePayload.alias = alias;
+      if (species !== undefined) updatePayload.species = species;
+      if (firstAppearance !== undefined) updatePayload.firstAppearance = firstAppearance;
+      if (birthDateOrAge !== undefined) updatePayload.birthDateOrAge = birthDateOrAge;
+      if (birthPlace !== undefined) updatePayload.birthPlace = birthPlace;
+      if (statusLiveOrDead !== undefined) updatePayload.statusLiveOrDead = statusLiveOrDead;
+      if (maritalStatus !== undefined) updatePayload.maritalStatus = maritalStatus;
+      if (height !== undefined) updatePayload.height = height;
+      if (weight !== undefined) updatePayload.weight = weight;
+      if (hairColor !== undefined) updatePayload.hairColor = hairColor;
+      if (eyeColor !== undefined) updatePayload.eyeColor = eyeColor;
+      if (distinctiveFeatures !== undefined) updatePayload.distinctiveFeatures = distinctiveFeatures;
+      if (status !== undefined) updatePayload.status = status;
+      if (nameLower !== undefined) updatePayload.nameLower = nameLower;
+      if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured;
+      if (category !== undefined) updatePayload.category = category;
+      if (sportSubcategory !== undefined) updatePayload.sportSubcategory = sportSubcategory;
+      if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
+      if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
+      
+      if (Object.keys(rest).length > 0) {
+        console.warn("Unknown fields in updateFigureInFirestore:", rest);
+      }
+
+      transaction.update(figureRef, updatePayload);
+    });
   } catch (error) {
-    console.error("Error updating figure in Firestore: ", error);
-    throw error;
+    console.error("Transaction failed: ", error);
+    throw new Error("La actualización falló porque alguien más editó el perfil. Por favor, recarga la página e intenta de nuevo.");
   }
 };
 
