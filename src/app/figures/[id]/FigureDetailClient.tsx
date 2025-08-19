@@ -35,7 +35,6 @@ import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
 import { doc, onSnapshot } from "firebase/firestore";
 import { mapDocToFigure } from "@/lib/placeholder-data";
-import { CommentSection } from "@/components/comments/CommentSection";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -133,8 +132,6 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
           </Tabs>
         </div> 
       </div>
-      
-      <CommentSection figure={figure} />
       
       {viewerImageUrl && (
         <ImageGalleryViewer

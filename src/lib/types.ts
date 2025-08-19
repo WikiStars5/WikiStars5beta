@@ -49,22 +49,6 @@ export interface Figure {
   isFeatured?: boolean;
 }
 
-export interface Review {
-  id: string;
-  characterId: string;
-  userId: string;
-  username: string;
-  userPhotoUrl?: string | null;
-  comment: string;
-  createdAt: Timestamp; // Keep as Timestamp for server-side
-  likes: number;
-  dislikes: number;
-  likedBy: string[];
-  dislikedBy: string[];
-  replies?: Review[];
-  replyTo?: string; // ID of the comment this is a reply to
-}
-
 export interface UserStarRating {
     userId: string;
     figureId: string;

@@ -8,7 +8,7 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
-import type { UserProfile, Review } from "./types";
+import type { UserProfile } from "./types";
 import { COUNTRIES } from "./countries";
 import type { DocumentData } from "firebase-admin/firestore";
 
@@ -26,93 +26,6 @@ const auth = admin.auth();
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
-
-
-export const addReview = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'You must be logged in to leave a review.');
-    }
-    const { uid } = request.auth;
-    const { characterId, comment } = request.data;
-
-    if (!characterId || !comment) {
-        throw new HttpsError('invalid-argument', 'Request data is invalid. Missing characterId or comment.');
-    }
-
-    try {
-        const userRecord = await auth.getUser(uid);
-        const userProfileDoc = await db.collection('users').doc(uid).get();
-
-        const username = userProfileDoc.exists() 
-            ? userProfileDoc.data()?.username 
-            : userRecord.displayName || "Invitado";
-            
-        const photoURL = userProfileDoc.exists()
-            ? userProfileDoc.data()?.photoURL
-            : userRecord.photoURL || null;
-
-        const newReview: Omit<Review, 'id'> = {
-            characterId,
-            userId: uid,
-            username,
-            userPhotoUrl: photoURL,
-            comment,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            likes: 0,
-            dislikes: 0,
-            likedBy: [],
-            dislikedBy: [],
-        };
-
-        const reviewRef = db.collection('reviews').doc();
-        await reviewRef.set(newReview);
-
-        return { success: true, reviewId: reviewRef.id };
-    } catch (error) {
-        console.error("Error in addReview function:", error);
-        throw new HttpsError('internal', 'An unexpected error occurred while adding the review.');
-    }
-});
-
-
-export const deleteReview = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'You must be logged in to delete a review.');
-    }
-    const { uid } = request.auth;
-    const { reviewId } = request.data;
-
-    if (!reviewId) {
-        throw new HttpsError('invalid-argument', 'Review ID is required.');
-    }
-
-    const reviewRef = db.collection('reviews').doc(reviewId);
-
-    try {
-        const reviewDoc = await reviewRef.get();
-        if (!reviewDoc.exists) {
-            throw new HttpsError('not-found', 'Review not found.');
-        }
-
-        const reviewData = reviewDoc.data() as Review;
-        const userProfileDoc = await db.collection('users').doc(uid).get();
-        const userIsAdmin = userProfileDoc.exists() && userProfileDoc.data()?.role === 'admin';
-
-        if (reviewData.userId !== uid && !userIsAdmin) {
-            throw new HttpsError('permission-denied', 'You do not have permission to delete this review.');
-        }
-
-        await reviewRef.delete();
-        return { success: true, message: 'Review deleted successfully.' };
-    } catch (error) {
-        console.error("Error in deleteReview function:", error);
-        if (error instanceof HttpsError) {
-            throw error;
-        }
-        throw new HttpsError('internal', 'Could not delete the review.');
-    }
-});
-
 
 /**
  * This function triggers automatically whenever a new user is created in Firebase Authentication.
