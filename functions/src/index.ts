@@ -56,7 +56,7 @@ export const addReview = onCall(async (request) => {
             userId: uid,
             username,
             userPhotoUrl: photoURL,
-            rating,
+            rating: rating,
             comment,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             likes: 0,

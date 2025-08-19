@@ -17,7 +17,7 @@ import { CommentItem } from './CommentItem';
 import Link from 'next/link';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 
-const addReviewCallable = httpsCallable<{ characterId: string; comment: string; rating: StarValue }, { success: boolean; reviewId: string }>(getFunctions(app), 'addReview');
+const addReviewCallable = httpsCallable<{ characterId: string; comment: string; rating: StarValue }, { success: boolean; reviewId: string }>(getFunctions(app, 'us-central1'), 'addReview');
 
 interface CommentSectionProps {
   figure: Figure;
