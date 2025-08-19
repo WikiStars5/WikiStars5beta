@@ -33,10 +33,7 @@ export interface Figure {
   perceptionCounts: Record<EmotionKey, number>;
   attitudeCounts: Record<AttitudeKey, number>;
   
-  // These fields are managed by the trigger
-  reviewCount: number;
-  overallRating: number;
-  ratingDistribution: Record<StarValueAsString, number>;
+  starRatingCounts?: Record<StarValueAsString, number>;
 
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 

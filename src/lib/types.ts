@@ -44,10 +44,7 @@ export interface Figure {
   perceptionCounts: Record<EmotionKey, number>;
   attitudeCounts: Record<AttitudeKey, number>;
   
-  // Obsolete fields, will be removed by trigger
-  overallRating?: number;
-  reviewCount?: number;
-  ratingDistribution?: Record<StarValueAsString, number>;
+  // These fields are managed by the trigger
   starRatingCounts?: Record<StarValueAsString, number>;
 
 
