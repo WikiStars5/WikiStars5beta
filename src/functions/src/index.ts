@@ -56,7 +56,7 @@ export const addReview = onCall(async (request) => {
             userId: uid,
             username,
             userPhotoUrl: photoURL,
-            rating, // Corrected: Save as a number directly
+            rating: rating, // Explicitly assigning the number to fix the data structure issue.
             comment,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             likes: 0,
@@ -257,3 +257,5 @@ export const getAllUsers = onCall(async (request) => {
 import "./notifications";
 // Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.
 import "./triggers";
+
+    
