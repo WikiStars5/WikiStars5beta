@@ -28,13 +28,13 @@ export function RatingSummaryDisplay({
   const starLevels: StarValue[] = [5, 4, 3, 2, 1];
 
   return (
-    <Card className="mb-6">
+    <Card className="mb-6 border border-white/20 bg-black">
       <CardHeader>
         <CardTitle className="text-xl font-headline">Calificación General de {figureName}</CardTitle>
         {totalReviews === 0 && <CardDescription>Aún no hay calificaciones para esta figura.</CardDescription>}
       </CardHeader>
       <CardContent className="space-y-4">
-        {totalReviews > 0 && (
+        {totalReviews > 0 ? (
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
             <div className="flex flex-col items-center sm:items-start">
               <p className="text-5xl font-bold text-primary">{averageRating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</p>
@@ -50,15 +50,17 @@ export function RatingSummaryDisplay({
                   <div key={level} className="flex items-center gap-2">
                     <div className="flex items-center text-xs text-muted-foreground w-16">
                       <span className="mr-1">{level}</span>
-                      <Star className="h-3 w-3 text-yellow-400" />
+                      <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
                     </div>
-                    <Progress value={percentage} className="w-full h-2 [&>div]:bg-yellow-400" aria-label={`${percentage.toFixed(0)}% para ${level} estrellas`} />
+                    <Progress value={percentage} className="w-full h-2 bg-muted [&>div]:bg-yellow-400" aria-label={`${percentage.toFixed(0)}% para ${level} estrellas`} />
                     <span className="text-xs text-muted-foreground w-8 text-right">{countForLevel}</span>
                   </div>
                 );
               })}
             </div>
           </div>
+        ) : (
+           <p className="text-center text-muted-foreground py-4">Sé el primero en calificar a esta figura dejando un comentario.</p>
         )}
       </CardContent>
     </Card>

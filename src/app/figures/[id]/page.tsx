@@ -1,3 +1,4 @@
+
 import { getFigureFromFirestore } from "@/lib/placeholder-data";
 import { notFound } from "next/navigation";
 import { FigureDetailClient } from "./FigureDetailClient";
@@ -7,7 +8,8 @@ interface FigurePageProps {
   params: { id: string };
 }
 
-export const revalidate = 60; // Revalidate every 60 seconds
+// Revalidation has been removed to rely on client-side fetching for real-time updates.
+// export const revalidate = 60; 
 
 // Generate dynamic metadata for SEO
 export async function generateMetadata(
@@ -57,6 +59,6 @@ export default async function FigurePage({ params }: FigurePageProps) {
     notFound();
   }
 
-  // Pass the server-fetched data to the client component
+  // Pass the server-fetched data to the client component for initial render
   return <FigureDetailClient initialFigure={figure} />;
 }

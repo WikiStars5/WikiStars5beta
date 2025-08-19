@@ -21,9 +21,10 @@ const addReviewCallable = httpsCallable<{ characterId: string; comment: string; 
 
 interface CommentSectionProps {
   figure: Figure;
+  initialReviews: Review[];
 }
 
-export function CommentSection({ figure }: CommentSectionProps) {
+export function CommentSection({ figure, initialReviews }: CommentSectionProps) {
   const { firebaseUser, user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
 
@@ -31,11 +32,11 @@ export function CommentSection({ figure }: CommentSectionProps) {
   const [rating, setRating] = React.useState<StarValue>(0 as StarValue);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const [reviews, setReviews] = React.useState<Review[]>([]);
+  const [reviews, setReviews] = React.useState<Review[]>(initialReviews);
   const [isLoadingReviews, setIsLoadingReviews] = React.useState(true);
 
   React.useEffect(() => {
-    setIsLoadingReviews(true);
+    // Listen for real-time updates to reviews
     const reviewsRef = collection(db, 'reviews');
     const q = query(
       reviewsRef,
@@ -44,12 +45,15 @@ export function CommentSection({ figure }: CommentSectionProps) {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedReviews = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        // Ensure createdAt is a Timestamp for consistent handling
-        createdAt: doc.data().createdAt instanceof Timestamp ? doc.data().createdAt : new Timestamp(0, 0)
-      } as Review));
+      const fetchedReviews = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+              id: doc.id,
+              ...data,
+              // Ensure createdAt is a Timestamp for consistent handling
+              createdAt: data.createdAt instanceof Timestamp ? data.createdAt : new Timestamp(0, 0)
+          } as Review
+      });
       setReviews(fetchedReviews);
       setIsLoadingReviews(false);
     }, (error) => {
@@ -101,7 +105,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
   };
 
   const renderReviewList = () => {
-    if (isLoadingReviews) {
+    if (isLoadingReviews && reviews.length === 0) {
       return (
         <div className="flex justify-center items-center py-10">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />

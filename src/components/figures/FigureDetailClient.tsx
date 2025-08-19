@@ -27,15 +27,16 @@ import { useParams, useRouter } from "next/navigation";
 import { auth as firebaseAuth, db } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { ShareButton } from "@/components/shared/ShareButton";
-import type { Figure } from "@/lib/types";
+import type { Figure, Review, StarValueAsString } from "@/lib/types";
 import { 
   grantFirstGlanceAchievement,
 } from '@/app/actions/achievementActions';
 import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
 import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { mapDocToFigure } from "@/lib/placeholder-data";
+import { CommentSection } from "@/components/comments/CommentSection";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -47,6 +48,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const router = useRouter();
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
+  const [reviews, setReviews] = React.useState<Review[]>([]);
   
   const { toast } = useToast();
 
@@ -73,12 +75,13 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
     return () => unsubscribe();
   }, [toast]); 
 
-  // Add a real-time listener to the figure document
+  // Add a real-time listener to the figure and reviews documents
   React.useEffect(() => {
     if (!id) return;
     const figureDocRef = doc(db, 'figures', id);
+    const reviewsQuery = query(collection(db, 'reviews'), where('characterId', '==', id));
 
-    const unsubscribe = onSnapshot(figureDocRef, (docSnap) => {
+    const unsubFigure = onSnapshot(figureDocRef, (docSnap) => {
         if (docSnap.exists()) {
             setFigure(mapDocToFigure(docSnap));
         } else {
@@ -89,7 +92,18 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
         console.error("Error listening to figure document:", error);
     });
 
-    return () => unsubscribe();
+    const unsubReviews = onSnapshot(reviewsQuery, (snapshot) => {
+      const fetchedReviews = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
+      setReviews(fetchedReviews);
+    }, (error) => {
+        console.error("Error listening to reviews collection:", error);
+    });
+
+
+    return () => {
+      unsubFigure();
+      unsubReviews();
+    };
   }, [id]);
 
 
@@ -98,6 +112,20 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
       setViewerImageUrl(imageUrl);
     }
   };
+
+  const { totalReviews, averageRating, starRatingCounts } = React.useMemo(() => {
+    const total = reviews.length;
+    if (total === 0) {
+      return { totalReviews: 0, averageRating: 0, starRatingCounts: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 } };
+    }
+    const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+    const avg = sum / total;
+    const counts: Record<StarValueAsString, number> = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
+    reviews.forEach(review => {
+      counts[review.rating.toString() as StarValueAsString]++;
+    });
+    return { totalReviews: total, averageRating: avg, starRatingCounts: counts };
+  }, [reviews]);
 
   if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!figure) return <div>Figura no encontrada.</div>;
@@ -113,6 +141,13 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
       <ProfileHeader 
         figure={figure}
         onImageClick={handleOpenProfileImage}
+      />
+      
+      <RatingSummaryDisplay 
+        figureName={figure.name}
+        starRatingCounts={starRatingCounts}
+        totalReviews={totalReviews}
+        averageRating={averageRating}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
@@ -133,6 +168,8 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
           </Tabs>
         </div> 
       </div>
+      
+      <CommentSection figure={figure} initialReviews={reviews} />
       
       {viewerImageUrl && (
         <ImageGalleryViewer
