@@ -35,10 +35,13 @@ export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", as
         if (reviewCount > 0) {
             reviewsSnapshot.forEach(doc => {
                 const review = doc.data() as Review;
-                const rating = review.rating as StarValue;
-                if (rating >= 1 && rating <= 5) {
-                    ratingDistribution[rating.toString() as StarValueAsString]++;
-                    totalRatingSum += rating;
+                // Ensure rating is a number before using it
+                if (typeof review.rating === 'number') {
+                    const rating = review.rating as StarValue;
+                    if (rating >= 1 && rating <= 5) {
+                        ratingDistribution[rating.toString() as StarValueAsString]++;
+                        totalRatingSum += rating;
+                    }
                 }
             });
             overallRating = totalRatingSum / reviewCount;

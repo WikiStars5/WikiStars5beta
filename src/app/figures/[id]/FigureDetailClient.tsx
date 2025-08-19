@@ -119,6 +119,8 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
       <RatingSummaryDisplay 
         figureName={figure.name}
         starRatingCounts={figure.starRatingCounts}
+        totalReviews={figure.reviewCount}
+        averageRating={figure.overallRating}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">

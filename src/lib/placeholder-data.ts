@@ -56,7 +56,9 @@ export const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot
     distinctiveFeatures: data.distinctiveFeatures || "",
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
-    starRatingCounts: data.starRatingCounts || undefined,
+    starRatingCounts: data.ratingDistribution || undefined, // Use ratingDistribution from trigger
+    reviewCount: data.reviewCount || 0,
+    overallRating: data.overallRating || 0,
     createdAt: createdAtTimestamp && typeof createdAtTimestamp.toDate === 'function' 
                  ? createdAtTimestamp.toDate().toISOString() 
                  : undefined,

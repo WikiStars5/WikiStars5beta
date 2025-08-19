@@ -45,6 +45,8 @@ export interface Figure {
   attitudeCounts: Record<AttitudeKey, number>;
   
   // These fields are managed by the trigger
+  reviewCount?: number;
+  overallRating?: number;
   starRatingCounts?: Record<StarValueAsString, number>;
 
 
