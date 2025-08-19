@@ -33,7 +33,6 @@ import {
 } from '@/app/actions/achievementActions';
 import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
-import { RatingSummaryDisplay } from "@/components/figures/RatingSummaryDisplay";
 import { doc, onSnapshot } from "firebase/firestore";
 import { mapDocToFigure } from "@/lib/placeholder-data";
 import { CommentSection } from "@/components/comments/CommentSection";
