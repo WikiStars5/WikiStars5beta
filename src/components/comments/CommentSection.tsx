@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -6,7 +5,7 @@ import type { Figure, Review } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { db, app } from '@/lib/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { collection, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -103,6 +102,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
           toast({ title: 'Error', description: data.message, variant: 'destructive' });
         }
     } catch (error: any) {
+        console.error("Error calling addReview function:", error);
         toast({ title: 'Error Inesperado', description: error.message || "No se pudo conectar con el servidor.", variant: 'destructive' });
     } finally {
         setIsSubmitting(false);
@@ -119,12 +119,15 @@ export function CommentSection({ figure }: CommentSectionProps) {
         toast({ title: 'Error', description: data.message, variant: 'destructive' });
       }
     } catch (error: any) {
+        console.error("Error calling deleteReview function:", error);
         toast({ title: 'Error al Eliminar', description: error.message || "No se pudo conectar con el servidor.", variant: 'destructive' });
     }
   }
 
   const renderReviewItem = (review: Review) => {
     const canDelete = currentUser && (currentUser.uid === review.userId || currentUser.role === 'admin');
+    const createdAtDate = review.createdAt?.toDate ? review.createdAt.toDate() : new Date();
+
     return (
       <div key={review.id} id={`comment-${review.id}`} className="flex items-start space-x-4 py-4">
         <Avatar>
@@ -157,7 +160,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            {review.createdAt ? timeSince(review.createdAt.toDate()) : 'hace un momento'}
+            {timeSince(createdAtDate)}
           </p>
           <p className="mt-2 text-sm text-foreground/90 whitespace-pre-wrap">{review.comment}</p>
         </div>
