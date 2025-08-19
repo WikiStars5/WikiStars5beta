@@ -77,14 +77,6 @@ export async function grantActitudDefinidaAchievement(userId: string): Promise<A
     );
 }
 
-export async function grantEstrellaBrillanteAchievement(userId: string): Promise<AchievementResult> {
-    return grantAchievement(
-        userId,
-        'estrella_brillante',
-        '¡Tu voz se alza! Has calificado una entidad. ¡Así se construye la percepción real!'
-    );
-}
-
 export async function grantEmocionAlDescubiertoAchievement(userId: string): Promise<AchievementResult> {
     return grantAchievement(
         userId,

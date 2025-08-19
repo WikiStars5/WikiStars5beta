@@ -38,8 +38,8 @@ export const sendPushNotification = onDocumentCreated("notifications/{notificati
   }
 
   // 2. Construct the notification payload
-  let notificationTitle = "";
-  let notificationBody = "";
+  let notificationTitle = "Nueva Actividad";
+  let notificationBody = "Alguien ha interactuado con tu contenido.";
 
   if (type === "reply") {
     notificationTitle = "Tienes una nueva respuesta";
@@ -48,12 +48,12 @@ export const sendPushNotification = onDocumentCreated("notifications/{notificati
     notificationTitle = "¡A alguien le gustó tu comentario!";
     notificationBody = `${actorName} le ha dado "me gusta" a tu comentario sobre ${figureName}.`;
   } else {
-    console.log(`Unknown notification type: ${type}`);
-    return;
+    // Keep a generic message for other potential types, or just return.
+    console.log(`Handling generic or unknown notification type: ${type}`);
+    notificationBody = `${actorName} ha interactuado con tu contenido sobre ${figureName}.`
   }
   
   // This is the correct payload structure for Webpush notifications via FCM.
-  // The `notification` object must be inside the `webpush` object.
   const payload = {
     token: fcmToken,
     webpush: {
@@ -63,7 +63,7 @@ export const sendPushNotification = onDocumentCreated("notifications/{notificati
         icon: "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194",
       },
       fcm_options: {
-        link: `https://wikistars5-2yctr.web.app/figures/${notificationData.figureId}#comment-${notificationData.replyId || notificationData.commentId}`,
+        link: `https://wikistars5-2yctr.web.app/figures/${notificationData.figureId}`,
       },
     },
      // You can also include a general notification for other platforms (like mobile)
@@ -76,8 +76,8 @@ export const sendPushNotification = onDocumentCreated("notifications/{notificati
   // 3. Send the message
   try {
     console.log(`Sending notification to user ${userId} with token ${fcmToken}`);
-    const response = await admin.messaging().send(payload);
-    console.log("Successfully sent message:", response);
+    await admin.messaging().send(payload);
+    console.log("Successfully sent message");
   } catch (error) {
     console.error("Error sending message:", error);
   }
