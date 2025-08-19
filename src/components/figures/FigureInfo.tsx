@@ -11,7 +11,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff
 } from "lucide-react";
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { updateFigureInFirestore } from '@/lib/placeholder-data';
 import { correctMalformedUrl } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import Image from 'next/image';
 
 interface FigureInfoProps {
   figure: Figure;
@@ -123,7 +124,29 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
               />
                <p className="text-xs text-muted-foreground mt-1">Pega un enlace de Wikimedia, Pinterest, etc.</p>
             </div>
-            <div className="flex justify-end gap-2">
+
+            {photoUrl && (
+              <div className="mt-4">
+                <Label>Vista Previa</Label>
+                <div className="mt-2 w-28 h-42 rounded-md border p-1 bg-muted overflow-hidden flex items-center justify-center">
+                  <Image
+                    key={photoUrl} // Use key to force re-render on URL change
+                    src={correctMalformedUrl(photoUrl)}
+                    alt="Vista previa"
+                    width={100}
+                    height={150}
+                    className="object-cover w-full h-full"
+                    data-ai-hint="image preview"
+                    onError={(e) => {
+                      e.currentTarget.src = "https://placehold.co/100x150.png";
+                      e.currentTarget.srcset = "";
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-4 border-t">
               <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>
                 <X className="mr-2 h-4 w-4" /> Cancelar
               </Button>
