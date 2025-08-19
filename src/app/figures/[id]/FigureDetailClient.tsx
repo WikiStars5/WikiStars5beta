@@ -34,7 +34,6 @@ import {
 import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { doc, onSnapshot } from "firebase/firestore";
 import { mapDocToFigure } from "@/lib/placeholder-data";
-import { CommentSection } from "@/components/comments/CommentSection";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -122,15 +121,6 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
           <div>
             {figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}
           </div>
-          <div>
-            {figure && currentUser !== undefined && (
-              <CommentSection figure={figure} />
-            )}
-            {(!figure || currentUser === undefined) && (
-              <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-            )}
-          </div>
-
         </div> 
       </div>
       

@@ -37,17 +37,6 @@ export interface Figure {
   isFeatured?: boolean;
 }
 
-export interface Review {
-    id: string;
-    characterId: string;
-    userId: string;
-    username: string;
-    userPhotoUrl?: string | null;
-    comment: string;
-    createdAt: any; // Using any for Firestore Admin Timestamp flexibility
-}
-
-
 export interface UserProfile {
   uid: string;
   email: string | null;

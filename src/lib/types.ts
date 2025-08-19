@@ -48,19 +48,6 @@ export interface Figure {
   isFeatured?: boolean;
 }
 
-
-export interface Review {
-    id: string;
-    characterId: string;
-    userId: string;
-    username: string;
-    userPhotoUrl?: string | null;
-    comment: string;
-    createdAt: Timestamp;
-    likes: string[];
-    replyCount: number;
-}
-
 export interface UserPerception {
   userId: string;
   figureId: string;
