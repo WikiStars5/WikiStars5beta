@@ -23,7 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface FigureInfoProps {
   figure: Figure;
-  currentUser: User | null; // <-- Prop added
+  currentUser: User | null; 
 }
 
 interface InfoItemProps {
@@ -45,7 +45,7 @@ const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value }) => {
   );
 };
 
-export function FigureInfo({ figure, currentUser }: FigureInfoProps) { // <-- Prop received
+export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
   const { user: firestoreUser, isAnonymous } = useAuth();
   const { toast } = useToast();
 
