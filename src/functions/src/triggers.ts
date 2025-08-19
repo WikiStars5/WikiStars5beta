@@ -1,15 +1,18 @@
 
-import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { onDocumentWritten, FirestoreEvent } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import type { StarValue, StarValueAsString, Review } from "./types";
+import { DocumentSnapshot, Change } from "firebase-functions/v1/firestore";
 
 const db = admin.firestore();
 
 // This single, robust trigger handles creation, updates, and deletions in the 'reviews' collection.
-export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", async (event) => {
+export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", (event: FirestoreEvent<Change<DocumentSnapshot> | undefined, { reviewId: string; }>) => {
     const reviewId = event.params.reviewId;
-    const beforeData = event.data?.before.data();
-    const afterData = event.data?.after.data();
+
+    // Securely get before and after data
+    const beforeData = event.data?.before?.data() as Review | undefined;
+    const afterData = event.data?.after?.data() as Review | undefined;
 
     // Determine the characterId from the new data or the old data (in case of deletion)
     const characterId = afterData?.characterId || beforeData?.characterId;
