@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -53,10 +54,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
   const [photoUrl, setPhotoUrl] = useState(figure.photoUrl || '');
   const [isSaving, setIsSaving] = useState(false);
 
-  const isAdmin = firestoreUser?.role === 'admin' && !isAnonymous;
-
   const handleSave = async () => {
-    if (!isAdmin) return;
     setIsSaving(true);
     try {
       const correctedUrl = correctMalformedUrl(photoUrl);
@@ -105,7 +103,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
             Datos biográficos y descriptivos de {figure.name}.
           </CardDescription>
         </div>
-        {isAdmin && !isEditing && (
+        {!isEditing && (
           <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
             <Edit className="mr-2 h-4 w-4" /> Editar
           </Button>
