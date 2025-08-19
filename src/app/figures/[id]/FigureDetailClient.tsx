@@ -124,7 +124,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
             </TabsList>
 
             <TabsContent value="personal-info">
-                <FigureInfo figure={figure} />
+                <FigureInfo figure={figure} currentUser={currentUser} />
             </TabsContent>
 
             <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>

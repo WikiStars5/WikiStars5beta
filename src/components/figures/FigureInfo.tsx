@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -24,6 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface FigureInfoProps {
   figure: Figure;
+  currentUser: User | null; // <-- Prop added
 }
 
 interface InfoItemProps {
@@ -45,15 +45,15 @@ const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value }) => {
   );
 };
 
-export function FigureInfo({ figure }: FigureInfoProps) {
-  const { user: currentUser, isAnonymous } = useAuth();
+export function FigureInfo({ figure, currentUser }: FigureInfoProps) { // <-- Prop received
+  const { user: firestoreUser, isAnonymous } = useAuth();
   const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(figure.photoUrl || '');
   const [isSaving, setIsSaving] = useState(false);
 
-  const isAdmin = currentUser?.role === 'admin' && !isAnonymous;
+  const isAdmin = firestoreUser?.role === 'admin' && !isAnonymous;
 
   const handleSave = async () => {
     if (!isAdmin) return;
