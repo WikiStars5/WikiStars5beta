@@ -7,12 +7,12 @@ import type { DocumentSnapshot } from "firebase-admin/firestore";
 const db = admin.firestore();
 
 // This single, robust trigger handles creation, updates, and deletions in the 'reviews' collection.
-export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", (event: FirestoreEvent<{ before: DocumentSnapshot; after: DocumentSnapshot; } | { before: DocumentSnapshot; after: DocumentSnapshot; } | undefined, { reviewId: string; }>) => {
+export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", (event: FirestoreEvent<admin.firestore.DocumentSnapshot | undefined, { reviewId: string; }>) => {
     const reviewId = event.params.reviewId;
 
     // Securely get before and after data
-    const beforeData = event.data?.before?.data() as Review | undefined;
-    const afterData = event.data?.after?.data() as Review | undefined;
+    const beforeData = event.data?.before.data() as Review | undefined;
+    const afterData = event.data?.after.data() as Review | undefined;
 
     // Determine the characterId from the new data or the old data (in case of deletion)
     const characterId = afterData?.characterId || beforeData?.characterId;
