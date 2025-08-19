@@ -13,8 +13,6 @@ export interface PerceptionOption {
 
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
-export type StarValue = 1 | 2 | 3 | 4 | 5;
-export type StarValueAsString = "1" | "2" | "3" | "4" | "5";
 
 export interface Figure {
   id: string;

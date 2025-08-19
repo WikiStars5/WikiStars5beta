@@ -178,19 +178,20 @@ export const addReview = onCall(async (request) => {
         throw new HttpsError('invalid-argument', 'El comentario debe tener entre 5 y 1000 caracteres.');
     }
 
-    const user = await auth.getUser(uid);
-    const userProfileDoc = await db.collection('users').doc(uid).get();
-    // Safely determine username
-    const username = userProfileDoc.exists() 
-        ? userProfileDoc.data()?.username 
-        : (user.displayName || 'Invitado');
-
     try {
+        const userRecord = await auth.getUser(uid);
+        const userProfileDoc = await db.collection('users').doc(uid).get();
+        
+        // Safely determine username. This is the key fix.
+        const username = userProfileDoc.exists() && userProfileDoc.data()?.username
+            ? userProfileDoc.data()?.username
+            : userRecord.displayName || 'Invitado';
+
         await db.collection('reviews').add({
             characterId,
             userId: uid,
             username: username,
-            userPhotoUrl: user.photoURL || null,
+            userPhotoUrl: userRecord.photoURL || null,
             comment: comment.trim(),
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             likes: [],
@@ -199,7 +200,7 @@ export const addReview = onCall(async (request) => {
         return { success: true, message: 'Tu reseña ha sido publicada.' };
     } catch (error) {
         console.error('Error adding review in Cloud Function:', error);
-        throw new HttpsError('internal', 'No se pudo publicar tu reseña.');
+        throw new HttpsError('internal', 'No se pudo publicar tu reseña. El servidor encontró un problema.');
     }
 });
 
@@ -246,5 +247,3 @@ export const deleteReview = onCall(async (request) => {
 import "./notifications";
 // Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.
 import "./triggers";
-
-    
