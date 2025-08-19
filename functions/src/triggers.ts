@@ -1,16 +1,17 @@
 
-
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
+import type { StarValue, StarValueAsString, Review } from "./types";
 
 const db = admin.firestore();
 
-// This trigger is now simplified. Its main purpose of updating ratings has been removed
-// as the feature was proving to be problematic. It can be repurposed later if needed.
+// This single, robust trigger handles creation, updates, and deletions in the 'reviews' collection.
 export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", async (event) => {
     const reviewId = event.params.reviewId;
-    const beforeData = event.data?.before.data();
-    const afterData = event.data?.after.data();
+
+    // Securely get before and after data
+    const beforeData = event.data?.before?.data();
+    const afterData = event.data?.after?.data();
 
     // Determine the characterId from the new data or the old data (in case of deletion)
     const characterId = afterData?.characterId || beforeData?.characterId;
@@ -22,26 +23,44 @@ export const updateCharacterRatings = onDocumentWritten("reviews/{reviewId}", as
 
     const characterRef = db.collection("figures").doc(characterId);
 
-    // The transaction logic for updating ratings has been removed.
-    // We will now perform a simple update to delete the obsolete fields if they exist.
-    try {
-        const updateData: {[key: string]: any} = {
-            // Remove obsolete fields if they exist on the document
-            ratingDistribution: admin.firestore.FieldValue.delete(),
-            overallRating: admin.firestore.FieldValue.delete(),
-            reviewCount: admin.firestore.FieldValue.delete(),
-            starRatingCounts: admin.firestore.FieldValue.delete()
-        };
+    // Use a transaction to ensure atomic updates to the character document.
+    return db.runTransaction(async (transaction) => {
+        // First, get all reviews for the specific character.
+        const reviewsSnapshot = await transaction.get(db.collection("reviews").where("characterId", "==", characterId));
 
-        // We only perform a write if there's actually a review being added/deleted.
-        // This prevents the trigger from running unnecessarily on other potential field updates.
-        if (beforeData || afterData) {
-            await characterRef.update(updateData);
-            console.log(`Review written for character ${characterId}. Obsolete rating fields cleaned up.`);
+        const reviewCount = reviewsSnapshot.size;
+        
+        let overallRating = 0;
+        const ratingDistribution: Record<StarValueAsString, number> = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
+        let totalRatingSum = 0;
+
+        if (reviewCount > 0) {
+            reviewsSnapshot.forEach(doc => {
+                const review = doc.data() as Review;
+                // Ensure rating is a number before using it
+                if (typeof review.rating === 'number') {
+                    const rating = review.rating as StarValue;
+                    if (rating >= 1 && rating <= 5) {
+                        ratingDistribution[rating.toString() as StarValueAsString]++;
+                        totalRatingSum += rating;
+                    }
+                }
+            });
+            overallRating = totalRatingSum / reviewCount;
         }
 
-    } catch (error) {
-        // We log the error but don't re-throw, as failing to delete old fields shouldn't block the review process.
-        console.error(`Error cleaning up old fields for character ${characterId}:`, error);
-    }
+        // Prepare the data to update on the character's document.
+        const updateData = {
+            reviewCount,
+            overallRating: parseFloat(overallRating.toFixed(2)), // Keep it to 2 decimal places
+            ratingDistribution,
+        };
+        
+        transaction.update(characterRef, updateData);
+        console.log(`Successfully updated ratings for character ${characterId}. Review count: ${reviewCount}, New average: ${overallRating}.`);
+    }).catch(error => {
+        console.error(`Transaction failed for character ${characterId}:`, error);
+        // It's important to re-throw the error to signal a function failure.
+        throw new Error(`Failed to update ratings for character ${characterId}`);
+    });
 });
