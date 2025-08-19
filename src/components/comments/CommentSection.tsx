@@ -21,10 +21,9 @@ const addReviewCallable = httpsCallable<{ characterId: string; comment: string; 
 
 interface CommentSectionProps {
   figure: Figure;
-  initialReviews: Review[];
 }
 
-export function CommentSection({ figure, initialReviews }: CommentSectionProps) {
+export function CommentSection({ figure }: CommentSectionProps) {
   const { firebaseUser, user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
 
@@ -32,7 +31,7 @@ export function CommentSection({ figure, initialReviews }: CommentSectionProps) 
   const [rating, setRating] = React.useState<StarValue>(0 as StarValue);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const [reviews, setReviews] = React.useState<Review[]>(initialReviews);
+  const [reviews, setReviews] = React.useState<Review[]>([]);
   const [isLoadingReviews, setIsLoadingReviews] = React.useState(true);
 
   React.useEffect(() => {
@@ -176,7 +175,7 @@ export function CommentSection({ figure, initialReviews }: CommentSectionProps) 
       </CardContent>
 
       <CardHeader className="border-t border-white/20 mt-6">
-        <CardTitle>Todos los comentarios ({reviews.length})</CardTitle>
+        <CardTitle>Todos los comentarios ({reviews?.length || 0})</CardTitle>
       </CardHeader>
       <CardContent>
         {renderReviewList()}
