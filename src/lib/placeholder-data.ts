@@ -710,18 +710,15 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
   const streaksRef = collection(db, `figures/${figureId}/streaks`);
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  // Query for active streaks and order them
+  // Step 1: Query for active streaks.
   const q = query(
-    streaksRef, 
-    where('lastCommentDate', '>', twentyFourHoursAgo),
-    orderBy('lastCommentDate', 'desc'), // Keep this to satisfy index requirements
-    orderBy('currentStreak', 'desc'),
-    limit(count)
+    streaksRef,
+    where('lastCommentDate', '>', twentyFourHoursAgo)
   );
 
   try {
     const querySnapshot = await getDocs(q);
-    const streaks: Streak[] = [];
+    let streaks: Streak[] = [];
     const userIds: string[] = [];
 
     querySnapshot.forEach(doc => {
@@ -738,22 +735,39 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
       }
     });
 
+    // Step 2: Sort the results in the client.
+    streaks.sort((a, b) => b.currentStreak - a.currentStreak);
+    
+    // Limit to the desired count after sorting.
+    streaks = streaks.slice(0, count);
+
     if (streaks.length === 0) {
       return [];
     }
-    
-    // Fetch user profiles for non-anonymous users if any exist
-    let profiles = new Map<string, UserProfile>();
-    if (userIds.length > 0) {
-      const usersRef = collection(db, 'users');
-      const usersQuery = query(usersRef, where('__name__', 'in', userIds));
-      const usersSnapshot = await getDocs(usersQuery);
-      
-      usersSnapshot.forEach(doc => {
-        profiles.set(doc.id, { uid: doc.id, ...doc.data() } as UserProfile);
-      });
-    }
 
+    // Step 3: Fetch user profiles for the top streaks.
+    let profiles = new Map<string, UserProfile>();
+    const topUserIds = streaks
+      .filter(s => !s.isAnonymous)
+      .map(s => s.userId);
+
+    if (topUserIds.length > 0) {
+      const usersRef = collection(db, 'users');
+      // Firestore 'in' queries are limited to 30 items. Batch if necessary.
+      const batches = [];
+      for (let i = 0; i < topUserIds.length; i += 30) {
+        batches.push(topUserIds.slice(i, i + 30));
+      }
+      for (const batch of batches) {
+        const usersQuery = query(usersRef, where('__name__', 'in', batch));
+        const usersSnapshot = await getDocs(usersQuery);
+        usersSnapshot.forEach(doc => {
+          profiles.set(doc.id, { uid: doc.id, ...doc.data() } as UserProfile);
+        });
+      }
+    }
+    
+    // Step 4: Combine streaks with profile information.
     const streaksWithProfiles = streaks.map(streak => ({
       ...streak,
       userProfile: streak.isAnonymous ? null : profiles.get(streak.userId) || null
@@ -762,8 +776,6 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
     return streaksWithProfiles;
 
   } catch (error: any) {
-    // Firestore requires a composite index for this query. If it's missing,
-    // it will log an error to the browser console with a link to create it.
     console.error("Error fetching top streaks:", error);
     if(String(error.message).toLowerCase().includes('index')) {
         console.error("POSSIBLE FIX: This query likely requires a composite index in Firestore. Check the browser's developer console for a link to create it automatically.");
