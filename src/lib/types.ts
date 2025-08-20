@@ -38,6 +38,8 @@ export interface Figure {
     facebook?: string;
   };
 
+  relatedFigureIds?: string[];
+
   perceptionCounts: Record<EmotionKey, number>;
   attitudeCounts: Record<AttitudeKey, number>;
   

@@ -211,6 +211,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         eyeColor: eyeColor.trim(),
         distinctiveFeatures: distinctiveFeatures.trim(),
         socialLinks: socialLinks,
+        relatedFigureIds: initialData?.relatedFigureIds || [],
         isFeatured: isFeatured,
         perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
         attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },

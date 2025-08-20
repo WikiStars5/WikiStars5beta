@@ -35,6 +35,7 @@ import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
 import { doc, onSnapshot } from "firebase/firestore";
 import { mapDocToFigure } from "@/lib/placeholder-data";
+import { RelatedProfiles } from "@/components/figures/RelatedProfiles";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -132,6 +133,8 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
           </Tabs>
         </div> 
       </div>
+
+      <RelatedProfiles figure={figure} />
       
       {viewerImageUrl && (
         <ImageGalleryViewer

@@ -55,6 +55,7 @@ export const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot
     eyeColor: data.eyeColor || "",
     distinctiveFeatures: data.distinctiveFeatures || "",
     socialLinks: data.socialLinks || {},
+    relatedFigureIds: data.relatedFigureIds || [],
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
     createdAt: createdAtTimestamp && typeof createdAtTimestamp.toDate === 'function' 
@@ -204,7 +205,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
           name, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
           height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
-          category, sportSubcategory, ...rest
+          category, sportSubcategory, relatedFigureIds, ...rest
       } = figure;
 
       const updatePayload: { [key: string]: any } = {};
@@ -238,6 +239,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
       if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
       if (socialLinks) updatePayload.socialLinks = socialLinks;
+      if (relatedFigureIds) updatePayload.relatedFigureIds = relatedFigureIds;
       
       if (Object.keys(rest).length > 0) {
         console.warn("Unknown fields in updateFigureInFirestore:", rest);
