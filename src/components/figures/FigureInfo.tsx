@@ -27,7 +27,7 @@ import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { CountryCombobox } from '../shared/CountryCombobox';
-import { COUNTRIES, countryCodeToNameMap } from '@/config/countries';
+import { COUNTRIES, countryCodeToNameMap, getCountryEmojiByCode } from '@/config/countries';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { format, differenceInYears } from 'date-fns';
@@ -230,6 +230,11 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
     return undefined;
   }, [figure.birthDateOrAge]);
 
+  const nationalityWithFlag = React.useMemo(() => {
+    const emoji = getCountryEmojiByCode(figure.nationalityCode || '');
+    return `${emoji || ''} ${figure.nationality || ''}`.trim();
+  }, [figure.nationality, figure.nationalityCode]);
+
 
   return (
     <Card className="border border-white/20 bg-black">
@@ -401,7 +406,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                       <h3 className="font-headline text-lg">Básica</h3>
                       <InfoItem icon={UserIcon} label="Nombre" value={figure.name} />
                       <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
-                      <InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} />
+                      <InfoItem icon={Globe} label="Nacionalidad" value={nationalityWithFlag} />
                       <InfoItem icon={Users} label="Género" value={figure.gender} />
                       <InfoItem icon={BookOpen} label="Categoría" value={figure.category} />
                   </div>
