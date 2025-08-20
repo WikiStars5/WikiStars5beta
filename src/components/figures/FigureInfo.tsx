@@ -60,16 +60,50 @@ const SocialLink: React.FC<{ href?: string; icon: React.ElementType; label: stri
   );
 };
 
+type SocialLinkErrors = {
+  instagram?: string;
+  twitter?: string;
+  youtube?: string;
+  facebook?: string;
+};
+
 export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
-  const { user: firestoreUser, isAnonymous } = useAuth();
+  const { isAnonymous } = useAuth();
   const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(figure.photoUrl || '');
   const [socialLinks, setSocialLinks] = useState(figure.socialLinks || {});
   const [isSaving, setIsSaving] = useState(false);
+  const [linkErrors, setLinkErrors] = useState<SocialLinkErrors>({});
+
+  const validateLinks = () => {
+    const errors: SocialLinkErrors = {};
+    if (socialLinks.instagram && !socialLinks.instagram.includes('instagram.com')) {
+      errors.instagram = 'URL de Instagram no válida.';
+    }
+    if (socialLinks.twitter && !(socialLinks.twitter.includes('twitter.com') || socialLinks.twitter.includes('x.com'))) {
+      errors.twitter = 'URL de Twitter/X no válida.';
+    }
+    if (socialLinks.youtube && !socialLinks.youtube.includes('youtube.com')) {
+      errors.youtube = 'URL de YouTube no válida.';
+    }
+    if (socialLinks.facebook && !socialLinks.facebook.includes('facebook.com')) {
+      errors.facebook = 'URL de Facebook no válida.';
+    }
+    setLinkErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSave = async () => {
+    if (!validateLinks()) {
+      toast({
+        title: "Revisa los enlaces",
+        description: "Algunas de las URLs de redes sociales no son válidas.",
+        variant: "destructive"
+      });
+      return;
+    }
     setIsSaving(true);
     try {
       const correctedUrl = correctMalformedUrl(photoUrl);
@@ -97,6 +131,9 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
   
   const handleSocialLinkChange = (platform: keyof typeof socialLinks, value: string) => {
     setSocialLinks(prev => ({ ...prev, [platform]: value }));
+    if (linkErrors[platform as keyof SocialLinkErrors]) {
+      setLinkErrors(prev => ({...prev, [platform]: undefined }));
+    }
   };
 
   const hasBasicInfo = figure.occupation || figure.nationality || figure.gender || figure.category;
@@ -174,10 +211,26 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
             <div>
                <h3 className="font-semibold mb-2">Editar Redes Sociales</h3>
                <div className="space-y-3">
-                 <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={socialLinks.instagram || ''} onChange={(e) => handleSocialLinkChange('instagram', e.target.value)} placeholder="https://instagram.com/..." /></div>
-                 <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={socialLinks.twitter || ''} onChange={(e) => handleSocialLinkChange('twitter', e.target.value)} placeholder="https://x.com/..." /></div>
-                 <div><Label htmlFor="youtube">YouTube</Label><Input id="youtube" value={socialLinks.youtube || ''} onChange={(e) => handleSocialLinkChange('youtube', e.target.value)} placeholder="https://youtube.com/..." /></div>
-                 <div><Label htmlFor="facebook">Facebook</Label><Input id="facebook" value={socialLinks.facebook || ''} onChange={(e) => handleSocialLinkChange('facebook', e.target.value)} placeholder="https://facebook.com/..." /></div>
+                 <div>
+                   <Label htmlFor="instagram">Instagram</Label>
+                   <Input id="instagram" value={socialLinks.instagram || ''} onChange={(e) => handleSocialLinkChange('instagram', e.target.value)} placeholder="https://instagram.com/..." />
+                   {linkErrors.instagram && <p className="text-xs text-destructive mt-1">{linkErrors.instagram}</p>}
+                 </div>
+                 <div>
+                   <Label htmlFor="twitter">X (Twitter)</Label>
+                   <Input id="twitter" value={socialLinks.twitter || ''} onChange={(e) => handleSocialLinkChange('twitter', e.target.value)} placeholder="https://x.com/..." />
+                   {linkErrors.twitter && <p className="text-xs text-destructive mt-1">{linkErrors.twitter}</p>}
+                 </div>
+                 <div>
+                   <Label htmlFor="youtube">YouTube</Label>
+                   <Input id="youtube" value={socialLinks.youtube || ''} onChange={(e) => handleSocialLinkChange('youtube', e.target.value)} placeholder="https://youtube.com/..." />
+                   {linkErrors.youtube && <p className="text-xs text-destructive mt-1">{linkErrors.youtube}</p>}
+                  </div>
+                 <div>
+                   <Label htmlFor="facebook">Facebook</Label>
+                   <Input id="facebook" value={socialLinks.facebook || ''} onChange={(e) => handleSocialLinkChange('facebook', e.target.value)} placeholder="https://facebook.com/..." />
+                   {linkErrors.facebook && <p className="text-xs text-destructive mt-1">{linkErrors.facebook}</p>}
+                  </div>
                </div>
             </div>
 
