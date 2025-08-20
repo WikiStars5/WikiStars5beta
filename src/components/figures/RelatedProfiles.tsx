@@ -5,7 +5,7 @@ import * as React from 'react';
 import { Figure } from '@/lib/types';
 import { getFiguresByIds, updateFigureInFirestore } from '@/lib/placeholder-data';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
-import { Loader2, PlusCircle, Users, X } from 'lucide-react';
+import { Loader2, PlusCircle, Users, X, ImageOff } from 'lucide-react';
 import { Button } from '../ui/button';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { SearchBar } from '../shared/SearchBar';
 import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
 
 interface RelatedProfilesProps {
   figure: Figure;
@@ -127,28 +128,44 @@ export function RelatedProfiles({ figure }: RelatedProfilesProps) {
           </div>
         ) : relatedFigures.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {relatedFigures.map(related => (
-              <div key={related.id} className="relative group">
-                 <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute -top-2 -right-2 z-10 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => handleRemoveProfile(related.id)}
-                  disabled={isUpdating}
-                  aria-label={`Eliminar a ${related.name}`}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-                <Link href={`/figures/${related.id}`} className="block text-center">
-                  <Avatar className="h-24 w-24 mx-auto mb-2 border-2 border-transparent group-hover:border-primary transition-colors">
-                    <AvatarImage src={correctMalformedUrl(related.photoUrl) || undefined} alt={related.name} />
-                    <AvatarFallback>{related.name.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <p className="text-sm font-medium truncate">{related.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{related.category}</p>
-                </Link>
-              </div>
-            ))}
+            {relatedFigures.map(related => {
+              const correctedUrl = correctMalformedUrl(related.photoUrl);
+              return (
+                <div key={related.id} className="relative group">
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 z-10 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleRemoveProfile(related.id)}
+                    disabled={isUpdating}
+                    aria-label={`Eliminar a ${related.name}`}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Link href={`/figures/${related.id}`} className="block text-center space-y-2">
+                     <div className="relative aspect-square w-full overflow-hidden rounded-md border-2 border-transparent group-hover:border-primary transition-colors bg-muted">
+                        {correctedUrl ? (
+                            <Image
+                                src={correctedUrl}
+                                alt={related.name}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 640px) 40vw, (max-width: 768px) 30vw, 20vw"
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-muted">
+                                <ImageOff className="h-8 w-8 text-muted-foreground"/>
+                            </div>
+                        )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium truncate">{related.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{related.category}</p>
+                    </div>
+                  </Link>
+                </div>
+              )
+            })}
           </div>
         ) : (
           <div className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
@@ -172,3 +189,5 @@ export function RelatedProfiles({ figure }: RelatedProfilesProps) {
     </Card>
   );
 }
+
+    
