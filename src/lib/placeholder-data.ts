@@ -644,7 +644,7 @@ export async function updateStreak(
   }
 ): Promise<number | null> {
   const streakRef = doc(db, `figures/${figureId}/streaks`, authorData.id);
-  let newStreakCount: number | null = null;
+  let streakToAnimate: number | null = null;
   const now = new Date();
 
   try {
@@ -652,22 +652,33 @@ export async function updateStreak(
       const streakDoc = await transaction.get(streakRef);
       
       let currentStreak = 1;
+      let shouldAnimate = false;
+
       if (streakDoc.exists()) {
         const data = streakDoc.data();
         const lastCommentDate = (data.lastCommentDate as Timestamp).toDate();
         
-        if (isSameDay(now, lastCommentDate)) {
-          // Commented again on the same day, streak doesn't change
-          currentStreak = data.currentStreak || 1;
-        } else if (isYesterday(lastCommentDate)) {
-          // Commented on the next day, streak increases
+        if (isYesterday(lastCommentDate)) {
+          // Continued streak
           currentStreak = (data.currentStreak || 0) + 1;
+          shouldAnimate = true;
+        } else if (isSameDay(now, lastCommentDate)) {
+          // Commented again on the same day, streak maintained
+          currentStreak = data.currentStreak || 1;
+          shouldAnimate = false; // Don't animate if just maintaining
         } else {
-          // Day was skipped, streak resets
+          // Streak broken, reset
           currentStreak = 1;
+          shouldAnimate = true; // Animate for the new start
         }
+      } else {
+        // First time commenting, new streak
+        shouldAnimate = true;
       }
-      newStreakCount = currentStreak;
+      
+      if (shouldAnimate) {
+        streakToAnimate = currentStreak;
+      }
 
       // Get user's current attitude and emotion for this figure from localStorage
       let attitude: AttitudeKey | null = null;
@@ -684,7 +695,7 @@ export async function updateStreak(
 
       const dataToSet: Streak = {
         userId: authorData.id,
-        currentStreak: newStreakCount,
+        currentStreak: currentStreak,
         lastCommentDate: Timestamp.fromDate(now),
         isAnonymous: authorData.isAnonymous,
         attitude,
@@ -704,7 +715,7 @@ export async function updateStreak(
   }
 
   // Also update local storage for instant UI on the profile page
-  if (typeof window !== 'undefined' && newStreakCount !== null) {
+  if (typeof window !== 'undefined' && streakToAnimate !== null) {
       try {
           const storageKey = 'wikistars5-userStreaks';
           let localStreaks: LocalUserStreak[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
@@ -712,12 +723,12 @@ export async function updateStreak(
           const existingStreakIndex = localStreaks.findIndex(s => s.figureId === figureId);
           
           if (existingStreakIndex !== -1) {
-              localStreaks[existingStreakIndex].currentStreak = newStreakCount;
+              localStreaks[existingStreakIndex].currentStreak = streakToAnimate;
               localStreaks[existingStreakIndex].lastCommentDate = now.toISOString();
           } else {
               localStreaks.push({
                   figureId,
-                  currentStreak: newStreakCount,
+                  currentStreak: streakToAnimate,
                   lastCommentDate: now.toISOString(),
               });
           }
@@ -728,7 +739,7 @@ export async function updateStreak(
       }
   }
 
-  return newStreakCount;
+  return streakToAnimate;
 }
 
 export async function getTopStreaksForFigure(figureId: string, count: number = 10): Promise<StreakWithProfile[]> {
