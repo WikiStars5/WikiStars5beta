@@ -92,15 +92,13 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
 
     return (
         <Card className={isEditingContext ? "border-0 shadow-none" : "bg-muted/50"}>
-            {!isEditingContext && (
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><UserPlus /> Configura tu Perfil de Invitado</CardTitle>
-                    <CardDescription>
-                        Elige un nombre, género y país para poder comentar. Esta información se guardará solo en este dispositivo.
-                    </CardDescription>
-                </CardHeader>
-            )}
-            <CardContent className={isEditingContext ? "p-0" : ""}>
+            <CardHeader className={isEditingContext ? "p-0 mb-4" : ""}>
+                <CardTitle className="flex items-center gap-2 text-base"><UserPlus /> Configura tu Perfil de Invitado</CardTitle>
+                <CardDescription className="text-xs">
+                    Elige un nombre, género y país para poder comentar. Esta información se guardará solo en este dispositivo.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div>
                         <Label htmlFor="guest-username">Tu Nombre</Label>

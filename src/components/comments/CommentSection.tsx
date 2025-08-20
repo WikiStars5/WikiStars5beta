@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, MessagesSquare, Send } from 'lucide-react';
+import { Loader2, MessagesSquare, Send, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import type { Figure, Comment as CommentType } from '@/lib/types';
 import { addComment, mapDocToComment } from '@/lib/placeholder-data';
@@ -28,6 +28,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
   const [isPosting, setIsPosting] = React.useState(false);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [guestProfileExists, setGuestProfileExists] = React.useState(false);
+  const [isCreatingGuestProfile, setIsCreatingGuestProfile] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -121,7 +122,8 @@ export function CommentSection({ figure }: CommentSectionProps) {
   };
 
   const handleGuestProfileSaved = () => {
-    checkGuestProfile(); // Re-check and update state after saving
+    checkGuestProfile(); 
+    setIsCreatingGuestProfile(false);
   };
 
   const renderCommentInput = () => {
@@ -135,7 +137,18 @@ export function CommentSection({ figure }: CommentSectionProps) {
     }
 
     if (isAnonymous && !guestProfileExists) {
-      return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
+        if (isCreatingGuestProfile) {
+            return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
+        }
+        return (
+            <div className="text-center p-4 border-2 border-dashed rounded-lg">
+                <p className="mb-4 text-muted-foreground">Debes crear un perfil de invitado para comentar.</p>
+                <Button onClick={() => setIsCreatingGuestProfile(true)}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Crear usuario invitado
+                </Button>
+            </div>
+        );
     }
 
     const author = getAuthorData();
