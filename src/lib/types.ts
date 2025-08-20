@@ -101,3 +101,18 @@ export interface LocalUserStreak {
     currentStreak: number;
     lastCommentDate: string;
 }
+
+// The 'Notification' type has been simplified as the comment system, which was the primary source
+// of notifications, has been removed.
+export interface Notification {
+  id: string;
+  userId: string;
+  actorId: string;
+  actorName: string;
+  actorPhotoUrl?: string;
+  figureId: string;
+  figureName: string;
+  type: 'like' | 'reply' | 'system'; // Simplified types
+  isRead: boolean;
+  createdAt: Timestamp;
+}
