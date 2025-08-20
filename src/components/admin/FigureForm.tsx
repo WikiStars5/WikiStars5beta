@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Sparkles, Loader2 } from 'lucide-react';
+import { Terminal, Sparkles, Loader2, CalendarIcon } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey } from '@/lib/types';
@@ -19,6 +19,11 @@ import { CATEGORY_OPTIONS } from '@/config/categories';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { CountryCombobox } from '../shared/CountryCombobox';
 import { countryCodeToNameMap } from '@/config/countries';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -58,7 +63,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [alias, setAlias] = useState(initialData?.alias || '');
   const [species, setSpecies] = useState(initialData?.species || '');
   const [firstAppearance, setFirstAppearance] = useState(initialData?.firstAppearance || '');
-  const [birthDateOrAge, setBirthDateOrAge] = useState(initialData?.birthDateOrAge || '');
+  const [birthDate, setBirthDate] = useState<Date | undefined>(
+    initialData?.birthDateOrAge ? new Date(initialData.birthDateOrAge) : undefined
+  );
   const [birthPlace, setBirthPlace] = useState(initialData?.birthPlace || '');
   const [statusLiveOrDead, setStatusLiveOrDead] = useState(initialData?.statusLiveOrDead || '');
   const [maritalStatus, setMaritalStatus] = useState(initialData?.maritalStatus || '');
@@ -98,7 +105,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setAlias(initialData.alias || '');
       setSpecies(initialData.species || '');
       setFirstAppearance(initialData.firstAppearance || '');
-      setBirthDateOrAge(initialData.birthDateOrAge || '');
+      setBirthDate(initialData.birthDateOrAge ? new Date(initialData.birthDateOrAge) : undefined);
       setBirthPlace(initialData.birthPlace || '');
       setStatusLiveOrDead(initialData.statusLiveOrDead || '');
       setMaritalStatus(initialData.maritalStatus || '');
@@ -126,7 +133,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setAlias('');
       setSpecies('');
       setFirstAppearance('');
-      setBirthDateOrAge('');
+      setBirthDate(undefined);
       setBirthPlace('');
       setStatusLiveOrDead('');
       setMaritalStatus('');
@@ -188,7 +195,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         alias: alias.trim(),
         species: species.trim(),
         firstAppearance: firstAppearance.trim(),
-        birthDateOrAge: birthDateOrAge.trim(),
+        birthDateOrAge: birthDate ? birthDate.toISOString() : '',
         birthPlace: birthPlace.trim(),
         statusLiveOrDead: statusLiveOrDead.trim(),
         maritalStatus: maritalStatus.trim(),
@@ -345,7 +352,31 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div><Label htmlFor="alias">Alias / Apodos</Label><Input id="alias" value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Ej: El Sabio, Princesa de Fuego" /></div>
         <div><Label htmlFor="species">Especie / Raza</Label><Input id="species" value={species} onChange={(e) => setSpecies(e.target.value)} placeholder="Ej: Demonio, Humano" /></div>
         <div><Label htmlFor="firstAppearance">Primera Aparición</Label><Input id="firstAppearance" value={firstAppearance} onChange={(e) => setFirstAppearance(e.target.value)} placeholder="Ej: High School DxD, Novela Ligera, 2008" /></div>
-        <div><Label htmlFor="birthDateOrAge">Fecha de Nacimiento / Edad</Label><Input id="birthDateOrAge" value={birthDateOrAge} onChange={(e) => setBirthDateOrAge(e.target.value)} placeholder="Ej: Desconocida / Apariencia de 18 años" /></div>
+        <div>
+            <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant={"outline"}
+                        className={cn("w-full justify-start text-left font-normal", !birthDate && "text-muted-foreground")}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {birthDate ? format(birthDate, "PPP", { locale: es }) : <span>Elige una fecha</span>}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                    <Calendar
+                        mode="single"
+                        selected={birthDate}
+                        onSelect={setBirthDate}
+                        initialFocus
+                        captionLayout="dropdown-buttons"
+                        fromYear={1900}
+                        toYear={new Date().getFullYear()}
+                    />
+                </PopoverContent>
+            </Popover>
+        </div>
         <div><Label htmlFor="birthPlace">Lugar de Nacimiento</Label><Input id="birthPlace" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} placeholder="Ej: Inframundo, Japón" /></div>
         <div><Label htmlFor="statusLiveOrDead">Estado (Vivo/Muerto)</Label><Input id="statusLiveOrDead" value={statusLiveOrDead} onChange={(e) => setStatusLiveOrDead(e.target.value)} placeholder="Ej: Vivo, Fallecido, Inmortal" /></div>
         <div>
@@ -376,10 +407,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales</h3>
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={socialLinks.instagram || ''} onChange={(e) => setSocialLinks(prev => ({...prev, instagram: e.target.value}))} placeholder="URL de Instagram" /></div>
-        <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={socialLinks.twitter || ''} onChange={(e) => setSocialLinks(prev => ({...prev, twitter: e.target.value}))} placeholder="URL de X/Twitter" /></div>
-        <div><Label htmlFor="youtube">YouTube</Label><Input id="youtube" value={socialLinks.youtube || ''} onChange={(e) => setSocialLinks(prev => ({...prev, youtube: e.target.value}))} placeholder="URL de YouTube" /></div>
-        <div><Label htmlFor="facebook">Facebook</Label><Input id="facebook" value={socialLinks.facebook || ''} onChange={(e) => setSocialLinks(prev => ({...prev, facebook: e.target.value}))} placeholder="URL de Facebook" /></div>
+        <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={(socialLinks as Record<string,string>)['instagram'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, instagram: e.target.value}))} placeholder="URL de Instagram" /></div>
+        <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={(socialLinks as Record<string,string>)['twitter'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, twitter: e.target.value}))} placeholder="URL de X/Twitter" /></div>
+        <div><Label htmlFor="youtube">YouTube</Label><Input id="youtube" value={(socialLinks as Record<string,string>)['youtube'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, youtube: e.target.value}))} placeholder="URL de YouTube" /></div>
+        <div><Label htmlFor="facebook">Facebook</Label><Input id="facebook" value={(socialLinks as Record<string,string>)['facebook'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, facebook: e.target.value}))} placeholder="URL de Facebook" /></div>
       </div>
       
       <div className="mt-6 border-t pt-4 border-border">

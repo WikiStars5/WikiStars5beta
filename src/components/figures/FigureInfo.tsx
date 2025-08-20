@@ -11,7 +11,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Instagram, Twitter, Youtube, Facebook, User as UserIcon
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Instagram, Twitter, Youtube, Facebook, User as UserIcon, CalendarIcon
 } from "lucide-react";
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { updateFigureInFirestore } from '@/lib/placeholder-data';
-import { correctMalformedUrl } from '@/lib/utils';
+import { cn, correctMalformedUrl } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import Image from 'next/image';
 import { Separator } from '../ui/separator';
@@ -27,6 +27,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { CountryCombobox } from '../shared/CountryCombobox';
 import { COUNTRIES, countryCodeToNameMap } from '@/config/countries';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+
 
 interface FigureInfoProps {
   figure: Figure;
@@ -91,7 +96,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
   const [name, setName] = useState(figure.name || '');
   const [nationalityCode, setNationalityCode] = useState(figure.nationalityCode || '');
   const [gender, setGender] = useState(figure.gender || '');
-  const [birthDateOrAge, setBirthDateOrAge] = useState(figure.birthDateOrAge || '');
+  const [birthDate, setBirthDate] = useState<Date | undefined>(figure.birthDateOrAge ? new Date(figure.birthDateOrAge) : undefined);
   const [maritalStatus, setMaritalStatus] = useState(figure.maritalStatus || '');
   const [photoUrl, setPhotoUrl] = useState(figure.photoUrl || '');
   const [socialLinks, setSocialLinks] = useState(figure.socialLinks || {});
@@ -105,7 +110,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
       setName(figure.name || '');
       setNationalityCode(figure.nationalityCode || '');
       setGender(figure.gender || '');
-      setBirthDateOrAge(figure.birthDateOrAge || '');
+      setBirthDate(figure.birthDateOrAge ? new Date(figure.birthDateOrAge) : undefined);
       setMaritalStatus(figure.maritalStatus || '');
       setPhotoUrl(figure.photoUrl || '');
       setSocialLinks(figure.socialLinks || {});
@@ -114,16 +119,18 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
 
   const validateLinks = () => {
     const errors: SocialLinkErrors = {};
-    if (socialLinks.instagram && !socialLinks.instagram.includes('instagram.com')) {
+    const sanitizedLinks = socialLinks as Record<string, string>;
+
+    if (sanitizedLinks.instagram && !sanitizedLinks.instagram.includes('instagram.com')) {
       errors.instagram = 'URL de Instagram no válida.';
     }
-    if (socialLinks.twitter && !(socialLinks.twitter.includes('twitter.com') || socialLinks.twitter.includes('x.com'))) {
+    if (sanitizedLinks.twitter && !(sanitizedLinks.twitter.includes('twitter.com') || sanitizedLinks.twitter.includes('x.com'))) {
       errors.twitter = 'URL de Twitter/X no válida.';
     }
-    if (socialLinks.youtube && !socialLinks.youtube.includes('youtube.com')) {
+    if (sanitizedLinks.youtube && !sanitizedLinks.youtube.includes('youtube.com')) {
       errors.youtube = 'URL de YouTube no válida.';
     }
-    if (socialLinks.facebook && !socialLinks.facebook.includes('facebook.com')) {
+    if (sanitizedLinks.facebook && !sanitizedLinks.facebook.includes('facebook.com')) {
       errors.facebook = 'URL de Facebook no válida.';
     }
     setLinkErrors(errors);
@@ -150,7 +157,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
         nationality: nationalityName,
         nationalityCode: nationalityCode,
         gender,
-        birthDateOrAge,
+        birthDateOrAge: birthDate ? birthDate.toISOString() : '',
         maritalStatus,
         photoUrl: correctedUrl,
         socialLinks: socialLinks
@@ -239,8 +246,32 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                     </Select>
                 </div>
                 <div>
-                  <Label htmlFor="birthDateOrAge">Fecha de Nacimiento / Edad</Label>
-                  <Input id="birthDateOrAge" value={birthDateOrAge} onChange={(e) => setBirthDateOrAge(e.target.value)} placeholder="Ej: 14 de marzo de 1879" />
+                  <Label htmlFor="birthDateOrAge">Fecha de Nacimiento</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !birthDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {birthDate ? format(birthDate, "PPP", { locale: es }) : <span>Elige una fecha</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={birthDate}
+                        onSelect={setBirthDate}
+                        initialFocus
+                        captionLayout="dropdown-buttons"
+                        fromYear={1900}
+                        toYear={new Date().getFullYear()}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <Label htmlFor="maritalStatus">Estado Civil</Label>
@@ -303,22 +334,22 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                <div className="space-y-3">
                  <div>
                    <Label htmlFor="instagram">Instagram</Label>
-                   <Input id="instagram" value={socialLinks.instagram || ''} onChange={(e) => handleSocialLinkChange('instagram', e.target.value)} placeholder="https://instagram.com/..." />
+                   <Input id="instagram" value={(socialLinks as Record<string, string>)?.instagram || ''} onChange={(e) => handleSocialLinkChange('instagram', e.target.value)} placeholder="https://instagram.com/..." />
                    {linkErrors.instagram && <p className="text-xs text-destructive mt-1">{linkErrors.instagram}</p>}
                  </div>
                  <div>
                    <Label htmlFor="twitter">X (Twitter)</Label>
-                   <Input id="twitter" value={socialLinks.twitter || ''} onChange={(e) => handleSocialLinkChange('twitter', e.target.value)} placeholder="https://x.com/..." />
+                   <Input id="twitter" value={(socialLinks as Record<string, string>)?.twitter || ''} onChange={(e) => handleSocialLinkChange('twitter', e.target.value)} placeholder="https://x.com/..." />
                    {linkErrors.twitter && <p className="text-xs text-destructive mt-1">{linkErrors.twitter}</p>}
                  </div>
                  <div>
                    <Label htmlFor="youtube">YouTube</Label>
-                   <Input id="youtube" value={socialLinks.youtube || ''} onChange={(e) => handleSocialLinkChange('youtube', e.target.value)} placeholder="https://youtube.com/..." />
+                   <Input id="youtube" value={(socialLinks as Record<string, string>)?.youtube || ''} onChange={(e) => handleSocialLinkChange('youtube', e.target.value)} placeholder="https://youtube.com/..." />
                    {linkErrors.youtube && <p className="text-xs text-destructive mt-1">{linkErrors.youtube}</p>}
                   </div>
                  <div>
                    <Label htmlFor="facebook">Facebook</Label>
-                   <Input id="facebook" value={socialLinks.facebook || ''} onChange={(e) => handleSocialLinkChange('facebook', e.target.value)} placeholder="https://facebook.com/..." />
+                   <Input id="facebook" value={(socialLinks as Record<string, string>)?.facebook || ''} onChange={(e) => handleSocialLinkChange('facebook', e.target.value)} placeholder="https://facebook.com/..." />
                    {linkErrors.facebook && <p className="text-xs text-destructive mt-1">{linkErrors.facebook}</p>}
                   </div>
                </div>
