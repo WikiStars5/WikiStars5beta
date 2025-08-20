@@ -134,7 +134,7 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
       toast({ title: "¡Comentario Publicado!", description: "Gracias por tu contribución." });
 
       // Update streak after successful comment and notify parent
-      const newStreak = updateStreak(figure);
+      const newStreak = await updateStreak(figure.id, firebaseUser.uid, isAnonymous);
       onCommentPosted(newStreak);
 
     } catch (error: any) {
@@ -249,7 +249,7 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
                     figure={figure}
                     comment={comment}
                     parentPath={`figures/${figure.id}/comments`}
-                    onReplyPosted={() => onCommentPosted(updateStreak(figure))}
+                    onReplyPosted={onCommentPosted}
                   />
                 ))}
                 {comments.length > INITIAL_COMMENTS_TO_SHOW && (

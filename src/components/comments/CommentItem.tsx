@@ -52,7 +52,7 @@ interface CommentItemProps {
     figure: Figure;
     comment: CommentType;
     parentPath: string;
-    onReplyPosted: () => void;
+    onReplyPosted: (streak: number | null) => void;
 }
 
 export function CommentItem({ 
@@ -216,7 +216,8 @@ export function CommentItem({
 
         try {
             const newReplyId = await addReply(currentPath, figure.id, authorData, replyText.trim());
-            onReplyPosted();
+            const newStreak = await updateStreak(figure.id, firebaseUser.uid, isAnonymous);
+            onReplyPosted(newStreak);
 
             if (comment.authorId !== firebaseUser.uid) {
                 const notificationsCollectionRef = collection(db, 'notifications');

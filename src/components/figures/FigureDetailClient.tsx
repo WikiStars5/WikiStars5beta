@@ -28,16 +28,18 @@ import { useParams, useRouter } from "next/navigation";
 import { auth as firebaseAuth, db } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { ShareButton } from "@/components/shared/ShareButton";
-import type { Figure } from "@/lib/types";
+import type { Figure, LocalUserStreak } from "@/lib/types";
 import { 
   grantFirstGlanceAchievement,
 } from '@/app/actions/achievementActions';
 import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, Timestamp } from "firebase/firestore";
 import { mapDocToFigure } from "@/lib/placeholder-data";
 import { RelatedProfiles } from "@/components/figures/RelatedProfiles";
 import { CommentSection } from "@/components/comments/CommentSection";
+import { differenceInHours } from 'date-fns';
+import { TopStreaks } from "./TopStreaks";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -57,6 +59,26 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   
   const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
+  const [headerStreak, setHeaderStreak] = React.useState<number | null>(null);
+
+  const checkHeaderStreak = React.useCallback(async () => {
+    if (typeof window !== 'undefined' && id && currentUser) {
+      const streakRef = doc(db, `figures/${id}/streaks`, currentUser.uid);
+      const streakSnap = await getDoc(streakRef);
+      if (streakSnap.exists()) {
+        const streakData = streakSnap.data();
+        const lastCommentDate = (streakData.lastCommentDate as Timestamp).toDate();
+        const hoursSinceLastComment = differenceInHours(new Date(), lastCommentDate);
+        if (hoursSinceLastComment < 24) {
+          setHeaderStreak(streakData.currentStreak);
+        } else {
+          setHeaderStreak(null);
+        }
+      } else {
+        setHeaderStreak(null);
+      }
+    }
+  }, [id, currentUser]);
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
@@ -74,6 +96,11 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
     });
     return () => unsubscribe();
   }, [toast]); 
+
+  // Check streak whenever current user changes
+  React.useEffect(() => {
+    checkHeaderStreak();
+  }, [currentUser, checkHeaderStreak]);
 
   // Add a real-time listener to the figure document
   React.useEffect(() => {
@@ -101,6 +128,12 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
     }
   };
 
+  const handleCommentPosted = (streak: number | null) => {
+    setAnimationStreak(streak);
+    checkHeaderStreak(); // Re-check header streak after posting
+  }
+
+
   if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!figure) return <div>Figura no encontrada.</div>;
 
@@ -115,6 +148,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
       <ProfileHeader 
         figure={figure}
         onImageClick={handleOpenProfileImage}
+        streakCount={headerStreak}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
@@ -124,6 +158,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
               <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
               <TabsTrigger value="attitude-poll" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><MessageSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="perception-emotions" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
+              <TabsTrigger value="top-streaks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Flame className="h-4 sm:h-5 w-4 sm:w-5" />Top Rachas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal-info">
@@ -132,11 +167,14 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
             <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
             <TabsContent value="perception-emotions">{figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
+            <TabsContent value="top-streaks">
+                <TopStreaks figureId={figure.id} />
+            </TabsContent>
           </Tabs>
         </div> 
       </div>
 
-      <CommentSection figure={figure} />
+      <CommentSection figure={figure} onCommentPosted={handleCommentPosted} />
       
       <RelatedProfiles figure={figure} />
       

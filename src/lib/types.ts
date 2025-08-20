@@ -138,3 +138,15 @@ export interface Notification {
   isRead: boolean;
   createdAt: Timestamp;
 }
+
+export interface Streak {
+    userId: string;
+    currentStreak: number;
+    lastCommentDate: Timestamp;
+    isAnonymous: boolean;
+    // We will fetch user profile info separately
+}
+
+export interface StreakWithProfile extends Streak {
+    userProfile: UserProfile | null;
+}

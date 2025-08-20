@@ -1,6 +1,6 @@
 
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove } from "firebase/firestore";
@@ -628,69 +628,114 @@ export async function deleteComment(documentPath: string): Promise<void> {
 
 // --- Streaks ---
 
-/**
- * This function updates the user's comment streak for a specific figure.
- * It reads from localStorage, updates the streak count based on the last comment date,
- * and then writes the updated data back to localStorage.
- * @param figure The figure object for which to update the streak.
- * @returns The new streak count if it's greater than 0, otherwise null.
- */
-export function updateStreak(figure: Figure): number | null {
-    if (typeof window === 'undefined') return null;
+export async function updateStreak(
+  figureId: string,
+  userId: string,
+  isAnonymous: boolean
+): Promise<number | null> {
+  const streakRef = doc(db, `figures/${figureId}/streaks`, userId);
+  let newStreakCount: number | null = null;
+  
+  try {
+    await runTransaction(db, async (transaction) => {
+      const streakDoc = await transaction.get(streakRef);
+      const now = new Date();
 
-    const storageKey = 'wikistars5-userStreaks';
-    let streaks: LocalUserStreak[] = [];
-    try {
-        const storedStreaks = localStorage.getItem(storageKey);
-        streaks = storedStreaks ? JSON.parse(storedStreaks) : [];
-    } catch (e) {
-        console.error("Error parsing streaks from localStorage", e);
-        streaks = [];
-    }
-
-    const now = new Date();
-    const figureId = figure.id;
-    let newStreakCount: number | null = null;
-    let streakUpdated = false;
-
-    const existingStreakIndex = streaks.findIndex(s => s.figureId === figureId);
-
-    if (existingStreakIndex > -1) {
-        const existingStreak = streaks[existingStreakIndex];
-        const lastCommentDate = new Date(existingStreak.lastCommentDate);
+      if (!streakDoc.exists()) {
+        // Streak doesn't exist, create a new one
+        transaction.set(streakRef, {
+          userId,
+          currentStreak: 1,
+          lastCommentDate: now,
+          isAnonymous: isAnonymous,
+        });
+        newStreakCount = 1;
+      } else {
+        // Streak exists, check if we should update it
+        const streakData = streakDoc.data();
+        const lastCommentDate = (streakData.lastCommentDate as Timestamp).toDate();
         const hoursSinceLastComment = differenceInHours(now, lastCommentDate);
 
         if (hoursSinceLastComment < 24) {
-            // Do nothing, user has already commented within 24 hours.
+          // Already commented within 24 hours, do nothing to the count.
+          newStreakCount = streakData.currentStreak;
         } else if (hoursSinceLastComment >= 24 && hoursSinceLastComment < 48) {
-            // Continue the streak
-            existingStreak.currentStreak += 1;
-            existingStreak.lastCommentDate = now.toISOString();
-            newStreakCount = existingStreak.currentStreak;
-            streakUpdated = true;
+          // Continue the streak
+          newStreakCount = (streakData.currentStreak || 0) + 1;
+          transaction.update(streakRef, {
+            currentStreak: newStreakCount,
+            lastCommentDate: now,
+          });
         } else {
-            // Streak is broken, reset to 1
-            existingStreak.currentStreak = 1;
-            existingStreak.lastCommentDate = now.toISOString();
-            newStreakCount = 1; // Animation for a new streak
-            streakUpdated = true;
-        }
-    } else {
-        // No existing streak, start a new one
-        streaks.push({
-            figureId: figure.id,
-            figureName: figure.name,
-            figurePhotoUrl: figure.photoUrl,
+          // Streak is broken, reset to 1
+          newStreakCount = 1;
+          transaction.update(streakRef, {
             currentStreak: 1,
-            lastCommentDate: now.toISOString(),
-        });
-        newStreakCount = 1; // Animation for the first day
-        streakUpdated = true;
-    }
-
-    if (streakUpdated) {
-        localStorage.setItem(storageKey, JSON.stringify(streaks));
-    }
+            lastCommentDate: now,
+          });
+        }
+      }
+    });
 
     return newStreakCount;
+  } catch (error) {
+    console.error("Streak update transaction failed: ", error);
+    // Return null on failure so we don't show a broken animation
+    return null;
+  }
+}
+
+export async function getTopStreaksForFigure(figureId: string, count: number = 10): Promise<StreakWithProfile[]> {
+  const streaksRef = collection(db, `figures/${figureId}/streaks`);
+  const q = query(streaksRef, orderBy('currentStreak', 'desc'), limit(count));
+
+  try {
+    const querySnapshot = await getDocs(q);
+    const streaks: Streak[] = [];
+    const userIds: string[] = [];
+
+    querySnapshot.forEach(doc => {
+      const data = doc.data();
+      const streak: Streak = {
+        userId: doc.id,
+        currentStreak: data.currentStreak,
+        lastCommentDate: data.lastCommentDate,
+        isAnonymous: data.isAnonymous,
+      };
+      
+      // Filter out expired streaks
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      if (streak.lastCommentDate.toDate() > twentyFourHoursAgo) {
+        streaks.push(streak);
+        if (!data.isAnonymous) {
+          userIds.push(doc.id);
+        }
+      }
+    });
+
+    if (userIds.length === 0) {
+      return streaks.map(s => ({ ...s, userProfile: null }));
+    }
+
+    // Fetch user profiles for non-anonymous users
+    const usersRef = collection(db, 'users');
+    const usersQuery = query(usersRef, where('__name__', 'in', userIds));
+    const usersSnapshot = await getDocs(usersQuery);
+    
+    const profiles = new Map<string, UserProfile>();
+    usersSnapshot.forEach(doc => {
+      profiles.set(doc.id, { uid: doc.id, ...doc.data() } as UserProfile);
+    });
+
+    const streaksWithProfiles = streaks.map(streak => ({
+      ...streak,
+      userProfile: streak.isAnonymous ? null : profiles.get(streak.userId) || null
+    }));
+
+    return streaksWithProfiles;
+
+  } catch (error) {
+    console.error("Error fetching top streaks:", error);
+    return [];
+  }
 }
