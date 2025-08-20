@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -60,12 +61,12 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                 ) : (
                     <div className="space-y-4">
                         {streaks.map((streak, index) => {
-                             const user = streak.userProfile;
-                             const displayName = user?.username || 'Invitado';
-                             const photoUrl = user?.photoURL;
-                             const genderSymbol = GENDER_OPTIONS.find(g => g.label === user?.gender)?.symbol;
-                             const countryFlag = getCountryEmojiByCode(user?.countryCode || '');
-                             const genderColorClass = user?.gender === 'Masculino' ? 'text-blue-400' : user?.gender === 'Femenino' ? 'text-pink-400' : '';
+                            const user = streak.userProfile;
+                            const displayName = user?.username || 'Invitado';
+                            const photoUrl = user?.photoURL;
+                            const genderSymbol = GENDER_OPTIONS.find(g => g.label === user?.gender)?.symbol;
+                            const countryFlag = getCountryEmojiByCode(user?.countryCode || '');
+                            const genderColorClass = user?.gender === 'Masculino' ? 'text-blue-400' : user?.gender === 'Femenino' ? 'text-pink-400' : '';
 
                              return (
                                 <div key={streak.userId} className="flex items-center justify-between p-3 bg-muted/50 rounded-md">

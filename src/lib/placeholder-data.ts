@@ -1,4 +1,5 @@
 
+
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -629,54 +630,60 @@ export async function deleteComment(documentPath: string): Promise<void> {
 
 export async function updateStreak(
   figureId: string,
-  userId: string,
-  isAnonymous: boolean
+  authorData: {
+    id: string;
+    name: string;
+    gender: string;
+    countryCode: string;
+    isAnonymous: boolean;
+  }
 ): Promise<number | null> {
-  const streakRef = doc(db, `figures/${figureId}/streaks`, userId);
+  const streakRef = doc(db, `figures/${figureId}/streaks`, authorData.id);
   let newStreakCount: number | null = null;
   const now = new Date();
 
   try {
     await runTransaction(db, async (transaction) => {
       const streakDoc = await transaction.get(streakRef);
+      let currentStreakData: Partial<Streak> & { userId: string } = { userId: authorData.id };
 
-      if (!streakDoc.exists()) {
-        const newStreakData = {
-          userId,
-          currentStreak: 1,
-          lastCommentDate: now,
-          isAnonymous,
-        };
-        transaction.set(streakRef, newStreakData);
-        newStreakCount = 1;
-      } else {
-        const streakData = streakDoc.data();
-        const lastCommentDate = (streakData.lastCommentDate as Timestamp).toDate();
+      if (streakDoc.exists()) {
+        const data = streakDoc.data();
+        const lastCommentDate = (data.lastCommentDate as Timestamp).toDate();
         const hoursSinceLastComment = differenceInHours(now, lastCommentDate);
-
+        
         if (hoursSinceLastComment < 24) {
-          newStreakCount = streakData.currentStreak;
-          transaction.update(streakRef, { lastCommentDate: now });
-        } else if (hoursSinceLastComment >= 24 && hoursSinceLastComment < 48) {
-          newStreakCount = (streakData.currentStreak || 0) + 1;
-          transaction.update(streakRef, {
-            currentStreak: newStreakCount,
-            lastCommentDate: now,
-          });
+          currentStreakData.currentStreak = data.currentStreak;
+        } else if (hoursSinceLastComment < 48) {
+          currentStreakData.currentStreak = (data.currentStreak || 0) + 1;
         } else {
-          newStreakCount = 1;
-          transaction.update(streakRef, {
-            currentStreak: 1,
-            lastCommentDate: now,
-          });
+          currentStreakData.currentStreak = 1;
         }
+      } else {
+        currentStreakData.currentStreak = 1;
       }
+      newStreakCount = currentStreakData.currentStreak;
+
+      const dataToSet: Streak = {
+        userId: authorData.id,
+        currentStreak: newStreakCount,
+        lastCommentDate: Timestamp.fromDate(now),
+        isAnonymous: authorData.isAnonymous,
+        ...(authorData.isAnonymous && {
+          username: authorData.name,
+          gender: authorData.gender,
+          countryCode: authorData.countryCode,
+        })
+      };
+
+      transaction.set(streakRef, dataToSet, { merge: true });
     });
   } catch (error) {
     console.error("Firestore streak update transaction failed: ", error);
-    return null; 
+    return null;
   }
 
+  // Also update local storage for instant UI on the profile page
   if (typeof window !== 'undefined' && newStreakCount !== null) {
       try {
           const storageKey = 'wikistars5-userStreaks';
@@ -690,8 +697,6 @@ export async function updateStreak(
           } else {
               localStreaks.push({
                   figureId,
-                  figureName: '', // This will be incomplete, but sufficient for streak logic
-                  figurePhotoUrl: '',
                   currentStreak: newStreakCount,
                   lastCommentDate: now.toISOString(),
               });
@@ -710,7 +715,6 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
   const streaksRef = collection(db, `figures/${figureId}/streaks`);
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  // Step 1: Query for active streaks.
   const q = query(
     streaksRef,
     where('lastCommentDate', '>', twentyFourHoursAgo)
@@ -719,44 +723,31 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
   try {
     const querySnapshot = await getDocs(q);
     let streaks: Streak[] = [];
-    const userIds: string[] = [];
 
     querySnapshot.forEach(doc => {
-      const data = doc.data();
-      const streak: Streak = {
+      const data = doc.data() as DocumentData;
+      streaks.push({
         userId: doc.id,
         currentStreak: data.currentStreak,
         lastCommentDate: data.lastCommentDate,
         isAnonymous: data.isAnonymous,
-      };
-      streaks.push(streak);
-      if (!data.isAnonymous) {
-        userIds.push(doc.id);
-      }
+        username: data.username,
+        gender: data.gender,
+        countryCode: data.countryCode,
+      });
     });
 
-    // Step 2: Sort the results in the client.
     streaks.sort((a, b) => b.currentStreak - a.currentStreak);
-    
-    // Limit to the desired count after sorting.
     streaks = streaks.slice(0, count);
 
-    if (streaks.length === 0) {
-      return [];
-    }
-
-    // Step 3: Fetch user profiles for the top streaks.
+    const nonAnonymousUserIds = streaks.filter(s => !s.isAnonymous).map(s => s.userId);
     let profiles = new Map<string, UserProfile>();
-    const topUserIds = streaks
-      .filter(s => !s.isAnonymous)
-      .map(s => s.userId);
 
-    if (topUserIds.length > 0) {
+    if (nonAnonymousUserIds.length > 0) {
       const usersRef = collection(db, 'users');
-      // Firestore 'in' queries are limited to 30 items. Batch if necessary.
       const batches = [];
-      for (let i = 0; i < topUserIds.length; i += 30) {
-        batches.push(topUserIds.slice(i, i + 30));
+      for (let i = 0; i < nonAnonymousUserIds.length; i += 30) {
+        batches.push(nonAnonymousUserIds.slice(i, i + 30));
       }
       for (const batch of batches) {
         const usersQuery = query(usersRef, where('__name__', 'in', batch));
@@ -766,22 +757,37 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
         });
       }
     }
-    
-    // Step 4: Combine streaks with profile information.
-    const streaksWithProfiles = streaks.map(streak => ({
-      ...streak,
-      userProfile: streak.isAnonymous ? null : profiles.get(streak.userId) || null
-    }));
+
+    const streaksWithProfiles: StreakWithProfile[] = streaks.map(streak => {
+      if (streak.isAnonymous) {
+        return {
+          ...streak,
+          userProfile: {
+            uid: streak.userId,
+            username: streak.username || 'Invitado',
+            gender: streak.gender,
+            countryCode: streak.countryCode,
+            isAnonymous: true,
+            email: null,
+            role: 'user',
+            createdAt: new Date().toISOString(),
+          }
+        };
+      } else {
+        return {
+          ...streak,
+          userProfile: profiles.get(streak.userId) || null
+        };
+      }
+    });
 
     return streaksWithProfiles;
 
   } catch (error: any) {
     console.error("Error fetching top streaks:", error);
-    if(String(error.message).toLowerCase().includes('index')) {
+    if (String(error.message).toLowerCase().includes('index')) {
         console.error("POSSIBLE FIX: This query likely requires a composite index in Firestore. Check the browser's developer console for a link to create it automatically.");
     }
     return [];
   }
 }
-
-    

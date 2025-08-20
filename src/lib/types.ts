@@ -116,14 +116,10 @@ export interface Comment {
 
 export interface LocalUserStreak {
     figureId: string;
-    figureName: string;
-    figurePhotoUrl?: string;
     currentStreak: number;
     lastCommentDate: string;
 }
 
-// The 'Notification' type has been simplified as the comment system, which was the primary source
-// of notifications, has been removed.
 export interface Notification {
   id: string;
   userId: string;
@@ -132,9 +128,9 @@ export interface Notification {
   actorPhotoUrl?: string;
   figureId: string;
   figureName: string;
-  commentId: string; // The original comment that was replied to or liked
-  replyId?: string; // The ID of the new reply
-  type: 'like' | 'reply' | 'system'; // Simplified types
+  commentId: string; 
+  replyId?: string; 
+  type: 'like' | 'reply' | 'system';
   isRead: boolean;
   createdAt: Timestamp;
 }
@@ -144,7 +140,10 @@ export interface Streak {
     currentStreak: number;
     lastCommentDate: Timestamp;
     isAnonymous: boolean;
-    // We will fetch user profile info separately
+    // Fields for anonymous users, stored directly in the streak document
+    username?: string;
+    gender?: string;
+    countryCode?: string;
 }
 
 export interface StreakWithProfile extends Streak {

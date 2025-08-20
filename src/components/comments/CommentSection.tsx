@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -130,12 +131,12 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
     setIsPosting(true);
     try {
       await addComment(figure.id, authorData, commentText.trim());
+      
+      const newStreak = await updateStreak(figure.id, authorData);
+      onCommentPosted(newStreak);
+
       setCommentText('');
       toast({ title: "¡Comentario Publicado!", description: "Gracias por tu contribución." });
-
-      // Update streak after successful comment and notify parent
-      const newStreak = await updateStreak(figure.id, firebaseUser.uid, isAnonymous);
-      onCommentPosted(newStreak);
 
     } catch (error: any) {
       console.error("Error posting comment: ", error);

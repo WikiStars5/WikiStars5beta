@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -215,7 +216,7 @@ export function CommentItem({
 
         try {
             const newReplyId = await addReply(currentPath, figure.id, authorData, replyText.trim());
-            const newStreak = await updateStreak(figure.id, firebaseUser.uid, isAnonymous);
+            const newStreak = await updateStreak(figure.id, authorData);
             onReplyPosted(newStreak);
 
             if (comment.authorId !== firebaseUser.uid) {
