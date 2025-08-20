@@ -65,12 +65,12 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                             const displayName = user?.username || streak.username || 'Invitado';
                             const photoUrl = user?.photoURL;
                             
-                            // Corrected logic: Prioritize profile data, but fall back to streak data for guests.
                             const genderLabel = user?.gender || streak.gender || '';
                             const countryCode = user?.countryCode || streak.countryCode || '';
                             const countryName = user?.country || '';
 
-                            const genderSymbol = GENDER_OPTIONS.find(g => g.label === genderLabel)?.symbol;
+                            const genderOption = GENDER_OPTIONS.find(g => g.label === genderLabel || g.value === genderLabel);
+                            const genderSymbol = genderOption?.symbol;
                             const countryFlag = getCountryEmojiByCode(countryCode);
                             const genderColorClass = genderLabel === 'Masculino' ? 'text-blue-400' : genderLabel === 'Femenino' ? 'text-pink-400' : '';
 
