@@ -263,10 +263,10 @@ export function CommentItem({
                 </div>
                 <div className="flex items-center gap-2 mt-1 px-1">
                     <Button variant="ghost" size="sm" onClick={handleLike} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
-                        <ThumbsUp className={cn("mr-1 h-3 w-3", hasLiked && "fill-current text-blue-500")} /> {comment.likeCount}
+                        <ThumbsUp className={cn("mr-1 h-3 w-3 transition-all duration-200 ease-in-out active:scale-150", hasLiked && "fill-current text-blue-500")} /> {comment.likeCount}
                     </Button>
                     <Button variant="ghost" size="sm" onClick={handleDislike} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
-                        <ThumbsDown className={cn("mr-1 h-3 w-3", hasDisliked && "fill-current text-destructive")} /> {comment.dislikeCount}
+                        <ThumbsDown className={cn("mr-1 h-3 w-3 transition-all duration-200 ease-in-out active:scale-150", hasDisliked && "fill-current text-destructive")} /> {comment.dislikeCount}
                     </Button>
                     {canReply && (
                         <Button variant="ghost" size="sm" onClick={() => setIsReplying(!isReplying)} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
