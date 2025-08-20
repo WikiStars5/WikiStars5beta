@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CountryCombobox } from '@/components/shared/CountryCombobox';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { UserPlus, Save, Loader2, Edit, X } from 'lucide-react';
+import { UserPlus, Save, Loader2, Edit, X, Venus, MapPin } from 'lucide-react';
+import { countryCodeToNameMap } from '@/config/countries';
 
 const guestProfileFormSchema = z.object({
   username: z.string().min(3, "Tu nombre debe tener al menos 3 caracteres.").max(30, "Tu nombre no puede exceder los 30 caracteres."),
@@ -71,14 +72,14 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
         const guestData = {
             username: localStorage.getItem('wikistars5-guestUsername'),
             gender: GENDER_OPTIONS.find(g => g.value === localStorage.getItem('wikistars5-guestGender'))?.label,
-            country: localStorage.getItem('wikistars5-guestCountryCode'),
+            countryCode: localStorage.getItem('wikistars5-guestCountryCode'),
         };
 
         return (
             <div className="space-y-4">
                 <div className="flex items-center gap-4"><UserPlus className="h-5 w-5 text-muted-foreground"/><p>{guestData.username}</p></div>
-                <div className="flex items-center gap-4"><VenusAndMars className="h-5 w-5 text-muted-foreground"/><p>{guestData.gender || 'No especificado'}</p></div>
-                <div className="flex items-center gap-4"><MapIcon className="h-5 w-5 text-muted-foreground"/><p>{countryCodeToNameMap.get(guestData.country || '') || 'No especificado'}</p></div>
+                <div className="flex items-center gap-4"><Venus className="h-5 w-5 text-muted-foreground"/><p>{guestData.gender || 'No especificado'}</p></div>
+                <div className="flex items-center gap-4"><MapPin className="h-5 w-5 text-muted-foreground"/><p>{countryCodeToNameMap.get(guestData.countryCode || '') || 'No especificado'}</p></div>
                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                     <Edit className="mr-2 h-4 w-4" /> Editar
                 </Button>
@@ -92,7 +93,7 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><UserPlus /> Configura tu Perfil de Invitado</CardTitle>
                     <CardDescription>
-                        Elige un nombre y otros datos para poder comentar. Esta información se guardará solo en este dispositivo.
+                        Elige un nombre, género y país para poder comentar. Esta información se guardará solo en este dispositivo.
                     </CardDescription>
                 </CardHeader>
             )}
@@ -157,7 +158,7 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
                         )}
                         <Button type="submit" disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                            Guardar y Comentar
+                            {isEditingContext ? 'Guardar Cambios' : 'Guardar y Comentar'}
                         </Button>
                     </div>
                 </form>

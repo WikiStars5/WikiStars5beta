@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Flame, Heart, Edit, Save, BarChart3, MapIcon, VenusAndMars, Smile, UserPlus, Link2 } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Flame, Heart, Edit, Save, BarChart3, MapPin, Venus, Smile, UserPlus, Link2 } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -69,7 +69,6 @@ export default function ProfilePage() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [animationStreak, setAnimationStreak] = useState<number | null>(null);
   
-  // Guest profile state now derived from localStorage within getGuestProfile
   const [guestProfile, setGuestProfile] = useState<{username: string; gender: string; countryCode: string} | null>(null);
 
 
@@ -302,7 +301,7 @@ export default function ProfilePage() {
                 <CardHeader>
                     <CardTitle>Tu Perfil de Invitado</CardTitle>
                     <CardDescription>
-                        Aquí puedes editar la información que se guarda en este dispositivo.
+                        Aquí puedes editar la información que se guarda en este dispositivo para tus comentarios.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

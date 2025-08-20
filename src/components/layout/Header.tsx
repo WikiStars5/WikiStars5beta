@@ -18,8 +18,10 @@ export function Header() {
   useEffect(() => {
     // This effect ensures the state is read from the client side, avoiding hydration issues.
     if (isAnonymous) {
-      const guestName = localStorage.getItem('wikistars5-guestUsername');
-      setGuestProfileExists(!!guestName);
+      if (typeof window !== 'undefined') {
+        const guestName = localStorage.getItem('wikistars5-guestUsername');
+        setGuestProfileExists(!!guestName);
+      }
     } else {
       setGuestProfileExists(false);
     }

@@ -16,6 +16,7 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 import { CommentItem } from './CommentItem';
 import { countryCodeToNameMap } from '@/config/countries';
 import { GuestProfileSetup } from './GuestProfileSetup';
+import { correctMalformedUrl } from '@/lib/utils';
 
 interface CommentSectionProps {
   figure: Figure;
@@ -52,21 +53,25 @@ export function CommentSection({ figure }: CommentSectionProps) {
     return () => unsubscribe();
   }, [figure.id, toast]);
   
-  React.useEffect(() => {
+  const checkGuestProfile = React.useCallback(() => {
     if (isAnonymous) {
-        if (typeof window !== 'undefined') {
-            const guestName = localStorage.getItem('wikistars5-guestUsername');
-            setGuestProfileExists(!!guestName);
-        }
+      if (typeof window !== 'undefined') {
+        const guestName = localStorage.getItem('wikistars5-guestUsername');
+        setGuestProfileExists(!!guestName);
+      }
     }
   }, [isAnonymous]);
+
+  React.useEffect(() => {
+    checkGuestProfile();
+  }, [checkGuestProfile]);
 
 
   const getAuthorData = () => {
     if (!firebaseUser) return null;
 
     if (isAnonymous) {
-      if (!guestProfileExists) return null; // Don't create author data if guest profile isn't set
+      if (!guestProfileExists) return null;
       const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
       const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
       const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
@@ -116,58 +121,57 @@ export function CommentSection({ figure }: CommentSectionProps) {
     }
   };
 
-  const author = getAuthorData();
-
   const handleGuestProfileSaved = () => {
     setGuestProfileExists(true);
-  }
+  };
 
   const renderCommentInput = () => {
-    // Highest priority: show loader if auth is still resolving.
+    // 1. Show loader while auth state is resolving.
     if (isAuthLoading) {
-        return (
-            <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Cargando tu sesión para comentar...
-            </div>
-        );
-    }
-    
-    // Once auth is resolved, check if it's a guest without a profile.
-    if (isAnonymous && !guestProfileExists) {
-        return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
-    }
-    
-    // If the user is logged in (or a guest with a profile), show the comment box.
-    if (author) {
-        return (
-            <div className="flex gap-4">
-                <Avatar className="h-10 w-10 mt-1">
-                    <AvatarImage src={author?.photoUrl ?? undefined} alt={author?.name} />
-                    <AvatarFallback>{author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-grow space-y-2">
-                    <Textarea
-                    placeholder="Escribe tu comentario aquí..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    rows={3}
-                    className="bg-muted border-border/50 focus:bg-background"
-                    />
-                    <div className="flex justify-end">
-                    <Button onClick={handlePostComment} disabled={isPosting}>
-                        {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
-                        Publicar
-                    </Button>
-                    </div>
-                </div>
-            </div>
-        );
+      return (
+        <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Cargando tu sesión...
+        </div>
+      );
     }
 
-    // Fallback case, though it should ideally not be reached if the logic above is sound.
+    // 2. If it's a new guest user, show the profile setup form.
+    if (isAnonymous && !guestProfileExists) {
+      return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
+    }
+
+    // 3. If user is logged in (registered or guest with profile), show the comment textarea.
+    const author = getAuthorData();
+    if (author) {
+      return (
+        <div className="flex gap-4">
+          <Avatar className="h-10 w-10 mt-1">
+            <AvatarImage src={correctMalformedUrl(author.photoUrl)} alt={author.name} />
+            <AvatarFallback>{author.name?.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="flex-grow space-y-2">
+            <Textarea
+              placeholder="Escribe tu comentario aquí..."
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              rows={3}
+              className="bg-muted border-border/50 focus:bg-background"
+            />
+            <div className="flex justify-end">
+              <Button onClick={handlePostComment} disabled={isPosting}>
+                {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+                Publicar
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Fallback if no condition is met (shouldn't happen in normal flow).
     return null;
-  }
+  };
 
   return (
     <Card className="border border-white/20 bg-black">
