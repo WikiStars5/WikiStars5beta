@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import { getTopStreaksForFigure } from '@/lib/placeholder-data';
-import type { AttitudeKey, StreakWithProfile } from '@/lib/types';
+import type { AttitudeKey, EmotionKey, StreakWithProfile } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Flame, Loader2, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -25,6 +25,16 @@ const ATTITUDE_EMOJIS: Record<AttitudeKey, string> = {
     simp: '🥰',
     neutral: '😐',
 };
+
+const EMOTION_IMAGES: Record<EmotionKey, string> = {
+  alegria: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414',
+  envidia: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fenvidia.png?alt=media&token=940aa136-2235-48db-84d6-2c461730fde5',
+  tristeza: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ftrizteza.png?alt=media&token=0115df4b-55e4-4281-9cff-a8a560c38903',
+  miedo: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985',
+  desagrado: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb',
+  furia: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f',
+};
+
 
 export function TopStreaks({ figureId }: TopStreaksProps) {
     const [streaks, setStreaks] = React.useState<StreakWithProfile[]>([]);
@@ -72,15 +82,17 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                             const displayName = streak.isAnonymous ? streak.username : user?.username;
                             const photoUrl = user?.photoURL;
                             
-                            const genderLabel = streak.isAnonymous ? streak.gender : user?.gender;
-                            const countryCode = streak.isAnonymous ? streak.countryCode : user?.countryCode;
+                            const genderLabel = streak.gender || user?.gender;
+                            const countryCode = streak.countryCode || user?.countryCode;
                             const countryName = user?.country;
 
-                            const genderOption = GENDER_OPTIONS.find(g => g.label === genderLabel || g.value === genderLabel);
+                            const genderOption = GENDER_OPTIONS.find(g => g.value === genderLabel || g.label === genderLabel);
                             const genderSymbol = genderOption?.symbol;
                             const countryFlag = getCountryEmojiByCode(countryCode || '');
-                            const genderColorClass = genderLabel === 'Masculino' ? 'text-blue-400' : genderLabel === 'Femenino' ? 'text-pink-400' : '';
+                            const genderColorClass = genderLabel === 'Masculino' || genderLabel === 'male' ? 'text-blue-400' : genderLabel === 'Femenino' || genderLabel === 'female' ? 'text-pink-400' : '';
+                            
                             const attitudeEmoji = streak.attitude ? ATTITUDE_EMOJIS[streak.attitude] : null;
+                            const emotionImageUrl = streak.emotion ? EMOTION_IMAGES[streak.emotion] : null;
 
                              return (
                                 <div key={streak.userId} className="flex items-center justify-between p-3 bg-muted/50 rounded-md">
@@ -94,11 +106,16 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                                         </Avatar>
                                         <div>
                                             <div className="flex items-center gap-1.5">
-                                                {attitudeEmoji && <span className="text-lg" title={`Actitud: ${streak.attitude}`}>{attitudeEmoji}</span>}
                                                 <p className="font-semibold text-sm">{displayName}</p>
                                                 {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={genderLabel}>{genderSymbol}</span>}
                                                 {countryFlag && <span title={countryName || countryCode}>{countryFlag}</span>}
                                             </div>
+                                            {(attitudeEmoji || emotionImageUrl) && (
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    {attitudeEmoji && <span className="text-lg" title={`Actitud: ${streak.attitude}`}>{attitudeEmoji}</span>}
+                                                    {emotionImageUrl && <Image src={emotionImageUrl} alt={streak.emotion || 'emotion'} width={20} height={20} className="w-5 h-5" />}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 text-orange-400 font-bold">

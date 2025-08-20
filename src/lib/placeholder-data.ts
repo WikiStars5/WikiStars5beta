@@ -1,6 +1,6 @@
 
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove } from "firebase/firestore";
@@ -664,14 +664,15 @@ export async function updateStreak(
       }
       newStreakCount = currentStreak;
 
-      // Get user's current attitude for this figure
+      // Get user's current attitude and emotion for this figure from localStorage
       let attitude: AttitudeKey | null = null;
+      let emotion: EmotionKey | null = null;
       if (typeof window !== 'undefined') {
         const localAttitudes: Attitude[] = JSON.parse(localStorage.getItem('wikistars5-userAttitudes') || '[]');
-        const currentAttitude = localAttitudes.find(a => a.figureId === figureId);
-        if (currentAttitude) {
-          attitude = currentAttitude.attitude;
-        }
+        attitude = localAttitudes.find(a => a.figureId === figureId)?.attitude || null;
+        
+        const localEmotions: EmotionVote[] = JSON.parse(localStorage.getItem('wikistars5-userEmotions') || '[]');
+        emotion = localEmotions.find(e => e.figureId === figureId)?.emotion || null;
       }
 
       const dataToSet: Streak = {
@@ -679,7 +680,8 @@ export async function updateStreak(
         currentStreak: newStreakCount,
         lastCommentDate: Timestamp.fromDate(now),
         isAnonymous: authorData.isAnonymous,
-        attitude: attitude,
+        attitude,
+        emotion,
         ...(authorData.isAnonymous && {
           username: authorData.name,
           gender: authorData.gender,
@@ -744,6 +746,7 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
           gender: data.gender,
           countryCode: data.countryCode,
           attitude: data.attitude,
+          emotion: data.emotion,
         });
       }
     });
