@@ -31,6 +31,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
 import { StreakAnimation } from '@/components/shared/StreakAnimation';
 import { getFiguresByIds } from '@/lib/placeholder-data';
+import { countryCodeToNameMap } from '@/config/countries';
 
 const profileFormSchema = z.object({
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres.").max(30, "El nombre de usuario no puede exceder los 30 caracteres."),
@@ -42,6 +43,7 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 const guestProfileFormSchema = z.object({
   username: z.string().min(3, "Tu nombre debe tener al menos 3 caracteres.").max(30, "Tu nombre no puede exceder los 30 caracteres."),
   gender: z.string().optional(),
+  countryCode: z.string().optional(),
 });
 type GuestProfileFormValues = z.infer<typeof guestProfileFormSchema>;
 
@@ -58,6 +60,7 @@ const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
 
 const GUEST_USERNAME_KEY = 'wikistars5-guestUsername';
 const GUEST_GENDER_KEY = 'wikistars5-guestGender';
+const GUEST_COUNTRY_CODE_KEY = 'wikistars5-guestCountryCode';
 
 export default function ProfilePage() {
   const { user: firestoreUser, firebaseUser, isLoading, isAnonymous } = useAuth();
@@ -77,9 +80,11 @@ export default function ProfilePage() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [animationStreak, setAnimationStreak] = useState<number | null>(null);
   
-  // State for guest username
+  // State for guest profile
   const [guestUsername, setGuestUsername] = useState('Invitado');
   const [guestGender, setGuestGender] = useState('');
+  const [guestCountryCode, setGuestCountryCode] = useState('');
+
 
   const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -88,20 +93,23 @@ export default function ProfilePage() {
 
   const { control: guestControl, handleSubmit: handleGuestSubmit, reset: resetGuestForm, formState: { isSubmitting: isGuestSubmitting, errors: guestErrors } } = useForm<GuestProfileFormValues>({
     resolver: zodResolver(guestProfileFormSchema),
-    defaultValues: { username: '', gender: '' },
+    defaultValues: { username: '', gender: '', countryCode: '' },
   });
 
   useEffect(() => {
     if (typeof window !== 'undefined' && isAnonymous) {
       const storedGuestName = localStorage.getItem(GUEST_USERNAME_KEY) || 'Invitado';
       const storedGuestGender = localStorage.getItem(GUEST_GENDER_KEY) || '';
+      const storedGuestCountryCode = localStorage.getItem(GUEST_COUNTRY_CODE_KEY) || '';
       
       setGuestUsername(storedGuestName);
       setGuestGender(storedGuestGender);
+      setGuestCountryCode(storedGuestCountryCode);
       
       resetGuestForm({ 
         username: storedGuestName,
         gender: storedGuestGender,
+        countryCode: storedGuestCountryCode,
       });
     }
   }, [isAnonymous, resetGuestForm]);
@@ -196,6 +204,14 @@ export default function ProfilePage() {
         setGuestGender('');
       }
 
+      if (data.countryCode) {
+        localStorage.setItem(GUEST_COUNTRY_CODE_KEY, data.countryCode);
+        setGuestCountryCode(data.countryCode);
+      } else {
+        localStorage.removeItem(GUEST_COUNTRY_CODE_KEY);
+        setGuestCountryCode('');
+      }
+
       toast({
         title: "¡Perfil de Invitado Guardado!",
         description: `Tu información local ha sido actualizada.`,
@@ -229,6 +245,8 @@ export default function ProfilePage() {
         uid: firebaseUser?.uid || 'guest',
         username: guestUsername,
         gender: guestGender,
+        countryCode: guestCountryCode,
+        country: countryCodeToNameMap.get(guestCountryCode),
         email: null,
         role: 'user',
         isAnonymous: true,
@@ -341,7 +359,7 @@ export default function ProfilePage() {
                 <CardHeader>
                     <CardTitle>Tu Perfil de Invitado</CardTitle>
                     <CardDescription>
-                        Tu nombre y sexo de invitado se guardan en este dispositivo.
+                        Tu información de invitado se guarda localmente en este dispositivo.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -390,6 +408,21 @@ export default function ProfilePage() {
                                 <p className="text-sm text-destructive mt-1">{guestErrors.gender.message}</p>
                             )}
                         </div>
+                        
+                        <div>
+                            <Label htmlFor="guest-countryCode">País</Label>
+                            <Controller
+                                name="countryCode"
+                                control={guestControl}
+                                render={({ field }) => (
+                                    <CountryCombobox
+                                        value={field.value ?? ''}
+                                        onChange={field.onChange}
+                                    />
+                                )}
+                            />
+                        </div>
+
 
                         <Button type="submit" disabled={isGuestSubmitting} className="w-full sm:w-auto">
                             {isGuestSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}

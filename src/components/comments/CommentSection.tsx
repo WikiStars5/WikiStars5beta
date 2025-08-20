@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { CommentItem } from './CommentItem';
+import { countryCodeToNameMap } from '@/config/countries';
 
 interface CommentSectionProps {
   figure: Figure;
@@ -50,17 +51,17 @@ export function CommentSection({ figure }: CommentSectionProps) {
   }, [figure.id, toast]);
   
   const getAuthorData = () => {
-    // For guests, their profile info is not in Firestore, so we return empty strings.
     if (isAnonymous) {
       const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
       const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
+      const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
       return {
         id: firebaseUser?.uid || 'guest-user',
         name: guestUsername,
         photoUrl: null,
         gender: guestGender,
-        country: '',
-        countryCode: '',
+        country: countryCodeToNameMap.get(guestCountryCode) || '',
+        countryCode: guestCountryCode,
         isAnonymous: true,
       };
     } else if (firestoreUser && firebaseUser) {
@@ -161,3 +162,5 @@ export function CommentSection({ figure }: CommentSectionProps) {
     </Card>
   );
 }
+
+    
