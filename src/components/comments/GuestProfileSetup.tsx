@@ -29,7 +29,7 @@ interface GuestProfileSetupProps {
 
 export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: GuestProfileSetupProps) {
     const { toast } = useToast();
-    const [isEditing, setIsEditing] = useState(isEditingContext); // Start in edit mode if on profile page
+    const [isEditing, setIsEditing] = useState(!isEditingContext); // Start in edit mode only if NOT in profile context
 
     const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<GuestProfileFormValues>({
         resolver: zodResolver(guestProfileFormSchema),
@@ -42,13 +42,19 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
+            const guestUsername = localStorage.getItem('wikistars5-guestUsername') || '';
+            const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
+            const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
             reset({
-                username: localStorage.getItem('wikistars5-guestUsername') || '',
-                gender: localStorage.getItem('wikistars5-guestGender') || '',
-                countryCode: localStorage.getItem('wikistars5-guestCountryCode') || '',
+                username: guestUsername,
+                gender: guestGender,
+                countryCode: guestCountryCode,
             });
+            // If in profile context, start in view mode. If not (comment section), start in edit mode only if no name is set.
+            setIsEditing(isEditingContext ? false : !guestUsername);
         }
-    }, [reset]);
+    }, [reset, isEditingContext]);
+
 
     const onSubmit = (data: GuestProfileFormValues) => {
         if (typeof window !== 'undefined') {
@@ -137,6 +143,19 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
                                 ))}
                                 </SelectContent>
                             </Select>
+                            )}
+                        />
+                    </div>
+                     <div>
+                        <Label htmlFor="guest-country">País</Label>
+                        <Controller
+                            name="countryCode"
+                            control={control}
+                            render={({ field }) => (
+                                <CountryCombobox
+                                    value={field.value ?? ''}
+                                    onChange={field.onChange}
+                                />
                             )}
                         />
                     </div>
