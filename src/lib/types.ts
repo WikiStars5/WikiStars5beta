@@ -105,6 +105,8 @@ export interface Comment {
   createdAt: Timestamp;
   likes: string[]; // Array of user IDs who liked the comment
   likeCount: number;
+  dislikes: string[]; // Array of user IDs who disliked the comment
+  dislikeCount: number;
   replies: Comment[]; // For nested replies
   replyCount: number;
   isAnonymous: boolean;

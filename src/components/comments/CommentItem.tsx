@@ -7,12 +7,12 @@ import type { User } from 'firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ThumbsUp, MessageSquareReply, CornerDownRight, Trash2, Send, Loader2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Trash2, Send, Loader2 } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { addComment, deleteComment, mapDocToComment } from '@/lib/placeholder-data';
+import { addComment, deleteComment, toggleLikeComment, toggleDislikeComment, mapDocToComment } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, doc, serverTimestamp, collectionGroup, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, serverTimestamp, addDoc } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +60,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
 
     const canDelete = currentUserAuth?.uid === comment.authorId;
     const hasLiked = currentUserAuth ? comment.likes.includes(currentUserAuth.uid) : false;
+    const hasDisliked = currentUserAuth ? comment.dislikes.includes(currentUserAuth.uid) : false;
 
     const fetchReplies = React.useCallback(() => {
         if (!showReplies) return;
@@ -90,7 +91,6 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
         try {
             const liked = await toggleLikeComment(comment.id, currentUserAuth.uid, isReply ? comment.parentId : undefined);
             
-            // Send notification if user likes someone else's comment
             if (liked && comment.authorId !== currentUserAuth.uid) {
                 const notificationsCollectionRef = collection(db, 'notifications');
                 await addDoc(notificationsCollectionRef, {
@@ -106,6 +106,18 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
                     createdAt: serverTimestamp(),
                 });
             }
+        } catch (error: any) {
+            toast({ title: "Error", description: error.message, variant: "destructive" });
+        }
+    };
+
+    const handleDislike = async () => {
+        if (!currentUserAuth) {
+            toast({ title: "Acción requerida", description: "Debes iniciar sesión para dar no me gusta.", variant: "destructive" });
+            return;
+        }
+        try {
+            await toggleDislikeComment(comment.id, currentUserAuth.uid, isReply ? comment.parentId : undefined);
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
         }
@@ -137,7 +149,6 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
 
             const newReplyId = await addComment(figure.id, authorData, replyText.trim(), comment.id);
 
-            // Send notification to the original comment author
             if (comment.authorId !== currentUserAuth.uid) {
                 const notificationsCollectionRef = collection(db, 'notifications');
                 await addDoc(notificationsCollectionRef, {
@@ -184,6 +195,9 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
                 <div className="flex items-center gap-2 mt-1 px-1">
                     <Button variant="ghost" size="sm" onClick={handleLike} disabled={!currentUserAuth} className="text-xs h-auto py-1 px-2">
                         <ThumbsUp className={cn("mr-1 h-3 w-3", hasLiked && "fill-current text-primary")} /> {comment.likeCount}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleDislike} disabled={!currentUserAuth} className="text-xs h-auto py-1 px-2">
+                        <ThumbsDown className={cn("mr-1 h-3 w-3", hasDisliked && "fill-current text-destructive")} /> {comment.dislikeCount}
                     </Button>
                     {!isReply && (
                         <Button variant="ghost" size="sm" onClick={() => setIsReplying(!isReplying)} className="text-xs h-auto py-1 px-2">
@@ -276,5 +290,3 @@ declare module '@/lib/types' {
         parentId?: string;
     }
 }
-
-    

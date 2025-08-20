@@ -411,6 +411,8 @@ export const mapDocToComment = (docSnap: DocumentSnapshot): Comment => {
     createdAt: data.createdAt,
     likes: data.likes || [],
     likeCount: data.likeCount || 0,
+    dislikes: data.dislikes || [],
+    dislikeCount: data.dislikeCount || 0,
     replies: [], // Replies are fetched separately
     replyCount: data.replyCount || 0,
     isAnonymous: data.isAnonymous ?? false,
@@ -434,6 +436,8 @@ export async function addComment(
         createdAt: serverTimestamp(),
         likes: [],
         likeCount: 0,
+        dislikes: [],
+        dislikeCount: 0,
         replyCount: 0,
         isAnonymous: authorData.isAnonymous,
         ...(parentCommentId && { parentId: parentCommentId }),
@@ -468,29 +472,72 @@ export async function toggleLikeComment(
 
   await runTransaction(db, async (transaction) => {
     const commentDoc = await transaction.get(commentRef);
-    if (!commentDoc.exists()) {
-      throw new Error("Comment does not exist!");
-    }
+    if (!commentDoc.exists()) throw new Error("Comment does not exist!");
+    
     const commentData = commentDoc.data();
     const likes: string[] = commentData.likes || [];
+    const dislikes: string[] = commentData.dislikes || [];
+    const updateData: any = {};
     
     if (likes.includes(userId)) {
-      transaction.update(commentRef, { 
-        likes: arrayRemove(userId),
-        likeCount: Math.max(0, (commentData.likeCount || 0) - 1)
-      });
+      updateData.likes = arrayRemove(userId);
+      updateData.likeCount = Math.max(0, (commentData.likeCount || 0) - 1);
       isLiked = false;
     } else {
-      transaction.update(commentRef, { 
-        likes: arrayUnion(userId),
-        likeCount: (commentData.likeCount || 0) + 1
-      });
+      updateData.likes = arrayUnion(userId);
+      updateData.likeCount = (commentData.likeCount || 0) + 1;
       isLiked = true;
+      if (dislikes.includes(userId)) {
+        updateData.dislikes = arrayRemove(userId);
+        updateData.dislikeCount = Math.max(0, (commentData.dislikeCount || 0) - 1);
+      }
     }
+    
+    transaction.update(commentRef, updateData);
   });
 
   return isLiked;
 }
+
+
+export async function toggleDislikeComment(
+  commentId: string,
+  userId: string,
+  parentCommentId?: string
+): Promise<boolean> {
+  const collectionPath = parentCommentId ? `comments/${parentCommentId}/replies` : 'comments';
+  const commentRef = doc(db, collectionPath, commentId);
+  let isDisliked = false;
+
+  await runTransaction(db, async (transaction) => {
+    const commentDoc = await transaction.get(commentRef);
+    if (!commentDoc.exists()) throw new Error("Comment does not exist!");
+    
+    const commentData = commentDoc.data();
+    const likes: string[] = commentData.likes || [];
+    const dislikes: string[] = commentData.dislikes || [];
+    const updateData: any = {};
+
+    if (dislikes.includes(userId)) {
+      updateData.dislikes = arrayRemove(userId);
+      updateData.dislikeCount = Math.max(0, (commentData.dislikeCount || 0) - 1);
+      isDisliked = false;
+    } else {
+      updateData.dislikes = arrayUnion(userId);
+      updateData.dislikeCount = (commentData.dislikeCount || 0) + 1;
+      isDisliked = true;
+      if (likes.includes(userId)) {
+        updateData.likes = arrayRemove(userId);
+        updateData.likeCount = Math.max(0, (commentData.likeCount || 0) - 1);
+      }
+    }
+    
+    transaction.update(commentRef, updateData);
+  });
+
+  return isDisliked;
+}
+
 
 export async function deleteComment(
   commentId: string,
@@ -506,22 +553,21 @@ export async function deleteComment(
         return;
     }
 
-    // Recursively delete replies if this is a top-level comment
+    // This logic needs to run outside the transaction for batch writes.
     if (!parentCommentId) {
         const repliesCollectionRef = collection(db, `comments/${commentId}/replies`);
-        // This get must be outside the transaction for batch deletion.
         const repliesSnapshot = await getDocs(repliesCollectionRef); 
-        const deleteBatch = writeBatch(db);
-        repliesSnapshot.forEach(replyDoc => {
-            deleteBatch.delete(replyDoc.ref);
-        });
-        // Committing the batch outside the transaction.
-        await deleteBatch.commit();
+        if (!repliesSnapshot.empty) {
+            const deleteBatch = writeBatch(db);
+            repliesSnapshot.forEach(replyDoc => {
+                deleteBatch.delete(replyDoc.ref);
+            });
+            await deleteBatch.commit();
+        }
     }
     
     transaction.delete(commentRef);
 
-    // If it's a reply, decrement the parent's replyCount
     if (parentCommentId) {
         const parentRef = doc(db, 'comments', parentCommentId);
         const parentDoc = await transaction.get(parentRef);
