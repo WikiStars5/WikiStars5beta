@@ -43,7 +43,7 @@ interface InfoItemProps {
   icon: React.ElementType;
   label: string;
   value: string | undefined | null;
-  isImage?: boolean;
+  imageUrl?: string | null;
 }
 
 const MARITAL_STATUS_OPTIONS = [
@@ -55,25 +55,26 @@ const MARITAL_STATUS_OPTIONS = [
     { value: 'Conviviente / En unión de hecho', label: 'Conviviente / En unión de hecho' },
 ];
 
-const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value, isImage }) => {
-  if (!value) return null;
+const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value, imageUrl }) => {
+  if (!value && !imageUrl) return null;
 
   return (
     <div className="flex items-start gap-3">
       <Icon className="h-5 w-5 text-muted-foreground mt-1 flex-shrink-0" />
       <div>
         <p className="font-semibold">{label}</p>
-        {isImage ? (
-          <Image 
-            src={value} 
-            alt={label}
-            width={20}
-            height={15}
-            className="w-5 h-auto mt-1"
-          />
-        ) : (
-          <p className="text-muted-foreground text-sm">{value}</p>
-        )}
+        <div className="flex items-center gap-2 mt-1">
+          {imageUrl && (
+            <Image
+              src={imageUrl}
+              alt={value || label}
+              width={20}
+              height={15}
+              className="w-5 h-auto flex-shrink-0"
+            />
+          )}
+          {value && <p className="text-muted-foreground text-sm">{value}</p>}
+        </div>
       </div>
     </div>
   );
@@ -427,7 +428,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                       <h3 className="font-headline text-lg">Básica</h3>
                       <InfoItem icon={UserIcon} label="Nombre" value={figure.name} />
                       <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
-                      <InfoItem icon={Globe} label="Nacionalidad" value={nationalityFlagUrl || figure.nationality} isImage={!!nationalityFlagUrl} />
+                      <InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} imageUrl={nationalityFlagUrl} />
                       <InfoItem icon={Users} label="Género" value={figure.gender} />
                       <InfoItem icon={BookOpen} label="Categoría" value={figure.category} />
                   </div>
