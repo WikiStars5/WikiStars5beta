@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Figure } from "@/lib/types";
 import {
   Card,
@@ -10,7 +11,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Instagram, Twitter, Youtube, Facebook
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Instagram, Twitter, Youtube, Facebook, User as UserIcon
 } from "lucide-react";
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,8 @@ import { correctMalformedUrl } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import Image from 'next/image';
 import { Separator } from '../ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { GENDER_OPTIONS } from '@/config/genderOptions';
 
 interface FigureInfoProps {
   figure: Figure;
@@ -72,10 +75,31 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
   const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
+  
+  // State for editable fields
+  const [name, setName] = useState(figure.name || '');
+  const [nationality, setNationality] = useState(figure.nationality || '');
+  const [gender, setGender] = useState(figure.gender || '');
+  const [birthDateOrAge, setBirthDateOrAge] = useState(figure.birthDateOrAge || '');
+  const [maritalStatus, setMaritalStatus] = useState(figure.maritalStatus || '');
   const [photoUrl, setPhotoUrl] = useState(figure.photoUrl || '');
   const [socialLinks, setSocialLinks] = useState(figure.socialLinks || {});
+  
   const [isSaving, setIsSaving] = useState(false);
   const [linkErrors, setLinkErrors] = useState<SocialLinkErrors>({});
+
+  // When editing starts, populate fields with current figure data
+  useEffect(() => {
+    if (isEditing) {
+      setName(figure.name || '');
+      setNationality(figure.nationality || '');
+      setGender(figure.gender || '');
+      setBirthDateOrAge(figure.birthDateOrAge || '');
+      setMaritalStatus(figure.maritalStatus || '');
+      setPhotoUrl(figure.photoUrl || '');
+      setSocialLinks(figure.socialLinks || {});
+    }
+  }, [isEditing, figure]);
 
   const validateLinks = () => {
     const errors: SocialLinkErrors = {};
@@ -109,6 +133,11 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
       const correctedUrl = correctMalformedUrl(photoUrl);
       await updateFigureInFirestore({ 
         id: figure.id, 
+        name,
+        nationality,
+        gender,
+        birthDateOrAge,
+        maritalStatus,
         photoUrl: correctedUrl,
         socialLinks: socialLinks
       });
@@ -136,7 +165,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
     }
   };
 
-  const hasBasicInfo = figure.occupation || figure.nationality || figure.gender || figure.category;
+  const hasBasicInfo = figure.name || figure.occupation || figure.nationality || figure.gender || figure.category;
   const hasDetailedInfo =
     figure.alias ||
     figure.species ||
@@ -172,7 +201,39 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         {isEditing ? (
-          <div className="space-y-6 p-4 border-dashed border rounded-md">
+          <div className="space-y-6 p-4 border-dashed border rounded-md animate-in fade-in-50">
+            <div>
+              <h3 className="font-semibold mb-4 text-lg">Modo de Edición</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Nombre Completo</Label>
+                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre completo de la figura" />
+                </div>
+                 <div>
+                  <Label htmlFor="nationality">Nacionalidad</Label>
+                  <Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="País de origen" />
+                </div>
+                <div>
+                    <Label htmlFor="gender">Género</Label>
+                    <Select onValueChange={setGender} value={gender}>
+                        <SelectTrigger id="gender"><SelectValue placeholder="Selecciona un género" /></SelectTrigger>
+                        <SelectContent>{GENDER_OPTIONS.map((opt) => ( (opt.value === 'male' || opt.value === 'female') && <SelectItem key={opt.value} value={opt.label}>{opt.label}</SelectItem>))}</SelectContent>
+                    </Select>
+                </div>
+                <div>
+                  <Label htmlFor="birthDateOrAge">Fecha de Nacimiento / Edad</Label>
+                  <Input id="birthDateOrAge" value={birthDateOrAge} onChange={(e) => setBirthDateOrAge(e.target.value)} placeholder="Ej: 14 de marzo de 1879" />
+                </div>
+                <div>
+                  <Label htmlFor="maritalStatus">Estado Civil</Label>
+                  <Input id="maritalStatus" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} placeholder="Ej: Soltero/a, Casado/a" />
+                </div>
+              </div>
+            </div>
+            
+            <Separator />
+
             <div>
               <h3 className="font-semibold mb-2">Editar Imagen de Perfil</h3>
               <Label htmlFor="photoUrl">URL de la Imagen de Perfil</Label>
@@ -198,8 +259,9 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                     className="object-cover w-full h-full"
                     data-ai-hint="image preview"
                     onError={(e) => {
-                      e.currentTarget.src = "https://placehold.co/100x150.png";
-                      e.currentTarget.srcset = "";
+                      const target = e.target as HTMLImageElement;
+                      target.src = "https://placehold.co/100x150.png";
+                      target.srcset = "";
                     }}
                   />
                 </div>
@@ -240,7 +302,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
               </Button>
               <Button onClick={handleSave} disabled={isSaving}>
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Guardar
+                Guardar Cambios
               </Button>
             </div>
           </div>
@@ -252,6 +314,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                 {hasBasicInfo && (
                   <div className="space-y-4">
                       <h3 className="font-headline text-lg">Básica</h3>
+                      <InfoItem icon={UserIcon} label="Nombre" value={figure.name} />
                       <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
                       <InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} />
                       <InfoItem icon={Users} label="Género" value={figure.gender} />

@@ -199,16 +199,19 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
 
       // Destructure all known fields to separate them from the rest
       const { 
-          id, createdAt, nameLower, perceptionCounts, attitudeCounts, socialLinks,
+          id, createdAt, nameLower: nameLowerInput, perceptionCounts, attitudeCounts, socialLinks,
           name, photoUrl, description, nationality, occupation, gender, alias, species,
-          firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
+          firstAppearance, birthDateOrAge, maritalStatus,
           height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
           category, sportSubcategory, ...rest
       } = figure;
 
       const updatePayload: { [key: string]: any } = {};
 
-      if (name !== undefined) updatePayload.name = name;
+      if (name !== undefined) {
+        updatePayload.name = name;
+        updatePayload.nameLower = name.toLowerCase();
+      }
       if (photoUrl !== undefined) updatePayload.photoUrl = photoUrl;
       if (description !== undefined) updatePayload.description = description;
       if (nationality !== undefined) updatePayload.nationality = nationality;
@@ -218,8 +221,8 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       if (species !== undefined) updatePayload.species = species;
       if (firstAppearance !== undefined) updatePayload.firstAppearance = firstAppearance;
       if (birthDateOrAge !== undefined) updatePayload.birthDateOrAge = birthDateOrAge;
-      if (birthPlace !== undefined) updatePayload.birthPlace = birthPlace;
-      if (statusLiveOrDead !== undefined) updatePayload.statusLiveOrDead = statusLiveOrDead;
+      if (birthPlace !== undefined) updatePayload.birthPlace = figure.birthPlace;
+      if (statusLiveOrDead !== undefined) updatePayload.statusLiveOrDead = figure.statusLiveOrDead;
       if (maritalStatus !== undefined) updatePayload.maritalStatus = maritalStatus;
       if (height !== undefined) updatePayload.height = height;
       if (weight !== undefined) updatePayload.weight = weight;
@@ -227,7 +230,6 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       if (eyeColor !== undefined) updatePayload.eyeColor = eyeColor;
       if (distinctiveFeatures !== undefined) updatePayload.distinctiveFeatures = distinctiveFeatures;
       if (status !== undefined) updatePayload.status = status;
-      if (nameLower !== undefined) updatePayload.nameLower = nameLower;
       if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured;
       if (category !== undefined) updatePayload.category = category;
       if (sportSubcategory !== undefined) updatePayload.sportSubcategory = sportSubcategory;
