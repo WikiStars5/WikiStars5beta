@@ -64,9 +64,15 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                             const user = streak.userProfile;
                             const displayName = user?.username || 'Invitado';
                             const photoUrl = user?.photoURL;
-                            const genderSymbol = GENDER_OPTIONS.find(g => g.label === user?.gender)?.symbol;
-                            const countryFlag = getCountryEmojiByCode(user?.countryCode || '');
-                            const genderColorClass = user?.gender === 'Masculino' ? 'text-blue-400' : user?.gender === 'Femenino' ? 'text-pink-400' : '';
+                            
+                            // Get gender and country info, correctly handling anonymous vs. registered users
+                            const genderLabel = user?.gender || '';
+                            const countryCode = user?.countryCode || '';
+                            const countryName = user?.country || '';
+
+                            const genderSymbol = GENDER_OPTIONS.find(g => g.label === genderLabel)?.symbol;
+                            const countryFlag = getCountryEmojiByCode(countryCode);
+                            const genderColorClass = genderLabel === 'Masculino' ? 'text-blue-400' : genderLabel === 'Femenino' ? 'text-pink-400' : '';
 
                              return (
                                 <div key={streak.userId} className="flex items-center justify-between p-3 bg-muted/50 rounded-md">
@@ -81,8 +87,8 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                                         <div>
                                             <div className="flex items-center gap-1.5">
                                                 <p className="font-semibold text-sm">{displayName}</p>
-                                                {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={user?.gender}>{genderSymbol}</span>}
-                                                {countryFlag && <span title={user?.country}>{countryFlag}</span>}
+                                                {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={genderLabel}>{genderSymbol}</span>}
+                                                {countryFlag && <span title={countryName}>{countryFlag}</span>}
                                             </div>
                                         </div>
                                     </div>
