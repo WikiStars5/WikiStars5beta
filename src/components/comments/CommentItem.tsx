@@ -73,6 +73,12 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
         return getCountryEmojiByCode(comment.authorCountryCode || '');
     }, [comment.authorCountryCode]);
 
+    const genderColorClass = React.useMemo(() => {
+        if (comment.authorGender === 'male') return 'text-blue-400';
+        if (comment.authorGender === 'female') return 'text-pink-400';
+        return '';
+    }, [comment.authorGender]);
+
     const fetchReplies = React.useCallback(() => {
         if (!showReplies) return;
         setIsLoadingReplies(true);
@@ -200,7 +206,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-1.5">
                             <p className="font-semibold text-sm">{comment.authorName}</p>
-                            {genderSymbol && <span className="text-sm" title={comment.authorGender}>{genderSymbol}</span>}
+                            {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={comment.authorGender}>{genderSymbol}</span>}
                             {countryFlag && <span title={comment.authorCountry}>{countryFlag}</span>}
                         </div>
                         {comment.createdAt && (
