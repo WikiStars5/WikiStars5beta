@@ -4,7 +4,7 @@ import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalU
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove } from "firebase/firestore";
-import { differenceInHours } from 'date-fns';
+import { isSameDay, isYesterday } from 'date-fns';
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -650,16 +650,19 @@ export async function updateStreak(
       if (streakDoc.exists()) {
         const data = streakDoc.data();
         const lastCommentDate = (data.lastCommentDate as Timestamp).toDate();
-        const hoursSinceLastComment = differenceInHours(now, lastCommentDate);
         
-        if (hoursSinceLastComment < 24) {
+        if (isSameDay(now, lastCommentDate)) {
+          // Commented again on the same day, streak doesn't change
           currentStreakData.currentStreak = data.currentStreak;
-        } else if (hoursSinceLastComment < 48) {
+        } else if (isYesterday(lastCommentDate)) {
+          // Commented on the next day, streak increases
           currentStreakData.currentStreak = (data.currentStreak || 0) + 1;
         } else {
+          // Day was skipped, streak resets
           currentStreakData.currentStreak = 1;
         }
       } else {
+        // First comment, start streak at 1
         currentStreakData.currentStreak = 1;
       }
       newStreakCount = currentStreakData.currentStreak;
@@ -713,34 +716,33 @@ export async function updateStreak(
 
 export async function getTopStreaksForFigure(figureId: string, count: number = 10): Promise<StreakWithProfile[]> {
   const streaksRef = collection(db, `figures/${figureId}/streaks`);
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-  const q = query(
-    streaksRef,
-    where('lastCommentDate', '>', twentyFourHoursAgo)
-  );
-
+  const today = new Date();
+  
   try {
+    const q = query(streaksRef, orderBy('currentStreak', 'desc'), limit(count * 2));
     const querySnapshot = await getDocs(q);
-    let streaks: Streak[] = [];
-
+    
+    let activeStreaks: Streak[] = [];
     querySnapshot.forEach(doc => {
       const data = doc.data() as DocumentData;
-      streaks.push({
-        userId: doc.id,
-        currentStreak: data.currentStreak,
-        lastCommentDate: data.lastCommentDate,
-        isAnonymous: data.isAnonymous,
-        username: data.username,
-        gender: data.gender,
-        countryCode: data.countryCode,
-      });
+      const lastDate = (data.lastCommentDate as Timestamp).toDate();
+      if (isSameDay(today, lastDate) || isYesterday(lastDate)) {
+        activeStreaks.push({
+          userId: doc.id,
+          currentStreak: data.currentStreak,
+          lastCommentDate: data.lastCommentDate,
+          isAnonymous: data.isAnonymous,
+          username: data.username,
+          gender: data.gender,
+          countryCode: data.countryCode,
+        });
+      }
     });
 
-    streaks.sort((a, b) => b.currentStreak - a.currentStreak);
-    streaks = streaks.slice(0, count);
+    activeStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
+    const topStreaks = activeStreaks.slice(0, count);
 
-    const nonAnonymousUserIds = streaks.filter(s => !s.isAnonymous).map(s => s.userId);
+    const nonAnonymousUserIds = topStreaks.filter(s => !s.isAnonymous).map(s => s.userId);
     let profiles = new Map<string, UserProfile>();
 
     if (nonAnonymousUserIds.length > 0) {
@@ -758,7 +760,7 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
       }
     }
 
-    const streaksWithProfiles: StreakWithProfile[] = streaks.map(streak => {
+    const streaksWithProfiles: StreakWithProfile[] = topStreaks.map(streak => {
       if (streak.isAnonymous) {
         return {
           ...streak,

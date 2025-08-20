@@ -12,6 +12,9 @@ import { correctMalformedUrl, cn } from '@/lib/utils';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { getCountryEmojiByCode } from '@/config/countries';
 import Image from 'next/image';
+import { isSameDay, isYesterday } from 'date-fns';
+import { Timestamp } from 'firebase/firestore';
+
 
 interface TopStreaksProps {
     figureId: string;
@@ -27,8 +30,16 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
         const fetchStreaks = async () => {
             setIsLoading(true);
             try {
-                const topStreaks = await getTopStreaksForFigure(figureId);
-                setStreaks(topStreaks);
+                const topStreaksData = await getTopStreaksForFigure(figureId);
+                const today = new Date();
+
+                // Filter again on the client-side as a safeguard
+                const activeStreaks = topStreaksData.filter(streak => {
+                    const lastDate = (streak.lastCommentDate as Timestamp).toDate();
+                    return isSameDay(today, lastDate) || isYesterday(lastDate);
+                });
+
+                setStreaks(activeStreaks);
             } catch (error) {
                 console.error("Error fetching top streaks:", error);
             } finally {
