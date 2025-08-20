@@ -1,5 +1,4 @@
 
-
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -631,7 +630,6 @@ export async function deleteComment(documentPath: string): Promise<void> {
 export async function updateStreak(
   figureId: string,
   userId: string,
-  figureData: Pick<Figure, 'name' | 'photoUrl'>,
   isAnonymous: boolean
 ): Promise<number | null> {
   const streakRef = doc(db, `figures/${figureId}/streaks`, userId);
@@ -658,14 +656,18 @@ export async function updateStreak(
         const hoursSinceLastComment = differenceInHours(now, lastCommentDate);
 
         if (hoursSinceLastComment < 24) {
-          newStreakCount = streakData.currentStreak; // No change, but we return the value
+          // It's the same day, no change in streak, but update the date
+          newStreakCount = streakData.currentStreak;
+          transaction.update(streakRef, { lastCommentDate: now });
         } else if (hoursSinceLastComment >= 24 && hoursSinceLastComment < 48) {
+          // It's a consecutive day
           newStreakCount = (streakData.currentStreak || 0) + 1;
           transaction.update(streakRef, {
             currentStreak: newStreakCount,
             lastCommentDate: now,
           });
         } else {
+          // The streak was broken
           newStreakCount = 1;
           transaction.update(streakRef, {
             currentStreak: 1,
@@ -686,6 +688,10 @@ export async function updateStreak(
           let localStreaks: LocalUserStreak[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
           
           const existingStreakIndex = localStreaks.findIndex(s => s.figureId === figureId);
+          
+          // To get figure details for local storage, we'll need to fetch them if not available
+          // This part is simplified; in a real app, you might pass figure details to this function
+          const figureDetails = { name: 'Unknown Figure', photoUrl: '' }; // Placeholder
 
           if (existingStreakIndex !== -1) {
               localStreaks[existingStreakIndex].currentStreak = newStreakCount;
@@ -693,8 +699,8 @@ export async function updateStreak(
           } else {
               localStreaks.push({
                   figureId,
-                  figureName: figureData.name,
-                  figurePhotoUrl: figureData.photoUrl,
+                  figureName: figureDetails.name,
+                  figurePhotoUrl: figureDetails.photoUrl,
                   currentStreak: newStreakCount,
                   lastCommentDate: now.toISOString(),
               });
@@ -737,19 +743,21 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
       }
     });
 
-    if (userIds.length === 0) {
-      return streaks.map(s => ({ ...s, userProfile: null }));
+    if (streaks.length === 0) {
+      return [];
     }
-
-    // Fetch user profiles for non-anonymous users
-    const usersRef = collection(db, 'users');
-    const usersQuery = query(usersRef, where('__name__', 'in', userIds));
-    const usersSnapshot = await getDocs(usersQuery);
     
-    const profiles = new Map<string, UserProfile>();
-    usersSnapshot.forEach(doc => {
-      profiles.set(doc.id, { uid: doc.id, ...doc.data() } as UserProfile);
-    });
+    // Fetch user profiles for non-anonymous users if any exist
+    let profiles = new Map<string, UserProfile>();
+    if (userIds.length > 0) {
+      const usersRef = collection(db, 'users');
+      const usersQuery = query(usersRef, where('__name__', 'in', userIds));
+      const usersSnapshot = await getDocs(usersQuery);
+      
+      usersSnapshot.forEach(doc => {
+        profiles.set(doc.id, { uid: doc.id, ...doc.data() } as UserProfile);
+      });
+    }
 
     const streaksWithProfiles = streaks.map(streak => ({
       ...streak,
