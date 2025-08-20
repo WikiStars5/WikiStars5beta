@@ -201,7 +201,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       const { 
           id, createdAt, nameLower: nameLowerInput, perceptionCounts, attitudeCounts, socialLinks,
           name, photoUrl, description, nationality, occupation, gender, alias, species,
-          firstAppearance, birthDateOrAge, maritalStatus,
+          firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
           height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
           category, sportSubcategory, ...rest
       } = figure;
@@ -221,8 +221,8 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       if (species !== undefined) updatePayload.species = species;
       if (firstAppearance !== undefined) updatePayload.firstAppearance = firstAppearance;
       if (birthDateOrAge !== undefined) updatePayload.birthDateOrAge = birthDateOrAge;
-      if (birthPlace !== undefined) updatePayload.birthPlace = figure.birthPlace;
-      if (statusLiveOrDead !== undefined) updatePayload.statusLiveOrDead = figure.statusLiveOrDead;
+      if (birthPlace !== undefined) updatePayload.birthPlace = birthPlace;
+      if (statusLiveOrDead !== undefined) updatePayload.statusLiveOrDead = statusLiveOrDead;
       if (maritalStatus !== undefined) updatePayload.maritalStatus = maritalStatus;
       if (height !== undefined) updatePayload.height = height;
       if (weight !== undefined) updatePayload.weight = weight;
