@@ -32,6 +32,7 @@ import Image from 'next/image';
 import { StreakAnimation } from '@/components/shared/StreakAnimation';
 import { getFiguresByIds } from '@/lib/placeholder-data';
 import { countryCodeToNameMap } from '@/config/countries';
+import { GuestProfileSetup } from '@/components/comments/GuestProfileSetup';
 
 const profileFormSchema = z.object({
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres.").max(30, "El nombre de usuario no puede exceder los 30 caracteres."),
@@ -39,13 +40,6 @@ const profileFormSchema = z.object({
   gender: z.string().optional(),
 });
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
-
-const guestProfileFormSchema = z.object({
-  username: z.string().min(3, "Tu nombre debe tener al menos 3 caracteres.").max(30, "Tu nombre no puede exceder los 30 caracteres."),
-  gender: z.string().optional(),
-  countryCode: z.string().optional(),
-});
-type GuestProfileFormValues = z.infer<typeof guestProfileFormSchema>;
 
 const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
 
@@ -58,15 +52,10 @@ const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
   furia: { label: 'Furia', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f' },
 };
 
-const GUEST_USERNAME_KEY = 'wikistars5-guestUsername';
-const GUEST_GENDER_KEY = 'wikistars5-guestGender';
-const GUEST_COUNTRY_CODE_KEY = 'wikistars5-guestCountryCode';
-
 export default function ProfilePage() {
   const { user: firestoreUser, firebaseUser, isLoading, isAnonymous } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [isEditing, setIsEditing] = useState(false);
   
   // States for data
   const [streaks, setStreaks] = useState<LocalUserStreak[]>([]);
@@ -80,10 +69,8 @@ export default function ProfilePage() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [animationStreak, setAnimationStreak] = useState<number | null>(null);
   
-  // State for guest profile
-  const [guestUsername, setGuestUsername] = useState('Invitado');
-  const [guestGender, setGuestGender] = useState('');
-  const [guestCountryCode, setGuestCountryCode] = useState('');
+  // Guest profile state now derived from localStorage within getGuestProfile
+  const [guestProfile, setGuestProfile] = useState<{username: string; gender: string; countryCode: string} | null>(null);
 
 
   const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
@@ -91,49 +78,39 @@ export default function ProfilePage() {
     defaultValues: { username: '', countryCode: '', gender: '' },
   });
 
-  const { control: guestControl, handleSubmit: handleGuestSubmit, reset: resetGuestForm, formState: { isSubmitting: isGuestSubmitting, errors: guestErrors } } = useForm<GuestProfileFormValues>({
-    resolver: zodResolver(guestProfileFormSchema),
-    defaultValues: { username: 'Invitado', gender: '', countryCode: '' },
-  });
+  const getGuestProfile = useCallback(() => {
+    if (typeof window !== 'undefined') {
+        const storedGuestName = localStorage.getItem('wikistars5-guestUsername');
+        const storedGuestGender = localStorage.getItem('wikistars5-guestGender') || '';
+        const storedGuestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
+        if (storedGuestName) {
+            setGuestProfile({
+                username: storedGuestName,
+                gender: storedGuestGender,
+                countryCode: storedGuestCountryCode,
+            });
+        } else {
+            setGuestProfile(null);
+        }
+    }
+  }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && isAnonymous) {
-      const storedGuestName = localStorage.getItem(GUEST_USERNAME_KEY) || 'Invitado';
-      const storedGuestGender = localStorage.getItem(GUEST_GENDER_KEY) || '';
-      const storedGuestCountryCode = localStorage.getItem(GUEST_COUNTRY_CODE_KEY) || '';
-      
-      setGuestUsername(storedGuestName);
-      setGuestGender(storedGuestGender);
-      setGuestCountryCode(storedGuestCountryCode);
-      
-      resetGuestForm({ 
-        username: storedGuestName,
-        gender: storedGuestGender,
-        countryCode: storedGuestCountryCode,
-      });
+    if (isAnonymous) {
+        getGuestProfile();
     }
-  }, [isAnonymous, resetGuestForm]);
+  }, [isAnonymous, getGuestProfile]);
   
   const loadLocalData = useCallback(async () => {
     if (typeof window === 'undefined') return;
     setIsDataLoading(true);
     try {
-        // Streaks from localStorage
         const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
         if (streaksJSON) {
             let localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(today.getDate() - 1);
-            const activeStreaks = localStreaks.filter(streak => {
-                const lastDate = new Date(streak.lastCommentDate);
-                return lastDate.toDateString() === today.toDateString() || lastDate.toDateString() === yesterday.toDateString();
-            });
-            activeStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
-            setStreaks(activeStreaks);
+            setStreaks(localStreaks);
         }
 
-        // Attitudes from localStorage
         const attitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
         const localAttitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
         setAttitudes(localAttitudes);
@@ -143,7 +120,6 @@ export default function ProfilePage() {
             setAttitudeFigures(figures);
         }
 
-        // Emotions from localStorage
         const emotionsJSON = localStorage.getItem('wikistars5-userEmotions');
         const localEmotions: EmotionVote[] = emotionsJSON ? JSON.parse(emotionsJSON) : [];
         setEmotions(localEmotions);
@@ -171,7 +147,6 @@ export default function ProfilePage() {
           gender: firestoreUser.gender ?? '',
         });
       }
-      // Always load local data for both guests and registered users
       loadLocalData();
     }
   }, [isLoading, firestoreUser, isAnonymous, reset, loadLocalData]);
@@ -183,44 +158,12 @@ export default function ProfilePage() {
         await updateProfile(firebaseUser, { displayName: data.username });
       }
       toast({ title: "Perfil Actualizado", description: "Tus cambios han sido guardados." });
-      setIsEditing(false);
-      // No need to call router.refresh() as onSnapshot in useAuth will update the profile
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({ title: "Error", description: error.message || "No se pudo actualizar tu perfil.", variant: "destructive" });
     }
   };
-
-  const onGuestProfileSubmit = (data: GuestProfileFormValues) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(GUEST_USERNAME_KEY, data.username);
-      setGuestUsername(data.username);
-
-      if (data.gender) {
-        localStorage.setItem(GUEST_GENDER_KEY, data.gender);
-        setGuestGender(data.gender);
-      } else {
-        localStorage.removeItem(GUEST_GENDER_KEY);
-        setGuestGender('');
-      }
-
-      if (data.countryCode) {
-        localStorage.setItem(GUEST_COUNTRY_CODE_KEY, data.countryCode);
-        setGuestCountryCode(data.countryCode);
-      } else {
-        localStorage.removeItem(GUEST_COUNTRY_CODE_KEY);
-        setGuestCountryCode('');
-      }
-
-      toast({
-        title: "¡Perfil de Invitado Guardado!",
-        description: `Tu información local ha sido actualizada.`,
-      });
-      setIsEditing(false);
-    }
-  };
-
-
+  
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -241,27 +184,27 @@ export default function ProfilePage() {
   }
 
   const currentUser: UserProfile | null = isAnonymous
-    ? {
+    ? guestProfile ? {
         uid: firebaseUser?.uid || 'guest',
-        username: guestUsername,
-        gender: guestGender,
-        countryCode: guestCountryCode,
-        country: countryCodeToNameMap.get(guestCountryCode),
+        username: guestProfile.username,
+        gender: guestProfile.gender,
+        countryCode: guestProfile.countryCode,
+        country: countryCodeToNameMap.get(guestProfile.countryCode),
         email: null,
         role: 'user',
         isAnonymous: true,
         createdAt: new Date().toISOString(),
-      }
+      } : null
     : firestoreUser;
   
   if (!currentUser) {
      return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center p-4">
-            <Alert variant="destructive">
+             <Alert variant="destructive">
                 <ShieldCheck className="h-4 w-4" />
-                <AlertTitle>Error al Cargar Perfil</AlertTitle>
+                <AlertTitle>Perfil de Invitado no Configurado</AlertTitle>
                 <AlertDescription>
-                    No se pudo cargar la información del perfil. Por favor, intenta recargar la página.
+                    No has configurado tu perfil de invitado. Ve a la sección de comentarios de cualquier figura para crear uno y poder ver tu actividad.
                 </AlertDescription>
             </Alert>
         </div>
@@ -356,90 +299,14 @@ export default function ProfilePage() {
     <>
         <div className="w-full mt-6">
             <Card className="border border-white/20 bg-black">
-                <CardHeader className="flex flex-row justify-between items-start">
-                  <div>
+                <CardHeader>
                     <CardTitle>Tu Perfil de Invitado</CardTitle>
                     <CardDescription>
-                        Edita tu información local. Se guardará solo en este dispositivo.
+                        Aquí puedes editar la información que se guarda en este dispositivo.
                     </CardDescription>
-                  </div>
-                  {!isEditing && (
-                    <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                      <Edit className="mr-2 h-4 w-4" /> Editar
-                    </Button>
-                  )}
                 </CardHeader>
                 <CardContent>
-                  {isEditing ? (
-                    <form onSubmit={handleGuestSubmit(onGuestProfileSubmit)} className="space-y-4 animate-in fade-in-50">
-                        <div>
-                            <Label htmlFor="guest-username">Tu Nombre</Label>
-                            <Controller
-                                name="username"
-                                control={guestControl}
-                                render={({ field }) => (
-                                    <Input 
-                                        id="guest-username" 
-                                        placeholder="Elige un nombre" 
-                                        {...field} 
-                                    />
-                                )}
-                            />
-                            {guestErrors.username && (
-                                <p className="text-sm text-destructive mt-1">{guestErrors.username.message}</p>
-                            )}
-                        </div>
-                        <div>
-                            <Label htmlFor="guest-gender">Sexo</Label>
-                             <Controller
-                                name="gender"
-                                control={guestControl}
-                                render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value ?? ''}>
-                                    <SelectTrigger id="guest-gender">
-                                    <SelectValue placeholder="Selecciona tu sexo" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                    {GENDER_OPTIONS.map((opt) => (
-                                        (opt.value === 'male' || opt.value === 'female') && (
-                                        <SelectItem key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </SelectItem>
-                                        )
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                )}
-                            />
-                        </div>
-                        <div>
-                            <Label htmlFor="guest-countryCode">País</Label>
-                            <Controller
-                                name="countryCode"
-                                control={guestControl}
-                                render={({ field }) => (
-                                    <CountryCombobox
-                                        value={field.value ?? ''}
-                                        onChange={field.onChange}
-                                    />
-                                )}
-                            />
-                        </div>
-                        <div className="flex justify-end gap-2 pt-2">
-                           <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isGuestSubmitting}>Cancelar</Button>
-                           <Button type="submit" disabled={isGuestSubmitting}>
-                              {isGuestSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                              Guardar Perfil
-                           </Button>
-                        </div>
-                    </form>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-4"><User className="h-5 w-5 text-muted-foreground"/><p>{currentUser.username}</p></div>
-                      <div className="flex items-center gap-4"><MapIcon className="h-5 w-5 text-muted-foreground"/><p>{currentUser.country || 'No especificado'}</p></div>
-                      <div className="flex items-center gap-4"><VenusAndMars className="h-5 w-5 text-muted-foreground"/><p>{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</p></div>
-                    </div>
-                  )}
+                    <GuestProfileSetup onProfileSave={getGuestProfile} isEditingContext={true} />
                 </CardContent>
             </Card>
         </div>
@@ -545,10 +412,14 @@ export default function ProfilePage() {
                   <CardTitle>Tu Información</CardTitle>
                   <CardDescription>Edita los datos públicos de tu perfil.</CardDescription>
               </div>
-              {!isEditing && <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}><Edit className="mr-2 h-4 w-4"/>Editar</Button>}
+              <form onSubmit={handleSubmit(onProfileSubmit)}>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                  Guardar Cambios
+                </Button>
+              </form>
             </CardHeader>
             <CardContent className="space-y-8">
-              {isEditing ? (
                 <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-4 animate-in fade-in-50">
                   <div>
                     <Label htmlFor="username">Nombre de Usuario</Label>
@@ -568,21 +439,7 @@ export default function ProfilePage() {
                       </Select>
                     )} />
                   </div>
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancelar</Button>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                      Guardar Cambios
-                    </Button>
-                  </div>
                 </form>
-              ) : (
-                  <div className="space-y-4">
-                      <div className="flex items-center gap-4"><User className="h-5 w-5 text-muted-foreground"/><p>{currentUser.username}</p></div>
-                      <div className="flex items-center gap-4"><MapIcon className="h-5 w-5 text-muted-foreground"/><p>{currentUser.country || 'No especificado'}</p></div>
-                      <div className="flex items-center gap-4"><VenusAndMars className="h-5 w-5 text-muted-foreground"/><p>{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</p></div>
-                  </div>
-              )}
               <Separator />
               <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
             </CardContent>

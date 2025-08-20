@@ -6,13 +6,24 @@ import { UserNav } from '@/components/layout/UserNav';
 import Link from 'next/link'; 
 import { MobileSearchButton } from './MobileSearchButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { InstallPwaButton } from './InstallPwaButton';
 import { useAuth } from '@/hooks/useAuth';
 
 export function Header() {
   const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
-  const { isAnonymous, isLoading } = useAuth();
+  const { isAnonymous } = useAuth();
+  const [guestProfileExists, setGuestProfileExists] = useState(false);
+
+  useEffect(() => {
+    // This effect ensures the state is read from the client side, avoiding hydration issues.
+    if (isAnonymous) {
+      const guestName = localStorage.getItem('wikistars5-guestUsername');
+      setGuestProfileExists(!!guestName);
+    } else {
+      setGuestProfileExists(false);
+    }
+  }, [isAnonymous]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
@@ -33,7 +44,7 @@ export function Header() {
             <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">
               Explorar
             </Link>
-            {isAnonymous && (
+            {isAnonymous && guestProfileExists && (
               <Link href="/profile" className="text-foreground/70 hover:text-foreground transition-colors">
                 Mi Perfil
               </Link>

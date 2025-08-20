@@ -15,6 +15,7 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { CommentItem } from './CommentItem';
 import { countryCodeToNameMap } from '@/config/countries';
+import { GuestProfileSetup } from './GuestProfileSetup';
 
 interface CommentSectionProps {
   figure: Figure;
@@ -26,6 +27,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
   const [comments, setComments] = React.useState<CommentType[]>([]);
   const [isPosting, setIsPosting] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [guestProfileExists, setGuestProfileExists] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -50,13 +52,25 @@ export function CommentSection({ figure }: CommentSectionProps) {
     return () => unsubscribe();
   }, [figure.id, toast]);
   
+  React.useEffect(() => {
+    if (isAnonymous) {
+        if (typeof window !== 'undefined') {
+            const guestName = localStorage.getItem('wikistars5-guestUsername');
+            setGuestProfileExists(!!guestName);
+        }
+    }
+  }, [isAnonymous]);
+
+
   const getAuthorData = () => {
+    if (!firebaseUser) return null;
+
     if (isAnonymous) {
       const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
       const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
       const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
       return {
-        id: firebaseUser?.uid || 'guest-user',
+        id: firebaseUser.uid,
         name: guestUsername,
         photoUrl: null,
         gender: guestGender,
@@ -64,7 +78,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
         countryCode: guestCountryCode,
         isAnonymous: true,
       };
-    } else if (firestoreUser && firebaseUser) {
+    } else if (firestoreUser) {
       return {
         id: firebaseUser.uid,
         name: firestoreUser.username,
@@ -103,6 +117,49 @@ export function CommentSection({ figure }: CommentSectionProps) {
 
   const author = getAuthorData();
 
+  const handleGuestProfileSaved = () => {
+    setGuestProfileExists(true);
+  }
+
+  const renderCommentInput = () => {
+    if (isAnonymous && !guestProfileExists) {
+        return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
+    }
+    
+    if (!author) {
+      return (
+        <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Cargando tu sesión para comentar...
+        </div>
+      );
+    }
+
+    return (
+        <div className="flex gap-4">
+            <Avatar className="h-10 w-10 mt-1">
+                <AvatarImage src={author?.photoUrl ?? undefined} alt={author?.name} />
+                <AvatarFallback>{author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="flex-grow space-y-2">
+                <Textarea
+                placeholder="Escribe tu comentario aquí..."
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                rows={3}
+                className="bg-muted border-border/50 focus:bg-background"
+                />
+                <div className="flex justify-end">
+                <Button onClick={handlePostComment} disabled={isPosting}>
+                    {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+                    Publicar
+                </Button>
+                </div>
+            </div>
+        </div>
+    );
+  }
+
   return (
     <Card className="border border-white/20 bg-black">
       <CardHeader>
@@ -114,27 +171,8 @@ export function CommentSection({ figure }: CommentSectionProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex gap-4">
-          <Avatar className="h-10 w-10 mt-1">
-            <AvatarImage src={author?.photoUrl ?? undefined} alt={author?.name} />
-            <AvatarFallback>{author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div className="flex-grow space-y-2">
-            <Textarea
-              placeholder="Escribe tu comentario aquí..."
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              rows={3}
-              className="bg-muted border-border/50 focus:bg-background"
-            />
-            <div className="flex justify-end">
-              <Button onClick={handlePostComment} disabled={isPosting}>
-                {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
-                Publicar
-              </Button>
-            </div>
-          </div>
-        </div>
+        
+        {renderCommentInput()}
 
         <div className="space-y-6">
           {isLoading ? (
@@ -162,5 +200,3 @@ export function CommentSection({ figure }: CommentSectionProps) {
     </Card>
   );
 }
-
-    

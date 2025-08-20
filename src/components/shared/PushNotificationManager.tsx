@@ -1,50 +1,66 @@
-"use client"; 
 
-import { Logo } from '@/components/shared/Logo';
-import { UserNav } from '@/components/layout/UserNav';
-import Link from 'next/link'; 
-import { MobileSearchButton } from './MobileSearchButton';
-import { SearchBar } from '@/components/shared/SearchBar'; 
-import { useState } from 'react';
-import { InstallPwaButton } from './InstallPwaButton';
+"use client";
+
+import { useEffect } from 'react';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { useAuth } from '@/hooks/useAuth';
+import { app, db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { doc, setDoc } from 'firebase/firestore';
 
-export function Header() {
-  const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
-  const { isAnonymous, isLoading } = useAuth();
+export function PushNotificationManager() {
+  const { firebaseUser, isAnonymous } = useAuth();
+  const { toast } = useToast();
 
-  return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
-      <div className="flex h-18 w-full max-w-6xl items-center justify-between mx-auto py-3 px-4">
-        <div className="flex items-center gap-2 md:gap-4">
-          <Logo />
-          <div className={`hidden md:block transition-all duration-300 ease-in-out ${isHeaderSearchFocused ? 'w-72' : 'w-auto'}`}>
-            <SearchBar 
-              startAsIcon={true} 
-              onFocusChange={setIsHeaderSearchFocused}
-              className={isHeaderSearchFocused ? "w-full" : "w-9"}
-            />
-          </div>
-        </div>
-        
-        <div className={`flex items-center gap-1 md:gap-2 lg:gap-3 transition-opacity duration-300 ${isHeaderSearchFocused && !isHeaderSearchFocused ? 'opacity-0 md:opacity-100' : 'opacity-100'}`}>
-          <nav className={`flex items-center gap-4 text-sm transition-opacity duration-300 ${isHeaderSearchFocused ? 'lg:flex opacity-0 lg:opacity-100' : 'flex opacity-100'}`}>
-            <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">
-              Explorar
-            </Link>
-            {isAnonymous && (
-              <Link href="/profile" className="text-foreground/70 hover:text-foreground transition-colors">
-                Mi Perfil
-              </Link>
-            )}
-          </nav>
+  useEffect(() => {
+    // Only run for authenticated, non-anonymous users
+    if (!firebaseUser || isAnonymous) {
+      return;
+    }
 
-          <InstallPwaButton />
-          <MobileSearchButton />
-          
-          <UserNav />
-        </div>
-      </div>
-    </header>
-  );
+    // This code only runs on the client
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      const messaging = getMessaging(app);
+
+      const requestPermissionAndToken = async () => {
+        try {
+          const currentToken = await getToken(messaging, {
+            vapidKey: 'BFJgG3wIOFf5k3z4d6BTVb-B-iLwE0hZ9m_YJq8zG9g8H3fR2k8J5qZ5Z-zYJ8wX5j_H5wJq8zG9g8H3fR2k8J5qZ5Z-zYJ8wX5j_H5wJq8zG9g8',
+          });
+
+          if (currentToken) {
+            // Send the token to your server and update the user's profile
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            await setDoc(userDocRef, { fcmToken: currentToken }, { merge: true });
+          } else {
+            console.log('No registration token available. Request permission to generate one.');
+          }
+        } catch (err) {
+          console.error('An error occurred while retrieving token. ', err);
+          // Optionally show a toast to the user that permission is needed
+        }
+      };
+      
+      // Request permission as soon as the component mounts for a logged-in user
+      if ('Notification' in window && Notification.permission === 'granted') {
+          requestPermissionAndToken();
+      }
+
+      // Handle incoming messages when the app is in the foreground
+      const unsubscribeOnMessage = onMessage(messaging, (payload) => {
+        console.log('Message received. ', payload);
+        toast({
+          title: payload.notification?.title || "Nueva Notificación",
+          description: payload.notification?.body,
+        });
+      });
+
+      return () => {
+        unsubscribeOnMessage();
+      };
+    }
+  }, [firebaseUser, isAnonymous, toast]);
+
+  // This component does not render anything
+  return null;
 }
