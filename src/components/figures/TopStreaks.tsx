@@ -62,12 +62,12 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                     <div className="space-y-4">
                         {streaks.map((streak, index) => {
                             const user = streak.userProfile;
-                            const displayName = user?.username || 'Invitado';
+                            const displayName = user?.username || streak.username || 'Invitado';
                             const photoUrl = user?.photoURL;
                             
-                            // Get gender and country info, correctly handling anonymous vs. registered users
-                            const genderLabel = user?.gender || '';
-                            const countryCode = user?.countryCode || '';
+                            // Corrected logic: Prioritize profile data, but fall back to streak data for guests.
+                            const genderLabel = user?.gender || streak.gender || '';
+                            const countryCode = user?.countryCode || streak.countryCode || '';
                             const countryName = user?.country || '';
 
                             const genderSymbol = GENDER_OPTIONS.find(g => g.label === genderLabel)?.symbol;
@@ -88,7 +88,7 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                                             <div className="flex items-center gap-1.5">
                                                 <p className="font-semibold text-sm">{displayName}</p>
                                                 {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={genderLabel}>{genderSymbol}</span>}
-                                                {countryFlag && <span title={countryName}>{countryFlag}</span>}
+                                                {countryFlag && <span title={countryName || countryCode}>{countryFlag}</span>}
                                             </div>
                                         </div>
                                     </div>
