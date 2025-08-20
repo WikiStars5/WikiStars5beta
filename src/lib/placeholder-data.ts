@@ -636,7 +636,6 @@ export async function updateStreak(
   let newStreakCount: number | null = null;
   const now = new Date();
 
-  // --- Firestore Transaction ---
   try {
     await runTransaction(db, async (transaction) => {
       const streakDoc = await transaction.get(streakRef);
@@ -656,18 +655,15 @@ export async function updateStreak(
         const hoursSinceLastComment = differenceInHours(now, lastCommentDate);
 
         if (hoursSinceLastComment < 24) {
-          // It's the same day, no change in streak, but update the date
           newStreakCount = streakData.currentStreak;
           transaction.update(streakRef, { lastCommentDate: now });
         } else if (hoursSinceLastComment >= 24 && hoursSinceLastComment < 48) {
-          // It's a consecutive day
           newStreakCount = (streakData.currentStreak || 0) + 1;
           transaction.update(streakRef, {
             currentStreak: newStreakCount,
             lastCommentDate: now,
           });
         } else {
-          // The streak was broken
           newStreakCount = 1;
           transaction.update(streakRef, {
             currentStreak: 1,
@@ -678,10 +674,9 @@ export async function updateStreak(
     });
   } catch (error) {
     console.error("Firestore streak update transaction failed: ", error);
-    return null; // Return null on failure
+    return null; 
   }
 
-  // --- LocalStorage Update ---
   if (typeof window !== 'undefined' && newStreakCount !== null) {
       try {
           const storageKey = 'wikistars5-userStreaks';
@@ -689,18 +684,14 @@ export async function updateStreak(
           
           const existingStreakIndex = localStreaks.findIndex(s => s.figureId === figureId);
           
-          // To get figure details for local storage, we'll need to fetch them if not available
-          // This part is simplified; in a real app, you might pass figure details to this function
-          const figureDetails = { name: 'Unknown Figure', photoUrl: '' }; // Placeholder
-
           if (existingStreakIndex !== -1) {
               localStreaks[existingStreakIndex].currentStreak = newStreakCount;
               localStreaks[existingStreakIndex].lastCommentDate = now.toISOString();
           } else {
               localStreaks.push({
                   figureId,
-                  figureName: figureDetails.name,
-                  figurePhotoUrl: figureDetails.photoUrl,
+                  figureName: '', // This will be incomplete, but sufficient for streak logic
+                  figurePhotoUrl: '',
                   currentStreak: newStreakCount,
                   lastCommentDate: now.toISOString(),
               });
@@ -717,7 +708,16 @@ export async function updateStreak(
 
 export async function getTopStreaksForFigure(figureId: string, count: number = 10): Promise<StreakWithProfile[]> {
   const streaksRef = collection(db, `figures/${figureId}/streaks`);
-  const q = query(streaksRef, orderBy('currentStreak', 'desc'), limit(count));
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  // Query for active streaks and order them
+  const q = query(
+    streaksRef, 
+    where('lastCommentDate', '>', twentyFourHoursAgo),
+    orderBy('lastCommentDate', 'desc'), // Keep this to satisfy index requirements
+    orderBy('currentStreak', 'desc'),
+    limit(count)
+  );
 
   try {
     const querySnapshot = await getDocs(q);
@@ -732,14 +732,9 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
         lastCommentDate: data.lastCommentDate,
         isAnonymous: data.isAnonymous,
       };
-      
-      // Filter out expired streaks
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      if (streak.lastCommentDate.toDate() > twentyFourHoursAgo) {
-        streaks.push(streak);
-        if (!data.isAnonymous) {
-          userIds.push(doc.id);
-        }
+      streaks.push(streak);
+      if (!data.isAnonymous) {
+        userIds.push(doc.id);
       }
     });
 
@@ -766,8 +761,15 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
 
     return streaksWithProfiles;
 
-  } catch (error) {
+  } catch (error: any) {
+    // Firestore requires a composite index for this query. If it's missing,
+    // it will log an error to the browser console with a link to create it.
     console.error("Error fetching top streaks:", error);
+    if(String(error.message).toLowerCase().includes('index')) {
+        console.error("POSSIBLE FIX: This query likely requires a composite index in Firestore. Check the browser's developer console for a link to create it automatically.");
+    }
     return [];
   }
 }
+
+    
