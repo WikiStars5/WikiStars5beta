@@ -30,7 +30,7 @@ import { CountryCombobox } from '../shared/CountryCombobox';
 import { COUNTRIES, countryCodeToNameMap } from '@/config/countries';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
-import { format } from 'date-fns';
+import { format, differenceInYears } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 
@@ -214,16 +214,16 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
 
   const hasAnyInfo = hasBasicInfo || hasDetailedInfo || hasPhysicalInfo || hasSocialLinks;
 
-  const formattedBirthDate = React.useMemo(() => {
+  const birthDateAndAge = React.useMemo(() => {
     if (figure.birthDateOrAge) {
       try {
         const date = new Date(figure.birthDateOrAge);
-        // Check if the date is valid
         if (!isNaN(date.getTime())) {
-          return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
+          const age = differenceInYears(new Date(), date);
+          const formattedDate = format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
+          return `${formattedDate} (${age} años)`;
         }
       } catch (error) {
-        // If parsing fails, fall back to the original string
         return figure.birthDateOrAge;
       }
     }
@@ -412,7 +412,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                       <InfoItem icon={NotepadText} label="Alias" value={figure.alias} />
                       <InfoItem icon={Zap} label="Especie" value={figure.species} />
                       <InfoItem icon={BookOpen} label="Primera Aparición" value={figure.firstAppearance} />
-                      <InfoItem icon={Cake} label="Edad / Nacimiento" value={formattedBirthDate} />
+                      <InfoItem icon={Cake} label="Nacimiento" value={birthDateAndAge} />
                       <InfoItem icon={MapPin} label="Lugar de Nacimiento" value={figure.birthPlace} />
                       <InfoItem icon={Activity} label="Estado" value={figure.statusLiveOrDead} />
                       <InfoItem icon={HeartHandshake} label="Estado Civil" value={figure.maritalStatus} />
