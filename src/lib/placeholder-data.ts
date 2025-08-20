@@ -631,43 +631,41 @@ export async function deleteComment(documentPath: string): Promise<void> {
 export async function updateStreak(
   figureId: string,
   userId: string,
+  figureData: Pick<Figure, 'name' | 'photoUrl'>,
   isAnonymous: boolean
 ): Promise<number | null> {
   const streakRef = doc(db, `figures/${figureId}/streaks`, userId);
   let newStreakCount: number | null = null;
-  
+  const now = new Date();
+
+  // --- Firestore Transaction ---
   try {
     await runTransaction(db, async (transaction) => {
       const streakDoc = await transaction.get(streakRef);
-      const now = new Date();
 
       if (!streakDoc.exists()) {
-        // Streak doesn't exist, create a new one
-        transaction.set(streakRef, {
+        const newStreakData = {
           userId,
           currentStreak: 1,
           lastCommentDate: now,
-          isAnonymous: isAnonymous,
-        });
+          isAnonymous,
+        };
+        transaction.set(streakRef, newStreakData);
         newStreakCount = 1;
       } else {
-        // Streak exists, check if we should update it
         const streakData = streakDoc.data();
         const lastCommentDate = (streakData.lastCommentDate as Timestamp).toDate();
         const hoursSinceLastComment = differenceInHours(now, lastCommentDate);
 
         if (hoursSinceLastComment < 24) {
-          // Already commented within 24 hours, do nothing to the count.
-          newStreakCount = streakData.currentStreak;
+          newStreakCount = streakData.currentStreak; // No change, but we return the value
         } else if (hoursSinceLastComment >= 24 && hoursSinceLastComment < 48) {
-          // Continue the streak
           newStreakCount = (streakData.currentStreak || 0) + 1;
           transaction.update(streakRef, {
             currentStreak: newStreakCount,
             lastCommentDate: now,
           });
         } else {
-          // Streak is broken, reset to 1
           newStreakCount = 1;
           transaction.update(streakRef, {
             currentStreak: 1,
@@ -676,13 +674,39 @@ export async function updateStreak(
         }
       }
     });
-
-    return newStreakCount;
   } catch (error) {
-    console.error("Streak update transaction failed: ", error);
-    // Return null on failure so we don't show a broken animation
-    return null;
+    console.error("Firestore streak update transaction failed: ", error);
+    return null; // Return null on failure
   }
+
+  // --- LocalStorage Update ---
+  if (typeof window !== 'undefined' && newStreakCount !== null) {
+      try {
+          const storageKey = 'wikistars5-userStreaks';
+          let localStreaks: LocalUserStreak[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          
+          const existingStreakIndex = localStreaks.findIndex(s => s.figureId === figureId);
+
+          if (existingStreakIndex !== -1) {
+              localStreaks[existingStreakIndex].currentStreak = newStreakCount;
+              localStreaks[existingStreakIndex].lastCommentDate = now.toISOString();
+          } else {
+              localStreaks.push({
+                  figureId,
+                  figureName: figureData.name,
+                  figurePhotoUrl: figureData.photoUrl,
+                  currentStreak: newStreakCount,
+                  lastCommentDate: now.toISOString(),
+              });
+          }
+          
+          localStorage.setItem(storageKey, JSON.stringify(localStreaks));
+      } catch (e) {
+          console.error("Failed to update streaks in localStorage", e);
+      }
+  }
+
+  return newStreakCount;
 }
 
 export async function getTopStreaksForFigure(figureId: string, count: number = 10): Promise<StreakWithProfile[]> {

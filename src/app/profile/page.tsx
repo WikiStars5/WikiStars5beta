@@ -54,7 +54,7 @@ const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
   furia: { label: 'Furia', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f' },
 };
 
-interface StreakWithFigure extends Streak {
+interface StreakWithFigure extends LocalUserStreak {
     figure?: Figure;
 }
 
@@ -110,31 +110,31 @@ export default function ProfilePage() {
     if (!firebaseUser) return;
     setIsDataLoading(true);
     try {
-        // Fetch streaks from Firestore
-        const streaksRef = collection(db, 'streaks');
-        const q = query(streaksRef, where('userId', '==', firebaseUser.uid));
-        const streaksSnapshot = await getDocs(q);
-
+        // Fetch local streaks
+        const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
+        const localStreaks: LocalUserStreak[] = streaksJSON ? JSON.parse(streaksJSON) : [];
+        
+        // Filter out expired streaks
         const now = new Date();
-        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        let activeStreaks: StreakWithFigure[] = [];
-
-        streaksSnapshot.forEach(doc => {
-            const streakData = doc.data() as Streak;
-            if ((streakData.lastCommentDate as Timestamp).toDate() > twentyFourHoursAgo) {
-                activeStreaks.push(streakData);
-            }
+        const activeStreaks = localStreaks.filter(streak => {
+            const lastCommentDate = new Date(streak.lastCommentDate);
+            return differenceInHours(now, lastCommentDate) < 24;
         });
+
+        // Update localStorage with only active streaks
+        localStorage.setItem('wikistars5-userStreaks', JSON.stringify(activeStreaks));
         
         const figureIdsForStreaks = activeStreaks.map(s => s.figureId);
         if (figureIdsForStreaks.length > 0) {
             const figures = await getFiguresByIds(figureIdsForStreaks);
             const figuresMap = new Map(figures.map(f => [f.id, f]));
-            activeStreaks = activeStreaks
+            const streaksWithFigures = activeStreaks
               .map(s => ({ ...s, figure: figuresMap.get(s.figureId) }))
               .filter(s => s.figure); // Ensure figure exists
+            setStreaks(streaksWithFigures);
+        } else {
+            setStreaks([]);
         }
-        setStreaks(activeStreaks);
 
         // Fetch local attitudes & emotions
         const attitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
@@ -359,7 +359,7 @@ export default function ProfilePage() {
                                   {streaks.map(streak => (
                                       <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
                                           <Avatar className="h-12 w-12"><AvatarImage src={correctMalformedUrl(streak.figure?.photoUrl) || undefined} alt={streak.figure?.name} /><AvatarFallback>{streak.figure?.name.charAt(0)}</AvatarFallback></Avatar>
-                                          <div className="flex-grow"><p className="font-semibold">{streak.figure?.name}</p><p className="text-sm text-muted-foreground">Último comentario: {(streak.lastCommentDate as Timestamp).toDate().toLocaleDateString()}</p></div>
+                                          <div className="flex-grow"><p className="font-semibold">{streak.figure?.name}</p><p className="text-sm text-muted-foreground">Último comentario: {new Date(streak.lastCommentDate).toLocaleDateString()}</p></div>
                                           <div className="flex items-center gap-2 text-orange-500 font-bold"><Flame className="h-5 w-5"/><span>{streak.currentStreak}</span></div>
                                       </Link>
                                   ))}
@@ -506,7 +506,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
-
-    
