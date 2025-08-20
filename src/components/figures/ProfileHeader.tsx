@@ -18,6 +18,8 @@ interface ProfileHeaderProps {
   streakCount: number | null;
 }
 
+const FIRE_GIF_URL = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/image%2Ffire.gif?alt=media&token=fd18d32d-c443-4da6-a369-e55ae241f7c5";
+
 export function ProfileHeader({ 
   figure, 
   onImageClick,
@@ -66,8 +68,16 @@ export function ProfileHeader({
                 </div>
                 {streakCount && streakCount > 0 && (
                   <div className="mt-2">
-                    <Badge variant="destructive" className="bg-orange-600/20 text-orange-400 border-orange-500/50 hover:bg-orange-600/30">
-                      <Flame className="mr-1 h-4 w-4 text-orange-500" />
+                    <Badge variant="destructive" className="bg-orange-600/20 text-orange-400 border-orange-500/50 hover:bg-orange-600/30 flex items-center gap-1">
+                      <Image 
+                        src={FIRE_GIF_URL}
+                        alt="Racha de fuego"
+                        width={16}
+                        height={16}
+                        unoptimized
+                        className="h-5 w-5"
+                        data-ai-hint="fire gif"
+                      />
                       <span className="font-bold">Día {streakCount}</span>
                     </Badge>
                   </div>
