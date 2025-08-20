@@ -94,6 +94,22 @@ export interface CategoryOption {
   label: string;
 }
 
+export interface Comment {
+  id: string;
+  figureId: string;
+  authorId: string;
+  authorName: string;
+  authorPhotoUrl?: string | null;
+  authorGender?: string;
+  text: string;
+  createdAt: Timestamp;
+  likes: string[]; // Array of user IDs who liked the comment
+  likeCount: number;
+  replies: Comment[]; // For nested replies
+  replyCount: number;
+  isAnonymous: boolean;
+}
+
 export interface LocalUserStreak {
     figureId: string;
     figureName: string;
@@ -112,6 +128,8 @@ export interface Notification {
   actorPhotoUrl?: string;
   figureId: string;
   figureName: string;
+  commentId: string; // The original comment that was replied to or liked
+  replyId?: string; // The ID of the new reply
   type: 'like' | 'reply' | 'system'; // Simplified types
   isRead: boolean;
   createdAt: Timestamp;

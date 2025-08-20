@@ -1,7 +1,7 @@
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove } from "firebase/firestore";
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -394,3 +394,138 @@ export const getFiguresByIds = async (ids: string[]): Promise<Figure[]> => {
     return []; // Return empty on error
   }
 };
+
+
+// --- Comments ---
+
+export const mapDocToComment = (docSnap: DocumentSnapshot): Comment => {
+  const data = docSnap.data() as DocumentData;
+  return {
+    id: docSnap.id,
+    figureId: data.figureId,
+    authorId: data.authorId,
+    authorName: data.authorName,
+    authorPhotoUrl: data.authorPhotoUrl,
+    authorGender: data.authorGender,
+    text: data.text,
+    createdAt: data.createdAt,
+    likes: data.likes || [],
+    likeCount: data.likeCount || 0,
+    replies: [], // Replies are fetched separately
+    replyCount: data.replyCount || 0,
+    isAnonymous: data.isAnonymous ?? false,
+  };
+};
+
+export async function addComment(
+  figureId: string,
+  authorData: { id: string; name: string; photoUrl: string | null, gender: string, isAnonymous: boolean },
+  text: string,
+  parentCommentId?: string
+): Promise<string> {
+    const collectionPath = parentCommentId ? `comments/${parentCommentId}/replies` : 'comments';
+    const commentData = {
+        figureId: figureId,
+        authorId: authorData.id,
+        authorName: authorData.name,
+        authorPhotoUrl: authorData.photoUrl,
+        authorGender: authorData.gender,
+        text: text,
+        createdAt: serverTimestamp(),
+        likes: [],
+        likeCount: 0,
+        replyCount: 0,
+        isAnonymous: authorData.isAnonymous,
+        ...(parentCommentId && { parentId: parentCommentId }),
+    };
+
+    const docRef = await addDoc(collection(db, collectionPath), commentData);
+
+    if (parentCommentId) {
+      const parentRef = doc(db, 'comments', parentCommentId);
+      await runTransaction(db, async (transaction) => {
+        const parentDoc = await transaction.get(parentRef);
+        if (!parentDoc.exists()) {
+          throw new Error("Parent comment does not exist.");
+        }
+        const newReplyCount = (parentDoc.data().replyCount || 0) + 1;
+        transaction.update(parentRef, { replyCount: newReplyCount });
+      });
+    }
+
+    return docRef.id;
+}
+
+
+export async function toggleLikeComment(
+  commentId: string, 
+  userId: string, 
+  parentCommentId?: string
+): Promise<boolean> {
+  const collectionPath = parentCommentId ? `comments/${parentCommentId}/replies` : 'comments';
+  const commentRef = doc(db, collectionPath, commentId);
+  let isLiked = false;
+
+  await runTransaction(db, async (transaction) => {
+    const commentDoc = await transaction.get(commentRef);
+    if (!commentDoc.exists()) {
+      throw new Error("Comment does not exist!");
+    }
+    const commentData = commentDoc.data();
+    const likes: string[] = commentData.likes || [];
+    
+    if (likes.includes(userId)) {
+      transaction.update(commentRef, { 
+        likes: arrayRemove(userId),
+        likeCount: Math.max(0, (commentData.likeCount || 0) - 1)
+      });
+      isLiked = false;
+    } else {
+      transaction.update(commentRef, { 
+        likes: arrayUnion(userId),
+        likeCount: (commentData.likeCount || 0) + 1
+      });
+      isLiked = true;
+    }
+  });
+
+  return isLiked;
+}
+
+export async function deleteComment(
+  commentId: string,
+  parentCommentId?: string
+): Promise<void> {
+  const collectionPath = parentCommentId ? `comments/${parentCommentId}/replies` : 'comments';
+  const commentRef = doc(db, collectionPath, commentId);
+
+  await runTransaction(db, async (transaction) => {
+    const commentDoc = await transaction.get(commentRef);
+    if (!commentDoc.exists()) {
+        console.warn("Comment to delete does not exist.");
+        return;
+    }
+
+    // Recursively delete replies if this is a top-level comment
+    if (!parentCommentId) {
+        const repliesCollectionRef = collection(db, `comments/${commentId}/replies`);
+        const repliesSnapshot = await getDocs(repliesCollectionRef); // Note: This is now outside the transaction
+        const deleteBatch = writeBatch(db);
+        repliesSnapshot.forEach(replyDoc => {
+            deleteBatch.delete(replyDoc.ref);
+        });
+        await deleteBatch.commit();
+    }
+    
+    transaction.delete(commentRef);
+
+    if (parentCommentId) {
+        const parentRef = doc(db, 'comments', parentCommentId);
+        const parentDoc = await transaction.get(parentRef);
+        if (parentDoc.exists()) {
+            const newReplyCount = Math.max(0, (parentDoc.data().replyCount || 0) - 1);
+            transaction.update(parentRef, { replyCount: newReplyCount });
+        }
+    }
+  });
+}

@@ -36,6 +36,7 @@ import { FigureInfo } from '@/components/figures/FigureInfo';
 import { doc, onSnapshot } from "firebase/firestore";
 import { mapDocToFigure } from "@/lib/placeholder-data";
 import { RelatedProfiles } from "@/components/figures/RelatedProfiles";
+import { CommentSection } from "@/components/comments/CommentSection";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -134,6 +135,8 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
         </div> 
       </div>
 
+      <CommentSection figure={figure} />
+      
       <RelatedProfiles figure={figure} />
       
       {viewerImageUrl && (
