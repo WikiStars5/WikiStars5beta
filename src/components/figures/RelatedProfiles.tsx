@@ -140,7 +140,7 @@ export function RelatedProfiles({ figure }: RelatedProfilesProps) {
                   <X className="h-4 w-4" />
                 </Button>
                 <Link href={`/figures/${related.id}`} className="block text-center">
-                  <Avatar className="h-20 w-20 mx-auto mb-2 border-2 border-transparent group-hover:border-primary transition-colors">
+                  <Avatar className="h-24 w-24 mx-auto mb-2 border-2 border-transparent group-hover:border-primary transition-colors">
                     <AvatarImage src={correctMalformedUrl(related.photoUrl) || undefined} alt={related.name} />
                     <AvatarFallback>{related.name.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
