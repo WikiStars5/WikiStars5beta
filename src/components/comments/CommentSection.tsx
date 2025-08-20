@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -13,7 +14,6 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { CommentItem } from './CommentItem';
-import { countryCodeToNameMap } from '@/config/countries';
 import { GuestProfileSetup } from './GuestProfileSetup';
 import { correctMalformedUrl } from '@/lib/utils';
 
@@ -74,7 +74,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
       if (!guestProfileExists) return null;
       const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
       const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
-      // Country is no longer managed for guests
+      
       return {
         id: firebaseUser.uid,
         name: guestUsername,
@@ -131,26 +131,25 @@ export function CommentSection({ figure }: CommentSectionProps) {
       return (
         <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Cargando tu sesión...
         </div>
       );
     }
 
     if (isAnonymous && !guestProfileExists) {
-        if (isCreatingGuestProfile) {
-            return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
-        }
-        return (
-            <div className="text-center p-4 border-2 border-dashed rounded-lg">
-                <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
-                <Button onClick={() => setIsCreatingGuestProfile(true)}>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Crear usuario invitado
-                </Button>
-            </div>
-        );
+      if (isCreatingGuestProfile) {
+        return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
+      }
+      return (
+        <div className="text-center p-4 border-2 border-dashed rounded-lg">
+          <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
+          <Button onClick={() => setIsCreatingGuestProfile(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Crear usuario invitado
+          </Button>
+        </div>
+      );
     }
-
+    
     const author = getAuthorData();
     if (author) {
       return (
@@ -178,7 +177,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
       );
     }
 
-    return null;
+    return null; // Should not happen in normal flow
   };
 
   return (
