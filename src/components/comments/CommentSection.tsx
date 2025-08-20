@@ -19,6 +19,7 @@ import { GuestProfileSetup } from './GuestProfileSetup';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { countryCodeToNameMap } from '@/config/countries';
+import { GENDER_OPTIONS } from '@/config/genderOptions';
 
 interface CommentSectionProps {
   figure: Figure;
@@ -84,14 +85,14 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
     if (isAnonymous) {
       if (!guestProfileExists) return null;
       const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
-      const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
+      const guestGenderValue = localStorage.getItem('wikistars5-guestGender') || '';
       const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
       
       return {
         id: firebaseUser.uid,
         name: guestUsername,
         photoUrl: null,
-        gender: guestGender,
+        gender: guestGenderValue,
         country: countryCodeToNameMap.get(guestCountryCode) || '',
         countryCode: guestCountryCode,
         isAnonymous: true,

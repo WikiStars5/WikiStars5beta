@@ -5,6 +5,7 @@ import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove } from "firebase/firestore";
 import { isSameDay, isYesterday } from 'date-fns';
+import { GENDER_OPTIONS } from '@/config/genderOptions';
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -438,12 +439,14 @@ export async function addComment(
   text: string
 ): Promise<string> {
     const commentsCollectionRef = collection(db, `figures/${figureId}/comments`);
+    const genderLabel = GENDER_OPTIONS.find(opt => opt.value === authorData.gender)?.label || authorData.gender;
+
     const commentData = {
         figureId: figureId,
         authorId: authorData.id,
         authorName: authorData.name,
         authorPhotoUrl: authorData.photoUrl,
-        authorGender: authorData.gender,
+        authorGender: genderLabel,
         authorCountry: authorData.country,
         authorCountryCode: authorData.countryCode,
         text: text,
@@ -476,12 +479,14 @@ export async function addReply(
   text: string
 ): Promise<string> {
   const repliesCollectionRef = collection(db, `${parentPath}/replies`);
+  const genderLabel = GENDER_OPTIONS.find(opt => opt.value === authorData.gender)?.label || authorData.gender;
+  
   const replyData = {
     figureId: figureId,
     authorId: authorData.id,
     authorName: authorData.name,
     authorPhotoUrl: authorData.photoUrl,
-    authorGender: authorData.gender,
+    authorGender: genderLabel,
     authorCountry: authorData.country,
     authorCountryCode: authorData.countryCode,
     text: text,
@@ -674,6 +679,8 @@ export async function updateStreak(
         const localEmotions: EmotionVote[] = JSON.parse(localStorage.getItem('wikistars5-userEmotions') || '[]');
         emotion = localEmotions.find(e => e.figureId === figureId)?.emotion || null;
       }
+      
+      const genderLabel = GENDER_OPTIONS.find(opt => opt.value === authorData.gender)?.label || authorData.gender;
 
       const dataToSet: Streak = {
         userId: authorData.id,
@@ -684,7 +691,7 @@ export async function updateStreak(
         emotion,
         ...(authorData.isAnonymous && {
           username: authorData.name,
-          gender: authorData.gender,
+          gender: genderLabel,
           countryCode: authorData.countryCode,
         })
       };
