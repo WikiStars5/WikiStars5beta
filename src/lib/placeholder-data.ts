@@ -509,16 +509,19 @@ export async function deleteComment(
     // Recursively delete replies if this is a top-level comment
     if (!parentCommentId) {
         const repliesCollectionRef = collection(db, `comments/${commentId}/replies`);
-        const repliesSnapshot = await getDocs(repliesCollectionRef); // Note: This is now outside the transaction
+        // This get must be outside the transaction for batch deletion.
+        const repliesSnapshot = await getDocs(repliesCollectionRef); 
         const deleteBatch = writeBatch(db);
         repliesSnapshot.forEach(replyDoc => {
             deleteBatch.delete(replyDoc.ref);
         });
+        // Committing the batch outside the transaction.
         await deleteBatch.commit();
     }
     
     transaction.delete(commentRef);
 
+    // If it's a reply, decrement the parent's replyCount
     if (parentCommentId) {
         const parentRef = doc(db, 'comments', parentCommentId);
         const parentDoc = await transaction.get(parentRef);
