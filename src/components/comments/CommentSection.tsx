@@ -22,16 +22,16 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({ figure }: CommentSectionProps) {
-  const { user: firestoreUser, firebaseUser, isAnonymous } = useAuth();
+  const { user: firestoreUser, firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
   const [commentText, setCommentText] = React.useState('');
   const [comments, setComments] = React.useState<CommentType[]>([]);
   const [isPosting, setIsPosting] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [guestProfileExists, setGuestProfileExists] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
-    setIsLoading(true);
+    setIsLoadingComments(true);
     const commentsRef = collection(db, 'comments');
     const q = query(
       commentsRef, 
@@ -42,11 +42,11 @@ export function CommentSection({ figure }: CommentSectionProps) {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedComments = snapshot.docs.map(mapDocToComment);
       setComments(fetchedComments);
-      setIsLoading(false);
+      setIsLoadingComments(false);
     }, (error) => {
       console.error("Error fetching comments: ", error);
       toast({ title: "Error", description: "No se pudieron cargar los comentarios.", variant: "destructive" });
-      setIsLoading(false);
+      setIsLoadingComments(false);
     });
 
     return () => unsubscribe();
@@ -66,6 +66,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
     if (!firebaseUser) return null;
 
     if (isAnonymous) {
+      if (!guestProfileExists) return null; // Don't create author data if guest profile isn't set
       const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
       const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
       const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
@@ -122,42 +123,50 @@ export function CommentSection({ figure }: CommentSectionProps) {
   }
 
   const renderCommentInput = () => {
+    // Highest priority: show loader if auth is still resolving.
+    if (isAuthLoading) {
+        return (
+            <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Cargando tu sesión para comentar...
+            </div>
+        );
+    }
+    
+    // Once auth is resolved, check if it's a guest without a profile.
     if (isAnonymous && !guestProfileExists) {
         return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
     }
     
-    if (!author) {
-      return (
-        <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Cargando tu sesión para comentar...
-        </div>
-      );
-    }
-
-    return (
-        <div className="flex gap-4">
-            <Avatar className="h-10 w-10 mt-1">
-                <AvatarImage src={author?.photoUrl ?? undefined} alt={author?.name} />
-                <AvatarFallback>{author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex-grow space-y-2">
-                <Textarea
-                placeholder="Escribe tu comentario aquí..."
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                rows={3}
-                className="bg-muted border-border/50 focus:bg-background"
-                />
-                <div className="flex justify-end">
-                <Button onClick={handlePostComment} disabled={isPosting}>
-                    {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
-                    Publicar
-                </Button>
+    // If the user is logged in (or a guest with a profile), show the comment box.
+    if (author) {
+        return (
+            <div className="flex gap-4">
+                <Avatar className="h-10 w-10 mt-1">
+                    <AvatarImage src={author?.photoUrl ?? undefined} alt={author?.name} />
+                    <AvatarFallback>{author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-grow space-y-2">
+                    <Textarea
+                    placeholder="Escribe tu comentario aquí..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    rows={3}
+                    className="bg-muted border-border/50 focus:bg-background"
+                    />
+                    <div className="flex justify-end">
+                    <Button onClick={handlePostComment} disabled={isPosting}>
+                        {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+                        Publicar
+                    </Button>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    }
+
+    // Fallback case, though it should ideally not be reached if the logic above is sound.
+    return null;
   }
 
   return (
@@ -175,7 +184,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
         {renderCommentInput()}
 
         <div className="space-y-6">
-          {isLoading ? (
+          {isLoadingComments ? (
             <div className="flex justify-center items-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="ml-3 text-muted-foreground">Cargando comentarios...</p>
