@@ -62,26 +62,26 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
   const checkHeaderStreak = React.useCallback(async () => {
     if (typeof window !== 'undefined' && id && currentUser) {
-      // Streaks are now stored in a subcollection per figure
-      const streakRef = doc(db, `figures/${id}/streaks`, currentUser.uid);
-      try {
-          const streakSnap = await getDoc(streakRef);
-          if (streakSnap.exists()) {
-            const streakData = streakSnap.data();
-            const lastCommentDate = (streakData.lastCommentDate as Timestamp).toDate();
-            const hoursSinceLastComment = differenceInHours(new Date(), lastCommentDate);
-            if (hoursSinceLastComment < 24) {
-              setHeaderStreak(streakData.currentStreak);
+        const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
+        if (streaksJSON) {
+            const localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
+            const figureStreak = localStreaks.find(s => s.figureId === id);
+            
+            if (figureStreak) {
+                const lastCommentDate = new Date(figureStreak.lastCommentDate);
+                const hoursSinceLastComment = differenceInHours(new Date(), lastCommentDate);
+                
+                if (hoursSinceLastComment < 24) {
+                    setHeaderStreak(figureStreak.currentStreak);
+                } else {
+                    setHeaderStreak(null); // Streak expired
+                }
             } else {
-              setHeaderStreak(null); // Streak expired
+                setHeaderStreak(null); // No streak for this figure
             }
-          } else {
-            setHeaderStreak(null); // No streak exists
-          }
-      } catch (error) {
-        console.error("Error checking user streak:", error);
-        setHeaderStreak(null);
-      }
+        } else {
+            setHeaderStreak(null); // No streaks stored at all
+        }
     } else {
        setHeaderStreak(null);
     }
