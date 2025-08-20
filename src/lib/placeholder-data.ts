@@ -633,7 +633,7 @@ export async function deleteComment(documentPath: string): Promise<void> {
  * It reads from localStorage, updates the streak count based on the last comment date,
  * and then writes the updated data back to localStorage.
  * @param figure The figure object for which to update the streak.
- * @returns The new streak count if it's greater than 1, otherwise null.
+ * @returns The new streak count if it's greater than 0, otherwise null.
  */
 export function updateStreak(figure: Figure): number | null {
     if (typeof window === 'undefined') return null;
@@ -672,7 +672,7 @@ export function updateStreak(figure: Figure): number | null {
             // Streak is broken, reset to 1
             existingStreak.currentStreak = 1;
             existingStreak.lastCommentDate = now.toISOString();
-            newStreakCount = null; // No animation for a broken streak
+            newStreakCount = 1; // Animation for a new streak
             streakUpdated = true;
         }
     } else {
@@ -684,7 +684,7 @@ export function updateStreak(figure: Figure): number | null {
             currentStreak: 1,
             lastCommentDate: now.toISOString(),
         });
-        newStreakCount = null; // No animation for the first day
+        newStreakCount = 1; // Animation for the first day
         streakUpdated = true;
     }
 

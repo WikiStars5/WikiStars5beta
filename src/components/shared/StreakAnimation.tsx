@@ -43,7 +43,7 @@ export function StreakAnimation({ streakCount, isOpen, onClose }: StreakAnimatio
         />
         <div className="mt-2 text-orange-400 font-bold drop-shadow-lg">
           <p className="text-2xl">¡Racha de Días!</p>
-          <p className="text-6xl font-headline">{streakCount}</p>
+          <p className="text-6xl font-headline">Día {streakCount}</p>
         </div>
       </div>
     </div>
