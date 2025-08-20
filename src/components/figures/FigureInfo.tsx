@@ -96,7 +96,11 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
   const [name, setName] = useState(figure.name || '');
   const [nationalityCode, setNationalityCode] = useState(figure.nationalityCode || '');
   const [gender, setGender] = useState(figure.gender || '');
-  const [birthDate, setBirthDate] = useState<Date | undefined>(figure.birthDateOrAge ? new Date(figure.birthDateOrAge) : undefined);
+  const [birthDate, setBirthDate] = useState<Date | undefined>(
+    figure.birthDateOrAge && !isNaN(new Date(figure.birthDateOrAge).getTime()) 
+      ? new Date(figure.birthDateOrAge) 
+      : undefined
+  );
   const [maritalStatus, setMaritalStatus] = useState(figure.maritalStatus || '');
   const [photoUrl, setPhotoUrl] = useState(figure.photoUrl || '');
   const [socialLinks, setSocialLinks] = useState(figure.socialLinks || {});
@@ -110,7 +114,11 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
       setName(figure.name || '');
       setNationalityCode(figure.nationalityCode || '');
       setGender(figure.gender || '');
-      setBirthDate(figure.birthDateOrAge ? new Date(figure.birthDateOrAge) : undefined);
+      setBirthDate(
+        figure.birthDateOrAge && !isNaN(new Date(figure.birthDateOrAge).getTime())
+          ? new Date(figure.birthDateOrAge)
+          : undefined
+      );
       setMaritalStatus(figure.maritalStatus || '');
       setPhotoUrl(figure.photoUrl || '');
       setSocialLinks(figure.socialLinks || {});
@@ -204,6 +212,23 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
   const hasSocialLinks = Object.values(figure.socialLinks || {}).some(link => !!link);
 
   const hasAnyInfo = hasBasicInfo || hasDetailedInfo || hasPhysicalInfo || hasSocialLinks;
+
+  const formattedBirthDate = React.useMemo(() => {
+    if (figure.birthDateOrAge) {
+      try {
+        const date = new Date(figure.birthDateOrAge);
+        // Check if the date is valid
+        if (!isNaN(date.getTime())) {
+          return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
+        }
+      } catch (error) {
+        // If parsing fails, fall back to the original string
+        return figure.birthDateOrAge;
+      }
+    }
+    return undefined;
+  }, [figure.birthDateOrAge]);
+
 
   return (
     <Card className="border border-white/20 bg-black">
@@ -386,7 +411,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                       <InfoItem icon={NotepadText} label="Alias" value={figure.alias} />
                       <InfoItem icon={Zap} label="Especie" value={figure.species} />
                       <InfoItem icon={BookOpen} label="Primera Aparición" value={figure.firstAppearance} />
-                      <InfoItem icon={Cake} label="Edad / Nacimiento" value={figure.birthDateOrAge} />
+                      <InfoItem icon={Cake} label="Edad / Nacimiento" value={formattedBirthDate} />
                       <InfoItem icon={MapPin} label="Lugar de Nacimiento" value={figure.birthPlace} />
                       <InfoItem icon={Activity} label="Estado" value={figure.statusLiveOrDead} />
                       <InfoItem icon={HeartHandshake} label="Estado Civil" value={figure.maritalStatus} />

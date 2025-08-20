@@ -64,7 +64,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [species, setSpecies] = useState(initialData?.species || '');
   const [firstAppearance, setFirstAppearance] = useState(initialData?.firstAppearance || '');
   const [birthDate, setBirthDate] = useState<Date | undefined>(
-    initialData?.birthDateOrAge ? new Date(initialData.birthDateOrAge) : undefined
+    initialData?.birthDateOrAge && !isNaN(new Date(initialData.birthDateOrAge).getTime())
+      ? new Date(initialData.birthDateOrAge)
+      : undefined
   );
   const [birthPlace, setBirthPlace] = useState(initialData?.birthPlace || '');
   const [statusLiveOrDead, setStatusLiveOrDead] = useState(initialData?.statusLiveOrDead || '');
@@ -105,7 +107,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setAlias(initialData.alias || '');
       setSpecies(initialData.species || '');
       setFirstAppearance(initialData.firstAppearance || '');
-      setBirthDate(initialData.birthDateOrAge ? new Date(initialData.birthDateOrAge) : undefined);
+      setBirthDate(
+        initialData.birthDateOrAge && !isNaN(new Date(initialData.birthDateOrAge).getTime())
+          ? new Date(initialData.birthDateOrAge)
+          : undefined
+      );
       setBirthPlace(initialData.birthPlace || '');
       setStatusLiveOrDead(initialData.statusLiveOrDead || '');
       setMaritalStatus(initialData.maritalStatus || '');
