@@ -45,10 +45,10 @@ export function CommentSection({ figure }: CommentSectionProps) {
 
   React.useEffect(() => {
     setIsLoadingComments(true);
-    const commentsRef = collection(db, 'comments');
+    const commentsPath = `figures/${figure.id}/comments`;
+    const commentsRef = collection(db, commentsPath);
     const q = query(
       commentsRef, 
-      where('figureId', '==', figure.id), 
       orderBy('createdAt', 'desc')
     );
 
@@ -237,7 +237,6 @@ export function CommentSection({ figure }: CommentSectionProps) {
                   figure={figure}
                   comment={comment}
                   currentUserAuth={firebaseUser}
-                  currentUserProfile={getAuthorData()}
                 />
               ))}
               {comments.length > INITIAL_COMMENTS_TO_SHOW && (

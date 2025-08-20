@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { getCountryEmojiByCode } from '@/config/countries';
+import { useAuth } from '@/hooks/useAuth';
 
 const MAX_COMMENT_LENGTH = 1000;
 const MAX_REPLY_DEPTH = 4; // Set a maximum nesting level for replies
@@ -50,7 +51,6 @@ interface CommentItemProps {
     figure: Figure;
     comment: CommentType;
     currentUserAuth: User | null;
-    currentUserProfile: Pick<UserProfile, 'uid' | 'username' | 'photoURL' | 'gender' | 'countryCode' | 'country' | 'isAnonymous'> | null;
     isReply?: boolean;
     depth?: number;
     parentPath?: string;
@@ -60,10 +60,9 @@ export function CommentItem({
     figure, 
     comment, 
     currentUserAuth, 
-    currentUserProfile, 
     isReply = false,
     depth = 0,
-    parentPath: initialParentPath = 'comments'
+    parentPath: initialParentPath = `figures/${figure.id}/comments`
 }: CommentItemProps) {
     const [isReplying, setIsReplying] = React.useState(false);
     const [replyText, setReplyText] = React.useState('');
@@ -72,6 +71,7 @@ export function CommentItem({
     const [showReplies, setShowReplies] = React.useState(false);
     const [isPostingReply, setIsPostingReply] = React.useState(false);
     const { toast } = useToast();
+    const { user: firestoreUser, firebaseUser, isAnonymous } = useAuth();
 
     const currentPath = `${initialParentPath}/${comment.id}`;
     const repliesCollectionPath = `${currentPath}/replies`;
@@ -118,7 +118,7 @@ export function CommentItem({
     }, [fetchReplies]);
 
     const handleLike = async () => {
-        if (!currentUserAuth || !currentUserProfile) {
+        if (!currentUserAuth) {
             toast({ title: "Acción requerida", description: "Debes iniciar sesión o crear un perfil de invitado para dar me gusta.", variant: "destructive" });
             return;
         }
@@ -131,8 +131,8 @@ export function CommentItem({
                     type: 'like',
                     userId: comment.authorId,
                     actorId: currentUserAuth.uid,
-                    actorName: currentUserProfile?.username || 'Alguien',
-                    actorPhotoUrl: currentUserProfile?.photoURL || '',
+                    actorName: firebaseUser?.displayName || 'Alguien',
+                    actorPhotoUrl: firebaseUser?.photoURL || '',
                     figureId: figure.id,
                     figureName: figure.name,
                     commentId: comment.id,
@@ -168,7 +168,7 @@ export function CommentItem({
     };
     
     const handlePostReply = async () => {
-        if (!currentUserProfile || !currentUserAuth) return;
+        if (!firebaseUser) return;
         if (replyText.trim().length < 3) return;
         if (replyText.length > MAX_COMMENT_LENGTH) {
             toast({
@@ -180,25 +180,50 @@ export function CommentItem({
         }
         
         setIsPostingReply(true);
-        try {
-            const authorData = {
-                id: currentUserAuth.uid,
-                name: currentUserProfile.username,
-                photoUrl: currentUserProfile.photoURL || null,
-                gender: currentUserProfile.gender || '',
-                country: currentUserProfile.country || '',
-                countryCode: currentUserProfile.countryCode || '',
-                isAnonymous: currentUserProfile.isAnonymous || false,
-            };
 
+        // Get author data safely
+        let authorData;
+        if (isAnonymous) {
+            const guestUsername = localStorage.getItem('wikistars5-guestUsername');
+            if (!guestUsername) {
+                toast({ title: "Perfil de invitado no encontrado", description: "Por favor, configura tu perfil para responder.", variant: "destructive" });
+                setIsPostingReply(false);
+                return;
+            }
+            authorData = {
+                id: firebaseUser.uid,
+                name: guestUsername,
+                photoUrl: null,
+                gender: localStorage.getItem('wikistars5-guestGender') || '',
+                country: '',
+                countryCode: '',
+                isAnonymous: true,
+            }
+        } else if (firestoreUser) {
+            authorData = {
+                id: firestoreUser.uid,
+                name: firestoreUser.username,
+                photoUrl: firestoreUser.photoURL || null,
+                gender: firestoreUser.gender || '',
+                country: firestoreUser.country || '',
+                countryCode: firestoreUser.countryCode || '',
+                isAnonymous: false,
+            }
+        } else {
+             toast({ title: "Error", description: "No se pudo obtener la información del autor.", variant: "destructive" });
+             setIsPostingReply(false);
+             return;
+        }
+
+        try {
             const newReplyId = await addComment(figure.id, authorData, replyText.trim(), currentPath);
 
-            if (comment.authorId !== currentUserAuth.uid) {
+            if (comment.authorId !== firebaseUser.uid) {
                 const notificationsCollectionRef = collection(db, 'notifications');
                 await addDoc(notificationsCollectionRef, {
                     type: 'reply',
                     userId: comment.authorId,
-                    actorId: currentUserAuth.uid,
+                    actorId: authorData.id,
                     actorName: authorData.name,
                     actorPhotoUrl: authorData.photoUrl,
                     figureId: figure.id,
@@ -248,7 +273,7 @@ export function CommentItem({
                         <ThumbsDown className={cn("mr-1 h-3 w-3", hasDisliked && "fill-current text-destructive")} /> {comment.dislikeCount}
                     </Button>
                     {canReply && (
-                        <Button variant="ghost" size="sm" onClick={() => setIsReplying(!isReplying)} className="text-xs h-auto py-1 px-2">
+                        <Button variant="ghost" size="sm" onClick={() => setIsReplying(!isReplying)} disabled={!currentUserAuth} className="text-xs h-auto py-1 px-2">
                             <MessageSquareReply className="mr-1 h-3 w-3" /> Responder
                         </Button>
                     )}
@@ -278,8 +303,8 @@ export function CommentItem({
                 {isReplying && (
                     <div className="mt-2 flex gap-2 items-start">
                         <Avatar className="h-8 w-8">
-                             <AvatarImage src={correctMalformedUrl(currentUserProfile?.photoURL)} alt={currentUserProfile?.username} />
-                            <AvatarFallback>{currentUserProfile?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                             <AvatarImage src={correctMalformedUrl(firestoreUser?.photoURL)} alt={firestoreUser?.username} />
+                            <AvatarFallback>{firestoreUser?.username?.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div className="flex-grow space-y-2">
                              <Textarea 
@@ -329,7 +354,6 @@ export function CommentItem({
                                     figure={figure}
                                     comment={reply}
                                     currentUserAuth={currentUserAuth}
-                                    currentUserProfile={currentUserProfile}
                                     isReply 
                                     depth={depth + 1}
                                     parentPath={currentPath}
