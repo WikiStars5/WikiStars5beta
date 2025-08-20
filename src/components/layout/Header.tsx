@@ -17,13 +17,23 @@ export function Header() {
 
   useEffect(() => {
     // This effect ensures the state is read from the client side, avoiding hydration issues.
-    if (isAnonymous) {
-      if (typeof window !== 'undefined') {
-        const guestName = localStorage.getItem('wikistars5-guestUsername');
-        setGuestProfileExists(!!guestName);
-      }
-    } else {
-      setGuestProfileExists(false);
+    if (typeof window !== 'undefined') {
+        const checkGuestProfile = () => {
+            const guestName = localStorage.getItem('wikistars5-guestUsername');
+            setGuestProfileExists(!!guestName);
+        };
+        
+        if (isAnonymous) {
+            checkGuestProfile();
+            // Listen for custom event that signals profile update
+            window.addEventListener('guestProfileUpdated', checkGuestProfile);
+        } else {
+            setGuestProfileExists(false);
+        }
+
+        return () => {
+            window.removeEventListener('guestProfileUpdated', checkGuestProfile);
+        }
     }
   }, [isAnonymous]);
 

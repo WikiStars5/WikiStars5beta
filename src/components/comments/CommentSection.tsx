@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -54,17 +53,17 @@ export function CommentSection({ figure }: CommentSectionProps) {
   }, [figure.id, toast]);
   
   const checkGuestProfile = React.useCallback(() => {
-    if (isAnonymous) {
-      if (typeof window !== 'undefined') {
-        const guestName = localStorage.getItem('wikistars5-guestUsername');
-        setGuestProfileExists(!!guestName);
-      }
+    if (typeof window !== 'undefined') {
+      const guestName = localStorage.getItem('wikistars5-guestUsername');
+      setGuestProfileExists(!!guestName);
     }
-  }, [isAnonymous]);
+  }, []);
 
   React.useEffect(() => {
-    checkGuestProfile();
-  }, [checkGuestProfile]);
+    if (isAnonymous) {
+      checkGuestProfile();
+    }
+  }, [isAnonymous, checkGuestProfile]);
 
 
   const getAuthorData = () => {
@@ -122,26 +121,23 @@ export function CommentSection({ figure }: CommentSectionProps) {
   };
 
   const handleGuestProfileSaved = () => {
-    setGuestProfileExists(true);
+    checkGuestProfile(); // Re-check and update state after saving
   };
 
   const renderCommentInput = () => {
-    // 1. Show loader while auth state is resolving.
     if (isAuthLoading) {
       return (
         <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Cargando tu sesión...
+          Cargando...
         </div>
       );
     }
 
-    // 2. If it's a new guest user, show the profile setup form.
     if (isAnonymous && !guestProfileExists) {
       return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
     }
 
-    // 3. If user is logged in (registered or guest with profile), show the comment textarea.
     const author = getAuthorData();
     if (author) {
       return (
@@ -169,7 +165,6 @@ export function CommentSection({ figure }: CommentSectionProps) {
       );
     }
 
-    // Fallback if no condition is met (shouldn't happen in normal flow).
     return null;
   };
 

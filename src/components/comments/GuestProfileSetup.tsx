@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -61,6 +60,10 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
             title: "¡Perfil de Invitado Guardado!",
             description: `Tu información local ha sido actualizada.`,
           });
+
+          // Dispatch a custom event to notify other components (like Header)
+          window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
+
           onProfileSave();
           if (isEditingContext) {
             setIsEditing(false); // Exit edit mode on profile page
