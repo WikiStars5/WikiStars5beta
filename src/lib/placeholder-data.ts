@@ -433,9 +433,11 @@ export async function addComment(
     isAnonymous: boolean;
   },
   text: string,
-  parentCommentId?: string
+  parentCollectionPath: string = 'comments'
 ): Promise<string> {
-    const collectionPath = parentCommentId ? `comments/${parentCommentId}/replies` : 'comments';
+    const isReply = parentCollectionPath !== 'comments';
+    const collectionPath = isReply ? `${parentCollectionPath}/replies` : 'comments';
+
     const commentData = {
         figureId: figureId,
         authorId: authorData.id,
@@ -452,13 +454,12 @@ export async function addComment(
         dislikeCount: 0,
         replyCount: 0,
         isAnonymous: authorData.isAnonymous,
-        ...(parentCommentId && { parentId: parentCommentId }),
     };
 
     const docRef = await addDoc(collection(db, collectionPath), commentData);
 
-    if (parentCommentId) {
-      const parentRef = doc(db, 'comments', parentCommentId);
+    if (isReply) {
+      const parentRef = doc(db, parentCollectionPath);
       await runTransaction(db, async (transaction) => {
         const parentDoc = await transaction.get(parentRef);
         if (!parentDoc.exists()) {
@@ -476,10 +477,9 @@ export async function addComment(
 export async function toggleLikeComment(
   commentId: string, 
   userId: string, 
-  parentCommentId?: string
+  parentCollectionPath: string = 'comments'
 ): Promise<boolean> {
-  const collectionPath = parentCommentId ? `comments/${parentCommentId}/replies` : 'comments';
-  const commentRef = doc(db, collectionPath, commentId);
+  const commentRef = doc(db, parentCollectionPath, commentId);
   let isLiked = false;
 
   await runTransaction(db, async (transaction) => {
@@ -515,10 +515,9 @@ export async function toggleLikeComment(
 export async function toggleDislikeComment(
   commentId: string,
   userId: string,
-  parentCommentId?: string
+  parentCollectionPath: string = 'comments'
 ): Promise<boolean> {
-  const collectionPath = parentCommentId ? `comments/${parentCommentId}/replies` : 'comments';
-  const commentRef = doc(db, collectionPath, commentId);
+  const commentRef = doc(db, parentCollectionPath, commentId);
   let isDisliked = false;
 
   await runTransaction(db, async (transaction) => {
@@ -550,45 +549,43 @@ export async function toggleDislikeComment(
   return isDisliked;
 }
 
+async function deleteRepliesRecursive(collectionPath: string, batch: any) {
+  const repliesRef = collection(db, collectionPath);
+  const snapshot = await getDocs(repliesRef);
+  if (snapshot.empty) {
+    return;
+  }
+  for (const replyDoc of snapshot.docs) {
+    batch.delete(replyDoc.ref);
+    await deleteRepliesRecursive(`${collectionPath}/${replyDoc.id}/replies`, batch);
+  }
+}
 
 export async function deleteComment(
   commentId: string,
-  parentCommentId?: string
+  parentCollectionPath: string = 'comments'
 ): Promise<void> {
-  const collectionPath = parentCommentId ? `comments/${parentCommentId}/replies` : 'comments';
-  const commentRef = doc(db, collectionPath, commentId);
+  const commentRef = doc(db, parentCollectionPath, commentId);
+  const batch = writeBatch(db);
 
-  await runTransaction(db, async (transaction) => {
-    const commentDoc = await transaction.get(commentRef);
-    if (!commentDoc.exists()) {
-        console.warn("Comment to delete does not exist.");
-        return;
-    }
+  // Recursively delete all nested replies
+  await deleteRepliesRecursive(`${parentCollectionPath}/${commentId}/replies`, batch);
+  
+  // Delete the main comment
+  batch.delete(commentRef);
+  
+  await batch.commit();
 
-    if (!parentCommentId) {
-        const repliesCollectionRef = collection(db, `comments/${commentId}/replies`);
-        // Note: Querying within a transaction has limitations. We perform this get outside if possible.
-        // For simplicity in this logic, we assume we can get it, but for production,
-        // it's better to batch delete outside the transaction if there are many replies.
-        const repliesSnapshot = await getDocs(repliesCollectionRef); 
-        if (!repliesSnapshot.empty) {
-            const deleteBatch = writeBatch(db);
-            repliesSnapshot.forEach(replyDoc => {
-                deleteBatch.delete(replyDoc.ref);
-            });
-            await deleteBatch.commit();
-        }
-    }
-    
-    transaction.delete(commentRef);
-
-    if (parentCommentId) {
-        const parentRef = doc(db, 'comments', parentCommentId);
-        const parentDoc = await transaction.get(parentRef);
-        if (parentDoc.exists()) {
-            const newReplyCount = Math.max(0, (parentDoc.data().replyCount || 0) - 1);
-            transaction.update(parentRef, { replyCount: newReplyCount });
-        }
-    }
-  });
+  // Update reply count on the parent if it's a reply
+  const pathParts = parentCollectionPath.split('/');
+  if (pathParts.length > 1) {
+    const parentRef = doc(db, pathParts.slice(0, -1).join('/'));
+    await runTransaction(db, async (transaction) => {
+      const parentDoc = await transaction.get(parentRef);
+      if (parentDoc.exists()) {
+          const newReplyCount = Math.max(0, (parentDoc.data().replyCount || 0) - 1);
+          transaction.update(parentRef, { replyCount: newReplyCount });
+      }
+    });
+  }
 }

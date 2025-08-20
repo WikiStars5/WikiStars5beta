@@ -28,6 +28,7 @@ import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { getCountryEmojiByCode } from '@/config/countries';
 
 const MAX_COMMENT_LENGTH = 1000;
+const MAX_REPLY_DEPTH = 4; // Set a maximum nesting level for replies
 
 function timeSince(date: Date): string {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -51,9 +52,19 @@ interface CommentItemProps {
     currentUserAuth: User | null;
     currentUserProfile: Pick<UserProfile, 'uid' | 'username' | 'photoURL' | 'gender' | 'countryCode' | 'country' | 'isAnonymous'> | null;
     isReply?: boolean;
+    depth?: number;
+    parentPath?: string;
 }
 
-export function CommentItem({ figure, comment, currentUserAuth, currentUserProfile, isReply = false }: CommentItemProps) {
+export function CommentItem({ 
+    figure, 
+    comment, 
+    currentUserAuth, 
+    currentUserProfile, 
+    isReply = false,
+    depth = 0,
+    parentPath: initialParentPath = 'comments'
+}: CommentItemProps) {
     const [isReplying, setIsReplying] = React.useState(false);
     const [replyText, setReplyText] = React.useState('');
     const [replies, setReplies] = React.useState<CommentType[]>([]);
@@ -61,6 +72,10 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
     const [showReplies, setShowReplies] = React.useState(false);
     const [isPostingReply, setIsPostingReply] = React.useState(false);
     const { toast } = useToast();
+
+    const currentPath = `${initialParentPath}/${comment.id}`;
+    const repliesCollectionPath = `${currentPath}/replies`;
+    const canReply = depth < MAX_REPLY_DEPTH;
 
     const canDelete = currentUserAuth?.uid === comment.authorId;
     const hasLiked = currentUserAuth ? comment.likes.includes(currentUserAuth.uid) : false;
@@ -84,7 +99,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
     const fetchReplies = React.useCallback(() => {
         if (!showReplies) return;
         setIsLoadingReplies(true);
-        const repliesRef = collection(db, `comments/${comment.id}/replies`);
+        const repliesRef = collection(db, repliesCollectionPath);
         const q = query(repliesRef, orderBy('createdAt', 'asc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedReplies = snapshot.docs.map(mapDocToComment);
@@ -95,7 +110,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
             setIsLoadingReplies(false);
         });
         return unsubscribe;
-    }, [comment.id, showReplies]);
+    }, [showReplies, repliesCollectionPath]);
 
     React.useEffect(() => {
         const unsubscribe = fetchReplies();
@@ -103,12 +118,12 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
     }, [fetchReplies]);
 
     const handleLike = async () => {
-        if (!currentUserAuth) {
-            toast({ title: "Acción requerida", description: "Debes iniciar sesión para dar me gusta.", variant: "destructive" });
+        if (!currentUserAuth || !currentUserProfile) {
+            toast({ title: "Acción requerida", description: "Debes iniciar sesión o crear un perfil de invitado para dar me gusta.", variant: "destructive" });
             return;
         }
         try {
-            const liked = await toggleLikeComment(comment.id, currentUserAuth.uid, isReply ? comment.parentId : undefined);
+            const liked = await toggleLikeComment(comment.id, currentUserAuth.uid, currentPath);
             
             if (liked && comment.authorId !== currentUserAuth.uid) {
                 const notificationsCollectionRef = collection(db, 'notifications');
@@ -136,7 +151,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
             return;
         }
         try {
-            await toggleDislikeComment(comment.id, currentUserAuth.uid, isReply ? comment.parentId : undefined);
+            await toggleDislikeComment(comment.id, currentUserAuth.uid, currentPath);
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
         }
@@ -145,7 +160,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
     const handleDelete = async () => {
         if (!canDelete) return;
         try {
-            await deleteComment(comment.id, isReply ? comment.parentId : undefined);
+            await deleteComment(comment.id, currentPath);
             toast({ title: "Comentario Eliminado" });
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -176,7 +191,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
                 isAnonymous: currentUserProfile.isAnonymous || false,
             };
 
-            const newReplyId = await addComment(figure.id, authorData, replyText.trim(), comment.id);
+            const newReplyId = await addComment(figure.id, authorData, replyText.trim(), currentPath);
 
             if (comment.authorId !== currentUserAuth.uid) {
                 const notificationsCollectionRef = collection(db, 'notifications');
@@ -206,7 +221,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
     };
 
     return (
-        <div className={cn("flex gap-4", isReply && "ml-8")}>
+        <div className={cn("flex gap-4", isReply && "ml-4 md:ml-8")}>
             <Avatar className="h-10 w-10">
                 <AvatarImage src={correctMalformedUrl(comment.authorPhotoUrl)} alt={comment.authorName} />
                 <AvatarFallback>{comment.authorName?.charAt(0).toUpperCase()}</AvatarFallback>
@@ -232,7 +247,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
                     <Button variant="ghost" size="sm" onClick={handleDislike} disabled={!currentUserAuth} className="text-xs h-auto py-1 px-2">
                         <ThumbsDown className={cn("mr-1 h-3 w-3", hasDisliked && "fill-current text-destructive")} /> {comment.dislikeCount}
                     </Button>
-                    {!isReply && (
+                    {canReply && (
                         <Button variant="ghost" size="sm" onClick={() => setIsReplying(!isReplying)} className="text-xs h-auto py-1 px-2">
                             <MessageSquareReply className="mr-1 h-3 w-3" /> Responder
                         </Button>
@@ -248,7 +263,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
                                 <AlertDialogHeader>
                                 <AlertDialogTitle>¿Eliminar comentario?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    ¿Confirmas que quieres eliminar este comentario? Esta acción no se puede deshacer.
+                                    ¿Confirmas que quieres eliminar este comentario? Todas las respuestas anidadas también serán eliminadas. Esta acción no se puede deshacer.
                                 </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -294,7 +309,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
                     </div>
                 )}
                 
-                 {!isReply && comment.replyCount > 0 && (
+                 {comment.replyCount > 0 && (
                     <div className="mt-2">
                         <Button variant="link" size="sm" className="text-xs p-0 h-auto" onClick={() => setShowReplies(!showReplies)}>
                             <CornerDownRight className="mr-1 h-3 w-3" />
@@ -312,10 +327,12 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
                                 <CommentItem 
                                     key={reply.id} 
                                     figure={figure}
-                                    comment={{...reply, parentId: comment.id}}
+                                    comment={reply}
                                     currentUserAuth={currentUserAuth}
                                     currentUserProfile={currentUserProfile}
                                     isReply 
+                                    depth={depth + 1}
+                                    parentPath={currentPath}
                                 />
                             ))
                         )}
@@ -325,12 +342,3 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
         </div>
     );
 }
-
-// Add parentId to CommentType temporarily for prop drilling
-declare module '@/lib/types' {
-    interface Comment {
-        parentId?: string;
-    }
-}
-
-    
