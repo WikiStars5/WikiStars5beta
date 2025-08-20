@@ -80,7 +80,6 @@ export function CommentSection({ figure }: CommentSectionProps) {
       if (!guestProfileExists) return null;
       const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
       const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
-      const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
       
       return {
         id: firebaseUser.uid,
@@ -88,7 +87,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
         photoUrl: null,
         gender: guestGender,
         country: '', 
-        countryCode: guestCountryCode,
+        countryCode: '',
         isAnonymous: true,
       };
     } else if (firestoreUser) {
@@ -151,18 +150,18 @@ export function CommentSection({ figure }: CommentSectionProps) {
     }
   
     if (isAnonymous && !guestProfileExists) {
-      if (showGuestProfileForm) {
-        return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
-      }
-      return (
-        <div className="text-center p-4 border-2 border-dashed rounded-lg">
-          <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
-          <Button onClick={() => setShowGuestProfileForm(true)}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Crear usuario invitado
-          </Button>
-        </div>
-      );
+        if (showGuestProfileForm) {
+            return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
+        }
+        return (
+            <div className="text-center p-4 border-2 border-dashed rounded-lg">
+                <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
+                <Button onClick={() => setShowGuestProfileForm(true)}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Crear usuario invitado
+                </Button>
+            </div>
+        );
     }
     
     const author = getAuthorData();
@@ -199,7 +198,6 @@ export function CommentSection({ figure }: CommentSectionProps) {
       );
     }
 
-    // Fallback for edge cases where author data might not be ready, though handled by isAuthLoading
     return (
         <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground h-24">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -242,11 +240,11 @@ export function CommentSection({ figure }: CommentSectionProps) {
                   currentUserProfile={getAuthorData()}
                 />
               ))}
-              {comments.length > INITIAL_COMMENTS_TO_SHOW && !showAllComments && (
-                <div className="text-center pt-4">
-                  <Button variant="outline" onClick={() => setShowAllComments(true)}>
-                    Ver todos los {comments.length} comentarios
-                  </Button>
+              {comments.length > INITIAL_COMMENTS_TO_SHOW && (
+                 <div className="text-center pt-4">
+                    <Button variant="outline" onClick={() => setShowAllComments(!showAllComments)}>
+                        {showAllComments ? 'Mostrar menos comentarios' : `Ver los ${comments.length - INITIAL_COMMENTS_TO_SHOW} comentarios restantes`}
+                    </Button>
                 </div>
               )}
             </>
