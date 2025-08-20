@@ -38,7 +38,7 @@ import { mapDocToFigure } from "@/lib/placeholder-data";
 import { RelatedProfiles } from "@/components/figures/RelatedProfiles";
 import { CommentSection } from "@/components/comments/CommentSection";
 import { differenceInHours } from 'date-fns';
-import { TopStreaks } from "../figures/TopStreaks";
+import { TopStreaks } from "@/components/figures/TopStreaks";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
