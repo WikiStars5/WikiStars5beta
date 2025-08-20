@@ -201,11 +201,11 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
 
       // Destructure all known fields to separate them from the rest
       const { 
-          id, createdAt, nameLower: nameLowerInput, perceptionCounts, attitudeCounts, socialLinks,
+          id, createdAt, nameLower: nameLowerInput, perceptionCounts, attitudeCounts,
           name, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
           height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
-          category, sportSubcategory, relatedFigureIds, ...rest
+          category, sportSubcategory, relatedFigureIds, socialLinks, ...rest
       } = figure;
 
       const updatePayload: { [key: string]: any } = {};

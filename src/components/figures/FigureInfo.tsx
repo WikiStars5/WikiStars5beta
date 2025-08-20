@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Figure } from "@/lib/types";
 import {
   Card,
@@ -12,7 +12,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Instagram, Twitter, Youtube, Facebook, User as UserIcon, CalendarIcon
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Instagram, Twitter, Youtube, Facebook, User as UserIcon, CalendarIcon, Linkedin
 } from "lucide-react";
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
@@ -85,6 +85,7 @@ type SocialLinkErrors = {
   twitter?: string;
   youtube?: string;
   facebook?: string;
+  linkedin?: string;
 };
 
 export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
@@ -141,6 +142,9 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
     }
     if (sanitizedLinks.facebook && !sanitizedLinks.facebook.includes('facebook.com')) {
       errors.facebook = 'URL de Facebook no válida.';
+    }
+    if (sanitizedLinks.linkedin && !sanitizedLinks.linkedin.includes('linkedin.com')) {
+      errors.linkedin = 'URL de LinkedIn no válida.';
     }
     setLinkErrors(errors);
     return Object.keys(errors).length === 0;
@@ -214,7 +218,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
 
   const hasAnyInfo = hasBasicInfo || hasDetailedInfo || hasPhysicalInfo || hasSocialLinks;
 
-  const birthDateAndAge = React.useMemo(() => {
+  const birthDateAndAge = useMemo(() => {
     if (figure.birthDateOrAge) {
       try {
         const date = new Date(figure.birthDateOrAge);
@@ -230,7 +234,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
     return undefined;
   }, [figure.birthDateOrAge]);
 
-  const nationalityWithFlag = React.useMemo(() => {
+  const nationalityWithFlag = useMemo(() => {
     const emoji = getCountryEmojiByCode(figure.nationalityCode || '');
     return `${emoji || ''} ${figure.nationality || ''}`.trim();
   }, [figure.nationality, figure.nationalityCode]);
@@ -383,6 +387,11 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                    <Input id="facebook" value={(socialLinks as Record<string, string>)?.facebook || ''} onChange={(e) => handleSocialLinkChange('facebook', e.target.value)} placeholder="https://facebook.com/..." />
                    {linkErrors.facebook && <p className="text-xs text-destructive mt-1">{linkErrors.facebook}</p>}
                   </div>
+                 <div>
+                   <Label htmlFor="linkedin">LinkedIn</Label>
+                   <Input id="linkedin" value={(socialLinks as Record<string, string>)?.linkedin || ''} onChange={(e) => handleSocialLinkChange('linkedin', e.target.value)} placeholder="https://linkedin.com/..." />
+                   {linkErrors.linkedin && <p className="text-xs text-destructive mt-1">{linkErrors.linkedin}</p>}
+                  </div>
                </div>
             </div>
 
@@ -444,6 +453,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                       <SocialLink href={figure.socialLinks?.twitter} icon={Twitter} label="X (Twitter)" />
                       <SocialLink href={figure.socialLinks?.youtube} icon={Youtube} label="YouTube" />
                       <SocialLink href={figure.socialLinks?.facebook} icon={Facebook} label="Facebook" />
+                      <SocialLink href={figure.socialLinks?.linkedin} icon={Linkedin} label="LinkedIn" />
                    </div>
                 </div>
               </>

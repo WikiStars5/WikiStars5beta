@@ -36,6 +36,7 @@ export interface Figure {
     twitter?: string;
     youtube?: string;
     facebook?: string;
+    linkedin?: string;
   };
 
   relatedFigureIds?: string[];

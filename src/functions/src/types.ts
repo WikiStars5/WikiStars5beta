@@ -33,6 +33,7 @@ export interface Figure {
     twitter?: string;
     youtube?: string;
     facebook?: string;
+    linkedin?: string;
   };
 
   perceptionCounts: Record<EmotionKey, number>;
