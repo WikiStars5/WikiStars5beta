@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import type { Figure, Comment as CommentType, UserProfile } from '@/lib/types';
+import type { Figure, Comment as CommentType } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Trash2, Send, Loader2 } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { addComment, deleteComment, toggleLikeComment, toggleDislikeComment, mapDocToComment } from '@/lib/placeholder-data';
+import { addReply, deleteComment, toggleLikeComment, toggleDislikeComment, mapDocToComment } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, serverTimestamp, addDoc } from 'firebase/firestore';
 import {
@@ -50,19 +50,13 @@ function timeSince(date: Date): string {
 interface CommentItemProps {
     figure: Figure;
     comment: CommentType;
-    currentUserAuth: User | null;
-    isReply?: boolean;
-    depth?: number;
-    parentPath?: string;
+    parentPath: string;
 }
 
 export function CommentItem({ 
     figure, 
     comment, 
-    currentUserAuth, 
-    isReply = false,
-    depth = 0,
-    parentPath: initialParentPath = `figures/${figure.id}/comments`
+    parentPath
 }: CommentItemProps) {
     const [isReplying, setIsReplying] = React.useState(false);
     const [replyText, setReplyText] = React.useState('');
@@ -72,14 +66,14 @@ export function CommentItem({
     const [isPostingReply, setIsPostingReply] = React.useState(false);
     const { toast } = useToast();
     const { user: firestoreUser, firebaseUser, isAnonymous } = useAuth();
-
-    const currentPath = `${initialParentPath}/${comment.id}`;
-    const repliesCollectionPath = `${currentPath}/replies`;
+    
+    const currentPath = `${parentPath}/${comment.id}`;
+    const depth = (parentPath.match(/replies/g) || []).length;
     const canReply = depth < MAX_REPLY_DEPTH;
 
-    const canDelete = currentUserAuth?.uid === comment.authorId;
-    const hasLiked = currentUserAuth ? comment.likes.includes(currentUserAuth.uid) : false;
-    const hasDisliked = currentUserAuth ? comment.dislikes.includes(currentUserAuth.uid) : false;
+    const canDelete = firebaseUser?.uid === comment.authorId;
+    const hasLiked = firebaseUser ? comment.likes.includes(firebaseUser.uid) : false;
+    const hasDisliked = firebaseUser ? comment.dislikes.includes(firebaseUser.uid) : false;
 
     const genderSymbol = React.useMemo(() => {
         const genderOpt = GENDER_OPTIONS.find(g => g.value === comment.authorGender);
@@ -99,7 +93,7 @@ export function CommentItem({
     const fetchReplies = React.useCallback(() => {
         if (!showReplies) return;
         setIsLoadingReplies(true);
-        const repliesRef = collection(db, repliesCollectionPath);
+        const repliesRef = collection(db, `${currentPath}/replies`);
         const q = query(repliesRef, orderBy('createdAt', 'asc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedReplies = snapshot.docs.map(mapDocToComment);
@@ -110,7 +104,7 @@ export function CommentItem({
             setIsLoadingReplies(false);
         });
         return unsubscribe;
-    }, [showReplies, repliesCollectionPath]);
+    }, [showReplies, currentPath]);
 
     React.useEffect(() => {
         const unsubscribe = fetchReplies();
@@ -118,21 +112,21 @@ export function CommentItem({
     }, [fetchReplies]);
 
     const handleLike = async () => {
-        if (!currentUserAuth) {
+        if (!firebaseUser) {
             toast({ title: "Acción requerida", description: "Debes iniciar sesión o crear un perfil de invitado para dar me gusta.", variant: "destructive" });
             return;
         }
         try {
-            const liked = await toggleLikeComment(comment.id, currentUserAuth.uid, currentPath);
+            const liked = await toggleLikeComment(comment.id, firebaseUser.uid, currentPath);
             
-            if (liked && comment.authorId !== currentUserAuth.uid) {
+            if (liked && comment.authorId !== firebaseUser.uid) {
                 const notificationsCollectionRef = collection(db, 'notifications');
                 await addDoc(notificationsCollectionRef, {
                     type: 'like',
                     userId: comment.authorId,
-                    actorId: currentUserAuth.uid,
-                    actorName: firebaseUser?.displayName || 'Alguien',
-                    actorPhotoUrl: firebaseUser?.photoURL || '',
+                    actorId: firebaseUser.uid,
+                    actorName: firestoreUser?.username || 'Alguien',
+                    actorPhotoUrl: firestoreUser?.photoURL || '',
                     figureId: figure.id,
                     figureName: figure.name,
                     commentId: comment.id,
@@ -146,12 +140,12 @@ export function CommentItem({
     };
 
     const handleDislike = async () => {
-        if (!currentUserAuth) {
+        if (!firebaseUser) {
             toast({ title: "Acción requerida", description: "Debes iniciar sesión para dar no me gusta.", variant: "destructive" });
             return;
         }
         try {
-            await toggleDislikeComment(comment.id, currentUserAuth.uid, currentPath);
+            await toggleDislikeComment(comment.id, firebaseUser.uid, currentPath);
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
         }
@@ -181,7 +175,6 @@ export function CommentItem({
         
         setIsPostingReply(true);
 
-        // Get author data safely
         let authorData;
         if (isAnonymous) {
             const guestUsername = localStorage.getItem('wikistars5-guestUsername');
@@ -216,7 +209,7 @@ export function CommentItem({
         }
 
         try {
-            const newReplyId = await addComment(figure.id, authorData, replyText.trim(), currentPath);
+            const newReplyId = await addReply(currentPath, figure.id, authorData, replyText.trim());
 
             if (comment.authorId !== firebaseUser.uid) {
                 const notificationsCollectionRef = collection(db, 'notifications');
@@ -246,7 +239,7 @@ export function CommentItem({
     };
 
     return (
-        <div className={cn("flex gap-4", isReply && "ml-4 md:ml-8")}>
+        <div className={cn("flex gap-4", depth > 0 && "ml-4 md:ml-8")}>
             <Avatar className="h-10 w-10">
                 <AvatarImage src={correctMalformedUrl(comment.authorPhotoUrl)} alt={comment.authorName} />
                 <AvatarFallback>{comment.authorName?.charAt(0).toUpperCase()}</AvatarFallback>
@@ -266,14 +259,14 @@ export function CommentItem({
                     <p className="text-sm mt-1 whitespace-pre-wrap">{comment.text}</p>
                 </div>
                 <div className="flex items-center gap-2 mt-1 px-1">
-                    <Button variant="ghost" size="sm" onClick={handleLike} disabled={!currentUserAuth} className="text-xs h-auto py-1 px-2">
+                    <Button variant="ghost" size="sm" onClick={handleLike} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
                         <ThumbsUp className={cn("mr-1 h-3 w-3", hasLiked && "fill-current text-blue-500")} /> {comment.likeCount}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={handleDislike} disabled={!currentUserAuth} className="text-xs h-auto py-1 px-2">
+                    <Button variant="ghost" size="sm" onClick={handleDislike} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
                         <ThumbsDown className={cn("mr-1 h-3 w-3", hasDisliked && "fill-current text-destructive")} /> {comment.dislikeCount}
                     </Button>
                     {canReply && (
-                        <Button variant="ghost" size="sm" onClick={() => setIsReplying(!isReplying)} disabled={!currentUserAuth} className="text-xs h-auto py-1 px-2">
+                        <Button variant="ghost" size="sm" onClick={() => setIsReplying(!isReplying)} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
                             <MessageSquareReply className="mr-1 h-3 w-3" /> Responder
                         </Button>
                     )}
@@ -353,9 +346,6 @@ export function CommentItem({
                                     key={reply.id} 
                                     figure={figure}
                                     comment={reply}
-                                    currentUserAuth={currentUserAuth}
-                                    isReply 
-                                    depth={depth + 1}
                                     parentPath={currentPath}
                                 />
                             ))

@@ -67,8 +67,10 @@ export function CommentSection({ figure }: CommentSectionProps) {
   
 
   React.useEffect(() => {
-    if (!isAuthLoading && isAnonymous) {
-      checkGuestProfile();
+    if (!isAuthLoading) {
+      if (isAnonymous) {
+        checkGuestProfile();
+      }
     }
   }, [isAnonymous, checkGuestProfile, isAuthLoading]);
 
@@ -198,6 +200,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
       );
     }
 
+    // Fallback while guest profile is being set
     return (
         <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground h-24">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -236,7 +239,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
                   key={comment.id}
                   figure={figure}
                   comment={comment}
-                  currentUserAuth={firebaseUser}
+                  parentPath={`figures/${figure.id}/comments`}
                 />
               ))}
               {comments.length > INITIAL_COMMENTS_TO_SHOW && (
