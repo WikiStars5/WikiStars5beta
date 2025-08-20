@@ -16,6 +16,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CATEGORY_OPTIONS } from '@/config/categories';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
+import { CountryCombobox } from '../shared/CountryCombobox';
+import { countryCodeToNameMap } from '@/config/countries';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -38,7 +40,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   // Basic info
   const [occupation, setOccupation] = useState(initialData?.occupation || '');
   const [gender, setGender] = useState(initialData?.gender || '');
-  const [nationality, setNationality] = useState(initialData?.nationality || '');
+  const [nationalityCode, setNationalityCode] = useState(initialData?.nationalityCode || '');
   const [category, setCategory] = useState(initialData?.category || '');
   const [sportSubcategory, setSportSubcategory] = useState(initialData?.sportSubcategory || '');
 
@@ -79,7 +81,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setPhotoUrl(initialData.photoUrl || '');
       setOccupation(initialData.occupation || '');
       setGender(initialData.gender || '');
-      setNationality(initialData.nationality || '');
+      setNationalityCode(initialData.nationalityCode || '');
       setCategory(initialData.category || '');
       setSportSubcategory(initialData.sportSubcategory || '');
       
@@ -108,7 +110,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setPhotoUrl('');
       setOccupation('');
       setGender('');
-      setNationality('');
+      setNationalityCode('');
       setCategory('');
       setSportSubcategory('');
       setAlias('');
@@ -167,7 +169,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         nameLower: name.trim().toLowerCase(),
         description: description.trim() || initialData?.description || "", 
         photoUrl: finalPhotoUrlToSave,
-        nationality: nationality.trim(),
+        nationality: countryCodeToNameMap.get(nationalityCode) || '',
+        nationalityCode: nationalityCode,
         occupation: occupation.trim(),
         gender: gender.trim(),
         category: category.trim(),
@@ -303,7 +306,15 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         )}
         
         <div><Label htmlFor="occupation">Ocupación/Profesión</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
-        <div><Label htmlFor="nationality">Nacionalidad</Label><Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ej: Estadounidense, Peruano" /></div>
+        
+        <div>
+          <Label htmlFor="nationalityCode">Nacionalidad</Label>
+          <CountryCombobox 
+            value={nationalityCode}
+            onChange={(value) => setNationalityCode(value || '')}
+          />
+        </div>
+
         <div>
           <Label htmlFor="gender">Género</Label>
           <Select onValueChange={setGender} value={gender}>

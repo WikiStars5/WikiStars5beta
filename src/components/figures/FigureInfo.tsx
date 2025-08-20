@@ -25,6 +25,8 @@ import Image from 'next/image';
 import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
+import { CountryCombobox } from '../shared/CountryCombobox';
+import { COUNTRIES, countryCodeToNameMap } from '@/config/countries';
 
 interface FigureInfoProps {
   figure: Figure;
@@ -71,14 +73,14 @@ type SocialLinkErrors = {
 };
 
 export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
-  const { isAnonymous } = useAuth();
+  const { user: firestoreUser, isAnonymous } = useAuth();
   const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
   
   // State for editable fields
   const [name, setName] = useState(figure.name || '');
-  const [nationality, setNationality] = useState(figure.nationality || '');
+  const [nationalityCode, setNationalityCode] = useState(figure.nationalityCode || '');
   const [gender, setGender] = useState(figure.gender || '');
   const [birthDateOrAge, setBirthDateOrAge] = useState(figure.birthDateOrAge || '');
   const [maritalStatus, setMaritalStatus] = useState(figure.maritalStatus || '');
@@ -92,7 +94,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
   useEffect(() => {
     if (isEditing) {
       setName(figure.name || '');
-      setNationality(figure.nationality || '');
+      setNationalityCode(figure.nationalityCode || '');
       setGender(figure.gender || '');
       setBirthDateOrAge(figure.birthDateOrAge || '');
       setMaritalStatus(figure.maritalStatus || '');
@@ -131,10 +133,13 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
     setIsSaving(true);
     try {
       const correctedUrl = correctMalformedUrl(photoUrl);
+      const nationalityName = countryCodeToNameMap.get(nationalityCode) || '';
+      
       await updateFigureInFirestore({ 
         id: figure.id, 
         name,
-        nationality,
+        nationality: nationalityName,
+        nationalityCode: nationalityCode,
         gender,
         birthDateOrAge,
         maritalStatus,
@@ -211,8 +216,11 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                   <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre completo de la figura" />
                 </div>
                  <div>
-                  <Label htmlFor="nationality">Nacionalidad</Label>
-                  <Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="País de origen" />
+                  <Label htmlFor="nationalityCode">Nacionalidad</Label>
+                  <CountryCombobox
+                    value={nationalityCode}
+                    onChange={(value) => setNationalityCode(value || '')}
+                  />
                 </div>
                 <div>
                     <Label htmlFor="gender">Género</Label>

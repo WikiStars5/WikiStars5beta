@@ -12,6 +12,7 @@ export interface Figure {
   description?: string;
   
   nationality?: string;
+  nationalityCode?: string; // Added to store country code
   occupation?: string;
   gender?: string;
   category?: string;
