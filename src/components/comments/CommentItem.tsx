@@ -217,7 +217,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
                 </div>
                 <div className="flex items-center gap-2 mt-1 px-1">
                     <Button variant="ghost" size="sm" onClick={handleLike} disabled={!currentUserAuth} className="text-xs h-auto py-1 px-2">
-                        <ThumbsUp className={cn("mr-1 h-3 w-3", hasLiked && "fill-current text-primary")} /> {comment.likeCount}
+                        <ThumbsUp className={cn("mr-1 h-3 w-3", hasLiked && "fill-current text-blue-500")} /> {comment.likeCount}
                     </Button>
                     <Button variant="ghost" size="sm" onClick={handleDislike} disabled={!currentUserAuth} className="text-xs h-auto py-1 px-2">
                         <ThumbsDown className={cn("mr-1 h-3 w-3", hasDisliked && "fill-current text-destructive")} /> {comment.dislikeCount}
@@ -313,5 +313,7 @@ declare module '@/lib/types' {
         parentId?: string;
     }
 }
+
+    
 
     
