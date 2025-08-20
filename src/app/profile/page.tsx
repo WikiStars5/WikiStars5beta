@@ -33,6 +33,7 @@ import { StreakAnimation } from '@/components/shared/StreakAnimation';
 import { getFiguresByIds } from '@/lib/placeholder-data';
 import { countryCodeToNameMap } from '@/config/countries';
 import { GuestProfileSetup } from '@/components/comments/GuestProfileSetup';
+import { differenceInHours } from 'date-fns';
 
 const profileFormSchema = z.object({
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres.").max(30, "El nombre de usuario no puede exceder los 30 caracteres."),
@@ -105,10 +106,32 @@ export default function ProfilePage() {
     setIsDataLoading(true);
     try {
         const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
-        if (streaksJSON) {
-            let localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
-            setStreaks(localStreaks);
+        let localStreaks: LocalUserStreak[] = streaksJSON ? JSON.parse(streaksJSON) : [];
+
+        // --- CORE STREAK LOGIC FIX ---
+        if (localStreaks.length > 0) {
+            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            
+            // 1. Filter out expired streaks
+            const activeStreaks = localStreaks.filter(streak => {
+                const lastCommentDate = new Date(streak.lastCommentDate);
+                return lastCommentDate > twentyFourHoursAgo;
+            });
+
+            // 2. Verify that figures for active streaks still exist
+            const activeFigureIds = activeStreaks.map(s => s.figureId);
+            const existingFigures = await getFiguresByIds(activeFigureIds);
+            const existingFigureIds = new Set(existingFigures.map(f => f.id));
+
+            // 3. Keep only the streaks that are both active (not expired) and for existing figures
+            const validStreaks = activeStreaks.filter(streak => existingFigureIds.has(streak.figureId));
+
+            // 4. Update the state and clean up localStorage
+            setStreaks(validStreaks);
+            localStorage.setItem('wikistars5-userStreaks', JSON.stringify(validStreaks));
         }
+        // --- END OF FIX ---
+
 
         const attitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
         const localAttitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
@@ -479,3 +502,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
