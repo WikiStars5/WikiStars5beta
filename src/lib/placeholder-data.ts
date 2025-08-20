@@ -1,4 +1,3 @@
-
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -54,6 +53,7 @@ export const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot
     hairColor: data.hairColor || "",
     eyeColor: data.eyeColor || "",
     distinctiveFeatures: data.distinctiveFeatures || "",
+    socialLinks: data.socialLinks || {},
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
     createdAt: createdAtTimestamp && typeof createdAtTimestamp.toDate === 'function' 
@@ -199,7 +199,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
 
       // Destructure all known fields to separate them from the rest
       const { 
-          id, createdAt, nameLower, perceptionCounts, attitudeCounts, 
+          id, createdAt, nameLower, perceptionCounts, attitudeCounts, socialLinks,
           name, photoUrl, description, nationality, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
           height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
@@ -233,6 +233,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       if (sportSubcategory !== undefined) updatePayload.sportSubcategory = sportSubcategory;
       if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
       if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
+      if (socialLinks) updatePayload.socialLinks = socialLinks;
       
       if (Object.keys(rest).length > 0) {
         console.warn("Unknown fields in updateFigureInFirestore:", rest);

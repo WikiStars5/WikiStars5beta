@@ -1,4 +1,3 @@
-
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 
@@ -27,6 +26,13 @@ export interface Figure {
   hairColor?: string;
   eyeColor?: string; 
   distinctiveFeatures?: string; 
+
+  socialLinks?: {
+    instagram?: string;
+    twitter?: string;
+    youtube?: string;
+    facebook?: string;
+  };
 
   perceptionCounts: Record<EmotionKey, number>;
   attitudeCounts: Record<AttitudeKey, number>;

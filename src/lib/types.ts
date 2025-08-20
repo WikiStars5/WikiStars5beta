@@ -1,4 +1,3 @@
-
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -30,6 +29,13 @@ export interface Figure {
   hairColor?: string;
   eyeColor?: string; 
   distinctiveFeatures?: string; 
+
+  socialLinks?: {
+    instagram?: string;
+    twitter?: string;
+    youtube?: string;
+    facebook?: string;
+  };
 
   perceptionCounts: Record<EmotionKey, number>;
   attitudeCounts: Record<AttitudeKey, number>;

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -58,6 +57,12 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [distinctiveFeatures, setDistinctiveFeatures] = useState(initialData?.distinctiveFeatures || '');
   const [isFeatured, setIsFeatured] = useState(initialData?.isFeatured || false);
 
+  const [socialLinks, setSocialLinks] = useState(initialData?.socialLinks || {
+    instagram: '',
+    twitter: '',
+    youtube: '',
+    facebook: '',
+  });
 
   const [perceptionCounts, setPerceptionCounts] = useState(initialData?.perceptionCounts || { ...defaultPerceptionCounts });
   const [attitudeCounts, setAttitudeCounts] = useState(initialData?.attitudeCounts || { ...defaultAttitudeCounts });
@@ -91,6 +96,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setEyeColor(initialData.eyeColor || '');
       setDistinctiveFeatures(initialData.distinctiveFeatures || '');
       setIsFeatured(initialData.isFeatured || false);
+      setSocialLinks(initialData.socialLinks || {});
 
       setPerceptionCounts(initialData.perceptionCounts || { ...defaultPerceptionCounts });
       setAttitudeCounts(initialData.attitudeCounts || { ...defaultAttitudeCounts });
@@ -118,6 +124,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setEyeColor('');
       setDistinctiveFeatures('');
       setIsFeatured(false);
+      setSocialLinks({});
       setPerceptionCounts({ ...defaultPerceptionCounts });
       setAttitudeCounts({ ...defaultAttitudeCounts });
     }
@@ -177,6 +184,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         hairColor: hairColor.trim(),
         eyeColor: eyeColor.trim(),
         distinctiveFeatures: distinctiveFeatures.trim(),
+        socialLinks: socialLinks,
         isFeatured: isFeatured,
         perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
         attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
@@ -329,6 +337,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div><Label htmlFor="hairColor">Color de Cabello</Label><Input id="hairColor" value={hairColor} onChange={(e) => setHairColor(e.target.value)} placeholder="Ej: Negro" /></div>
         <div><Label htmlFor="eyeColor">Color de Ojos</Label><Input id="eyeColor" value={eyeColor} onChange={(e) => setEyeColor(e.target.value)} placeholder="Ej: Violeta, Azules" /></div>
         <div className="md:col-span-2"><Label htmlFor="distinctiveFeatures">Rasgos Distintivos</Label><Textarea id="distinctiveFeatures" value={distinctiveFeatures} onChange={(e) => setDistinctiveFeatures(e.target.value)} placeholder="Ej: Cicatriz en el ojo, Alas de demonio" rows={2}/></div>
+      </div>
+
+      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales</h3>
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={socialLinks.instagram || ''} onChange={(e) => setSocialLinks(prev => ({...prev, instagram: e.target.value}))} placeholder="URL de Instagram" /></div>
+        <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={socialLinks.twitter || ''} onChange={(e) => setSocialLinks(prev => ({...prev, twitter: e.target.value}))} placeholder="URL de X/Twitter" /></div>
+        <div><Label htmlFor="youtube">YouTube</Label><Input id="youtube" value={socialLinks.youtube || ''} onChange={(e) => setSocialLinks(prev => ({...prev, youtube: e.target.value}))} placeholder="URL de YouTube" /></div>
+        <div><Label htmlFor="facebook">Facebook</Label><Input id="facebook" value={socialLinks.facebook || ''} onChange={(e) => setSocialLinks(prev => ({...prev, facebook: e.target.value}))} placeholder="URL de Facebook" /></div>
       </div>
       
       <div className="mt-6 border-t pt-4 border-border">
