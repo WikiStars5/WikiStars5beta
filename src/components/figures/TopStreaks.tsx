@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import { getTopStreaksForFigure } from '@/lib/placeholder-data';
-import type { StreakWithProfile } from '@/lib/types';
+import type { AttitudeKey, StreakWithProfile } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Flame, Loader2, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -12,15 +12,19 @@ import { correctMalformedUrl, cn } from '@/lib/utils';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { getCountryEmojiByCode } from '@/config/countries';
 import Image from 'next/image';
-import { isSameDay, isYesterday } from 'date-fns';
-import { Timestamp } from 'firebase/firestore';
-
 
 interface TopStreaksProps {
     figureId: string;
 }
 
 const FIRE_GIF_URL = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/image%2Ffire.gif?alt=media&token=fd18d32d-c443-4da6-a369-e55ae241f7c5";
+
+const ATTITUDE_EMOJIS: Record<AttitudeKey, string> = {
+    fan: '😍',
+    hater: '😡',
+    simp: '🥰',
+    neutral: '😐',
+};
 
 export function TopStreaks({ figureId }: TopStreaksProps) {
     const [streaks, setStreaks] = React.useState<StreakWithProfile[]>([]);
@@ -31,15 +35,7 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
             setIsLoading(true);
             try {
                 const topStreaksData = await getTopStreaksForFigure(figureId);
-                const today = new Date();
-
-                // Filter again on the client-side as a safeguard
-                const activeStreaks = topStreaksData.filter(streak => {
-                    const lastDate = (streak.lastCommentDate as Timestamp).toDate();
-                    return isSameDay(today, lastDate) || isYesterday(lastDate);
-                });
-
-                setStreaks(activeStreaks);
+                setStreaks(topStreaksData);
             } catch (error) {
                 console.error("Error fetching top streaks:", error);
             } finally {
@@ -73,17 +69,18 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                     <div className="space-y-4">
                         {streaks.map((streak, index) => {
                             const user = streak.userProfile;
-                            const displayName = user?.username || streak.username || 'Invitado';
+                            const displayName = streak.isAnonymous ? streak.username : user?.username;
                             const photoUrl = user?.photoURL;
                             
-                            const genderLabel = user?.gender || streak.gender || '';
-                            const countryCode = user?.countryCode || streak.countryCode || '';
-                            const countryName = user?.country || '';
+                            const genderLabel = streak.isAnonymous ? streak.gender : user?.gender;
+                            const countryCode = streak.isAnonymous ? streak.countryCode : user?.countryCode;
+                            const countryName = user?.country;
 
                             const genderOption = GENDER_OPTIONS.find(g => g.label === genderLabel || g.value === genderLabel);
                             const genderSymbol = genderOption?.symbol;
-                            const countryFlag = getCountryEmojiByCode(countryCode);
+                            const countryFlag = getCountryEmojiByCode(countryCode || '');
                             const genderColorClass = genderLabel === 'Masculino' ? 'text-blue-400' : genderLabel === 'Femenino' ? 'text-pink-400' : '';
+                            const attitudeEmoji = streak.attitude ? ATTITUDE_EMOJIS[streak.attitude] : null;
 
                              return (
                                 <div key={streak.userId} className="flex items-center justify-between p-3 bg-muted/50 rounded-md">
@@ -92,11 +89,12 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                                         <Avatar className="h-10 w-10">
                                             <AvatarImage src={correctMalformedUrl(photoUrl) || undefined} alt={displayName} />
                                             <AvatarFallback>
-                                                {user?.isAnonymous ? <User/> : displayName.charAt(0).toUpperCase()}
+                                                {displayName ? displayName.charAt(0).toUpperCase() : <User />}
                                             </AvatarFallback>
                                         </Avatar>
                                         <div>
                                             <div className="flex items-center gap-1.5">
+                                                {attitudeEmoji && <span className="text-lg" title={`Actitud: ${streak.attitude}`}>{attitudeEmoji}</span>}
                                                 <p className="font-semibold text-sm">{displayName}</p>
                                                 {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={genderLabel}>{genderSymbol}</span>}
                                                 {countryFlag && <span title={countryName || countryCode}>{countryFlag}</span>}

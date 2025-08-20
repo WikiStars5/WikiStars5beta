@@ -1,9 +1,9 @@
 
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove } from "firebase/firestore";
 import { isSameDay, isYesterday } from 'date-fns';
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
@@ -645,33 +645,41 @@ export async function updateStreak(
   try {
     await runTransaction(db, async (transaction) => {
       const streakDoc = await transaction.get(streakRef);
-      let currentStreakData: Partial<Streak> & { userId: string } = { userId: authorData.id };
-
+      
+      let currentStreak = 1;
       if (streakDoc.exists()) {
         const data = streakDoc.data();
         const lastCommentDate = (data.lastCommentDate as Timestamp).toDate();
         
         if (isSameDay(now, lastCommentDate)) {
           // Commented again on the same day, streak doesn't change
-          currentStreakData.currentStreak = data.currentStreak;
+          currentStreak = data.currentStreak || 1;
         } else if (isYesterday(lastCommentDate)) {
           // Commented on the next day, streak increases
-          currentStreakData.currentStreak = (data.currentStreak || 0) + 1;
+          currentStreak = (data.currentStreak || 0) + 1;
         } else {
           // Day was skipped, streak resets
-          currentStreakData.currentStreak = 1;
+          currentStreak = 1;
         }
-      } else {
-        // First comment, start streak at 1
-        currentStreakData.currentStreak = 1;
       }
-      newStreakCount = currentStreakData.currentStreak;
+      newStreakCount = currentStreak;
+
+      // Get user's current attitude for this figure
+      let attitude: AttitudeKey | null = null;
+      if (typeof window !== 'undefined') {
+        const localAttitudes: Attitude[] = JSON.parse(localStorage.getItem('wikistars5-userAttitudes') || '[]');
+        const currentAttitude = localAttitudes.find(a => a.figureId === figureId);
+        if (currentAttitude) {
+          attitude = currentAttitude.attitude;
+        }
+      }
 
       const dataToSet: Streak = {
         userId: authorData.id,
         currentStreak: newStreakCount,
         lastCommentDate: Timestamp.fromDate(now),
         isAnonymous: authorData.isAnonymous,
+        attitude: attitude,
         ...(authorData.isAnonymous && {
           username: authorData.name,
           gender: authorData.gender,
@@ -719,11 +727,11 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
   const today = new Date();
   
   try {
-    const q = query(streaksRef, orderBy('currentStreak', 'desc'), limit(count * 2));
-    const querySnapshot = await getDocs(q);
-    
+    const allStreaksQuery = query(streaksRef);
+    const allStreaksSnapshot = await getDocs(allStreaksQuery);
+
     let activeStreaks: Streak[] = [];
-    querySnapshot.forEach(doc => {
+    allStreaksSnapshot.forEach(doc => {
       const data = doc.data() as DocumentData;
       const lastDate = (data.lastCommentDate as Timestamp).toDate();
       if (isSameDay(today, lastDate) || isYesterday(lastDate)) {
@@ -735,6 +743,7 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
           username: data.username,
           gender: data.gender,
           countryCode: data.countryCode,
+          attitude: data.attitude,
         });
       }
     });

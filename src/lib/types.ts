@@ -140,6 +140,7 @@ export interface Streak {
     currentStreak: number;
     lastCommentDate: Timestamp;
     isAnonymous: boolean;
+    attitude: AttitudeKey | null;
     // Fields for anonymous users, stored directly in the streak document
     username?: string;
     gender?: string;
