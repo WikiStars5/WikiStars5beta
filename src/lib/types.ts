@@ -101,6 +101,8 @@ export interface Comment {
   authorName: string;
   authorPhotoUrl?: string | null;
   authorGender?: string;
+  authorCountry?: string;
+  authorCountryCode?: string;
   text: string;
   createdAt: Timestamp;
   likes: string[]; // Array of user IDs who liked the comment

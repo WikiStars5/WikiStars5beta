@@ -407,6 +407,8 @@ export const mapDocToComment = (docSnap: DocumentSnapshot): Comment => {
     authorName: data.authorName,
     authorPhotoUrl: data.authorPhotoUrl,
     authorGender: data.authorGender,
+    authorCountry: data.authorCountry,
+    authorCountryCode: data.authorCountryCode,
     text: data.text,
     createdAt: data.createdAt,
     likes: data.likes || [],
@@ -421,7 +423,15 @@ export const mapDocToComment = (docSnap: DocumentSnapshot): Comment => {
 
 export async function addComment(
   figureId: string,
-  authorData: { id: string; name: string; photoUrl: string | null, gender: string, isAnonymous: boolean },
+  authorData: { 
+    id: string; 
+    name: string; 
+    photoUrl: string | null;
+    gender: string;
+    country: string;
+    countryCode: string;
+    isAnonymous: boolean;
+  },
   text: string,
   parentCommentId?: string
 ): Promise<string> {
@@ -432,6 +442,8 @@ export async function addComment(
         authorName: authorData.name,
         authorPhotoUrl: authorData.photoUrl,
         authorGender: authorData.gender,
+        authorCountry: authorData.country,
+        authorCountryCode: authorData.countryCode,
         text: text,
         createdAt: serverTimestamp(),
         likes: [],
@@ -553,9 +565,11 @@ export async function deleteComment(
         return;
     }
 
-    // This logic needs to run outside the transaction for batch writes.
     if (!parentCommentId) {
         const repliesCollectionRef = collection(db, `comments/${commentId}/replies`);
+        // Note: Querying within a transaction has limitations. We perform this get outside if possible.
+        // For simplicity in this logic, we assume we can get it, but for production,
+        // it's better to batch delete outside the transaction if there are many replies.
         const repliesSnapshot = await getDocs(repliesCollectionRef); 
         if (!repliesSnapshot.empty) {
             const deleteBatch = writeBatch(db);

@@ -23,7 +23,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { GENDER_OPTIONS } from '@/config/genderOptions';
+import { getCountryEmojiByCode } from '@/config/countries';
 
 function timeSince(date: Date): string {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -45,7 +47,7 @@ interface CommentItemProps {
     figure: Figure;
     comment: CommentType;
     currentUserAuth: User | null;
-    currentUserProfile: Pick<UserProfile, 'uid' | 'username' | 'photoURL' | 'gender' | 'isAnonymous'> | null;
+    currentUserProfile: Pick<UserProfile, 'uid' | 'username' | 'photoURL' | 'gender' | 'countryCode' | 'country' | 'isAnonymous'> | null;
     isReply?: boolean;
 }
 
@@ -61,6 +63,15 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
     const canDelete = currentUserAuth?.uid === comment.authorId;
     const hasLiked = currentUserAuth ? comment.likes.includes(currentUserAuth.uid) : false;
     const hasDisliked = currentUserAuth ? comment.dislikes.includes(currentUserAuth.uid) : false;
+
+    const genderSymbol = React.useMemo(() => {
+        const genderOpt = GENDER_OPTIONS.find(g => g.label === comment.authorGender);
+        return genderOpt?.symbol || null;
+    }, [comment.authorGender]);
+
+    const countryFlag = React.useMemo(() => {
+        return getCountryEmojiByCode(comment.authorCountryCode || '');
+    }, [comment.authorCountryCode]);
 
     const fetchReplies = React.useCallback(() => {
         if (!showReplies) return;
@@ -144,6 +155,8 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
                 name: currentUserProfile.username,
                 photoUrl: currentUserProfile.photoURL || null,
                 gender: currentUserProfile.gender || '',
+                country: currentUserProfile.country || '',
+                countryCode: currentUserProfile.countryCode || '',
                 isAnonymous: currentUserProfile.isAnonymous || false,
             };
 
@@ -185,7 +198,11 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
             <div className="flex-grow">
                 <div className="bg-muted p-3 rounded-lg rounded-tl-none">
                     <div className="flex justify-between items-center">
-                        <p className="font-semibold text-sm">{comment.authorName}</p>
+                        <div className="flex items-center gap-1.5">
+                            <p className="font-semibold text-sm">{comment.authorName}</p>
+                            {genderSymbol && <span className="text-sm" title={comment.authorGender}>{genderSymbol}</span>}
+                            {countryFlag && <span title={comment.authorCountry}>{countryFlag}</span>}
+                        </div>
                         {comment.createdAt && (
                             <p className="text-xs text-muted-foreground">{timeSince(comment.createdAt.toDate())}</p>
                         )}

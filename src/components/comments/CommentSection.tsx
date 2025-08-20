@@ -50,6 +50,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
   }, [figure.id, toast]);
   
   const getAuthorData = () => {
+    // For guests, their profile info is not in Firestore, so we return empty strings.
     if (isAnonymous) {
       const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
       const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
@@ -58,6 +59,8 @@ export function CommentSection({ figure }: CommentSectionProps) {
         name: guestUsername,
         photoUrl: null,
         gender: guestGender,
+        country: '',
+        countryCode: '',
         isAnonymous: true,
       };
     } else if (firestoreUser && firebaseUser) {
@@ -66,6 +69,8 @@ export function CommentSection({ figure }: CommentSectionProps) {
         name: firestoreUser.username,
         photoUrl: firestoreUser.photoURL || null,
         gender: firestoreUser.gender || '',
+        country: firestoreUser.country || '',
+        countryCode: firestoreUser.countryCode || '',
         isAnonymous: false,
       };
     }
@@ -143,7 +148,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
                 figure={figure}
                 comment={comment}
                 currentUserAuth={firebaseUser}
-                currentUserProfile={isAnonymous ? getAuthorData() : firestoreUser}
+                currentUserProfile={getAuthorData()}
               />
             ))
           ) : (
