@@ -93,7 +93,7 @@ export default function ProfilePage() {
 
   const { control: guestControl, handleSubmit: handleGuestSubmit, reset: resetGuestForm, formState: { isSubmitting: isGuestSubmitting, errors: guestErrors } } = useForm<GuestProfileFormValues>({
     resolver: zodResolver(guestProfileFormSchema),
-    defaultValues: { username: '', gender: '', countryCode: '' },
+    defaultValues: { username: 'Invitado', gender: '', countryCode: '' },
   });
 
   useEffect(() => {
@@ -216,6 +216,7 @@ export default function ProfilePage() {
         title: "¡Perfil de Invitado Guardado!",
         description: `Tu información local ha sido actualizada.`,
       });
+      setIsEditing(false);
     }
   };
 
@@ -239,7 +240,6 @@ export default function ProfilePage() {
     );
   }
 
-  // This is the main fix. We create a valid user object for guests.
   const currentUser: UserProfile | null = isAnonymous
     ? {
         uid: firebaseUser?.uid || 'guest',
@@ -356,14 +356,22 @@ export default function ProfilePage() {
     <>
         <div className="w-full mt-6">
             <Card className="border border-white/20 bg-black">
-                <CardHeader>
+                <CardHeader className="flex flex-row justify-between items-start">
+                  <div>
                     <CardTitle>Tu Perfil de Invitado</CardTitle>
                     <CardDescription>
-                        Tu información de invitado se guarda localmente en este dispositivo.
+                        Edita tu información local. Se guardará solo en este dispositivo.
                     </CardDescription>
+                  </div>
+                  {!isEditing && (
+                    <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                      <Edit className="mr-2 h-4 w-4" /> Editar
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleGuestSubmit(onGuestProfileSubmit)} className="space-y-4">
+                  {isEditing ? (
+                    <form onSubmit={handleGuestSubmit(onGuestProfileSubmit)} className="space-y-4 animate-in fade-in-50">
                         <div>
                             <Label htmlFor="guest-username">Tu Nombre</Label>
                             <Controller
@@ -381,7 +389,6 @@ export default function ProfilePage() {
                                 <p className="text-sm text-destructive mt-1">{guestErrors.username.message}</p>
                             )}
                         </div>
-
                         <div>
                             <Label htmlFor="guest-gender">Sexo</Label>
                              <Controller
@@ -404,11 +411,7 @@ export default function ProfilePage() {
                                 </Select>
                                 )}
                             />
-                            {guestErrors.gender && (
-                                <p className="text-sm text-destructive mt-1">{guestErrors.gender.message}</p>
-                            )}
                         </div>
-                        
                         <div>
                             <Label htmlFor="guest-countryCode">País</Label>
                             <Controller
@@ -422,13 +425,21 @@ export default function ProfilePage() {
                                 )}
                             />
                         </div>
-
-
-                        <Button type="submit" disabled={isGuestSubmitting} className="w-full sm:w-auto">
-                            {isGuestSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                            Guardar Perfil de Invitado
-                        </Button>
+                        <div className="flex justify-end gap-2 pt-2">
+                           <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isGuestSubmitting}>Cancelar</Button>
+                           <Button type="submit" disabled={isGuestSubmitting}>
+                              {isGuestSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                              Guardar Perfil
+                           </Button>
+                        </div>
                     </form>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-4"><User className="h-5 w-5 text-muted-foreground"/><p>{currentUser.username}</p></div>
+                      <div className="flex items-center gap-4"><MapIcon className="h-5 w-5 text-muted-foreground"/><p>{currentUser.country || 'No especificado'}</p></div>
+                      <div className="flex items-center gap-4"><VenusAndMars className="h-5 w-5 text-muted-foreground"/><p>{GENDER_OPTIONS.find(g => g.value === currentUser.gender)?.label || 'No especificado'}</p></div>
+                    </div>
+                  )}
                 </CardContent>
             </Card>
         </div>
@@ -612,5 +623,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
