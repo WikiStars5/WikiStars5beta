@@ -27,6 +27,8 @@ import {
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { getCountryEmojiByCode } from '@/config/countries';
 
+const MAX_COMMENT_LENGTH = 1000;
+
 function timeSince(date: Date): string {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
     if (seconds < 5) return "justo ahora";
@@ -153,6 +155,14 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
     const handlePostReply = async () => {
         if (!currentUserProfile || !currentUserAuth) return;
         if (replyText.trim().length < 3) return;
+        if (replyText.length > MAX_COMMENT_LENGTH) {
+            toast({
+                title: "Respuesta demasiado larga",
+                description: `Tu respuesta no puede exceder los ${MAX_COMMENT_LENGTH} caracteres.`,
+                variant: "destructive"
+            });
+            return;
+        }
         
         setIsPostingReply(true);
         try {
@@ -256,20 +266,29 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
                              <AvatarImage src={correctMalformedUrl(currentUserProfile?.photoURL)} alt={currentUserProfile?.username} />
                             <AvatarFallback>{currentUserProfile?.username?.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        <div className="flex-grow">
+                        <div className="flex-grow space-y-2">
                              <Textarea 
                                 placeholder={`Respondiendo a ${comment.authorName}...`} 
                                 value={replyText}
                                 onChange={(e) => setReplyText(e.target.value)}
                                 rows={2}
                                 className="text-sm"
+                                maxLength={MAX_COMMENT_LENGTH}
                              />
-                             <div className="flex justify-end gap-2 mt-2">
-                                <Button variant="ghost" size="sm" onClick={() => setIsReplying(false)}>Cancelar</Button>
-                                <Button size="sm" onClick={handlePostReply} disabled={isPostingReply}>
-                                     {isPostingReply ? <Loader2 className="mr-1 h-4 w-4 animate-spin"/> : <Send className="mr-1 h-4 w-4"/>}
-                                     Enviar
-                                </Button>
+                             <div className="flex justify-between items-center">
+                                <p className={cn(
+                                    "text-xs text-muted-foreground",
+                                    replyText.length > MAX_COMMENT_LENGTH && "text-destructive"
+                                )}>
+                                    {replyText.length} / {MAX_COMMENT_LENGTH}
+                                </p>
+                                <div className="flex gap-2">
+                                    <Button variant="ghost" size="sm" onClick={() => setIsReplying(false)}>Cancelar</Button>
+                                    <Button size="sm" onClick={handlePostReply} disabled={isPostingReply}>
+                                        {isPostingReply ? <Loader2 className="mr-1 h-4 w-4 animate-spin"/> : <Send className="mr-1 h-4 w-4"/>}
+                                        Enviar
+                                    </Button>
+                                </div>
                              </div>
                         </div>
                     </div>
@@ -313,9 +332,5 @@ declare module '@/lib/types' {
         parentId?: string;
     }
 }
-
-    
-
-    
 
     

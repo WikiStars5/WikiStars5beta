@@ -15,11 +15,13 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { CommentItem } from './CommentItem';
 import { GuestProfileSetup } from './GuestProfileSetup';
-import { correctMalformedUrl } from '@/lib/utils';
+import { cn, correctMalformedUrl } from '@/lib/utils';
 
 interface CommentSectionProps {
   figure: Figure;
 }
+
+const MAX_COMMENT_LENGTH = 1000;
 
 export function CommentSection({ figure }: CommentSectionProps) {
   const { user: firestoreUser, firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
@@ -30,6 +32,13 @@ export function CommentSection({ figure }: CommentSectionProps) {
   const [guestProfileExists, setGuestProfileExists] = React.useState(false);
   const [isCreatingGuestProfile, setIsCreatingGuestProfile] = React.useState(false);
   const { toast } = useToast();
+
+  const checkGuestProfile = React.useCallback(() => {
+    if (typeof window !== 'undefined') {
+      const guestName = localStorage.getItem('wikistars5-guestUsername');
+      setGuestProfileExists(!!guestName);
+    }
+  }, []);
 
   React.useEffect(() => {
     setIsLoadingComments(true);
@@ -53,12 +62,6 @@ export function CommentSection({ figure }: CommentSectionProps) {
     return () => unsubscribe();
   }, [figure.id, toast]);
   
-  const checkGuestProfile = React.useCallback(() => {
-    if (typeof window !== 'undefined') {
-      const guestName = localStorage.getItem('wikistars5-guestUsername');
-      setGuestProfileExists(!!guestName);
-    }
-  }, []);
 
   React.useEffect(() => {
     if (!isAuthLoading && isAnonymous) {
@@ -74,14 +77,15 @@ export function CommentSection({ figure }: CommentSectionProps) {
       if (!guestProfileExists) return null;
       const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
       const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
+      const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
       
       return {
         id: firebaseUser.uid,
         name: guestUsername,
         photoUrl: null,
         gender: guestGender,
-        country: '',
-        countryCode: '',
+        country: '', // Country name is not stored for guests
+        countryCode: guestCountryCode,
         isAnonymous: true,
       };
     } else if (firestoreUser) {
@@ -106,6 +110,14 @@ export function CommentSection({ figure }: CommentSectionProps) {
     }
     if (commentText.trim().length < 3) {
       toast({ title: "Comentario muy corto", description: "Tu comentario debe tener al menos 3 caracteres.", variant: "destructive" });
+      return;
+    }
+    if (commentText.length > MAX_COMMENT_LENGTH) {
+      toast({
+          title: "Comentario demasiado largo",
+          description: `Tu comentario no puede exceder los ${MAX_COMMENT_LENGTH} caracteres.`,
+          variant: "destructive"
+      });
       return;
     }
     setIsPosting(true);
@@ -134,7 +146,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
         </div>
       );
     }
-
+  
     if (isAnonymous && !guestProfileExists) {
       if (isCreatingGuestProfile) {
         return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
@@ -165,8 +177,15 @@ export function CommentSection({ figure }: CommentSectionProps) {
               onChange={(e) => setCommentText(e.target.value)}
               rows={3}
               className="bg-muted border-border/50 focus:bg-background"
+              maxLength={MAX_COMMENT_LENGTH}
             />
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
+              <p className={cn(
+                "text-xs text-muted-foreground",
+                commentText.length > MAX_COMMENT_LENGTH && "text-destructive"
+              )}>
+                {commentText.length} / {MAX_COMMENT_LENGTH}
+              </p>
               <Button onClick={handlePostComment} disabled={isPosting}>
                 {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
                 Publicar
@@ -177,7 +196,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
       );
     }
 
-    return null; // Should not happen in normal flow
+    return null;
   };
 
   return (
@@ -220,3 +239,5 @@ export function CommentSection({ figure }: CommentSectionProps) {
     </Card>
   );
 }
+
+    
