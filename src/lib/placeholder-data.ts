@@ -1,3 +1,4 @@
+
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -509,11 +510,10 @@ export async function addReply(
 
 
 export async function toggleLikeComment(
-  commentId: string, 
-  userId: string, 
-  collectionPath: string
+  documentPath: string, 
+  userId: string
 ): Promise<boolean> {
-  const commentRef = doc(db, collectionPath, commentId);
+  const commentRef = doc(db, documentPath);
   let isLiked = false;
 
   await runTransaction(db, async (transaction) => {
@@ -547,11 +547,10 @@ export async function toggleLikeComment(
 
 
 export async function toggleDislikeComment(
-  commentId: string,
-  userId: string,
-  collectionPath: string
+  documentPath: string,
+  userId: string
 ): Promise<boolean> {
-  const commentRef = doc(db, collectionPath, commentId);
+  const commentRef = doc(db, documentPath);
   let isDisliked = false;
 
   await runTransaction(db, async (transaction) => {
@@ -595,15 +594,12 @@ async function deleteRepliesRecursive(collectionPath: string, batch: any) {
   }
 }
 
-export async function deleteComment(
-  commentId: string,
-  collectionPath: string
-): Promise<void> {
-  const commentRef = doc(db, collectionPath, commentId);
+export async function deleteComment(documentPath: string): Promise<void> {
+  const commentRef = doc(db, documentPath);
   const batch = writeBatch(db);
 
   // Recursively delete all nested replies
-  await deleteRepliesRecursive(`${collectionPath}/${commentId}/replies`, batch);
+  await deleteRepliesRecursive(`${documentPath}/replies`, batch);
   
   // Delete the main comment
   batch.delete(commentRef);
@@ -611,9 +607,13 @@ export async function deleteComment(
   await batch.commit();
 
   // Update reply count on the parent if it's a reply
-  const pathParts = collectionPath.split('/');
-  if (pathParts.length > 3) { // It's a reply if path is 'figures/id/comments/id...'
-    const parentRef = doc(db, pathParts.slice(0, -1).join('/'));
+  const pathParts = documentPath.split('/');
+  // A reply path will have an odd number of segments > 3, e.g. figures/id/comments/id/replies/id (6 segments for collection ref, 7 for doc)
+  // The path to a document must have an even number of segments.
+  // figures/{figureId}/comments/{commentId} -> 4 segments (parent is collection)
+  // figures/{figureId}/comments/{commentId}/replies/{replyId} -> 6 segments (parent is document)
+  if (pathParts.length > 4 && pathParts[pathParts.length - 2] === 'replies') { 
+    const parentRef = doc(db, pathParts.slice(0, -2).join('/'));
     await runTransaction(db, async (transaction) => {
       const parentDoc = await transaction.get(parentRef);
       if (parentDoc.exists()) {

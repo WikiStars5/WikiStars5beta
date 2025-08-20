@@ -93,7 +93,8 @@ export function CommentItem({
     const fetchReplies = React.useCallback(() => {
         if (!showReplies) return;
         setIsLoadingReplies(true);
-        const repliesRef = collection(db, `${currentPath}/replies`);
+        const repliesPath = `${currentPath}/replies`;
+        const repliesRef = collection(db, repliesPath);
         const q = query(repliesRef, orderBy('createdAt', 'asc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedReplies = snapshot.docs.map(mapDocToComment);
@@ -117,7 +118,7 @@ export function CommentItem({
             return;
         }
         try {
-            const liked = await toggleLikeComment(comment.id, firebaseUser.uid, currentPath);
+            const liked = await toggleLikeComment(currentPath, firebaseUser.uid);
             
             if (liked && comment.authorId !== firebaseUser.uid) {
                 const notificationsCollectionRef = collection(db, 'notifications');
@@ -145,7 +146,7 @@ export function CommentItem({
             return;
         }
         try {
-            await toggleDislikeComment(comment.id, firebaseUser.uid, currentPath);
+            await toggleDislikeComment(currentPath, firebaseUser.uid);
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
         }
@@ -154,7 +155,7 @@ export function CommentItem({
     const handleDelete = async () => {
         if (!canDelete) return;
         try {
-            await deleteComment(comment.id, currentPath);
+            await deleteComment(currentPath);
             toast({ title: "Comentario Eliminado" });
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -178,6 +179,8 @@ export function CommentItem({
         let authorData;
         if (isAnonymous) {
             const guestUsername = localStorage.getItem('wikistars5-guestUsername');
+            const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
+            const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
             if (!guestUsername) {
                 toast({ title: "Perfil de invitado no encontrado", description: "Por favor, configura tu perfil para responder.", variant: "destructive" });
                 setIsPostingReply(false);
@@ -187,9 +190,9 @@ export function CommentItem({
                 id: firebaseUser.uid,
                 name: guestUsername,
                 photoUrl: null,
-                gender: localStorage.getItem('wikistars5-guestGender') || '',
-                country: '',
-                countryCode: '',
+                gender: guestGender,
+                country: '', 
+                countryCode: guestCountryCode,
                 isAnonymous: true,
             }
         } else if (firestoreUser) {
@@ -346,7 +349,7 @@ export function CommentItem({
                                     key={reply.id} 
                                     figure={figure}
                                     comment={reply}
-                                    parentPath={currentPath}
+                                    parentPath={`${currentPath}/replies`}
                                 />
                             ))
                         )}
