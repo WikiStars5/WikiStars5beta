@@ -15,11 +15,13 @@ import * as React from "react";
 interface ProfileHeaderProps {
   figure: Figure;
   onImageClick: (imageUrl: string) => void;
+  streakCount: number | null;
 }
 
 export function ProfileHeader({ 
   figure, 
   onImageClick,
+  streakCount,
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
   const { toast } = useToast();
@@ -62,6 +64,14 @@ export function ProfileHeader({
                 <div className="flex items-center gap-2">
                     <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
                 </div>
+                {streakCount && streakCount > 0 && (
+                  <div className="mt-2">
+                    <Badge variant="destructive" className="bg-orange-600/20 text-orange-400 border-orange-500/50 hover:bg-orange-600/30">
+                      <Flame className="mr-1 h-4 w-4 text-orange-500" />
+                      <span className="font-bold">Día {streakCount}</span>
+                    </Badge>
+                  </div>
+                )}
               </div>
             </div>
             

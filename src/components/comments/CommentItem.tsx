@@ -79,7 +79,7 @@ export function CommentItem({
     const hasDisliked = firebaseUser ? comment.dislikes.includes(firebaseUser.uid) : false;
 
     const genderSymbol = React.useMemo(() => {
-        const genderOpt = GENDER_OPTIONS.find(g => g.value === comment.authorGender);
+        const genderOpt = GENDER_OPTIONS.find(g => g.label === comment.authorGender);
         return genderOpt?.symbol || null;
     }, [comment.authorGender]);
 
@@ -88,8 +88,8 @@ export function CommentItem({
     }, [comment.authorCountryCode]);
 
     const genderColorClass = React.useMemo(() => {
-        if (comment.authorGender === 'male') return 'text-blue-400';
-        if (comment.authorGender === 'female') return 'text-pink-400';
+        if (comment.authorGender === 'Masculino') return 'text-blue-400';
+        if (comment.authorGender === 'Femenino') return 'text-pink-400';
         return '';
     }, [comment.authorGender]);
 

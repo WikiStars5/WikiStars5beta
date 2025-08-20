@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -19,16 +18,16 @@ import { GuestProfileSetup } from './GuestProfileSetup';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { countryCodeToNameMap } from '@/config/countries';
-import { StreakAnimation } from '../shared/StreakAnimation';
 
 interface CommentSectionProps {
   figure: Figure;
+  onCommentPosted: (streak: number | null) => void;
 }
 
 const MAX_COMMENT_LENGTH = 1000;
 const INITIAL_COMMENTS_TO_SHOW = 5;
 
-export function CommentSection({ figure }: CommentSectionProps) {
+export function CommentSection({ figure, onCommentPosted }: CommentSectionProps) {
   const { user: firestoreUser, firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
   const [commentText, setCommentText] = React.useState('');
   const [comments, setComments] = React.useState<CommentType[]>([]);
@@ -37,7 +36,6 @@ export function CommentSection({ figure }: CommentSectionProps) {
   const [guestProfileExists, setGuestProfileExists] = React.useState(false);
   const [showGuestProfileForm, setShowGuestProfileForm] = React.useState(false);
   const [showAllComments, setShowAllComments] = React.useState(false);
-  const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
   const { toast } = useToast();
 
   const checkGuestProfile = React.useCallback(() => {
@@ -135,11 +133,9 @@ export function CommentSection({ figure }: CommentSectionProps) {
       setCommentText('');
       toast({ title: "¡Comentario Publicado!", description: "Gracias por tu contribución." });
 
-      // Update streak after successful comment
+      // Update streak after successful comment and notify parent
       const newStreak = updateStreak(figure);
-      if (newStreak) {
-        setAnimationStreak(newStreak);
-      }
+      onCommentPosted(newStreak);
 
     } catch (error: any) {
       console.error("Error posting comment: ", error);
@@ -224,11 +220,6 @@ export function CommentSection({ figure }: CommentSectionProps) {
 
   return (
     <>
-      <StreakAnimation 
-        streakCount={animationStreak}
-        isOpen={animationStreak !== null}
-        onClose={() => setAnimationStreak(null)}
-      />
       <Card className="border border-white/20 bg-black">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -258,7 +249,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
                     figure={figure}
                     comment={comment}
                     parentPath={`figures/${figure.id}/comments`}
-                    onReplyPosted={() => setAnimationStreak(updateStreak(figure))}
+                    onReplyPosted={() => onCommentPosted(updateStreak(figure))}
                   />
                 ))}
                 {comments.length > INITIAL_COMMENTS_TO_SHOW && (

@@ -27,7 +27,7 @@ import { useParams, useRouter } from "next/navigation";
 import { auth as firebaseAuth, db } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { ShareButton } from "@/components/shared/ShareButton";
-import type { Figure } from "@/lib/types";
+import type { Figure, LocalUserStreak } from "@/lib/types";
 import { 
   grantFirstGlanceAchievement,
 } from '@/app/actions/achievementActions';
@@ -37,6 +37,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { mapDocToFigure } from "@/lib/placeholder-data";
 import { RelatedProfiles } from "@/components/figures/RelatedProfiles";
 import { CommentSection } from "@/components/comments/CommentSection";
+import { differenceInHours } from 'date-fns';
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -56,6 +57,33 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   
   const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
+  const [headerStreak, setHeaderStreak] = React.useState<number | null>(null);
+
+  const checkHeaderStreak = React.useCallback(() => {
+    if (typeof window !== 'undefined' && id) {
+      const storageKey = 'wikistars5-userStreaks';
+      let streaks: LocalUserStreak[] = [];
+      try {
+        const storedStreaks = localStorage.getItem(storageKey);
+        streaks = storedStreaks ? JSON.parse(storedStreaks) : [];
+      } catch (e) {
+        streaks = [];
+      }
+      
+      const figureStreak = streaks.find(s => s.figureId === id);
+      if (figureStreak) {
+        const lastCommentDate = new Date(figureStreak.lastCommentDate);
+        const hoursSinceLastComment = differenceInHours(new Date(), lastCommentDate);
+        if (hoursSinceLastComment < 24) {
+          setHeaderStreak(figureStreak.currentStreak);
+        } else {
+          setHeaderStreak(null);
+        }
+      } else {
+        setHeaderStreak(null);
+      }
+    }
+  }, [id]);
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
@@ -70,9 +98,11 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
           });
         }
       }
+      // Check streak when user changes or page loads
+      checkHeaderStreak();
     });
     return () => unsubscribe();
-  }, [toast]); 
+  }, [toast, checkHeaderStreak]); 
 
   // Add a real-time listener to the figure document
   React.useEffect(() => {
@@ -100,6 +130,12 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
     }
   };
 
+  const handleCommentPosted = (streak: number | null) => {
+    setAnimationStreak(streak);
+    checkHeaderStreak(); // Re-check header streak after posting
+  }
+
+
   if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!figure) return <div>Figura no encontrada.</div>;
 
@@ -114,6 +150,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
       <ProfileHeader 
         figure={figure}
         onImageClick={handleOpenProfileImage}
+        streakCount={headerStreak}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
@@ -135,7 +172,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
         </div> 
       </div>
 
-      <CommentSection figure={figure} />
+      <CommentSection figure={figure} onCommentPosted={handleCommentPosted} />
       
       <RelatedProfiles figure={figure} />
       
