@@ -65,7 +65,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
     const hasDisliked = currentUserAuth ? comment.dislikes.includes(currentUserAuth.uid) : false;
 
     const genderSymbol = React.useMemo(() => {
-        const genderOpt = GENDER_OPTIONS.find(g => g.label === comment.authorGender);
+        const genderOpt = GENDER_OPTIONS.find(g => g.value === comment.authorGender);
         return genderOpt?.symbol || null;
     }, [comment.authorGender]);
 
@@ -307,3 +307,5 @@ declare module '@/lib/types' {
         parentId?: string;
     }
 }
+
+    
