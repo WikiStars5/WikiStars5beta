@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -10,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Trash2, Send, Loader2 } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { addReply, deleteComment, toggleLikeComment, toggleDislikeComment, mapDocToComment } from '@/lib/placeholder-data';
+import { addReply, deleteComment, toggleLikeComment, toggleDislikeComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, serverTimestamp, addDoc } from 'firebase/firestore';
 import {
@@ -51,12 +52,14 @@ interface CommentItemProps {
     figure: Figure;
     comment: CommentType;
     parentPath: string;
+    onReplyPosted: () => void;
 }
 
 export function CommentItem({ 
     figure, 
     comment, 
-    parentPath
+    parentPath,
+    onReplyPosted
 }: CommentItemProps) {
     const [isReplying, setIsReplying] = React.useState(false);
     const [replyText, setReplyText] = React.useState('');
@@ -213,6 +216,7 @@ export function CommentItem({
 
         try {
             const newReplyId = await addReply(currentPath, figure.id, authorData, replyText.trim());
+            onReplyPosted();
 
             if (comment.authorId !== firebaseUser.uid) {
                 const notificationsCollectionRef = collection(db, 'notifications');
@@ -350,6 +354,7 @@ export function CommentItem({
                                     figure={figure}
                                     comment={reply}
                                     parentPath={`${currentPath}/replies`}
+                                    onReplyPosted={onReplyPosted}
                                 />
                             ))
                         )}

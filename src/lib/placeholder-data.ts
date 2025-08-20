@@ -1,8 +1,10 @@
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment } from './types';
+
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type DocumentSnapshot, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove } from "firebase/firestore";
+import { differenceInHours } from 'date-fns';
 
 export const PERCEPTION_OPTIONS: PerceptionOption[] = [
   { key: 'neutral', label: 'Neutral', icon: Meh },
@@ -622,4 +624,73 @@ export async function deleteComment(documentPath: string): Promise<void> {
       }
     });
   }
+}
+
+// --- Streaks ---
+
+/**
+ * This function updates the user's comment streak for a specific figure.
+ * It reads from localStorage, updates the streak count based on the last comment date,
+ * and then writes the updated data back to localStorage.
+ * @param figure The figure object for which to update the streak.
+ * @returns The new streak count if it's greater than 1, otherwise null.
+ */
+export function updateStreak(figure: Figure): number | null {
+    if (typeof window === 'undefined') return null;
+
+    const storageKey = 'wikistars5-userStreaks';
+    let streaks: LocalUserStreak[] = [];
+    try {
+        const storedStreaks = localStorage.getItem(storageKey);
+        streaks = storedStreaks ? JSON.parse(storedStreaks) : [];
+    } catch (e) {
+        console.error("Error parsing streaks from localStorage", e);
+        streaks = [];
+    }
+
+    const now = new Date();
+    const figureId = figure.id;
+    let newStreakCount: number | null = null;
+    let streakUpdated = false;
+
+    const existingStreakIndex = streaks.findIndex(s => s.figureId === figureId);
+
+    if (existingStreakIndex > -1) {
+        const existingStreak = streaks[existingStreakIndex];
+        const lastCommentDate = new Date(existingStreak.lastCommentDate);
+        const hoursSinceLastComment = differenceInHours(now, lastCommentDate);
+
+        if (hoursSinceLastComment < 24) {
+            // Do nothing, user has already commented within 24 hours.
+        } else if (hoursSinceLastComment >= 24 && hoursSinceLastComment < 48) {
+            // Continue the streak
+            existingStreak.currentStreak += 1;
+            existingStreak.lastCommentDate = now.toISOString();
+            newStreakCount = existingStreak.currentStreak;
+            streakUpdated = true;
+        } else {
+            // Streak is broken, reset to 1
+            existingStreak.currentStreak = 1;
+            existingStreak.lastCommentDate = now.toISOString();
+            newStreakCount = null; // No animation for a broken streak
+            streakUpdated = true;
+        }
+    } else {
+        // No existing streak, start a new one
+        streaks.push({
+            figureId: figure.id,
+            figureName: figure.name,
+            figurePhotoUrl: figure.photoUrl,
+            currentStreak: 1,
+            lastCommentDate: now.toISOString(),
+        });
+        newStreakCount = null; // No animation for the first day
+        streakUpdated = true;
+    }
+
+    if (streakUpdated) {
+        localStorage.setItem(storageKey, JSON.stringify(streaks));
+    }
+
+    return newStreakCount;
 }

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -9,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, MessagesSquare, Send, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import type { Figure, Comment as CommentType } from '@/lib/types';
-import { addComment, mapDocToComment } from '@/lib/placeholder-data';
+import { addComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
@@ -18,6 +19,7 @@ import { GuestProfileSetup } from './GuestProfileSetup';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { countryCodeToNameMap } from '@/config/countries';
+import { StreakAnimation } from '../shared/StreakAnimation';
 
 interface CommentSectionProps {
   figure: Figure;
@@ -35,6 +37,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
   const [guestProfileExists, setGuestProfileExists] = React.useState(false);
   const [showGuestProfileForm, setShowGuestProfileForm] = React.useState(false);
   const [showAllComments, setShowAllComments] = React.useState(false);
+  const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
   const { toast } = useToast();
 
   const checkGuestProfile = React.useCallback(() => {
@@ -131,6 +134,13 @@ export function CommentSection({ figure }: CommentSectionProps) {
       await addComment(figure.id, authorData, commentText.trim());
       setCommentText('');
       toast({ title: "¡Comentario Publicado!", description: "Gracias por tu contribución." });
+
+      // Update streak after successful comment
+      const newStreak = updateStreak(figure);
+      if (newStreak) {
+        setAnimationStreak(newStreak);
+      }
+
     } catch (error: any) {
       console.error("Error posting comment: ", error);
       toast({ title: "Error", description: error.message || "No se pudo publicar tu comentario.", variant: "destructive" });
@@ -213,52 +223,60 @@ export function CommentSection({ figure }: CommentSectionProps) {
   const commentsToShow = showAllComments ? comments : comments.slice(0, INITIAL_COMMENTS_TO_SHOW);
 
   return (
-    <Card className="border border-white/20 bg-black">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessagesSquare /> Comentarios y Discusión
-        </CardTitle>
-        <CardDescription>
-          Comparte tu opinión sobre {figure.name}. Sé respetuoso y mantén la conversación constructiva.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        
-        {renderCommentInput()}
+    <>
+      <StreakAnimation 
+        streakCount={animationStreak}
+        isOpen={animationStreak !== null}
+        onClose={() => setAnimationStreak(null)}
+      />
+      <Card className="border border-white/20 bg-black">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessagesSquare /> Comentarios y Discusión
+          </CardTitle>
+          <CardDescription>
+            Comparte tu opinión sobre {figure.name}. Sé respetuoso y mantén la conversación constructiva.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          
+          {renderCommentInput()}
 
-        <Separator />
+          <Separator />
 
-        <div className="space-y-6">
-          {isLoadingComments ? (
-            <div className="flex justify-center items-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="ml-3 text-muted-foreground">Cargando comentarios...</p>
-            </div>
-          ) : comments.length > 0 ? (
-            <>
-              {commentsToShow.map((comment) => (
-                <CommentItem 
-                  key={comment.id}
-                  figure={figure}
-                  comment={comment}
-                  parentPath={`figures/${figure.id}/comments`}
-                />
-              ))}
-              {comments.length > INITIAL_COMMENTS_TO_SHOW && (
-                 <div className="text-center pt-4">
-                    <Button variant="outline" onClick={() => setShowAllComments(!showAllComments)}>
-                        {showAllComments ? 'Mostrar menos comentarios' : `Ver los ${comments.length - INITIAL_COMMENTS_TO_SHOW} comentarios restantes`}
-                    </Button>
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
-              Aún no hay comentarios. ¡Sé el primero en compartir tu opinión!
-            </p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          <div className="space-y-6">
+            {isLoadingComments ? (
+              <div className="flex justify-center items-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-3 text-muted-foreground">Cargando comentarios...</p>
+              </div>
+            ) : comments.length > 0 ? (
+              <>
+                {commentsToShow.map((comment) => (
+                  <CommentItem 
+                    key={comment.id}
+                    figure={figure}
+                    comment={comment}
+                    parentPath={`figures/${figure.id}/comments`}
+                    onReplyPosted={() => setAnimationStreak(updateStreak(figure))}
+                  />
+                ))}
+                {comments.length > INITIAL_COMMENTS_TO_SHOW && (
+                   <div className="text-center pt-4">
+                      <Button variant="outline" onClick={() => setShowAllComments(!showAllComments)}>
+                          {showAllComments ? 'Mostrar menos comentarios' : `Ver los ${comments.length - INITIAL_COMMENTS_TO_SHOW} comentarios restantes`}
+                      </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
+                Aún no hay comentarios. ¡Sé el primero en compartir tu opinión!
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </>
   );
 }
