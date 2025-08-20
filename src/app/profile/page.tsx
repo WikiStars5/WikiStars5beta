@@ -41,6 +41,7 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 const guestProfileFormSchema = z.object({
   username: z.string().min(3, "Tu nombre debe tener al menos 3 caracteres.").max(30, "Tu nombre no puede exceder los 30 caracteres."),
+  gender: z.string().optional(),
 });
 type GuestProfileFormValues = z.infer<typeof guestProfileFormSchema>;
 
@@ -56,6 +57,7 @@ const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
 };
 
 const GUEST_USERNAME_KEY = 'wikistars5-guestUsername';
+const GUEST_GENDER_KEY = 'wikistars5-guestGender';
 
 export default function ProfilePage() {
   const { user: firestoreUser, firebaseUser, isLoading, isAnonymous } = useAuth();
@@ -77,6 +79,7 @@ export default function ProfilePage() {
   
   // State for guest username
   const [guestUsername, setGuestUsername] = useState('Invitado');
+  const [guestGender, setGuestGender] = useState('');
 
   const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -85,15 +88,21 @@ export default function ProfilePage() {
 
   const { control: guestControl, handleSubmit: handleGuestSubmit, reset: resetGuestForm, formState: { isSubmitting: isGuestSubmitting, errors: guestErrors } } = useForm<GuestProfileFormValues>({
     resolver: zodResolver(guestProfileFormSchema),
+    defaultValues: { username: '', gender: '' },
   });
 
   useEffect(() => {
     if (typeof window !== 'undefined' && isAnonymous) {
-      const storedGuestName = localStorage.getItem(GUEST_USERNAME_KEY);
-      if (storedGuestName) {
-        setGuestUsername(storedGuestName);
-        resetGuestForm({ username: storedGuestName });
-      }
+      const storedGuestName = localStorage.getItem(GUEST_USERNAME_KEY) || 'Invitado';
+      const storedGuestGender = localStorage.getItem(GUEST_GENDER_KEY) || '';
+      
+      setGuestUsername(storedGuestName);
+      setGuestGender(storedGuestGender);
+      
+      resetGuestForm({ 
+        username: storedGuestName,
+        gender: storedGuestGender,
+      });
     }
   }, [isAnonymous, resetGuestForm]);
   
@@ -178,9 +187,18 @@ export default function ProfilePage() {
     if (typeof window !== 'undefined') {
       localStorage.setItem(GUEST_USERNAME_KEY, data.username);
       setGuestUsername(data.username);
+
+      if (data.gender) {
+        localStorage.setItem(GUEST_GENDER_KEY, data.gender);
+        setGuestGender(data.gender);
+      } else {
+        localStorage.removeItem(GUEST_GENDER_KEY);
+        setGuestGender('');
+      }
+
       toast({
-        title: "¡Nombre Guardado!",
-        description: `Tu nuevo nombre de invitado es ${data.username}.`,
+        title: "¡Perfil de Invitado Guardado!",
+        description: `Tu información local ha sido actualizada.`,
       });
     }
   };
@@ -210,6 +228,7 @@ export default function ProfilePage() {
     ? {
         uid: firebaseUser?.uid || 'guest',
         username: guestUsername,
+        gender: guestGender,
         email: null,
         role: 'user',
         isAnonymous: true,
@@ -288,7 +307,7 @@ export default function ProfilePage() {
            <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : filteredFigures.length > 0 ? (
           filteredFigures.map(figure => {
-            const emotion = emotionMap.get(figure.id);
+            const emotion = emotionMap.get(f.id);
             let dateString = '';
             if (emotion && emotion.addedAt && !isNaN(new Date(emotion.addedAt).getTime())) {
                 dateString = new Date(emotion.addedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -322,7 +341,7 @@ export default function ProfilePage() {
                 <CardHeader>
                     <CardTitle>Tu Perfil de Invitado</CardTitle>
                     <CardDescription>
-                        Tu nombre de invitado se guarda en este dispositivo.
+                        Tu nombre y sexo de invitado se guardan en este dispositivo.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -332,7 +351,6 @@ export default function ProfilePage() {
                             <Controller
                                 name="username"
                                 control={guestControl}
-                                defaultValue={guestUsername}
                                 render={({ field }) => (
                                     <Input 
                                         id="guest-username" 
@@ -345,9 +363,37 @@ export default function ProfilePage() {
                                 <p className="text-sm text-destructive mt-1">{guestErrors.username.message}</p>
                             )}
                         </div>
+
+                        <div>
+                            <Label htmlFor="guest-gender">Sexo</Label>
+                             <Controller
+                                name="gender"
+                                control={guestControl}
+                                render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                                    <SelectTrigger id="guest-gender">
+                                    <SelectValue placeholder="Selecciona tu sexo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                    {GENDER_OPTIONS.map((opt) => (
+                                        (opt.value === 'male' || opt.value === 'female') && (
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </SelectItem>
+                                        )
+                                    ))}
+                                    </SelectContent>
+                                </Select>
+                                )}
+                            />
+                            {guestErrors.gender && (
+                                <p className="text-sm text-destructive mt-1">{guestErrors.gender.message}</p>
+                            )}
+                        </div>
+
                         <Button type="submit" disabled={isGuestSubmitting} className="w-full sm:w-auto">
                             {isGuestSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                            Guardar Nombre
+                            Guardar Perfil de Invitado
                         </Button>
                     </form>
                 </CardContent>
@@ -533,3 +579,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
