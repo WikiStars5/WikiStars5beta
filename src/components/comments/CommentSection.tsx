@@ -61,10 +61,10 @@ export function CommentSection({ figure }: CommentSectionProps) {
   }, []);
 
   React.useEffect(() => {
-    if (isAnonymous) {
+    if (!isAuthLoading && isAnonymous) {
       checkGuestProfile();
     }
-  }, [isAnonymous, checkGuestProfile]);
+  }, [isAnonymous, checkGuestProfile, isAuthLoading]);
 
 
   const getAuthorData = () => {
@@ -74,14 +74,14 @@ export function CommentSection({ figure }: CommentSectionProps) {
       if (!guestProfileExists) return null;
       const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
       const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
-      const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
+      // Country is no longer managed for guests
       return {
         id: firebaseUser.uid,
         name: guestUsername,
         photoUrl: null,
         gender: guestGender,
-        country: countryCodeToNameMap.get(guestCountryCode) || '',
-        countryCode: guestCountryCode,
+        country: '',
+        countryCode: '',
         isAnonymous: true,
       };
     } else if (firestoreUser) {
@@ -131,7 +131,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
       return (
         <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Cargando...
+          Cargando tu sesión...
         </div>
       );
     }
@@ -142,7 +142,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
         }
         return (
             <div className="text-center p-4 border-2 border-dashed rounded-lg">
-                <p className="mb-4 text-muted-foreground">Debes crear un perfil de invitado para comentar.</p>
+                <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
                 <Button onClick={() => setIsCreatingGuestProfile(true)}>
                     <UserPlus className="mr-2 h-4 w-4" />
                     Crear usuario invitado

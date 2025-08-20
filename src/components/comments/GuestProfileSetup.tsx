@@ -9,11 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CountryCombobox } from '@/components/shared/CountryCombobox';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserPlus, Save, Loader2, Edit, X, Venus, MapPin } from 'lucide-react';
 import { countryCodeToNameMap } from '@/config/countries';
+import { CountryCombobox } from '../shared/CountryCombobox';
 
 const guestProfileFormSchema = z.object({
   username: z.string().min(3, "Tu nombre debe tener al menos 3 caracteres.").max(30, "Tu nombre no puede exceder los 30 caracteres."),
@@ -95,10 +95,10 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
             <CardHeader className={isEditingContext ? "p-0 mb-4" : ""}>
                 <CardTitle className="flex items-center gap-2 text-base"><UserPlus /> Configura tu Perfil de Invitado</CardTitle>
                 <CardDescription className="text-xs">
-                    Elige un nombre, género y país para poder comentar. Esta información se guardará solo en este dispositivo.
+                    Elige un nombre y género para poder comentar. Esta información se guardará solo en este dispositivo.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className={isEditingContext ? "p-0" : ""}>
                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div>
                         <Label htmlFor="guest-username">Tu Nombre</Label>
@@ -140,19 +140,7 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
                             )}
                         />
                     </div>
-                    <div>
-                        <Label htmlFor="guest-countryCode">País</Label>
-                        <Controller
-                            name="countryCode"
-                            control={control}
-                            render={({ field }) => (
-                                <CountryCombobox
-                                    value={field.value ?? ''}
-                                    onChange={field.onChange}
-                                />
-                            )}
-                        />
-                    </div>
+                    
                     <div className="flex justify-end gap-2 pt-2">
                         {isEditingContext && (
                              <Button variant="ghost" type="button" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancelar</Button>
