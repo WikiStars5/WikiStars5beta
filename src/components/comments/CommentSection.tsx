@@ -16,12 +16,14 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 import { CommentItem } from './CommentItem';
 import { GuestProfileSetup } from './GuestProfileSetup';
 import { cn, correctMalformedUrl } from '@/lib/utils';
+import { Separator } from '../ui/separator';
 
 interface CommentSectionProps {
   figure: Figure;
 }
 
 const MAX_COMMENT_LENGTH = 1000;
+const INITIAL_COMMENTS_TO_SHOW = 5;
 
 export function CommentSection({ figure }: CommentSectionProps) {
   const { user: firestoreUser, firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
@@ -30,7 +32,8 @@ export function CommentSection({ figure }: CommentSectionProps) {
   const [isPosting, setIsPosting] = React.useState(false);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [guestProfileExists, setGuestProfileExists] = React.useState(false);
-  const [isCreatingGuestProfile, setIsCreatingGuestProfile] = React.useState(false);
+  const [showGuestProfileForm, setShowGuestProfileForm] = React.useState(false);
+  const [showAllComments, setShowAllComments] = React.useState(false);
   const { toast } = useToast();
 
   const checkGuestProfile = React.useCallback(() => {
@@ -84,7 +87,7 @@ export function CommentSection({ figure }: CommentSectionProps) {
         name: guestUsername,
         photoUrl: null,
         gender: guestGender,
-        country: '', // Country name is not stored for guests
+        country: '', 
         countryCode: guestCountryCode,
         isAnonymous: true,
       };
@@ -135,26 +138,26 @@ export function CommentSection({ figure }: CommentSectionProps) {
 
   const handleGuestProfileSaved = () => {
     checkGuestProfile(); 
-    setIsCreatingGuestProfile(false);
+    setShowGuestProfileForm(false);
   };
 
   const renderCommentInput = () => {
     if (isAuthLoading) {
       return (
-        <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground">
+        <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground h-24">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         </div>
       );
     }
   
     if (isAnonymous && !guestProfileExists) {
-      if (isCreatingGuestProfile) {
+      if (showGuestProfileForm) {
         return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
       }
       return (
         <div className="text-center p-4 border-2 border-dashed rounded-lg">
           <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
-          <Button onClick={() => setIsCreatingGuestProfile(true)}>
+          <Button onClick={() => setShowGuestProfileForm(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
             Crear usuario invitado
           </Button>
@@ -196,8 +199,15 @@ export function CommentSection({ figure }: CommentSectionProps) {
       );
     }
 
-    return null;
+    // Fallback for edge cases where author data might not be ready, though handled by isAuthLoading
+    return (
+        <div className="flex items-center justify-center p-4 bg-muted rounded-md text-sm text-muted-foreground h-24">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        </div>
+    );
   };
+
+  const commentsToShow = showAllComments ? comments : comments.slice(0, INITIAL_COMMENTS_TO_SHOW);
 
   return (
     <Card className="border border-white/20 bg-black">
@@ -213,6 +223,8 @@ export function CommentSection({ figure }: CommentSectionProps) {
         
         {renderCommentInput()}
 
+        <Separator />
+
         <div className="space-y-6">
           {isLoadingComments ? (
             <div className="flex justify-center items-center py-10">
@@ -220,15 +232,24 @@ export function CommentSection({ figure }: CommentSectionProps) {
               <p className="ml-3 text-muted-foreground">Cargando comentarios...</p>
             </div>
           ) : comments.length > 0 ? (
-            comments.map((comment) => (
-              <CommentItem 
-                key={comment.id}
-                figure={figure}
-                comment={comment}
-                currentUserAuth={firebaseUser}
-                currentUserProfile={getAuthorData()}
-              />
-            ))
+            <>
+              {commentsToShow.map((comment) => (
+                <CommentItem 
+                  key={comment.id}
+                  figure={figure}
+                  comment={comment}
+                  currentUserAuth={firebaseUser}
+                  currentUserProfile={getAuthorData()}
+                />
+              ))}
+              {comments.length > INITIAL_COMMENTS_TO_SHOW && !showAllComments && (
+                <div className="text-center pt-4">
+                  <Button variant="outline" onClick={() => setShowAllComments(true)}>
+                    Ver todos los {comments.length} comentarios
+                  </Button>
+                </div>
+              )}
+            </>
           ) : (
             <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
               Aún no hay comentarios. ¡Sé el primero en compartir tu opinión!
@@ -239,5 +260,3 @@ export function CommentSection({ figure }: CommentSectionProps) {
     </Card>
   );
 }
-
-    
