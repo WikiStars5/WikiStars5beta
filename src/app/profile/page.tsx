@@ -290,7 +290,7 @@ export default function ProfilePage() {
            <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
         ) : filteredFigures.length > 0 ? (
           filteredFigures.map(figure => {
-            const emotion = emotionMap.get(f.id);
+            const emotion = emotionMap.get(figure.id);
             let dateString = '';
             if (emotion && emotion.addedAt && !isNaN(new Date(emotion.addedAt).getTime())) {
                 dateString = new Date(emotion.addedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -502,5 +502,7 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
 
     
