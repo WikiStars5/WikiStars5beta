@@ -26,8 +26,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { GENDER_OPTIONS } from '@/config/genderOptions';
-import { getCountryEmojiByCode } from '@/config/countries';
 import { useAuth } from '@/hooks/useAuth';
+import Image from 'next/image';
 
 const MAX_COMMENT_LENGTH = 1000;
 const MAX_REPLY_DEPTH = 4; // Set a maximum nesting level for replies
@@ -79,17 +79,13 @@ export function CommentItem({
     const hasDisliked = firebaseUser ? comment.dislikes.includes(firebaseUser.uid) : false;
 
     const genderSymbol = React.useMemo(() => {
-        const genderOpt = GENDER_OPTIONS.find(g => g.label === comment.authorGender);
+        const genderOpt = GENDER_OPTIONS.find(g => g.label === comment.authorGender || g.value === comment.authorGender);
         return genderOpt?.symbol || null;
     }, [comment.authorGender]);
 
-    const countryFlag = React.useMemo(() => {
-        return getCountryEmojiByCode(comment.authorCountryCode || '');
-    }, [comment.authorCountryCode]);
-
     const genderColorClass = React.useMemo(() => {
-        if (comment.authorGender === 'Masculino') return 'text-blue-400';
-        if (comment.authorGender === 'Femenino') return 'text-pink-400';
+        if (comment.authorGender === 'Masculino' || comment.authorGender === 'male') return 'text-blue-400';
+        if (comment.authorGender === 'Femenino' || comment.authorGender === 'female') return 'text-pink-400';
         return '';
     }, [comment.authorGender]);
 
@@ -217,7 +213,9 @@ export function CommentItem({
         try {
             const newReplyId = await addReply(currentPath, figure.id, authorData, replyText.trim());
             const newStreak = await updateStreak(figure.id, authorData);
-            onReplyPosted(newStreak);
+            if (newStreak !== null) {
+                onReplyPosted(newStreak);
+            }
 
             if (comment.authorId !== firebaseUser.uid) {
                 const notificationsCollectionRef = collection(db, 'notifications');
@@ -258,7 +256,16 @@ export function CommentItem({
                         <div className="flex items-center gap-1.5">
                             <p className="font-semibold text-sm">{comment.authorName}</p>
                             {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={comment.authorGender}>{genderSymbol}</span>}
-                            {countryFlag && <span title={comment.authorCountry}>{countryFlag}</span>}
+                            {comment.authorCountryCode && (
+                                <Image
+                                    src={`https://flagcdn.com/w20/${comment.authorCountryCode.toLowerCase()}.png`}
+                                    alt={comment.authorCountry || comment.authorCountryCode}
+                                    width={20}
+                                    height={15}
+                                    className="w-5 h-auto"
+                                    title={comment.authorCountry}
+                                />
+                            )}
                         </div>
                         {comment.createdAt && (
                             <p className="text-xs text-muted-foreground">{timeSince(comment.createdAt.toDate())}</p>

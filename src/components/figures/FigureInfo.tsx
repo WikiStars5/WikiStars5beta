@@ -27,7 +27,7 @@ import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { CountryCombobox } from '../shared/CountryCombobox';
-import { COUNTRIES, countryCodeToNameMap, getCountryEmojiByCode } from '@/config/countries';
+import { COUNTRIES, countryCodeToNameMap } from '@/config/countries';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { format, differenceInYears } from 'date-fns';
@@ -43,6 +43,7 @@ interface InfoItemProps {
   icon: React.ElementType;
   label: string;
   value: string | undefined | null;
+  isImage?: boolean;
 }
 
 const MARITAL_STATUS_OPTIONS = [
@@ -54,14 +55,25 @@ const MARITAL_STATUS_OPTIONS = [
     { value: 'Conviviente / En unión de hecho', label: 'Conviviente / En unión de hecho' },
 ];
 
-const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value }) => {
+const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value, isImage }) => {
   if (!value) return null;
+
   return (
     <div className="flex items-start gap-3">
       <Icon className="h-5 w-5 text-muted-foreground mt-1 flex-shrink-0" />
       <div>
         <p className="font-semibold">{label}</p>
-        <p className="text-muted-foreground text-sm">{value}</p>
+        {isImage ? (
+          <Image 
+            src={value} 
+            alt={label}
+            width={20}
+            height={15}
+            className="w-5 h-auto mt-1"
+          />
+        ) : (
+          <p className="text-muted-foreground text-sm">{value}</p>
+        )}
       </div>
     </div>
   );
@@ -234,10 +246,10 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
     return undefined;
   }, [figure.birthDateOrAge]);
 
-  const nationalityWithFlag = useMemo(() => {
-    const emoji = getCountryEmojiByCode(figure.nationalityCode || '');
-    return `${emoji || ''} ${figure.nationality || ''}`.trim();
-  }, [figure.nationality, figure.nationalityCode]);
+  const nationalityFlagUrl = useMemo(() => {
+      if (!figure.nationalityCode) return null;
+      return `https://flagcdn.com/w40/${figure.nationalityCode.toLowerCase()}.png`;
+  }, [figure.nationalityCode]);
 
 
   return (
@@ -415,7 +427,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                       <h3 className="font-headline text-lg">Básica</h3>
                       <InfoItem icon={UserIcon} label="Nombre" value={figure.name} />
                       <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
-                      <InfoItem icon={Globe} label="Nacionalidad" value={nationalityWithFlag} />
+                      <InfoItem icon={Globe} label="Nacionalidad" value={nationalityFlagUrl || figure.nationality} isImage={!!nationalityFlagUrl} />
                       <InfoItem icon={Users} label="Género" value={figure.gender} />
                       <InfoItem icon={BookOpen} label="Categoría" value={figure.category} />
                   </div>

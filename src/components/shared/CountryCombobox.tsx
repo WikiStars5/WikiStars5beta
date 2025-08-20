@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Check, ChevronsUpDown } from "lucide-react"
+import Image from "next/image"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -44,8 +45,14 @@ export function CountryCombobox({ value, onChange, disabled }: CountryComboboxPr
           disabled={disabled}
         >
           {selectedCountry ? (
-            <div className="flex items-center">
-              <span role="img" aria-label={selectedCountry.name} className="mr-2">{selectedCountry.emoji}</span>
+            <div className="flex items-center gap-2">
+              <Image
+                src={`https://flagcdn.com/w20/${selectedCountry.code.toLowerCase()}.png`}
+                alt={selectedCountry.name}
+                width={20}
+                height={15}
+                className="w-5 h-auto"
+              />
               {selectedCountry.name}
             </div>
           ) : "Selecciona tu país"}
@@ -83,7 +90,13 @@ export function CountryCombobox({ value, onChange, disabled }: CountryComboboxPr
                       value.toUpperCase() === country.code ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  <span role="img" aria-label={country.name} className="mr-2">{country.emoji}</span>
+                  <Image
+                      src={`https://flagcdn.com/w20/${country.code.toLowerCase()}.png`}
+                      alt={country.name}
+                      width={20}
+                      height={15}
+                      className="mr-2 h-auto w-5"
+                  />
                   {country.name}
                 </CommandItem>
               ))}

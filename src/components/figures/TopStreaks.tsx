@@ -10,7 +10,6 @@ import { Flame, Loader2, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { correctMalformedUrl, cn } from '@/lib/utils';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
-import { getCountryEmojiByCode } from '@/config/countries';
 import Image from 'next/image';
 
 interface TopStreaksProps {
@@ -82,13 +81,13 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                             const displayName = streak.isAnonymous ? streak.username : user?.username;
                             const photoUrl = user?.photoURL;
                             
+                            // Correct logic to get gender and country, prioritizing streak data for guests
                             const genderLabel = streak.gender || user?.gender;
                             const countryCode = streak.countryCode || user?.countryCode;
                             const countryName = user?.country;
 
                             const genderOption = GENDER_OPTIONS.find(g => g.value === genderLabel || g.label === genderLabel);
                             const genderSymbol = genderOption?.symbol;
-                            const countryFlag = getCountryEmojiByCode(countryCode || '');
                             const genderColorClass = genderLabel === 'Masculino' || genderLabel === 'male' ? 'text-blue-400' : genderLabel === 'Femenino' || genderLabel === 'female' ? 'text-pink-400' : '';
                             
                             const attitudeEmoji = streak.attitude ? ATTITUDE_EMOJIS[streak.attitude] : null;
@@ -108,7 +107,16 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                                             <div className="flex items-center gap-1.5">
                                                 <p className="font-semibold text-sm">{displayName}</p>
                                                 {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={genderLabel}>{genderSymbol}</span>}
-                                                {countryFlag && <span title={countryName || countryCode}>{countryFlag}</span>}
+                                                {countryCode && (
+                                                    <Image
+                                                        src={`https://flagcdn.com/w20/${countryCode.toLowerCase()}.png`}
+                                                        alt={countryName || countryCode}
+                                                        width={20}
+                                                        height={15}
+                                                        className="w-5 h-auto"
+                                                        title={countryName}
+                                                    />
+                                                )}
                                             </div>
                                             {(attitudeEmoji || emotionImageUrl) && (
                                                 <div className="flex items-center gap-2 mt-1">
