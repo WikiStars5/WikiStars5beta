@@ -10,9 +10,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { ThumbsUp, MessageSquareReply, CornerDownRight, Trash2, Send, Loader2 } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { addComment, deleteComment, toggleLikeComment, mapDocToComment } from '@/lib/placeholder-data';
+import { addComment, deleteComment, mapDocToComment } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, doc, serverTimestamp, collectionGroup } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, serverTimestamp, collectionGroup, addDoc } from 'firebase/firestore';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 function timeSince(date: Date): string {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -102,13 +113,11 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
 
     const handleDelete = async () => {
         if (!canDelete) return;
-        if (confirm("¿Estás seguro de que quieres eliminar este comentario? Esta acción no se puede deshacer.")) {
-            try {
-                await deleteComment(comment.id, isReply ? comment.parentId : undefined);
-                toast({ title: "Comentario Eliminado" });
-            } catch (error: any) {
-                toast({ title: "Error", description: error.message, variant: "destructive" });
-            }
+        try {
+            await deleteComment(comment.id, isReply ? comment.parentId : undefined);
+            toast({ title: "Comentario Eliminado" });
+        } catch (error: any) {
+            toast({ title: "Error", description: error.message, variant: "destructive" });
         }
     };
     
@@ -182,9 +191,25 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
                         </Button>
                     )}
                     {canDelete && (
-                         <Button variant="ghost" size="sm" onClick={handleDelete} className="text-xs h-auto py-1 px-2 text-destructive hover:text-destructive">
-                             <Trash2 className="mr-1 h-3 w-3" /> Eliminar
-                         </Button>
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="text-xs h-auto py-1 px-2 text-destructive hover:text-destructive">
+                                    <Trash2 className="mr-1 h-3 w-3" /> Eliminar
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar comentario?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    ¿Confirmas que quieres eliminar este comentario? Esta acción no se puede deshacer.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>No</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     )}
                 </div>
 
