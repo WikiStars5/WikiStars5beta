@@ -68,17 +68,17 @@ export function ProfileHeader({
                 </div>
                 {streakCount && streakCount > 0 && (
                   <div className="mt-2">
-                    <Badge variant="destructive" className="bg-orange-600/20 text-orange-400 border-orange-500/50 hover:bg-orange-600/30 flex items-center gap-1">
+                    <Badge variant="destructive" className="bg-orange-600/20 text-orange-400 border-orange-500/50 hover:bg-orange-600/30 flex items-center gap-2 py-1.5 px-3">
                       <Image 
                         src={FIRE_GIF_URL}
                         alt="Racha de fuego"
-                        width={16}
-                        height={16}
+                        width={20}
+                        height={20}
                         unoptimized
-                        className="h-5 w-5"
+                        className="h-6 w-6"
                         data-ai-hint="fire gif"
                       />
-                      <span className="font-bold">Día {streakCount}</span>
+                      <span className="font-bold text-sm">Día {streakCount}</span>
                     </Badge>
                   </div>
                 )}
