@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -30,6 +31,15 @@ const defaultPerceptionCounts: Record<EmotionKey, number> = {
 const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
+
+const MARITAL_STATUS_OPTIONS = [
+    { value: 'Soltero/a', label: 'Soltero/a' },
+    { value: 'Casado/a', label: 'Casado/a' },
+    { value: 'Viudo/a', label: 'Viudo/a' },
+    { value: 'Divorciado/a', label: 'Divorciado/a' },
+    { value: 'Separado/a legalmente', label: 'Separado/a legalmente' },
+    { value: 'Conviviente / En unión de hecho', label: 'Conviviente / En unión de hecho' },
+];
 
 const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
@@ -338,7 +348,21 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div><Label htmlFor="birthDateOrAge">Fecha de Nacimiento / Edad</Label><Input id="birthDateOrAge" value={birthDateOrAge} onChange={(e) => setBirthDateOrAge(e.target.value)} placeholder="Ej: Desconocida / Apariencia de 18 años" /></div>
         <div><Label htmlFor="birthPlace">Lugar de Nacimiento</Label><Input id="birthPlace" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} placeholder="Ej: Inframundo, Japón" /></div>
         <div><Label htmlFor="statusLiveOrDead">Estado (Vivo/Muerto)</Label><Input id="statusLiveOrDead" value={statusLiveOrDead} onChange={(e) => setStatusLiveOrDead(e.target.value)} placeholder="Ej: Vivo, Fallecido, Inmortal" /></div>
-        <div><Label htmlFor="maritalStatus">Estado Civil</Label><Input id="maritalStatus" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} placeholder="Ej: Soltero/a, Casado/a" /></div>
+        <div>
+          <Label htmlFor="maritalStatus">Estado Civil</Label>
+          <Select onValueChange={setMaritalStatus} value={maritalStatus}>
+            <SelectTrigger id="maritalStatus">
+              <SelectValue placeholder="Selecciona un estado civil" />
+            </SelectTrigger>
+            <SelectContent>
+              {MARITAL_STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Apariencia y Rasgos Físicos</h3>

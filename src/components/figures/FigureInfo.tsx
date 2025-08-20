@@ -39,6 +39,15 @@ interface InfoItemProps {
   value: string | undefined | null;
 }
 
+const MARITAL_STATUS_OPTIONS = [
+    { value: 'Soltero/a', label: 'Soltero/a' },
+    { value: 'Casado/a', label: 'Casado/a' },
+    { value: 'Viudo/a', label: 'Viudo/a' },
+    { value: 'Divorciado/a', label: 'Divorciado/a' },
+    { value: 'Separado/a legalmente', label: 'Separado/a legalmente' },
+    { value: 'Conviviente / En unión de hecho', label: 'Conviviente / En unión de hecho' },
+];
+
 const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value }) => {
   if (!value) return null;
   return (
@@ -235,7 +244,18 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
                 </div>
                 <div>
                   <Label htmlFor="maritalStatus">Estado Civil</Label>
-                  <Input id="maritalStatus" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} placeholder="Ej: Soltero/a, Casado/a" />
+                  <Select onValueChange={setMaritalStatus} value={maritalStatus}>
+                    <SelectTrigger id="maritalStatus">
+                      <SelectValue placeholder="Selecciona un estado civil" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MARITAL_STATUS_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
