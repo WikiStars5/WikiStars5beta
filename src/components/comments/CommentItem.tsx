@@ -12,7 +12,7 @@ import { cn, correctMalformedUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { addComment, deleteComment, toggleLikeComment, mapDocToComment } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, serverTimestamp, collectionGroup } from 'firebase/firestore';
 
 function timeSince(date: Date): string {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -59,6 +59,9 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
             const fetchedReplies = snapshot.docs.map(mapDocToComment);
             setReplies(fetchedReplies);
             setIsLoadingReplies(false);
+        }, (error) => {
+            console.error("Error fetching replies: ", error);
+            setIsLoadingReplies(false);
         });
         return unsubscribe;
     }, [comment.id, showReplies]);
@@ -75,15 +78,16 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
         }
         try {
             const liked = await toggleLikeComment(comment.id, currentUserAuth.uid, isReply ? comment.parentId : undefined);
-             if (liked && comment.authorId !== currentUserAuth.uid) {
-                // Simplified notification creation
-                const notificationRef = collection(db, 'notifications');
-                await addComment(notificationRef, {
+            
+            // Send notification if user likes someone else's comment
+            if (liked && comment.authorId !== currentUserAuth.uid) {
+                const notificationsCollectionRef = collection(db, 'notifications');
+                await addDoc(notificationsCollectionRef, {
                     type: 'like',
                     userId: comment.authorId,
                     actorId: currentUserAuth.uid,
-                    actorName: currentUserProfile?.username,
-                    actorPhotoUrl: currentUserProfile?.photoURL,
+                    actorName: currentUserProfile?.username || 'Alguien',
+                    actorPhotoUrl: currentUserProfile?.photoURL || '',
                     figureId: figure.id,
                     figureName: figure.name,
                     commentId: comment.id,
@@ -114,17 +118,25 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
         
         setIsPostingReply(true);
         try {
-            const newReplyId = await addComment(figure.id, currentUserProfile, replyText.trim(), comment.id);
+            const authorData = {
+                id: currentUserAuth.uid,
+                name: currentUserProfile.username,
+                photoUrl: currentUserProfile.photoURL || null,
+                gender: currentUserProfile.gender || '',
+                isAnonymous: currentUserProfile.isAnonymous || false,
+            };
+
+            const newReplyId = await addComment(figure.id, authorData, replyText.trim(), comment.id);
 
             // Send notification to the original comment author
             if (comment.authorId !== currentUserAuth.uid) {
-                const notificationRef = collection(db, 'notifications');
-                await addComment(notificationRef, {
+                const notificationsCollectionRef = collection(db, 'notifications');
+                await addDoc(notificationsCollectionRef, {
                     type: 'reply',
                     userId: comment.authorId,
                     actorId: currentUserAuth.uid,
-                    actorName: currentUserProfile.username,
-                    actorPhotoUrl: currentUserProfile.photoURL,
+                    actorName: authorData.name,
+                    actorPhotoUrl: authorData.photoUrl,
                     figureId: figure.id,
                     figureName: figure.name,
                     commentId: comment.id,
@@ -136,7 +148,7 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
 
             setReplyText('');
             setIsReplying(false);
-            setShowReplies(true);
+            if (!showReplies) setShowReplies(true);
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
         } finally {
@@ -144,18 +156,19 @@ export function CommentItem({ figure, comment, currentUserAuth, currentUserProfi
         }
     };
 
-
     return (
         <div className={cn("flex gap-4", isReply && "ml-8")}>
             <Avatar className="h-10 w-10">
                 <AvatarImage src={correctMalformedUrl(comment.authorPhotoUrl)} alt={comment.authorName} />
-                <AvatarFallback>{comment.authorName.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback>{comment.authorName?.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="flex-grow">
                 <div className="bg-muted p-3 rounded-lg rounded-tl-none">
                     <div className="flex justify-between items-center">
                         <p className="font-semibold text-sm">{comment.authorName}</p>
-                        <p className="text-xs text-muted-foreground">{timeSince(comment.createdAt.toDate())}</p>
+                        {comment.createdAt && (
+                            <p className="text-xs text-muted-foreground">{timeSince(comment.createdAt.toDate())}</p>
+                        )}
                     </div>
                     <p className="text-sm mt-1 whitespace-pre-wrap">{comment.text}</p>
                 </div>
@@ -238,3 +251,5 @@ declare module '@/lib/types' {
         parentId?: string;
     }
 }
+
+    
