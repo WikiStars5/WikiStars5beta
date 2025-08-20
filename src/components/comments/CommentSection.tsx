@@ -17,6 +17,7 @@ import { CommentItem } from './CommentItem';
 import { GuestProfileSetup } from './GuestProfileSetup';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
+import { countryCodeToNameMap } from '@/config/countries';
 
 interface CommentSectionProps {
   figure: Figure;
@@ -82,14 +83,15 @@ export function CommentSection({ figure }: CommentSectionProps) {
       if (!guestProfileExists) return null;
       const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
       const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
+      const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
       
       return {
         id: firebaseUser.uid,
         name: guestUsername,
         photoUrl: null,
         gender: guestGender,
-        country: '', 
-        countryCode: '',
+        country: countryCodeToNameMap.get(guestCountryCode) || '',
+        countryCode: guestCountryCode,
         isAnonymous: true,
       };
     } else if (firestoreUser) {
