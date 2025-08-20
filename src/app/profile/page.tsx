@@ -39,6 +39,11 @@ const profileFormSchema = z.object({
 });
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
+const guestProfileFormSchema = z.object({
+  username: z.string().min(3, "Tu nombre debe tener al menos 3 caracteres.").max(30, "Tu nombre no puede exceder los 30 caracteres."),
+});
+type GuestProfileFormValues = z.infer<typeof guestProfileFormSchema>;
+
 const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
 
 const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
@@ -49,6 +54,8 @@ const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
   desagrado: { label: 'Desagrado', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb' },
   furia: { label: 'Furia', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f' },
 };
+
+const GUEST_USERNAME_KEY = 'wikistars5-guestUsername';
 
 export default function ProfilePage() {
   const { user: firestoreUser, firebaseUser, isLoading, isAnonymous } = useAuth();
@@ -68,10 +75,27 @@ export default function ProfilePage() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [animationStreak, setAnimationStreak] = useState<number | null>(null);
   
+  // State for guest username
+  const [guestUsername, setGuestUsername] = useState('Invitado');
+
   const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: { username: '', countryCode: '', gender: '' },
   });
+
+  const { control: guestControl, handleSubmit: handleGuestSubmit, reset: resetGuestForm, formState: { isSubmitting: isGuestSubmitting, errors: guestErrors } } = useForm<GuestProfileFormValues>({
+    resolver: zodResolver(guestProfileFormSchema),
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isAnonymous) {
+      const storedGuestName = localStorage.getItem(GUEST_USERNAME_KEY);
+      if (storedGuestName) {
+        setGuestUsername(storedGuestName);
+        resetGuestForm({ username: storedGuestName });
+      }
+    }
+  }, [isAnonymous, resetGuestForm]);
   
   const loadLocalData = useCallback(async () => {
     if (typeof window === 'undefined') return;
@@ -150,6 +174,18 @@ export default function ProfilePage() {
     }
   };
 
+  const onGuestProfileSubmit = (data: GuestProfileFormValues) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(GUEST_USERNAME_KEY, data.username);
+      setGuestUsername(data.username);
+      toast({
+        title: "¡Nombre Guardado!",
+        description: `Tu nuevo nombre de invitado es ${data.username}.`,
+      });
+    }
+  };
+
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -173,7 +209,7 @@ export default function ProfilePage() {
   const currentUser: UserProfile | null = isAnonymous
     ? {
         uid: firebaseUser?.uid || 'guest',
-        username: 'Invitado',
+        username: guestUsername,
         email: null,
         role: 'user',
         isAnonymous: true,
@@ -281,6 +317,43 @@ export default function ProfilePage() {
   
   const renderProfileForAnonymousUser = () => (
     <>
+        <div className="w-full mt-6">
+            <Card className="border border-white/20 bg-black">
+                <CardHeader>
+                    <CardTitle>Tu Perfil de Invitado</CardTitle>
+                    <CardDescription>
+                        Tu nombre de invitado se guarda en este dispositivo.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleGuestSubmit(onGuestProfileSubmit)} className="space-y-4">
+                        <div>
+                            <Label htmlFor="guest-username">Tu Nombre</Label>
+                            <Controller
+                                name="username"
+                                control={guestControl}
+                                defaultValue={guestUsername}
+                                render={({ field }) => (
+                                    <Input 
+                                        id="guest-username" 
+                                        placeholder="Elige un nombre" 
+                                        {...field} 
+                                    />
+                                )}
+                            />
+                            {guestErrors.username && (
+                                <p className="text-sm text-destructive mt-1">{guestErrors.username.message}</p>
+                            )}
+                        </div>
+                        <Button type="submit" disabled={isGuestSubmitting} className="w-full sm:w-auto">
+                            {isGuestSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                            Guardar Nombre
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
+        </div>
+
         <div className="w-full mt-6">
           <Tabs defaultValue="rachas" className="w-full">
               <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20">
