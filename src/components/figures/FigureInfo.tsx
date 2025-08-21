@@ -14,7 +14,6 @@ import {
 import {
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Instagram, Twitter, Youtube, Facebook, User as UserIcon, CalendarIcon, Linkedin
 } from "lucide-react";
-import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -101,7 +100,6 @@ type SocialLinkErrors = {
 };
 
 export function FigureInfo({ figure }: FigureInfoProps) {
-  const { user: firestoreUser } = useAuth();
   const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -122,7 +120,8 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [linkErrors, setLinkErrors] = useState<SocialLinkErrors>({});
   
-  const canEdit = firestoreUser && firestoreUser.role === 'admin';
+  // Per user request, the edit button should always be available.
+  const canEdit = true;
 
   // When editing starts, populate fields with current figure data
   useEffect(() => {
