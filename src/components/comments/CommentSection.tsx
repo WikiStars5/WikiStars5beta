@@ -35,11 +35,7 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
   const [showAllComments, setShowAllComments] = React.useState(false);
   const { toast } = useToast();
   
-  const { isAnonymous } = useAuth();
-
   const handleGuestProfileSaved = React.useCallback(() => {
-    // This custom event will notify other components (like FigureDetailClient)
-    // that the guest profile has been updated, allowing them to re-fetch the data.
     window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
   }, []);
 
@@ -112,8 +108,7 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
   };
 
   const renderCommentInput = () => {
-    // If the user is anonymous and doesn't have a profile yet, show the setup form.
-    if (isAnonymous && !currentUser) {
+    if (!currentUser) {
       return (
           <div className="text-center p-4 border-2 border-dashed rounded-lg">
               <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
@@ -122,41 +117,31 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
       );
     }
 
-    // If we have a current user (either registered or a guest with a profile), show the comment box.
-    if (currentUser) {
-        return (
-            <div className="flex gap-4">
-                <Avatar className="h-10 w-10 mt-1">
-                    <AvatarImage src={correctMalformedUrl(currentUser.photoURL)} alt={currentUser.username} />
-                    <AvatarFallback>{currentUser.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-grow space-y-2">
-                    <Textarea
-                        placeholder="Escribe tu comentario aquí..."
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        rows={3}
-                        className="bg-muted border-border/50 focus:bg-background"
-                        maxLength={MAX_COMMENT_LENGTH}
-                    />
-                    <div className="flex justify-between items-center">
-                        <p className={cn("text-xs text-muted-foreground", commentText.length > MAX_COMMENT_LENGTH && "text-destructive")}>
-                            {commentText.length} / {MAX_COMMENT_LENGTH}
-                        </p>
-                        <Button onClick={handlePostComment} disabled={isPosting}>
-                            {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
-                            Publicar
-                        </Button>
-                    </div>
+    return (
+        <div className="flex gap-4">
+            <Avatar className="h-10 w-10 mt-1">
+                <AvatarImage src={correctMalformedUrl(currentUser.photoURL)} alt={currentUser.username} />
+                <AvatarFallback>{currentUser.username?.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="flex-grow space-y-2">
+                <Textarea
+                    placeholder="Escribe tu comentario aquí..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    rows={3}
+                    className="bg-muted border-border/50 focus:bg-background"
+                    maxLength={MAX_COMMENT_LENGTH}
+                />
+                <div className="flex justify-between items-center">
+                    <p className={cn("text-xs text-muted-foreground", commentText.length > MAX_COMMENT_LENGTH && "text-destructive")}>
+                        {commentText.length} / {MAX_COMMENT_LENGTH}
+                    </p>
+                    <Button onClick={handlePostComment} disabled={isPosting}>
+                        {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+                        Publicar
+                    </Button>
                 </div>
             </div>
-        );
-    }
-
-    // Default case (e.g., still loading auth state), show a loader.
-    return (
-        <div className="flex justify-center items-center py-4">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
     );
   };
@@ -216,3 +201,5 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
     </>
   );
 }
+
+    
