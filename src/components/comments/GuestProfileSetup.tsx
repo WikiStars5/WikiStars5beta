@@ -51,7 +51,7 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
                 countryCode: guestCountryCode,
             });
             // If in profile context, start in view mode. If not (comment section), start in edit mode only if no name is set.
-            setIsEditing(isEditingContext ? false : !guestUsername);
+            setIsEditing(isEditingContext ? !guestUsername : !guestUsername);
         }
     }, [reset, isEditingContext]);
 

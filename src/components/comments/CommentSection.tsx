@@ -74,8 +74,13 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
     if (!isAuthLoading) {
       if (isAnonymous) {
         checkGuestProfile();
+        // Listen for the custom event to re-check the profile
+        window.addEventListener('guestProfileUpdated', checkGuestProfile);
       }
     }
+    return () => {
+      window.removeEventListener('guestProfileUpdated', checkGuestProfile);
+    };
   }, [isAnonymous, checkGuestProfile, isAuthLoading]);
 
 
@@ -154,8 +159,16 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
 
   const renderCommentInput = () => {
     const author = getAuthorData();
+    
+    if (isAuthLoading) {
+      return (
+        <div className="text-center p-4 border-2 border-dashed rounded-lg flex justify-center items-center h-[100px]">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
 
-    // If a registered user is logged in, show the comment box immediately.
+    // If user is logged in (not anonymous)
     if (firestoreUser && !isAnonymous && author) {
         return (
             <div className="flex gap-4">
@@ -186,51 +199,54 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
         );
     }
     
-    // For anonymous users or while auth is loading, handle guest profile flow.
-    if (showGuestProfileForm) {
-        return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
+    if (isAnonymous) {
+      if (showGuestProfileForm) {
+          return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
+      }
+  
+      if (guestProfileExists && author) {
+          return (
+              <div className="flex gap-4">
+                  <Avatar className="h-10 w-10 mt-1">
+                      <AvatarImage src={correctMalformedUrl(author.photoUrl)} alt={author.name} />
+                      <AvatarFallback>{author.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-grow space-y-2">
+                      <Textarea
+                          placeholder="Escribe tu comentario aquí..."
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          rows={3}
+                          className="bg-muted border-border/50 focus:bg-background"
+                          maxLength={MAX_COMMENT_LENGTH}
+                      />
+                      <div className="flex justify-between items-center">
+                          <p className={cn("text-xs text-muted-foreground", commentText.length > MAX_COMMENT_LENGTH && "text-destructive")}>
+                              {commentText.length} / {MAX_COMMENT_LENGTH}
+                          </p>
+                          <Button onClick={handlePostComment} disabled={isPosting}>
+                              {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+                              Publicar
+                          </Button>
+                      </div>
+                  </div>
+              </div>
+          );
+      }
+  
+      return (
+          <div className="text-center p-4 border-2 border-dashed rounded-lg">
+              <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
+              <Button onClick={() => setShowGuestProfileForm(true)}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Crear usuario invitado
+              </Button>
+          </div>
+      );
     }
-
-    if (guestProfileExists && author) {
-        return (
-            <div className="flex gap-4">
-                <Avatar className="h-10 w-10 mt-1">
-                    <AvatarImage src={correctMalformedUrl(author.photoUrl)} alt={author.name} />
-                    <AvatarFallback>{author.name?.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-grow space-y-2">
-                    <Textarea
-                        placeholder="Escribe tu comentario aquí..."
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        rows={3}
-                        className="bg-muted border-border/50 focus:bg-background"
-                        maxLength={MAX_COMMENT_LENGTH}
-                    />
-                    <div className="flex justify-between items-center">
-                        <p className={cn("text-xs text-muted-foreground", commentText.length > MAX_COMMENT_LENGTH && "text-destructive")}>
-                            {commentText.length} / {MAX_COMMENT_LENGTH}
-                        </p>
-                        <Button onClick={handlePostComment} disabled={isPosting}>
-                            {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
-                            Publicar
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Default view for new visitors or anonymous users without a profile
-    return (
-        <div className="text-center p-4 border-2 border-dashed rounded-lg">
-            <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
-            <Button onClick={() => setShowGuestProfileForm(true)}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Crear usuario invitado
-            </Button>
-        </div>
-    );
+    
+    // Fallback for any other state (should not happen often)
+    return null;
   };
 
   const commentsToShow = showAllComments ? comments : comments.slice(0, INITIAL_COMMENTS_TO_SHOW);
