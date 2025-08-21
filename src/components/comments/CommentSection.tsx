@@ -32,27 +32,16 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
   const [comments, setComments] = React.useState<CommentType[]>([]);
   const [isPosting, setIsPosting] = React.useState(false);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
-  const [showGuestProfileForm, setShowGuestProfileForm] = React.useState(false);
   const [showAllComments, setShowAllComments] = React.useState(false);
   const { toast } = useToast();
   
-  const { firebaseUser, isAnonymous } = useAuth();
+  const { isAnonymous } = useAuth();
 
   const handleGuestProfileSaved = React.useCallback(() => {
-    setShowGuestProfileForm(false);
     // This custom event will notify other components (like FigureDetailClient)
     // that the guest profile has been updated, allowing them to re-fetch the data.
     window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
   }, []);
-
-  React.useEffect(() => {
-    if (isAnonymous) {
-      setShowGuestProfileForm(!currentUser);
-    } else {
-      setShowGuestProfileForm(false);
-    }
-  }, [isAnonymous, currentUser]);
-
 
   React.useEffect(() => {
     setIsLoadingComments(true);
@@ -78,7 +67,7 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
   
 
   const handlePostComment = async () => {
-    if (!currentUser || !firebaseUser) {
+    if (!currentUser) {
       toast({ title: "Error", description: "Debes estar autenticado para comentar.", variant: "destructive" });
       return;
     }
@@ -123,7 +112,17 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
   };
 
   const renderCommentInput = () => {
-    // If we have a current user (guest or registered), show the comment box.
+    // If the user is anonymous and doesn't have a profile yet, show the setup form.
+    if (isAnonymous && !currentUser) {
+      return (
+          <div className="text-center p-4 border-2 border-dashed rounded-lg">
+              <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
+              <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />
+          </div>
+      );
+    }
+
+    // If we have a current user (either registered or a guest with a profile), show the comment box.
     if (currentUser) {
         return (
             <div className="flex gap-4">
@@ -153,25 +152,8 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
             </div>
         );
     }
-    
-    // User is anonymous AND has no local profile set up, show the setup form.
-    if (isAnonymous) {
-      return (
-          <div className="text-center p-4 border-2 border-dashed rounded-lg">
-              <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
-              {showGuestProfileForm ? (
-                  <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />
-              ) : (
-                  <Button onClick={() => setShowGuestProfileForm(true)}>
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Crear usuario invitado
-                  </Button>
-              )}
-          </div>
-      );
-    }
 
-    // Default case (e.g., still loading), show a loader or nothing.
+    // Default case (e.g., still loading auth state), show a loader.
     return (
         <div className="flex justify-center items-center py-4">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
