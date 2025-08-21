@@ -5,7 +5,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { Figure, AttitudeKey, Attitude } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
-import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -22,7 +21,6 @@ interface AttitudeVoteProps {
   figureId: string;
   figureName: string;
   initialAttitudeCounts?: Record<AttitudeKey, number>;
-  currentUser: User | null;
 }
 
 const ATTITUDE_OPTIONS_CONFIG: {
@@ -42,8 +40,8 @@ const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, initialAttitudeCounts, currentUser }) => {
-  const { firebaseUser, isAnonymous } = useAuth();
+export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, initialAttitudeCounts }) => {
+  const { firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [figureAttitudeCounts, setFigureAttitudeCounts] = useState<Record<AttitudeKey, number>>(initialAttitudeCounts || defaultAttitudeCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
@@ -116,7 +114,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
   const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
     if (!canUserVote || !firebaseUser) {
-      // This case should be rare now as firebaseUser is almost always available (anonymous or not)
       toast({ title: "Acción Requerida", description: "Espera un momento o recarga la página para votar." });
       return;
     }
@@ -141,14 +138,11 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
             const userVoteDoc = await transaction.get(userVoteDocRef);
             const previousAttitude = userVoteDoc.exists() ? userVoteDoc.data().attitude as AttitudeKey : null;
             
-            // This is the key fix: Initialize counts safely.
             const newCounts = { ...defaultAttitudeCountsData, ...figureData.attitudeCounts };
 
-            // Decrement previous vote if exists
             if (previousAttitude) {
                 newCounts[previousAttitude] = Math.max(0, (newCounts[previousAttitude] || 0) - 1);
             }
-            // Increment new vote if exists
             if (newAttitudeToSet) {
                 newCounts[newAttitudeToSet] = (newCounts[newAttitudeToSet] || 0) + 1;
             }
@@ -235,15 +229,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {!canUserVote && (
-           <Alert variant="default" className="mb-4">
-            <LogIn className="h-4 w-4" />
-            <AlertTitle>Cargando sesión...</AlertTitle>
-            <AlertDescription>
-                Estamos preparando todo para que puedas participar.
-            </AlertDescription>
-          </Alert>
-        )}
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, colorClass, selectedClass }) => (
             <Button

@@ -5,7 +5,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { Figure, EmotionKey, EmotionVote } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
-import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -22,7 +21,6 @@ interface PerceptionEmotionsProps {
   figureId: string;
   figureName: string;
   initialPerceptionCounts?: Record<EmotionKey, number>;
-  currentUser: User | null; 
 }
 
 const EMOTIONS_CONFIG: { key: EmotionKey; label: string; imageUrl: string; colorClass: string }[] = [
@@ -38,8 +36,8 @@ const defaultPerceptionCountsData: Record<EmotionKey, number> = {
   alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
 };
 
-export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts, currentUser }) => {
-  const { firebaseUser, isAnonymous } = useAuth();
+export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts }) => {
+  const { firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
   const [figurePerceptionCounts, setFigurePerceptionCounts] = useState<Record<EmotionKey, number>>(initialPerceptionCounts || defaultPerceptionCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
@@ -83,8 +81,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
     let unsubscribeUserVote: (() => void) | undefined;
     if (firebaseUser) {
-        // This is the collection name used for user's individual votes.
-        // It must match a path in firestore.rules.
         const userVoteDocRef = doc(db, 'userPerceptions', `${firebaseUser.uid}_${figureId}`);
         unsubscribeUserVote = onSnapshot(userVoteDocRef, (docSnap) => {
             if (docSnap.exists()) {
@@ -122,7 +118,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     
     try {
         const figureDocRef = doc(db, 'figures', figureId);
-        // This collection name MUST match firestore.rules
         const userVoteDocRef = doc(db, 'userPerceptions', `${firebaseUser.uid}_${figureId}`);
 
         await runTransaction(db, async (transaction) => {
@@ -222,15 +217,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {!canUserVote && (
-          <Alert variant="default" className="mb-4">
-            <LogIn className="h-4 w-4" />
-            <AlertTitle>Cargando sesión...</AlertTitle>
-            <AlertDescription>
-              Estamos preparando todo para que puedas participar.
-            </AlertDescription>
-          </Alert>
-        )}
         <div className="grid grid-cols-2 gap-3">
           {EMOTIONS_CONFIG.map(({ key, label, imageUrl, colorClass }) => (
             <Button
