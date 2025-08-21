@@ -40,6 +40,8 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
 
   const handleGuestProfileSaved = React.useCallback(() => {
     setShowGuestProfileForm(false);
+    // This custom event will notify other components (like FigureDetailClient)
+    // that the guest profile has been updated, allowing them to re-fetch the data.
     window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
   }, []);
 
@@ -121,6 +123,7 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
   };
 
   const renderCommentInput = () => {
+    // If we have a current user (guest or registered), show the comment box.
     if (currentUser) {
         return (
             <div className="flex gap-4">
@@ -151,7 +154,7 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
         );
     }
     
-    // User is anonymous AND has no local profile set up
+    // User is anonymous AND has no local profile set up, show the setup form.
     if (isAnonymous) {
       return (
           <div className="text-center p-4 border-2 border-dashed rounded-lg">
@@ -168,8 +171,12 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
       );
     }
 
-    // Default case, should not be reached often if auth loading is handled by parent
-    return null;
+    // Default case (e.g., still loading), show a loader or nothing.
+    return (
+        <div className="flex justify-center items-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+    );
   };
 
   const commentsToShow = showAllComments ? comments : comments.slice(0, INITIAL_COMMENTS_TO_SHOW);

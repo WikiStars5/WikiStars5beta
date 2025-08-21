@@ -86,7 +86,10 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   }, [firebaseUser, isAnonymous]);
 
   React.useEffect(() => {
-    if (isLoading) return;
+    if (isLoading) {
+      setCurrentUser(null); // Clear user while loading to prevent stale state
+      return;
+    }
 
     if (isAnonymous) {
       getGuestProfile();
@@ -98,11 +101,16 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
   React.useEffect(() => {
     // Listen for custom event that signals profile update
-    window.addEventListener('guestProfileUpdated', getGuestProfile);
-    return () => {
-      window.removeEventListener('guestProfileUpdated', getGuestProfile);
+    const handleProfileUpdate = () => {
+      if (isAnonymous) {
+        getGuestProfile();
+      }
     };
-  }, [getGuestProfile]);
+    window.addEventListener('guestProfileUpdated', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('guestProfileUpdated', handleProfileUpdate);
+    };
+  }, [isAnonymous, getGuestProfile]);
 
 
   const checkHeaderStreak = React.useCallback(async () => {
@@ -183,7 +191,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   }
 
 
-  if (isLoading || figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!figure) return <div>Figura no encontrada.</div>;
 
   return (
