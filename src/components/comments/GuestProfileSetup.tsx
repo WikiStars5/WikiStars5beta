@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { UserPlus, Save, Loader2, Edit } from 'lucide-react';
+import { UserPlus, Save, Loader2, Edit, X } from 'lucide-react';
 import { CountryCombobox } from '../shared/CountryCombobox';
 
 const guestProfileFormSchema = z.object({
@@ -25,9 +25,10 @@ type GuestProfileFormValues = z.infer<typeof guestProfileFormSchema>;
 interface GuestProfileSetupProps {
     onProfileSave: () => void;
     isEditingContext?: boolean; // To adapt the UI if used on the profile page
+    onCancelEdit?: () => void; // To handle canceling the edit mode
 }
 
-export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: GuestProfileSetupProps) {
+export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onCancelEdit }: GuestProfileSetupProps) {
     const { toast } = useToast();
 
     const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<GuestProfileFormValues>({
@@ -70,7 +71,7 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
       };
 
     return (
-        <Card className={isEditingContext ? "border-0 shadow-none p-0" : "bg-muted/50"}>
+        <Card className={isEditingContext ? "border-0 shadow-none p-0 bg-transparent" : "bg-muted/50"}>
             {!isEditingContext && (
                  <CardHeader className="pb-4">
                     <CardTitle className="flex items-center gap-2 text-base"><UserPlus /> Configura tu Perfil de Invitado</CardTitle>
@@ -136,6 +137,11 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
                     </div>
                     
                     <div className="flex justify-end gap-2 pt-2">
+                        {isEditingContext && onCancelEdit && (
+                             <Button type="button" variant="ghost" onClick={onCancelEdit} disabled={isSubmitting}>
+                                <X className="mr-2 h-4 w-4"/> Cancelar
+                            </Button>
+                        )}
                         <Button type="submit" disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
                             Guardar

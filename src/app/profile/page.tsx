@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Flame, Heart, Edit, Save, BarChart3, MapPin, Venus, Smile, UserPlus, Link2 } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Flame, Heart, Edit, Save, BarChart3, MapPin, Venus, Smile, UserPlus, Link2, X } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { ADMIN_UID } from '@/config/admin';
@@ -76,6 +76,7 @@ export default function ProfilePage() {
   const [animationStreak, setAnimationStreak] = useState<number | null>(null);
   
   const [guestProfile, setGuestProfile] = useState<{username: string; gender: string; countryCode: string} | null>(null);
+  const [isEditingGuestProfile, setIsEditingGuestProfile] = useState(false);
 
 
   const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
@@ -325,14 +326,53 @@ export default function ProfilePage() {
     <>
         <div className="w-full mt-6">
             <Card className="border border-white/20 bg-black">
-                <CardHeader>
-                    <CardTitle>Tu Perfil de Invitado</CardTitle>
-                    <CardDescription>
-                        Aquí puedes editar la información que se guarda en este dispositivo para tus comentarios.
-                    </CardDescription>
+                <CardHeader className="flex flex-row justify-between items-start">
+                    <div>
+                        <CardTitle>Tu Perfil de Invitado</CardTitle>
+                        <CardDescription>
+                            Aquí puedes ver y editar la información que se guarda en este dispositivo.
+                        </CardDescription>
+                    </div>
+                    {!isEditingGuestProfile && (
+                        <Button variant="outline" size="sm" onClick={() => setIsEditingGuestProfile(true)}>
+                            <Edit className="mr-2 h-4 w-4" /> Editar
+                        </Button>
+                    )}
                 </CardHeader>
                 <CardContent>
-                    <GuestProfileSetup onProfileSave={getGuestProfile} isEditingContext={true} />
+                    {isEditingGuestProfile ? (
+                        <GuestProfileSetup 
+                            onProfileSave={() => {
+                                getGuestProfile();
+                                setIsEditingGuestProfile(false);
+                            }} 
+                            isEditingContext={true}
+                        />
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-4">
+                                <UserPlus className="h-5 w-5 text-muted-foreground" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Nombre de Usuario</p>
+                                    <p className="font-semibold">{guestProfile?.username}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <Venus className="h-5 w-5 text-muted-foreground" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Sexo</p>
+                                    <p className="font-semibold">{GENDER_OPTIONS.find(g => g.value === guestProfile?.gender)?.label || 'No especificado'}</p>
+                                </div>
+                            </div>
+                             <div className="flex items-center gap-4">
+                                <MapPin className="h-5 w-5 text-muted-foreground" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">País</p>
+                                    <p className="font-semibold">{countryCodeToNameMap.get(guestProfile?.countryCode || '') || 'No especificado'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
