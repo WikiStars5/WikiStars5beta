@@ -16,7 +16,6 @@ import Image from 'next/image';
 import { ShareButton } from '../shared/ShareButton';
 import { grantEmocionAlDescubiertoAchievement } from '@/app/actions/achievementActions';
 import { useAuth } from '@/hooks/useAuth';
-import { GuestProfileSetup } from '../comments/GuestProfileSetup';
 
 
 interface PerceptionEmotionsProps {

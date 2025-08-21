@@ -16,7 +16,6 @@ import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
 import { useAuth } from '@/hooks/useAuth';
-import { GuestProfileSetup } from '../comments/GuestProfileSetup';
 
 
 interface AttitudeVoteProps {
