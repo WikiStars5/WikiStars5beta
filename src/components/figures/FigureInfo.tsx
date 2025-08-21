@@ -36,7 +36,6 @@ import { es } from 'date-fns/locale';
 
 interface FigureInfoProps {
   figure: Figure;
-  currentUser: User | null; 
 }
 
 interface InfoItemProps {
@@ -101,8 +100,8 @@ type SocialLinkErrors = {
   linkedin?: string;
 };
 
-export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
-  const { user: firestoreUser, isAnonymous } = useAuth();
+export function FigureInfo({ figure }: FigureInfoProps) {
+  const { user: firestoreUser } = useAuth();
   const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -122,6 +121,8 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
   
   const [isSaving, setIsSaving] = useState(false);
   const [linkErrors, setLinkErrors] = useState<SocialLinkErrors>({});
+  
+  const canEdit = firestoreUser && firestoreUser.role === 'admin';
 
   // When editing starts, populate fields with current figure data
   useEffect(() => {
@@ -262,7 +263,7 @@ export function FigureInfo({ figure, currentUser }: FigureInfoProps) {
             Datos biográficos y descriptivos de {figure.name}.
           </CardDescription>
         </div>
-        {!isEditing && (
+        {canEdit && !isEditing && (
           <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
             <Edit className="mr-2 h-4 w-4" /> Editar
           </Button>

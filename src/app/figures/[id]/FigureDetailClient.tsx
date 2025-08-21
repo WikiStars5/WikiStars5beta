@@ -24,8 +24,6 @@ import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
-import { auth as firebaseAuth, db } from "@/lib/firebase";
-import { onAuthStateChanged, type User } from "firebase/auth";
 import { ShareButton } from "@/components/shared/ShareButton";
 import type { Figure, LocalUserStreak } from "@/lib/types";
 import { 
@@ -34,11 +32,13 @@ import {
 import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
 import { doc, onSnapshot, getDoc, Timestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { mapDocToFigure } from "@/lib/placeholder-data";
 import { RelatedProfiles } from "@/components/figures/RelatedProfiles";
 import { CommentSection } from "@/components/comments/CommentSection";
 import { differenceInHours } from 'date-fns';
 import { TopStreaks } from "@/components/figures/TopStreaks";
+import { useAuth } from "@/hooks/useAuth";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -50,10 +50,8 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const router = useRouter();
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
-  
   const { toast } = useToast();
-
-  const [currentUser, setCurrentUser] = React.useState<User | null>(null);
+  const { firebaseUser, isAnonymous } = useAuth();
   
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   
@@ -61,7 +59,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const [headerStreak, setHeaderStreak] = React.useState<number | null>(null);
 
   const checkHeaderStreak = React.useCallback(async () => {
-    if (typeof window !== 'undefined' && id && currentUser) {
+    if (typeof window !== 'undefined' && id && firebaseUser) {
         const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
         if (streaksJSON) {
             const localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
@@ -85,30 +83,26 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
     } else {
        setHeaderStreak(null);
     }
-  }, [id, currentUser]);
+  }, [id, firebaseUser]);
 
 
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
-      setCurrentUser(user);
-
-      if (user && !user.isAnonymous) { 
-        const result = await grantFirstGlanceAchievement(user.uid);
-        if (result.unlocked && result.message) {
-          toast({
-            title: '¡Logro Desbloqueado!',
-            description: result.message,
-          });
-        }
-      }
-    });
-    return () => unsubscribe();
-  }, [toast]); 
+    if (firebaseUser && !firebaseUser.isAnonymous) { 
+        grantFirstGlanceAchievement(firebaseUser.uid).then(result => {
+          if (result.unlocked && result.message) {
+            toast({
+              title: '¡Logro Desbloqueado!',
+              description: result.message,
+            });
+          }
+        });
+    }
+  }, [firebaseUser, toast]); 
 
   // Check streak whenever current user changes
   React.useEffect(() => {
     checkHeaderStreak();
-  }, [currentUser, checkHeaderStreak]);
+  }, [firebaseUser, checkHeaderStreak]);
 
   // Add a real-time listener to the figure document
   React.useEffect(() => {
@@ -170,11 +164,11 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
             </TabsList>
 
             <TabsContent value="personal-info">
-                <FigureInfo figure={figure} currentUser={currentUser} />
+                <FigureInfo figure={figure} />
             </TabsContent>
 
-            <TabsContent value="attitude-poll">{figure && currentUser !== undefined && (<AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
-            <TabsContent value="perception-emotions">{figure && currentUser !== undefined && (<PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} currentUser={currentUser} />)}{(!figure || currentUser === undefined) && (<div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>)}</TabsContent>
+            <TabsContent value="attitude-poll"><AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} /></TabsContent>
+            <TabsContent value="perception-emotions"><PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} /></TabsContent>
             <TabsContent value="top-streaks">
                 <TopStreaks figureId={figure.id} />
             </TabsContent>
