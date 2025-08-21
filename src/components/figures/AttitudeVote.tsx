@@ -116,7 +116,8 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
   const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
     if (!canUserVote || !firebaseUser) {
-      toast({ title: "Acción Requerida", description: "Inicia sesión para poder votar." });
+      // This case should be rare now as firebaseUser is almost always available (anonymous or not)
+      toast({ title: "Acción Requerida", description: "Espera un momento o recarga la página para votar." });
       return;
     }
 
@@ -230,25 +231,16 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       <CardHeader>
         <CardTitle>¿Qué te consideras?</CardTitle>
         <CardDescription>
-          {canUserVote
-            ? "Selecciona una opción para compartir tu postura."
-            : "Inicia sesión para poder participar."}
+          Selecciona una opción para compartir tu postura.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {!canUserVote && (
-          <Alert variant="default" className="mb-4">
+           <Alert variant="default" className="mb-4">
             <LogIn className="h-4 w-4" />
-            <AlertTitle>Participación</AlertTitle>
+            <AlertTitle>Cargando sesión...</AlertTitle>
             <AlertDescription>
-              <Link href="/login" className="font-semibold text-primary hover:underline">
-                Inicia sesión
-              </Link>
-              {" "}o{" "}
-              <Link href="/signup" className="font-semibold text-primary hover:underline">
-                regrístrate
-              </Link>
-              {" "}para votar.
+                Estamos preparando todo para que puedas participar.
             </AlertDescription>
           </Alert>
         )}

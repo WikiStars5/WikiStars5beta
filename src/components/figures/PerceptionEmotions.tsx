@@ -110,7 +110,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
   const handleEmotionClick = async (emotionKeyClicked: EmotionKey) => {
     if (!canUserVote || !firebaseUser) {
-      toast({ title: "Acción Requerida", description: "Inicia sesión para poder votar." });
+      toast({ title: "Acción Requerida", description: "Espera un momento o recarga la página para votar." });
       return;
     }
 
@@ -218,25 +218,16 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
       <CardHeader>
         <CardTitle>¿Qué emoción te provoca {figureName}?</CardTitle>
         <CardDescription>
-          {canUserVote
-            ? "Haz clic en una emoción para votar."
-            : "Inicia sesión para poder expresar tu emoción."}
+          Haz clic en una emoción para votar.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {!canUserVote && (
           <Alert variant="default" className="mb-4">
             <LogIn className="h-4 w-4" />
-            <AlertTitle>Votación</AlertTitle>
+            <AlertTitle>Cargando sesión...</AlertTitle>
             <AlertDescription>
-               <Link href="/login" className="font-semibold text-primary hover:underline">
-                Inicia sesión
-              </Link>
-              {" "}o{" "}
-              <Link href="/signup" className="font-semibold text-primary hover:underline">
-                regrístrate
-              </Link>
-              {" "}para votar.
+              Estamos preparando todo para que puedas participar.
             </AlertDescription>
           </Alert>
         )}
