@@ -6,38 +6,81 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, MessagesSquare, Send, UserPlus } from 'lucide-react';
+import { Loader2, MessagesSquare, Send } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import type { Figure, Comment as CommentType, UserProfile } from '@/lib/types';
 import { addComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { CommentItem } from './CommentItem';
 import { GuestProfileSetup } from './GuestProfileSetup';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
+import { countryCodeToNameMap } from '@/config/countries';
 
 interface CommentSectionProps {
   figure: Figure;
   onCommentPosted: (streak: number | null) => void;
-  currentUser: UserProfile | null;
 }
 
 const MAX_COMMENT_LENGTH = 1000;
 const INITIAL_COMMENTS_TO_SHOW = 5;
 
-export function CommentSection({ figure, onCommentPosted, currentUser }: CommentSectionProps) {
+export function CommentSection({ figure, onCommentPosted }: CommentSectionProps) {
   const [commentText, setCommentText] = React.useState('');
   const [comments, setComments] = React.useState<CommentType[]>([]);
   const [isPosting, setIsPosting] = React.useState(false);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [showAllComments, setShowAllComments] = React.useState(false);
+
+  const { user: firestoreUser, firebaseUser, isLoading: isAuthLoading, isAnonymous } = useAuth();
+  const [currentUser, setCurrentUser] = React.useState<UserProfile | null>(null);
+
   const { toast } = useToast();
+
+  const updateUserState = React.useCallback(() => {
+    if (isAuthLoading) {
+      return;
+    }
   
-  const handleGuestProfileSaved = React.useCallback(() => {
-    window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
-  }, []);
+    if (isAnonymous) {
+      const guestUsername = localStorage.getItem('wikistars5-guestUsername');
+      if (guestUsername) {
+        setCurrentUser({
+          uid: firebaseUser?.uid || 'guest-uid',
+          username: guestUsername,
+          gender: localStorage.getItem('wikistars5-guestGender') || '',
+          countryCode: localStorage.getItem('wikistars5-guestCountryCode') || '',
+          country: countryCodeToNameMap.get(localStorage.getItem('wikistars5-guestCountryCode') || ''),
+          email: null,
+          role: 'user',
+          isAnonymous: true,
+          createdAt: new Date().toISOString(),
+          photoURL: null,
+        });
+      } else {
+        setCurrentUser(null);
+      }
+    } else {
+      setCurrentUser(firestoreUser);
+    }
+  }, [isAuthLoading, isAnonymous, firebaseUser, firestoreUser]);
+
+  React.useEffect(() => {
+    updateUserState();
+  
+    // Listen for custom event that signals profile update
+    const handleProfileUpdate = () => {
+      updateUserState();
+    };
+    window.addEventListener('guestProfileUpdated', handleProfileUpdate);
+    
+    return () => {
+      window.removeEventListener('guestProfileUpdated', handleProfileUpdate);
+    };
+  }, [updateUserState]);
+
 
   React.useEffect(() => {
     setIsLoadingComments(true);
@@ -64,7 +107,7 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
 
   const handlePostComment = async () => {
     if (!currentUser) {
-      toast({ title: "Error", description: "Debes estar autenticado para comentar.", variant: "destructive" });
+      toast({ title: "Error", description: "Debes tener un perfil para comentar.", variant: "destructive" });
       return;
     }
     if (commentText.trim().length < 3) {
@@ -108,11 +151,19 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
   };
 
   const renderCommentInput = () => {
+    if (isAuthLoading) {
+      return (
+        <div className="flex justify-center items-center h-24">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      );
+    }
+
     if (!currentUser) {
       return (
           <div className="text-center p-4 border-2 border-dashed rounded-lg">
               <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
-              <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />
+              <GuestProfileSetup onProfileSave={updateUserState} />
           </div>
       );
     }
@@ -201,5 +252,3 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
     </>
   );
 }
-
-    

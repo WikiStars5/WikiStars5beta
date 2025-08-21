@@ -1,17 +1,14 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Figure, AttitudeKey, Attitude, UserProfile } from '@/lib/types';
+import type { Figure, AttitudeKey, Attitude } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogIn, UserPlus } from 'lucide-react';
-import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
 import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
@@ -22,7 +19,6 @@ interface AttitudeVoteProps {
   figureId: string;
   figureName: string;
   initialAttitudeCounts?: Record<AttitudeKey, number>;
-  currentUser: UserProfile | null;
 }
 
 const ATTITUDE_OPTIONS_CONFIG: {
@@ -42,7 +38,7 @@ const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, initialAttitudeCounts, currentUser }) => {
+export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, initialAttitudeCounts }) => {
   const { firebaseUser, isAnonymous } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [figureAttitudeCounts, setFigureAttitudeCounts] = useState<Record<AttitudeKey, number>>(initialAttitudeCounts || defaultAttitudeCountsData);

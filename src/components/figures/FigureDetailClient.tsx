@@ -54,57 +54,10 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const { toast } = useToast();
   const { user: firestoreUser, firebaseUser, isLoading: isAuthLoading, isAnonymous } = useAuth();
   
-  const [currentUser, setCurrentUser] = React.useState<UserProfile | null>(null);
-  const [isComponentLoading, setIsComponentLoading] = React.useState(true);
-
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   
   const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
   const [headerStreak, setHeaderStreak] = React.useState<number | null>(null);
-
-  const updateUserState = React.useCallback(() => {
-    if (isAuthLoading) {
-      setIsComponentLoading(true);
-      return;
-    }
-  
-    if (isAnonymous) {
-      const guestUsername = localStorage.getItem('wikistars5-guestUsername');
-      if (guestUsername) {
-        setCurrentUser({
-          uid: firebaseUser?.uid || 'guest-uid',
-          username: guestUsername,
-          gender: localStorage.getItem('wikistars5-guestGender') || '',
-          countryCode: localStorage.getItem('wikistars5-guestCountryCode') || '',
-          country: countryCodeToNameMap.get(localStorage.getItem('wikistars5-guestCountryCode') || ''),
-          email: null,
-          role: 'user',
-          isAnonymous: true,
-          createdAt: new Date().toISOString(),
-          photoURL: null,
-        });
-      } else {
-        setCurrentUser(null);
-      }
-    } else {
-      setCurrentUser(firestoreUser);
-    }
-    setIsComponentLoading(false);
-  }, [isAuthLoading, isAnonymous, firebaseUser, firestoreUser]);
-
-  React.useEffect(() => {
-    updateUserState();
-  
-    // Listen for custom event that signals profile update
-    const handleProfileUpdate = () => {
-      updateUserState();
-    };
-    window.addEventListener('guestProfileUpdated', handleProfileUpdate);
-    
-    return () => {
-      window.removeEventListener('guestProfileUpdated', handleProfileUpdate);
-    };
-  }, [updateUserState]);
 
 
   const checkHeaderStreak = React.useCallback(async () => {
@@ -185,7 +138,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   }
 
 
-  if (figure === undefined || isComponentLoading) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (figure === undefined || isAuthLoading) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!figure) return <div>Figura no encontrada.</div>;
 
   return (
@@ -221,7 +174,6 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
                   figureId={figure.id} 
                   figureName={figure.name} 
                   initialAttitudeCounts={figure.attitudeCounts}
-                  currentUser={currentUser}
               />
             </TabsContent>
             <TabsContent value="perception-emotions">
@@ -229,7 +181,6 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
                   figureId={figure.id} 
                   figureName={figure.name} 
                   initialPerceptionCounts={figure.perceptionCounts}
-                  currentUser={currentUser}
               />
             </TabsContent>
             <TabsContent value="top-streaks">
@@ -239,7 +190,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
         </div> 
       </div>
 
-      <CommentSection figure={figure} onCommentPosted={handleCommentPosted} currentUser={currentUser} />
+      <CommentSection figure={figure} onCommentPosted={handleCommentPosted} />
       
       <RelatedProfiles figure={figure} />
       
@@ -253,5 +204,3 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
     </div>
   );
 }
-
-    

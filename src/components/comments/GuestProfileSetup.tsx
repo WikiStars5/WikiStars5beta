@@ -12,8 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { UserPlus, Save, Loader2, Edit, X, Venus, MapPin } from 'lucide-react';
-import { countryCodeToNameMap } from '@/config/countries';
+import { UserPlus, Save, Loader2, Edit } from 'lucide-react';
 import { CountryCombobox } from '../shared/CountryCombobox';
 
 const guestProfileFormSchema = z.object({
@@ -30,7 +29,6 @@ interface GuestProfileSetupProps {
 
 export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: GuestProfileSetupProps) {
     const { toast } = useToast();
-    const [isEditing, setIsEditing] = useState(!isEditingContext); // Start in edit mode only if NOT in profile context
 
     const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<GuestProfileFormValues>({
         resolver: zodResolver(guestProfileFormSchema),
@@ -51,13 +49,8 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
                 gender: guestGender,
                 countryCode: guestCountryCode,
             });
-            // Start editing immediately if in comment section and no name is set.
-            // If in profile context, only start editing if user clicks the button.
-            if (!isEditingContext) {
-              setIsEditing(!guestUsername);
-            }
         }
-    }, [reset, isEditingContext]);
+    }, [reset]);
 
 
     const onSubmit = (data: GuestProfileFormValues) => {
@@ -70,44 +63,23 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
             title: "¡Perfil de Invitado Guardado!",
             description: `Tu información local ha sido actualizada.`,
           });
-
+          
+          window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
           onProfileSave();
-          if (isEditingContext) {
-            setIsEditing(false); // Exit edit mode on profile page
-          }
         }
       };
 
-    if (isEditingContext && !isEditing) {
-        const guestData = {
-            username: localStorage.getItem('wikistars5-guestUsername'),
-            gender: GENDER_OPTIONS.find(g => g.value === localStorage.getItem('wikistars5-guestGender'))?.label,
-            countryCode: localStorage.getItem('wikistars5-guestCountryCode'),
-        };
-
-        return (
-            <div className="space-y-4">
-                <div className="flex items-center gap-4"><UserPlus className="h-5 w-5 text-muted-foreground"/><p>{guestData.username}</p></div>
-                <div className="flex items-center gap-4"><Venus className="h-5 w-5 text-muted-foreground"/><p>{guestData.gender || 'No especificado'}</p></div>
-                <div className="flex items-center gap-4"><MapPin className="h-5 w-5 text-muted-foreground"/><p>{countryCodeToNameMap.get(guestData.countryCode || '') || 'No especificado'}</p></div>
-                 <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                    <Edit className="mr-2 h-4 w-4" /> Editar
-                </Button>
-            </div>
-        )
-    }
-
     return (
-        <Card className={isEditingContext ? "border-0 shadow-none" : "bg-muted/50"}>
+        <Card className={isEditingContext ? "border-0 shadow-none p-0" : "bg-muted/50"}>
             {!isEditingContext && (
-                 <CardHeader className={isEditingContext ? "p-0 mb-4" : ""}>
+                 <CardHeader className="pb-4">
                     <CardTitle className="flex items-center gap-2 text-base"><UserPlus /> Configura tu Perfil de Invitado</CardTitle>
                     <CardDescription className="text-xs">
                         Elige un nombre y género para poder comentar. Esta información se guardará solo en este dispositivo.
                     </CardDescription>
                 </CardHeader>
             )}
-            <CardContent className={isEditingContext ? "p-0" : ""}>
+            <CardContent className="p-0">
                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div>
                         <Label htmlFor="guest-username">Tu Nombre</Label>
@@ -164,12 +136,9 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
                     </div>
                     
                     <div className="flex justify-end gap-2 pt-2">
-                        {isEditingContext && (
-                             <Button variant="ghost" type="button" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancelar</Button>
-                        )}
                         <Button type="submit" disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                            {isEditingContext ? 'Guardar Cambios' : 'Guardar y Comentar'}
+                            Guardar
                         </Button>
                     </div>
                 </form>

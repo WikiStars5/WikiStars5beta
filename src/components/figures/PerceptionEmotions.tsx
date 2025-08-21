@@ -1,17 +1,14 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Figure, EmotionKey, EmotionVote, UserProfile } from '@/lib/types';
+import type { Figure, EmotionKey, EmotionVote } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogIn } from 'lucide-react';
-import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { ShareButton } from '../shared/ShareButton';
 import { grantEmocionAlDescubiertoAchievement } from '@/app/actions/achievementActions';
@@ -22,7 +19,6 @@ interface PerceptionEmotionsProps {
   figureId: string;
   figureName: string;
   initialPerceptionCounts?: Record<EmotionKey, number>;
-  currentUser: UserProfile | null;
 }
 
 const EMOTIONS_CONFIG: { key: EmotionKey; label: string; imageUrl: string; colorClass: string }[] = [
@@ -38,7 +34,7 @@ const defaultPerceptionCountsData: Record<EmotionKey, number> = {
   alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
 };
 
-export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts, currentUser }) => {
+export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts }) => {
   const { firebaseUser, isAnonymous } = useAuth();
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
   const [figurePerceptionCounts, setFigurePerceptionCounts] = useState<Record<EmotionKey, number>>(initialPerceptionCounts || defaultPerceptionCountsData);
