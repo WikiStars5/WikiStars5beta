@@ -18,8 +18,6 @@ import { CommentItem } from './CommentItem';
 import { GuestProfileSetup } from './GuestProfileSetup';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
-import { countryCodeToNameMap } from '@/config/countries';
-import { GENDER_OPTIONS } from '@/config/genderOptions';
 
 interface CommentSectionProps {
   figure: Figure;
@@ -31,7 +29,6 @@ const MAX_COMMENT_LENGTH = 1000;
 const INITIAL_COMMENTS_TO_SHOW = 5;
 
 export function CommentSection({ figure, onCommentPosted, currentUser }: CommentSectionProps) {
-  const { firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
   const [commentText, setCommentText] = React.useState('');
   const [comments, setComments] = React.useState<CommentType[]>([]);
   const [isPosting, setIsPosting] = React.useState(false);
@@ -39,9 +36,13 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
   const [showGuestProfileForm, setShowGuestProfileForm] = React.useState(false);
   const [showAllComments, setShowAllComments] = React.useState(false);
   const { toast } = useToast();
+  
+  const { firebaseUser } = useAuth(); // We only need this for the ID
 
   const handleGuestProfileSaved = React.useCallback(() => {
     setShowGuestProfileForm(false);
+    // Dispatch a custom event to notify other components (like FigureDetailClient)
+    window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
   }, []);
 
   React.useEffect(() => {
@@ -66,14 +67,6 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
     return () => unsubscribe();
   }, [figure.id, toast]);
   
-
-  React.useEffect(() => {
-    // Listen for the custom event to re-check the profile
-    window.addEventListener('guestProfileUpdated', handleGuestProfileSaved);
-    return () => {
-      window.removeEventListener('guestProfileUpdated', handleGuestProfileSaved);
-    };
-  }, [handleGuestProfileSaved]);
 
   const handlePostComment = async () => {
     if (!currentUser || !firebaseUser) {
@@ -121,14 +114,6 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
   };
 
   const renderCommentInput = () => {
-    if (isAuthLoading) {
-      return (
-        <div className="text-center p-4 border-2 border-dashed rounded-lg flex justify-center items-center h-[100px]">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      );
-    }
-
     if (currentUser) {
         return (
             <div className="flex gap-4">

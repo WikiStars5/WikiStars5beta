@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -39,6 +40,7 @@ import { CommentSection } from "@/components/comments/CommentSection";
 import { differenceInHours } from 'date-fns';
 import { TopStreaks } from "@/components/figures/TopStreaks";
 import { useAuth } from "@/hooks/useAuth";
+import { countryCodeToNameMap } from "@/config/countries";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -51,12 +53,56 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
   const { toast } = useToast();
-  const { user: currentUser, firebaseUser, isLoading: isAuthLoading } = useAuth();
+  const { user: firestoreUser, firebaseUser, isLoading, isAnonymous } = useAuth();
   
+  const [currentUser, setCurrentUser] = React.useState<UserProfile | null>(null);
+
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   
   const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
   const [headerStreak, setHeaderStreak] = React.useState<number | null>(null);
+
+  const getGuestProfile = React.useCallback(() => {
+    if (typeof window !== 'undefined' && firebaseUser && isAnonymous) {
+        const storedGuestName = localStorage.getItem('wikistars5-guestUsername');
+        const storedGuestGender = localStorage.getItem('wikistars5-guestGender') || '';
+        const storedGuestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
+        if (storedGuestName) {
+            setCurrentUser({
+                uid: firebaseUser.uid,
+                username: storedGuestName,
+                gender: storedGuestGender,
+                countryCode: storedGuestCountryCode,
+                country: countryCodeToNameMap.get(storedGuestCountryCode),
+                email: null,
+                role: 'user',
+                isAnonymous: true,
+                createdAt: new Date().toISOString(),
+                photoURL: null
+            });
+        } else {
+            setCurrentUser(null);
+        }
+    }
+  }, [firebaseUser, isAnonymous]);
+
+  React.useEffect(() => {
+    if (isLoading) return;
+    if (isAnonymous) {
+      getGuestProfile();
+    } else {
+      setCurrentUser(firestoreUser);
+    }
+  }, [isLoading, isAnonymous, firestoreUser, getGuestProfile]);
+
+  React.useEffect(() => {
+    // Listen for custom event that signals profile update
+    window.addEventListener('guestProfileUpdated', getGuestProfile);
+    return () => {
+      window.removeEventListener('guestProfileUpdated', getGuestProfile);
+    };
+  }, [getGuestProfile]);
+
 
   const checkHeaderStreak = React.useCallback(async () => {
     if (typeof window !== 'undefined' && id && firebaseUser) {
@@ -136,7 +182,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   }
 
 
-  if (isAuthLoading || figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (isLoading || figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!figure) return <div>Figura no encontrada.</div>;
 
   return (
