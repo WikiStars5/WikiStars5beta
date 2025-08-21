@@ -30,7 +30,7 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   hater: 0,
 };
 
-export const mapDocToFigure = (docSnap: DocumentSnapshot | QueryDocumentSnapshot): Figure => {
+export const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data() as DocumentData;
   const createdAtTimestamp = data.createdAt;
   
@@ -402,7 +402,7 @@ export const getFiguresByIds = async (ids: string[]): Promise<Figure[]> => {
 
 // --- Comments ---
 
-export const mapDocToComment = (docSnap: DocumentSnapshot): Comment => {
+export const mapDocToComment = (docSnap: DocumentData): Comment => {
   const data = docSnap.data() as DocumentData;
   return {
     id: docSnap.id,
@@ -439,14 +439,13 @@ export async function addComment(
   text: string
 ): Promise<string> {
     const commentsCollectionRef = collection(db, `figures/${figureId}/comments`);
-    const genderLabel = GENDER_OPTIONS.find(opt => opt.value === authorData.gender)?.label || authorData.gender;
-
+    
     const commentData = {
         figureId: figureId,
         authorId: authorData.id,
         authorName: authorData.name,
         authorPhotoUrl: authorData.photoUrl,
-        authorGender: genderLabel,
+        authorGender: authorData.gender,
         authorCountry: authorData.country,
         authorCountryCode: authorData.countryCode,
         text: text,
@@ -479,14 +478,13 @@ export async function addReply(
   text: string
 ): Promise<string> {
   const repliesCollectionRef = collection(db, `${parentPath}/replies`);
-  const genderLabel = GENDER_OPTIONS.find(opt => opt.value === authorData.gender)?.label || authorData.gender;
   
   const replyData = {
     figureId: figureId,
     authorId: authorData.id,
     authorName: authorData.name,
     authorPhotoUrl: authorData.photoUrl,
-    authorGender: genderLabel,
+    authorGender: authorData.gender,
     authorCountry: authorData.country,
     authorCountryCode: authorData.countryCode,
     text: text,
@@ -691,8 +689,6 @@ export async function updateStreak(
         emotion = localEmotions.find(e => e.figureId === figureId)?.emotion || null;
       }
       
-      const genderLabel = GENDER_OPTIONS.find(opt => opt.value === authorData.gender)?.label || authorData.gender;
-
       const dataToSet: Streak = {
         userId: authorData.id,
         currentStreak: currentStreak,
@@ -702,7 +698,7 @@ export async function updateStreak(
         emotion,
         ...(authorData.isAnonymous && {
           username: authorData.name,
-          gender: genderLabel,
+          gender: authorData.gender,
           countryCode: authorData.countryCode,
         })
       };

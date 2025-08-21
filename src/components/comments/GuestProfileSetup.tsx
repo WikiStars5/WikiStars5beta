@@ -56,8 +56,9 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
 
     const onSubmit = (data: GuestProfileFormValues) => {
         if (typeof window !== 'undefined') {
+          const genderLabel = GENDER_OPTIONS.find(opt => opt.value === data.gender)?.label || data.gender || '';
           localStorage.setItem('wikistars5-guestUsername', data.username);
-          localStorage.setItem('wikistars5-guestGender', data.gender || '');
+          localStorage.setItem('wikistars5-guestGender', genderLabel);
           localStorage.setItem('wikistars5-guestCountryCode', data.countryCode || '');
     
           toast({
@@ -80,7 +81,7 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
                     </CardDescription>
                 </CardHeader>
             )}
-            <CardContent className="p-0">
+            <CardContent className="p-4 pt-0">
                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div>
                         <Label htmlFor="guest-username">Tu Nombre</Label>
@@ -104,22 +105,26 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
                             <Controller
                             name="gender"
                             control={control}
-                            render={({ field }) => (
-                            <Select onValueChange={field.onChange} value={field.value ?? ''}>
-                                <SelectTrigger id="guest-gender">
-                                <SelectValue placeholder="Selecciona tu sexo" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                {GENDER_OPTIONS.map((opt) => (
-                                    (opt.value === 'male' || opt.value === 'female') && (
-                                    <SelectItem key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </SelectItem>
-                                    )
-                                ))}
-                                </SelectContent>
-                            </Select>
-                            )}
+                            render={({ field }) => {
+                                // Find the value ('male', 'female') corresponding to the stored label ('Masculino', 'Femenino')
+                                const selectedValue = GENDER_OPTIONS.find(opt => opt.label === field.value)?.value || field.value;
+                                return (
+                                    <Select onValueChange={field.onChange} value={selectedValue ?? ''}>
+                                        <SelectTrigger id="guest-gender">
+                                        <SelectValue placeholder="Selecciona tu sexo" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                        {GENDER_OPTIONS.map((opt) => (
+                                            (opt.value === 'male' || opt.value === 'female') && (
+                                            <SelectItem key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </SelectItem>
+                                            )
+                                        ))}
+                                        </SelectContent>
+                                    </Select>
+                                )
+                            }}
                         />
                     </div>
                      <div>
