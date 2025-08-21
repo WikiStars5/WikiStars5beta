@@ -10,11 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogIn } from 'lucide-react';
+import { Loader2, LogIn, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
+import { useAuth } from '@/hooks/useAuth';
+import { GuestProfileSetup } from '../comments/GuestProfileSetup';
 
 
 interface AttitudeVoteProps {
@@ -42,14 +44,29 @@ const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
 };
 
 export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, initialAttitudeCounts, currentUser }) => {
+  const { firebaseUser, isAnonymous } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [figureAttitudeCounts, setFigureAttitudeCounts] = useState<Record<AttitudeKey, number>>(initialAttitudeCounts || defaultAttitudeCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
   const [isLoadingAttitudeAction, setIsLoadingAttitudeAction] = useState<AttitudeKey | null>(null);
   const [isComponentLoading, setIsComponentLoading] = useState(true);
+  const [showGuestProfileForm, setShowGuestProfileForm] = useState(false);
+  const [guestProfileExists, setGuestProfileExists] = useState(false);
   const { toast } = useToast();
+  
+  const canUserVote = !!firebaseUser; // Allow any signed-in user, including anonymous
 
-  const canUserVote = !!currentUser;
+  const checkGuestProfile = React.useCallback(() => {
+    if (typeof window !== 'undefined' && isAnonymous) {
+      const guestName = localStorage.getItem('wikistars5-guestUsername');
+      setGuestProfileExists(!!guestName);
+    }
+  }, [isAnonymous]);
+
+  useEffect(() => {
+    checkGuestProfile();
+  }, [checkGuestProfile, firebaseUser]);
+
 
   useEffect(() => {
     if (!figureId) {
@@ -70,7 +87,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     });
 
     // Load local data for instant UI
-    if (currentUser) {
+    if (firebaseUser) {
       const localKey = 'wikistars5-userAttitudes';
       try {
         const localData = localStorage.getItem(localKey);
@@ -88,8 +105,8 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
 
     let unsubscribeUserVote: (() => void) | undefined;
-    if (currentUser) {
-        const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
+    if (firebaseUser) {
+        const userVoteDocRef = doc(db, 'userAttitudes', `${firebaseUser.uid}_${figureId}`);
         unsubscribeUserVote = onSnapshot(userVoteDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 setSelectedAttitude(docSnap.data().attitude as AttitudeKey);
@@ -110,13 +127,20 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       unsubscribeFigure();
       if(unsubscribeUserVote) unsubscribeUserVote();
     };
-  }, [figureId, currentUser]);
+  }, [figureId, firebaseUser]);
 
   const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
-    if (!canUserVote || !currentUser) {
-      toast({ title: "Acción Requerida", description: "Inicia sesión o continúa como invitado para votar." });
+    if (!canUserVote || !firebaseUser) {
+      toast({ title: "Acción Requerida", description: "Inicia sesión para poder votar." });
       return;
     }
+    
+    if (isAnonymous && !guestProfileExists) {
+        setShowGuestProfileForm(true);
+        toast({ title: "Perfil Requerido", description: "Por favor, crea un perfil de invitado para votar." });
+        return;
+    }
+
     if (isLoadingAttitudeAction) return;
 
     setIsLoadingAttitudeAction(attitudeKeyClicked);
@@ -125,7 +149,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     
     try {
         const figureDocRef = doc(db, 'figures', figureId);
-        const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
+        const userVoteDocRef = doc(db, 'userAttitudes', `${firebaseUser.uid}_${figureId}`);
 
         await runTransaction(db, async (transaction) => {
             const figureDoc = await transaction.get(figureDocRef);
@@ -152,7 +176,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
             transaction.update(figureDocRef, { attitudeCounts: newCounts });
             
             if (newAttitudeToSet) {
-                transaction.set(userVoteDocRef, { userId: currentUser.uid, figureId, attitude: newAttitudeToSet, addedAt: serverTimestamp() });
+                transaction.set(userVoteDocRef, { userId: firebaseUser.uid, figureId, attitude: newAttitudeToSet, addedAt: serverTimestamp() });
             } else if (userVoteDoc.exists()) {
                 transaction.delete(userVoteDocRef);
             }
@@ -175,8 +199,8 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       
       setSelectedAttitude(newAttitudeToSet);
 
-      if (!currentUser.isAnonymous && newAttitudeToSet) {
-          const achievementResult = await grantActitudDefinidaAchievement(currentUser.uid);
+      if (!isAnonymous && newAttitudeToSet) {
+          const achievementResult = await grantActitudDefinidaAchievement(firebaseUser.uid);
           if (achievementResult.unlocked) {
               toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
           }
@@ -221,19 +245,35 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       </Card>
     );
   }
+  
+  if (showGuestProfileForm) {
+      return (
+          <Card className="border border-white/20 bg-black">
+              <CardHeader>
+                  <CardTitle>Crea un perfil de invitado para votar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                   <GuestProfileSetup onProfileSave={() => {
+                       checkGuestProfile();
+                       setShowGuestProfileForm(false);
+                   }} />
+              </CardContent>
+          </Card>
+      );
+  }
 
   return (
     <Card className="border border-white/20 bg-black">
       <CardHeader>
         <CardTitle>¿Qué te consideras?</CardTitle>
         <CardDescription>
-          {currentUser
+          {canUserVote
             ? "Selecciona una opción para compartir tu postura."
-            : "Inicia sesión o continúa como invitado para poder participar."}
+            : "Inicia sesión para poder participar."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {!currentUser && (
+        {!canUserVote && (
           <Alert variant="default" className="mb-4">
             <LogIn className="h-4 w-4" />
             <AlertTitle>Participación</AlertTitle>
@@ -245,7 +285,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
               <Link href="/signup" className="font-semibold text-primary hover:underline">
                 regrístrate
               </Link>
-              {" "}para participar o continúa como invitado (intentaremos conectarte).
+              {" "}para votar.
             </AlertDescription>
           </Alert>
         )}

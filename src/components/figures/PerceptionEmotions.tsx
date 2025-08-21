@@ -15,6 +15,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ShareButton } from '../shared/ShareButton';
 import { grantEmocionAlDescubiertoAchievement } from '@/app/actions/achievementActions';
+import { useAuth } from '@/hooks/useAuth';
+import { GuestProfileSetup } from '../comments/GuestProfileSetup';
+
 
 interface PerceptionEmotionsProps {
   figureId: string;
@@ -37,14 +40,29 @@ const defaultPerceptionCountsData: Record<EmotionKey, number> = {
 };
 
 export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts, currentUser }) => {
+  const { firebaseUser, isAnonymous } = useAuth();
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
   const [figurePerceptionCounts, setFigurePerceptionCounts] = useState<Record<EmotionKey, number>>(initialPerceptionCounts || defaultPerceptionCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
   const [isLoadingEmotionAction, setIsLoadingEmotionAction] = useState<EmotionKey | null>(null);
   const [isComponentLoading, setIsComponentLoading] = useState(true);
+  const [showGuestProfileForm, setShowGuestProfileForm] = useState(false);
+  const [guestProfileExists, setGuestProfileExists] = useState(false);
   const { toast } = useToast();
 
-  const canUserVote = !!currentUser;
+  const canUserVote = !!firebaseUser; // Allow any signed-in user, including anonymous
+
+  const checkGuestProfile = React.useCallback(() => {
+    if (typeof window !== 'undefined' && isAnonymous) {
+      const guestName = localStorage.getItem('wikistars5-guestUsername');
+      setGuestProfileExists(!!guestName);
+    }
+  }, [isAnonymous]);
+
+  useEffect(() => {
+    checkGuestProfile();
+  }, [checkGuestProfile, firebaseUser]);
+
 
   useEffect(() => {
     if (!figureId) {
@@ -64,7 +82,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         console.error("Error listening to figure document for perceptions:", error);
     });
 
-    if (currentUser) {
+    if (firebaseUser) {
       const localKey = 'wikistars5-userEmotions';
       try {
         const localData = localStorage.getItem(localKey);
@@ -79,10 +97,10 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     }
 
     let unsubscribeUserVote: (() => void) | undefined;
-    if (currentUser) {
+    if (firebaseUser) {
         // This is the collection name used for user's individual votes.
         // It must match a path in firestore.rules.
-        const userVoteDocRef = doc(db, 'userPerceptions', `${currentUser.uid}_${figureId}`);
+        const userVoteDocRef = doc(db, 'userPerceptions', `${firebaseUser.uid}_${figureId}`);
         unsubscribeUserVote = onSnapshot(userVoteDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 setSelectedEmotion(docSnap.data().emotion as EmotionKey);
@@ -103,13 +121,20 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
       unsubscribeFigure();
       if (unsubscribeUserVote) unsubscribeUserVote();
     };
-  }, [figureId, currentUser]);
+  }, [figureId, firebaseUser]);
 
   const handleEmotionClick = async (emotionKeyClicked: EmotionKey) => {
-    if (!canUserVote || !currentUser) {
-      toast({ title: "Acción Requerida", description: "Inicia sesión o continúa como invitado para votar." });
+    if (!canUserVote || !firebaseUser) {
+      toast({ title: "Acción Requerida", description: "Inicia sesión para poder votar." });
       return;
     }
+
+    if (isAnonymous && !guestProfileExists) {
+        setShowGuestProfileForm(true);
+        toast({ title: "Perfil Requerido", description: "Por favor, crea un perfil de invitado para votar." });
+        return;
+    }
+
     if (isLoadingEmotionAction) return;
     
     setIsLoadingEmotionAction(emotionKeyClicked);
@@ -119,7 +144,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     try {
         const figureDocRef = doc(db, 'figures', figureId);
         // This collection name MUST match firestore.rules
-        const userVoteDocRef = doc(db, 'userPerceptions', `${currentUser.uid}_${figureId}`);
+        const userVoteDocRef = doc(db, 'userPerceptions', `${firebaseUser.uid}_${figureId}`);
 
         await runTransaction(db, async (transaction) => {
             const figureDoc = await transaction.get(figureDocRef);
@@ -143,7 +168,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
             transaction.update(figureDocRef, { perceptionCounts: newCounts });
 
             if (newEmotionToSet) {
-                transaction.set(userVoteDocRef, { userId: currentUser.uid, figureId, emotion: newEmotionToSet, addedAt: serverTimestamp() });
+                transaction.set(userVoteDocRef, { userId: firebaseUser.uid, figureId, emotion: newEmotionToSet, addedAt: serverTimestamp() });
             } else if (userVoteDoc.exists()) {
                 transaction.delete(userVoteDocRef);
             }
@@ -163,8 +188,8 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         
         setSelectedEmotion(newEmotionToSet);
 
-        if (!currentUser.isAnonymous && newEmotionToSet) {
-            const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
+        if (!isAnonymous && newEmotionToSet) {
+            const achievementResult = await grantEmocionAlDescubiertoAchievement(firebaseUser.uid);
             if (achievementResult.unlocked) {
                 toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
             }
@@ -209,18 +234,34 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     );
   }
 
+  if (showGuestProfileForm) {
+      return (
+          <Card className="border border-white/20 bg-black">
+              <CardHeader>
+                  <CardTitle>Crea un perfil de invitado para votar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                   <GuestProfileSetup onProfileSave={() => {
+                       checkGuestProfile();
+                       setShowGuestProfileForm(false);
+                   }} />
+              </CardContent>
+          </Card>
+      );
+  }
+
   return (
     <Card className="border border-white/20 bg-black">
       <CardHeader>
         <CardTitle>¿Qué emoción te provoca {figureName}?</CardTitle>
         <CardDescription>
-          {currentUser
+          {canUserVote
             ? "Haz clic en una emoción para votar."
-            : "Inicia sesión o continúa como invitado para poder expresar tu emoción."}
+            : "Inicia sesión para poder expresar tu emoción."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {!currentUser && (
+        {!canUserVote && (
           <Alert variant="default" className="mb-4">
             <LogIn className="h-4 w-4" />
             <AlertTitle>Votación</AlertTitle>
@@ -232,7 +273,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
               <Link href="/signup" className="font-semibold text-primary hover:underline">
                 regrístrate
               </Link>
-              {" "}para votar o continúa como invitado (intentaremos conectarte).
+              {" "}para votar.
             </AlertDescription>
           </Alert>
         )}
