@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -88,12 +87,14 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
   React.useEffect(() => {
     if (isLoading) return;
+
     if (isAnonymous) {
       getGuestProfile();
     } else {
       setCurrentUser(firestoreUser);
     }
   }, [isLoading, isAnonymous, firestoreUser, getGuestProfile]);
+
 
   React.useEffect(() => {
     // Listen for custom event that signals profile update
@@ -217,7 +218,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
               <AttitudeVote 
                   figureId={figure.id} 
                   figureName={figure.name} 
-                  initialAttitudeCounts={figure.attitudeCounts} 
+                  initialAttitudeCounts={figure.attitudeCounts}
                   currentUser={currentUser}
               />
             </TabsContent>

@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -37,13 +36,21 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
   const [showAllComments, setShowAllComments] = React.useState(false);
   const { toast } = useToast();
   
-  const { firebaseUser } = useAuth(); // We only need this for the ID
+  const { firebaseUser, isAnonymous } = useAuth();
 
   const handleGuestProfileSaved = React.useCallback(() => {
     setShowGuestProfileForm(false);
-    // Dispatch a custom event to notify other components (like FigureDetailClient)
     window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
   }, []);
+
+  React.useEffect(() => {
+    if (isAnonymous) {
+      setShowGuestProfileForm(!currentUser);
+    } else {
+      setShowGuestProfileForm(false);
+    }
+  }, [isAnonymous, currentUser]);
+
 
   React.useEffect(() => {
     setIsLoadingComments(true);
@@ -145,19 +152,24 @@ export function CommentSection({ figure, onCommentPosted, currentUser }: Comment
     }
     
     // User is anonymous AND has no local profile set up
-    if (showGuestProfileForm) {
-        return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
+    if (isAnonymous) {
+      return (
+          <div className="text-center p-4 border-2 border-dashed rounded-lg">
+              <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
+              {showGuestProfileForm ? (
+                  <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />
+              ) : (
+                  <Button onClick={() => setShowGuestProfileForm(true)}>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Crear usuario invitado
+                  </Button>
+              )}
+          </div>
+      );
     }
 
-    return (
-        <div className="text-center p-4 border-2 border-dashed rounded-lg">
-            <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
-            <Button onClick={() => setShowGuestProfileForm(true)}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Crear usuario invitado
-            </Button>
-        </div>
-    );
+    // Default case, should not be reached often if auth loading is handled by parent
+    return null;
   };
 
   const commentsToShow = showAllComments ? comments : comments.slice(0, INITIAL_COMMENTS_TO_SHOW);

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -50,8 +51,11 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
                 gender: guestGender,
                 countryCode: guestCountryCode,
             });
-            // If in profile context, start in view mode. If not (comment section), start in edit mode only if no name is set.
-            setIsEditing(isEditingContext ? !guestUsername : !guestUsername);
+            // Start editing immediately if in comment section and no name is set.
+            // If in profile context, only start editing if user clicks the button.
+            if (!isEditingContext) {
+              setIsEditing(!guestUsername);
+            }
         }
     }, [reset, isEditingContext]);
 
@@ -66,9 +70,6 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
             title: "¡Perfil de Invitado Guardado!",
             description: `Tu información local ha sido actualizada.`,
           });
-
-          // Dispatch a custom event to notify other components (like Header)
-          window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
 
           onProfileSave();
           if (isEditingContext) {
@@ -98,12 +99,14 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false }: G
 
     return (
         <Card className={isEditingContext ? "border-0 shadow-none" : "bg-muted/50"}>
-            <CardHeader className={isEditingContext ? "p-0 mb-4" : ""}>
-                <CardTitle className="flex items-center gap-2 text-base"><UserPlus /> Configura tu Perfil de Invitado</CardTitle>
-                <CardDescription className="text-xs">
-                    Elige un nombre y género para poder comentar. Esta información se guardará solo en este dispositivo.
-                </CardDescription>
-            </CardHeader>
+            {!isEditingContext && (
+                 <CardHeader className={isEditingContext ? "p-0 mb-4" : ""}>
+                    <CardTitle className="flex items-center gap-2 text-base"><UserPlus /> Configura tu Perfil de Invitado</CardTitle>
+                    <CardDescription className="text-xs">
+                        Elige un nombre y género para poder comentar. Esta información se guardará solo en este dispositivo.
+                    </CardDescription>
+                </CardHeader>
+            )}
             <CardContent className={isEditingContext ? "p-0" : ""}>
                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div>
