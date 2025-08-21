@@ -50,23 +50,9 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   const [totalVotes, setTotalVotes] = useState(0);
   const [isLoadingAttitudeAction, setIsLoadingAttitudeAction] = useState<AttitudeKey | null>(null);
   const [isComponentLoading, setIsComponentLoading] = useState(true);
-  const [showGuestProfileForm, setShowGuestProfileForm] = useState(false);
-  const [guestProfileExists, setGuestProfileExists] = useState(false);
   const { toast } = useToast();
   
   const canUserVote = !!firebaseUser; // Allow any signed-in user, including anonymous
-
-  const checkGuestProfile = React.useCallback(() => {
-    if (typeof window !== 'undefined' && isAnonymous) {
-      const guestName = localStorage.getItem('wikistars5-guestUsername');
-      setGuestProfileExists(!!guestName);
-    }
-  }, [isAnonymous]);
-
-  useEffect(() => {
-    checkGuestProfile();
-  }, [checkGuestProfile, firebaseUser]);
-
 
   useEffect(() => {
     if (!figureId) {
@@ -133,12 +119,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     if (!canUserVote || !firebaseUser) {
       toast({ title: "Acción Requerida", description: "Inicia sesión para poder votar." });
       return;
-    }
-    
-    if (isAnonymous && !guestProfileExists) {
-        setShowGuestProfileForm(true);
-        toast({ title: "Perfil Requerido", description: "Por favor, crea un perfil de invitado para votar." });
-        return;
     }
 
     if (isLoadingAttitudeAction) return;
@@ -244,22 +224,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         </CardContent>
       </Card>
     );
-  }
-  
-  if (showGuestProfileForm) {
-      return (
-          <Card className="border border-white/20 bg-black">
-              <CardHeader>
-                  <CardTitle>Crea un perfil de invitado para votar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                   <GuestProfileSetup onProfileSave={() => {
-                       checkGuestProfile();
-                       setShowGuestProfileForm(false);
-                   }} />
-              </CardContent>
-          </Card>
-      );
   }
 
   return (
