@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Figure, AttitudeKey, Attitude } from '@/lib/types';
+import type { Figure, AttitudeKey, Attitude, UserProfile } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ interface AttitudeVoteProps {
   figureId: string;
   figureName: string;
   initialAttitudeCounts?: Record<AttitudeKey, number>;
+  currentUser: UserProfile | null;
 }
 
 const ATTITUDE_OPTIONS_CONFIG: {
@@ -40,22 +41,18 @@ const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, initialAttitudeCounts }) => {
-  const { firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
+export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, initialAttitudeCounts, currentUser }) => {
+  const { firebaseUser, isAnonymous } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [figureAttitudeCounts, setFigureAttitudeCounts] = useState<Record<AttitudeKey, number>>(initialAttitudeCounts || defaultAttitudeCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
   const [isLoadingAttitudeAction, setIsLoadingAttitudeAction] = useState<AttitudeKey | null>(null);
-  const [isComponentLoading, setIsComponentLoading] = useState(true);
   const { toast } = useToast();
   
-  const canUserVote = !!firebaseUser; // Allow any signed-in user, including anonymous
+  const canUserVote = !!firebaseUser; 
 
   useEffect(() => {
-    if (!figureId) {
-      setIsComponentLoading(false);
-      return;
-    }
+    if (!figureId) return;
 
     const figureDocRef = doc(db, "figures", figureId);
     const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
@@ -69,46 +66,24 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       console.error("Error listening to figure document for attitudes:", error);
     });
 
-    // Load local data for instant UI
     if (firebaseUser) {
-      const localKey = 'wikistars5-userAttitudes';
-      try {
-        const localData = localStorage.getItem(localKey);
-        if (localData) {
-          const attitudes: Attitude[] = JSON.parse(localData);
-          const currentVote = attitudes.find(a => a.figureId === figureId);
-          if (currentVote) {
-            setSelectedAttitude(currentVote.attitude);
-          }
-        }
-      } catch (e) {
-        console.error("Error reading attitudes from localStorage", e);
-      }
-    }
-
-
-    let unsubscribeUserVote: (() => void) | undefined;
-    if (firebaseUser) {
-        const userVoteDocRef = doc(db, 'userAttitudes', `${firebaseUser.uid}_${figureId}`);
-        unsubscribeUserVote = onSnapshot(userVoteDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setSelectedAttitude(docSnap.data().attitude as AttitudeKey);
-            } else {
-                setSelectedAttitude(null);
+        const localKey = 'wikistars5-userAttitudes';
+        try {
+            const localData = localStorage.getItem(localKey);
+            if (localData) {
+            const attitudes: Attitude[] = JSON.parse(localData);
+            const currentVote = attitudes.find(a => a.figureId === figureId);
+            if (currentVote) {
+                setSelectedAttitude(currentVote.attitude);
             }
-             setIsComponentLoading(false);
-        }, (error) => {
-             console.error("Error fetching user attitude:", error);
-             setIsComponentLoading(false);
-        });
+            }
+        } catch (e) { console.error("Error reading attitudes from localStorage", e); }
     } else {
         setSelectedAttitude(null);
-        setIsComponentLoading(false);
     }
     
     return () => {
       unsubscribeFigure();
-      if(unsubscribeUserVote) unsubscribeUserVote();
     };
   }, [figureId, firebaseUser]);
 
@@ -156,8 +131,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
             }
         });
 
-
-      // Update local storage for guests
       try {
         const localKey = 'wikistars5-userAttitudes';
         const localData = localStorage.getItem(localKey);
@@ -206,20 +179,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     }
   };
   
-  if (isComponentLoading) { 
-    return (
-      <Card className="border border-white/20 bg-black">
-        <CardHeader>
-          <CardTitle>¿Qué te consideras?</CardTitle>
-          <CardDescription>Cargando opciones de actitud...</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center items-center h-40">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card className="border border-white/20 bg-black">
       <CardHeader>

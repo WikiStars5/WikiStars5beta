@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Figure, EmotionKey, EmotionVote } from '@/lib/types';
+import type { Figure, EmotionKey, EmotionVote, UserProfile } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ interface PerceptionEmotionsProps {
   figureId: string;
   figureName: string;
   initialPerceptionCounts?: Record<EmotionKey, number>;
+  currentUser: UserProfile | null;
 }
 
 const EMOTIONS_CONFIG: { key: EmotionKey; label: string; imageUrl: string; colorClass: string }[] = [
@@ -36,22 +37,18 @@ const defaultPerceptionCountsData: Record<EmotionKey, number> = {
   alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
 };
 
-export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts }) => {
-  const { firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
+export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts, currentUser }) => {
+  const { firebaseUser, isAnonymous } = useAuth();
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
   const [figurePerceptionCounts, setFigurePerceptionCounts] = useState<Record<EmotionKey, number>>(initialPerceptionCounts || defaultPerceptionCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
   const [isLoadingEmotionAction, setIsLoadingEmotionAction] = useState<EmotionKey | null>(null);
-  const [isComponentLoading, setIsComponentLoading] = useState(true);
   const { toast } = useToast();
 
-  const canUserVote = !!firebaseUser; // Allow any signed-in user, including anonymous
+  const canUserVote = !!firebaseUser;
 
   useEffect(() => {
-    if (!figureId) {
-        setIsComponentLoading(false);
-        return;
-    }
+    if (!figureId) return;
     
     const figureDocRef = doc(db, "figures", figureId);
     const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
@@ -77,30 +74,12 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
           }
         }
       } catch(e) { console.error("Error reading emotions from localStorage", e); }
-    }
-
-    let unsubscribeUserVote: (() => void) | undefined;
-    if (firebaseUser) {
-        const userVoteDocRef = doc(db, 'userPerceptions', `${firebaseUser.uid}_${figureId}`);
-        unsubscribeUserVote = onSnapshot(userVoteDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setSelectedEmotion(docSnap.data().emotion as EmotionKey);
-            } else {
-                setSelectedEmotion(null);
-            }
-             setIsComponentLoading(false);
-        }, (error) => {
-            console.error("Error fetching user emotion:", error);
-             setIsComponentLoading(false);
-        });
     } else {
         setSelectedEmotion(null);
-        setIsComponentLoading(false);
     }
 
     return () => {
       unsubscribeFigure();
-      if (unsubscribeUserVote) unsubscribeUserVote();
     };
   }, [figureId, firebaseUser]);
 
@@ -194,20 +173,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     }
   };
   
-  if (isComponentLoading) { 
-    return (
-      <Card className="border border-white/20 bg-black">
-        <CardHeader>
-          <CardTitle>¿Qué emoción te provoca {figureName}?</CardTitle>
-          <CardDescription>Cargando opciones de emoción...</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center items-center h-40">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card className="border border-white/20 bg-black">
       <CardHeader>

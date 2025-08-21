@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, MessagesSquare, Send, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import type { Figure, Comment as CommentType } from '@/lib/types';
+import type { Figure, Comment as CommentType, UserProfile } from '@/lib/types';
 import { addComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
@@ -24,27 +24,24 @@ import { GENDER_OPTIONS } from '@/config/genderOptions';
 interface CommentSectionProps {
   figure: Figure;
   onCommentPosted: (streak: number | null) => void;
+  currentUser: UserProfile | null;
 }
 
 const MAX_COMMENT_LENGTH = 1000;
 const INITIAL_COMMENTS_TO_SHOW = 5;
 
-export function CommentSection({ figure, onCommentPosted }: CommentSectionProps) {
-  const { user: firestoreUser, firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
+export function CommentSection({ figure, onCommentPosted, currentUser }: CommentSectionProps) {
+  const { firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
   const [commentText, setCommentText] = React.useState('');
   const [comments, setComments] = React.useState<CommentType[]>([]);
   const [isPosting, setIsPosting] = React.useState(false);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
-  const [guestProfileExists, setGuestProfileExists] = React.useState(false);
   const [showGuestProfileForm, setShowGuestProfileForm] = React.useState(false);
   const [showAllComments, setShowAllComments] = React.useState(false);
   const { toast } = useToast();
 
-  const checkGuestProfile = React.useCallback(() => {
-    if (typeof window !== 'undefined') {
-      const guestName = localStorage.getItem('wikistars5-guestUsername');
-      setGuestProfileExists(!!guestName);
-    }
+  const handleGuestProfileSaved = React.useCallback(() => {
+    setShowGuestProfileForm(false);
   }, []);
 
   React.useEffect(() => {
@@ -71,54 +68,15 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
   
 
   React.useEffect(() => {
-    if (!isAuthLoading) {
-      if (isAnonymous) {
-        checkGuestProfile();
-        // Listen for the custom event to re-check the profile
-        window.addEventListener('guestProfileUpdated', checkGuestProfile);
-      }
-    }
+    // Listen for the custom event to re-check the profile
+    window.addEventListener('guestProfileUpdated', handleGuestProfileSaved);
     return () => {
-      window.removeEventListener('guestProfileUpdated', checkGuestProfile);
+      window.removeEventListener('guestProfileUpdated', handleGuestProfileSaved);
     };
-  }, [isAnonymous, checkGuestProfile, isAuthLoading]);
-
-
-  const getAuthorData = () => {
-    if (!firebaseUser) return null;
-
-    if (isAnonymous) {
-      if (!guestProfileExists) return null;
-      const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
-      const guestGenderValue = localStorage.getItem('wikistars5-guestGender') || '';
-      const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
-      
-      return {
-        id: firebaseUser.uid,
-        name: guestUsername,
-        photoUrl: null,
-        gender: guestGenderValue,
-        country: countryCodeToNameMap.get(guestCountryCode) || '',
-        countryCode: guestCountryCode,
-        isAnonymous: true,
-      };
-    } else if (firestoreUser) {
-      return {
-        id: firebaseUser.uid,
-        name: firestoreUser.username,
-        photoUrl: firestoreUser.photoURL || null,
-        gender: firestoreUser.gender || '',
-        country: firestoreUser.country || '',
-        countryCode: firestoreUser.countryCode || '',
-        isAnonymous: false,
-      };
-    }
-    return null;
-  };
+  }, [handleGuestProfileSaved]);
 
   const handlePostComment = async () => {
-    const authorData = getAuthorData();
-    if (!authorData || !firebaseUser) {
+    if (!currentUser || !firebaseUser) {
       toast({ title: "Error", description: "Debes estar autenticado para comentar.", variant: "destructive" });
       return;
     }
@@ -136,6 +94,16 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
     }
     setIsPosting(true);
     try {
+      const authorData = {
+          id: currentUser.uid,
+          name: currentUser.username,
+          photoUrl: currentUser.photoURL || null,
+          gender: currentUser.gender || '',
+          country: currentUser.country || '',
+          countryCode: currentUser.countryCode || '',
+          isAnonymous: currentUser.isAnonymous || false,
+      };
+
       await addComment(figure.id, authorData, commentText.trim());
       
       const newStreak = await updateStreak(figure.id, authorData);
@@ -152,14 +120,7 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
     }
   };
 
-  const handleGuestProfileSaved = () => {
-    checkGuestProfile(); 
-    setShowGuestProfileForm(false);
-  };
-
   const renderCommentInput = () => {
-    const author = getAuthorData();
-    
     if (isAuthLoading) {
       return (
         <div className="text-center p-4 border-2 border-dashed rounded-lg flex justify-center items-center h-[100px]">
@@ -168,13 +129,12 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
       );
     }
 
-    // If user is logged in (not anonymous)
-    if (firestoreUser && !isAnonymous && author) {
+    if (currentUser) {
         return (
             <div className="flex gap-4">
                 <Avatar className="h-10 w-10 mt-1">
-                    <AvatarImage src={correctMalformedUrl(author.photoUrl)} alt={author.name} />
-                    <AvatarFallback>{author.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={correctMalformedUrl(currentUser.photoURL)} alt={currentUser.username} />
+                    <AvatarFallback>{currentUser.username?.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="flex-grow space-y-2">
                     <Textarea
@@ -199,54 +159,20 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
         );
     }
     
-    if (isAnonymous) {
-      if (showGuestProfileForm) {
-          return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
-      }
-  
-      if (guestProfileExists && author) {
-          return (
-              <div className="flex gap-4">
-                  <Avatar className="h-10 w-10 mt-1">
-                      <AvatarImage src={correctMalformedUrl(author.photoUrl)} alt={author.name} />
-                      <AvatarFallback>{author.name?.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-grow space-y-2">
-                      <Textarea
-                          placeholder="Escribe tu comentario aquí..."
-                          value={commentText}
-                          onChange={(e) => setCommentText(e.target.value)}
-                          rows={3}
-                          className="bg-muted border-border/50 focus:bg-background"
-                          maxLength={MAX_COMMENT_LENGTH}
-                      />
-                      <div className="flex justify-between items-center">
-                          <p className={cn("text-xs text-muted-foreground", commentText.length > MAX_COMMENT_LENGTH && "text-destructive")}>
-                              {commentText.length} / {MAX_COMMENT_LENGTH}
-                          </p>
-                          <Button onClick={handlePostComment} disabled={isPosting}>
-                              {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
-                              Publicar
-                          </Button>
-                      </div>
-                  </div>
-              </div>
-          );
-      }
-  
-      return (
-          <div className="text-center p-4 border-2 border-dashed rounded-lg">
-              <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
-              <Button onClick={() => setShowGuestProfileForm(true)}>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Crear usuario invitado
-              </Button>
-          </div>
-      );
+    // User is anonymous AND has no local profile set up
+    if (showGuestProfileForm) {
+        return <GuestProfileSetup onProfileSave={handleGuestProfileSaved} />;
     }
-    
-    // Fallback for any other state (should not happen often)
-    return null;
+
+    return (
+        <div className="text-center p-4 border-2 border-dashed rounded-lg">
+            <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
+            <Button onClick={() => setShowGuestProfileForm(true)}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Crear usuario invitado
+            </Button>
+        </div>
+    );
   };
 
   const commentsToShow = showAllComments ? comments : comments.slice(0, INITIAL_COMMENTS_TO_SHOW);
