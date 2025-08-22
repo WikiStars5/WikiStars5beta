@@ -1,9 +1,9 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Figure, AttitudeKey, Attitude } from '@/lib/types';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
 import { useAuth } from '@/hooks/useAuth';
+import { signInAnonymously } from 'firebase/auth';
 
 
 interface AttitudeVoteProps {
@@ -46,8 +47,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   const [isLoadingAttitudeAction, setIsLoadingAttitudeAction] = useState<AttitudeKey | null>(null);
   const { toast } = useToast();
   
-  const canUserVote = !!firebaseUser; 
-
   useEffect(() => {
     if (!figureId) return;
 
@@ -85,20 +84,30 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   }, [figureId, firebaseUser]);
 
   const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
-    if (!canUserVote || !firebaseUser) {
-      toast({ title: "Acción requerida", description: "Debes crear un perfil de invitado en la sección de comentarios para poder votar.", variant: "destructive" });
-      return;
-    }
-
     if (isLoadingAttitudeAction) return;
-
     setIsLoadingAttitudeAction(attitudeKeyClicked);
+
+    let currentFirebaseUser = firebaseUser;
+
+    // Silently sign in anonymously if there's no user. This is the key change.
+    if (!currentFirebaseUser) {
+        try {
+            const userCredential = await signInAnonymously(auth);
+            currentFirebaseUser = userCredential.user;
+        } catch (error) {
+            console.error("Error signing in anonymously:", error);
+            toast({ title: "Error de Votación", description: "No se pudo registrar tu identidad para votar. Inténtalo de nuevo.", variant: "destructive" });
+            setIsLoadingAttitudeAction(null);
+            return;
+        }
+    }
     
     const newAttitudeToSet = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
     
     try {
         const figureDocRef = doc(db, 'figures', figureId);
-        const userVoteDocRef = doc(db, 'userAttitudes', `${firebaseUser.uid}_${figureId}`);
+        // The user ID from the now-guaranteed-to-exist Firebase user
+        const userVoteDocRef = doc(db, 'userAttitudes', `${currentFirebaseUser.uid}_${figureId}`);
 
         await runTransaction(db, async (transaction) => {
             const figureDoc = await transaction.get(figureDocRef);
@@ -122,7 +131,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
             transaction.update(figureDocRef, { attitudeCounts: newCounts });
             
             if (newAttitudeToSet) {
-                transaction.set(userVoteDocRef, { userId: firebaseUser.uid, figureId, attitude: newAttitudeToSet, addedAt: serverTimestamp() });
+                transaction.set(userVoteDocRef, { userId: currentFirebaseUser!.uid, figureId, attitude: newAttitudeToSet, addedAt: serverTimestamp() });
             } else if (userVoteDoc.exists()) {
                 transaction.delete(userVoteDocRef);
             }
@@ -144,7 +153,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       setSelectedAttitude(newAttitudeToSet);
 
       if (!isAnonymous && newAttitudeToSet) {
-          const achievementResult = await grantActitudDefinidaAchievement(firebaseUser.uid);
+          const achievementResult = await grantActitudDefinidaAchievement(currentFirebaseUser.uid);
           if (achievementResult.unlocked) {
               toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
           }
@@ -181,7 +190,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       <CardHeader>
         <CardTitle>¿Qué te consideras?</CardTitle>
         <CardDescription>
-          Selecciona una opción para compartir tu postura.
+          Selecciona una opción para compartir tu postura. Tu voto es anónimo.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -199,11 +208,10 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                     "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 border bg-black",
                     colorClass,
                     selectedAttitude === key ? selectedClass : 'ring-0',
-                    (isLoadingAttitudeAction === key || !canUserVote) && 'opacity-50 cursor-not-allowed',
-                    !canUserVote && 'cursor-not-allowed opacity-60'
+                    isLoadingAttitudeAction === key && 'opacity-50 cursor-not-allowed'
                   )}
                   onClick={() => handleAttitudeClick(key)}
-                  disabled={!canUserVote || !!isLoadingAttitudeAction}
+                  disabled={!!isLoadingAttitudeAction}
                   style={{ minHeight: '100px' }}
                 >
                   {isLoadingAttitudeAction === key && <Loader2 className="absolute h-6 w-6 animate-spin" />}
