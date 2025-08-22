@@ -39,7 +39,7 @@ const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
 };
 
 export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, initialAttitudeCounts }) => {
-  const { firebaseUser, isAnonymous } = useAuth();
+  const { firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [figureAttitudeCounts, setFigureAttitudeCounts] = useState<Record<AttitudeKey, number>>(initialAttitudeCounts || defaultAttitudeCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
@@ -86,7 +86,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
   const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
     if (!canUserVote || !firebaseUser) {
-      toast({ title: "Acción Requerida", description: "Espera un momento o recarga la página para votar." });
+      toast({ title: "Acción requerida", description: "Debes crear un perfil de invitado en la sección de comentarios para poder votar.", variant: "destructive" });
       return;
     }
 
@@ -185,31 +185,37 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, colorClass, selectedClass }) => (
-            <Button
-              key={key}
-              variant="ghost"
-              className={cn(
-                "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 border bg-black",
-                colorClass,
-                selectedAttitude === key ? selectedClass : 'ring-0',
-                isLoadingAttitudeAction === key && 'opacity-50 cursor-not-allowed',
-                !canUserVote && 'cursor-not-allowed opacity-60'
-              )}
-              onClick={() => handleAttitudeClick(key)}
-              disabled={!canUserVote || !!isLoadingAttitudeAction}
-              style={{ minHeight: '100px' }}
-            >
-              {isLoadingAttitudeAction === key && <Loader2 className="absolute h-6 w-6 animate-spin" />}
-              <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
-              <span className="text-xs font-medium">{label}</span>
-              <span className="text-sm font-bold">
-                {figureAttitudeCounts[key] || 0}
-              </span>
-            </Button>
-          ))}
-        </div>
+        {isAuthLoading ? (
+            <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, colorClass, selectedClass }) => (
+                <Button
+                  key={key}
+                  variant="ghost"
+                  className={cn(
+                    "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 border bg-black",
+                    colorClass,
+                    selectedAttitude === key ? selectedClass : 'ring-0',
+                    (isLoadingAttitudeAction === key || !canUserVote) && 'opacity-50 cursor-not-allowed',
+                    !canUserVote && 'cursor-not-allowed opacity-60'
+                  )}
+                  onClick={() => handleAttitudeClick(key)}
+                  disabled={!canUserVote || !!isLoadingAttitudeAction}
+                  style={{ minHeight: '100px' }}
+                >
+                  {isLoadingAttitudeAction === key && <Loader2 className="absolute h-6 w-6 animate-spin" />}
+                  <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
+                  <span className="text-xs font-medium">{label}</span>
+                  <span className="text-sm font-bold">
+                    {figureAttitudeCounts[key] || 0}
+                  </span>
+                </Button>
+              ))}
+            </div>
+        )}
         <div className="text-center text-muted-foreground">
           <p>Total de respuestas: <span className="font-bold">{totalVotes}</span></p>
         </div>

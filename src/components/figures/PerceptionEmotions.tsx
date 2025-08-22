@@ -35,7 +35,7 @@ const defaultPerceptionCountsData: Record<EmotionKey, number> = {
 };
 
 export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts }) => {
-  const { firebaseUser, isAnonymous } = useAuth();
+  const { firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
   const [figurePerceptionCounts, setFigurePerceptionCounts] = useState<Record<EmotionKey, number>>(initialPerceptionCounts || defaultPerceptionCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
@@ -82,7 +82,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
   const handleEmotionClick = async (emotionKeyClicked: EmotionKey) => {
     if (!canUserVote || !firebaseUser) {
-      toast({ title: "Acción Requerida", description: "Espera un momento o recarga la página para votar." });
+       toast({ title: "Acción requerida", description: "Debes crear un perfil de invitado en la sección de comentarios para poder votar.", variant: "destructive" });
       return;
     }
 
@@ -179,37 +179,43 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-2 gap-3">
-          {EMOTIONS_CONFIG.map(({ key, label, imageUrl, colorClass }) => (
-            <Button
-              key={key}
-              variant={selectedEmotion === key ? "default" : "outline"}
-              className={`flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 
-                ${selectedEmotion === key ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 dark:ring-offset-card' : `text-foreground ${colorClass}`}
-                ${isLoadingEmotionAction === key ? 'opacity-50 cursor-not-allowed' : ''}
-                ${!canUserVote ? 'cursor-not-allowed opacity-60' : ''} 
-              `}
-              onClick={() => handleEmotionClick(key)}
-              disabled={!canUserVote || !!isLoadingEmotionAction}
-              style={{ minHeight: '120px' }}
-            >
-              {isLoadingEmotionAction === key && <Loader2 className="absolute h-6 w-6 animate-spin" />}
-              <div className="relative w-10 h-10 mb-1" data-ai-hint={`emoji ${label}`}>
-                <Image
-                  src={imageUrl}
-                  alt={label}
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 10vw, 5vw"
-                />
-              </div>
-              <span className="text-xs font-medium text-center block">{label}</span>
-              <span className="text-sm font-bold">
-                {figurePerceptionCounts[key] || 0}
-              </span>
-            </Button>
-          ))}
-        </div>
+        {isAuthLoading ? (
+            <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {EMOTIONS_CONFIG.map(({ key, label, imageUrl, colorClass }) => (
+                <Button
+                  key={key}
+                  variant={selectedEmotion === key ? "default" : "outline"}
+                  className={`flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 
+                    ${selectedEmotion === key ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 dark:ring-offset-card' : `text-foreground ${colorClass}`}
+                    ${(isLoadingEmotionAction === key || !canUserVote) ? 'opacity-50 cursor-not-allowed' : ''}
+                    ${!canUserVote ? 'cursor-not-allowed opacity-60' : ''} 
+                  `}
+                  onClick={() => handleEmotionClick(key)}
+                  disabled={!canUserVote || !!isLoadingEmotionAction}
+                  style={{ minHeight: '120px' }}
+                >
+                  {isLoadingEmotionAction === key && <Loader2 className="absolute h-6 w-6 animate-spin" />}
+                  <div className="relative w-10 h-10 mb-1" data-ai-hint={`emoji ${label}`}>
+                    <Image
+                      src={imageUrl}
+                      alt={label}
+                      fill
+                      className="object-contain"
+                      sizes="(max-width: 768px) 10vw, 5vw"
+                    />
+                  </div>
+                  <span className="text-xs font-medium text-center block">{label}</span>
+                  <span className="text-sm font-bold">
+                    {figurePerceptionCounts[key] || 0}
+                  </span>
+                </Button>
+              ))}
+            </div>
+        )}
         <div className="text-center text-muted-foreground">
           <p>Total de respuestas: <span className="font-bold">{totalVotes}</span></p>
         </div>

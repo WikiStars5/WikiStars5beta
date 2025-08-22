@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { onAuthStateChanged, type User as FirebaseUser, signInAnonymously } from 'firebase/auth';
+import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
@@ -27,65 +27,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
+        
+        if (fbUser.isAnonymous) {
+          setUser(null); // Anonymous users don't have a Firestore profile
+          setIsLoading(false);
+          return;
+        }
 
+        // For registered users, listen to their profile
         const userDocRef = doc(db, 'users', fbUser.uid);
-
-        const setupSnapshotListener = () => {
-          return onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-              setUser(docSnap.data() as UserProfile);
-            } else {
-              setUser(null);
-            }
-            setIsLoading(false);
-          }, (error) => {
-            console.error("Error with profile snapshot listener:", error);
+        const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setUser(docSnap.data() as UserProfile);
+          } else {
+            console.warn(`Profile for user ${fbUser.uid} not found.`);
             setUser(null);
-            setIsLoading(false);
-          });
-        };
+          }
+          setIsLoading(false);
+        }, (error) => {
+          console.error("Error with profile snapshot listener:", error);
+          setUser(null);
+          setIsLoading(false);
+        });
 
-        const tryFetchingProfileWithRetry = async (retries = 3, delay = 1000) => {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const docSnap = await getDoc(userDocRef);
-                    if (docSnap.exists()) {
-                        return setupSnapshotListener();
-                    }
-                } catch (error) {
-                    console.error(`Attempt ${i + 1} to fetch profile failed:`, error);
-                }
-                await new Promise(res => setTimeout(res, delay));
-            }
-            // If all retries fail, setup the listener anyway and let it handle the case where the doc might appear later.
-            return setupSnapshotListener();
-        };
-
-        const docSnap = await getDoc(userDocRef);
-        let unsubscribeSnapshot;
-        if (docSnap.exists()) {
-          unsubscribeSnapshot = setupSnapshotListener();
-        } else {
-          // If the document doesn't exist, it might be in the process of being created by the Cloud Function.
-          // Retry a few times before setting up the final listener.
-          unsubscribeSnapshot = await tryFetchingProfileWithRetry();
-        }
-
-        return () => unsubscribeSnapshot;
-
+        return () => unsubscribeSnapshot();
       } else {
-        // No user signed in, attempt anonymous sign-in
-        try {
-          await signInAnonymously(auth);
-        } catch (error) {
-           console.error("Critical: Anonymous sign-in failed:", error);
-           setUser(null);
-           setFirebaseUser(null);
-           setIsLoading(false);
-        }
+        // No user is signed in, not even anonymous.
+        setUser(null);
+        setFirebaseUser(null);
+        setIsLoading(false);
       }
     });
 

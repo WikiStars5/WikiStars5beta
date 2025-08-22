@@ -14,6 +14,8 @@ import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserPlus, Save, Loader2, Edit, X } from 'lucide-react';
 import { CountryCombobox } from '../shared/CountryCombobox';
+import { signInAnonymously } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 const guestProfileFormSchema = z.object({
   username: z.string().min(3, "Tu nombre debe tener al menos 3 caracteres.").max(30, "Tu nombre no puede exceder los 30 caracteres."),
@@ -30,8 +32,9 @@ interface GuestProfileSetupProps {
 
 export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onCancelEdit }: GuestProfileSetupProps) {
     const { toast } = useToast();
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<GuestProfileFormValues>({
+    const { control, handleSubmit, reset, formState: { errors } } = useForm<GuestProfileFormValues>({
         resolver: zodResolver(guestProfileFormSchema),
         defaultValues: {
             username: '',
@@ -43,31 +46,45 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const guestUsername = localStorage.getItem('wikistars5-guestUsername') || '';
-            const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
+            const guestGenderValue = GENDER_OPTIONS.find(opt => opt.label === localStorage.getItem('wikistars5-guestGender'))?.value || '';
             const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
             reset({
                 username: guestUsername,
-                gender: guestGender,
+                gender: guestGenderValue,
                 countryCode: guestCountryCode,
             });
         }
     }, [reset]);
 
 
-    const onSubmit = (data: GuestProfileFormValues) => {
-        if (typeof window !== 'undefined') {
-          const genderLabel = GENDER_OPTIONS.find(opt => opt.value === data.gender)?.label || data.gender || '';
-          localStorage.setItem('wikistars5-guestUsername', data.username);
-          localStorage.setItem('wikistars5-guestGender', genderLabel);
-          localStorage.setItem('wikistars5-guestCountryCode', data.countryCode || '');
-    
-          toast({
-            title: "¡Perfil de Invitado Guardado!",
-            description: `Tu información local ha sido actualizada.`,
-          });
+    const onSubmit = async (data: GuestProfileFormValues) => {
+        setIsSubmitting(true);
+        try {
+          // The core change: only sign in anonymously when the user commits by saving their profile.
+          if (!auth.currentUser) {
+            await signInAnonymously(auth);
+          }
           
-          window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
-          onProfileSave();
+          if (typeof window !== 'undefined') {
+            const genderLabel = GENDER_OPTIONS.find(opt => opt.value === data.gender)?.label || '';
+            localStorage.setItem('wikistars5-guestUsername', data.username);
+            localStorage.setItem('wikistars5-guestGender', genderLabel);
+            localStorage.setItem('wikistars5-guestCountryCode', data.countryCode || '');
+      
+            toast({
+              title: "¡Perfil de Invitado Guardado!",
+              description: `Tu información local ha sido guardada.`,
+            });
+            
+            // This custom event is crucial for other components to react to the profile update.
+            window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
+            onProfileSave();
+          }
+        } catch (error: any) {
+            console.error("Error creating guest profile:", error);
+            toast({ title: "Error", description: "No se pudo crear tu perfil de invitado.", variant: "destructive"});
+        } finally {
+            setIsSubmitting(false);
         }
       };
 
@@ -106,10 +123,8 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
                             name="gender"
                             control={control}
                             render={({ field }) => {
-                                // Find the value ('male', 'female') corresponding to the stored label ('Masculino', 'Femenino')
-                                const selectedValue = GENDER_OPTIONS.find(opt => opt.label === field.value)?.value || field.value;
                                 return (
-                                    <Select onValueChange={field.onChange} value={selectedValue ?? ''}>
+                                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
                                         <SelectTrigger id="guest-gender">
                                         <SelectValue placeholder="Selecciona tu sexo" />
                                         </SelectTrigger>
