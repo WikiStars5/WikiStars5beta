@@ -40,7 +40,7 @@ interface FigureInfoProps {
 interface InfoItemProps {
   icon: React.ElementType;
   label: string;
-  value: string | undefined | null;
+  value?: React.ReactNode;
   imageUrl?: string | null;
 }
 
@@ -65,13 +65,17 @@ const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value, imageUrl 
           {imageUrl && (
             <Image
               src={imageUrl}
-              alt={value || label}
+              alt={typeof value === 'string' ? value : label}
               width={20}
               height={15}
               className="w-5 h-auto flex-shrink-0"
             />
           )}
-          {value && <p className="text-muted-foreground text-sm">{value}</p>}
+          {typeof value === 'string' ? (
+             <p className="text-muted-foreground text-sm">{value}</p>
+          ) : (
+            value
+          )}
         </div>
       </div>
     </div>
@@ -252,6 +256,22 @@ export function FigureInfo({ figure }: FigureInfoProps) {
       return `https://flagcdn.com/w40/${figure.nationalityCode.toLowerCase()}.png`;
   }, [figure.nationalityCode]);
 
+  const genderInfo = useMemo(() => {
+    if (!figure.gender) return null;
+
+    const genderOption = GENDER_OPTIONS.find(g => g.label === figure.gender);
+    if (!genderOption) return <p className="text-muted-foreground text-sm">{figure.gender}</p>;
+
+    const colorClass = genderOption.value === 'male' ? 'text-blue-400' : 'text-pink-400';
+    
+    return (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>{figure.gender}</span>
+            {genderOption.symbol && <span className={cn(colorClass, "font-bold")}>{genderOption.symbol}</span>}
+        </div>
+    );
+}, [figure.gender]);
+
 
   return (
     <Card className="border border-white/20 bg-black">
@@ -429,7 +449,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                       <InfoItem icon={UserIcon} label="Nombre" value={figure.name} />
                       <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
                       <InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} imageUrl={nationalityFlagUrl} />
-                      <InfoItem icon={Users} label="Género" value={figure.gender} />
+                      <InfoItem icon={Users} label="Género" value={genderInfo} />
                       <InfoItem icon={BookOpen} label="Categoría" value={figure.category} />
                   </div>
                 )}
