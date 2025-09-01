@@ -1,6 +1,6 @@
 
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove } from "firebase/firestore";
@@ -28,6 +28,10 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   fan: 0,
   simp: 0,
   hater: 0,
+};
+
+const defaultRatingCounts: Record<string, number> = {
+  "0": 0, "1": 0, "2": 0, "3": 0, "4": 0, "5": 0
 };
 
 export const mapDocToFigure = (docSnap: DocumentData): Figure => {
@@ -62,6 +66,7 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     relatedFigureIds: data.relatedFigureIds || [],
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
+    ratingCounts: data.ratingCounts || { ...defaultRatingCounts },
     createdAt: createdAtTimestamp && typeof createdAtTimestamp.toDate === 'function' 
                  ? createdAtTimestamp.toDate().toISOString() 
                  : undefined,
@@ -182,6 +187,7 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
       ...figure,
       perceptionCounts: figure.perceptionCounts || { ...defaultPerceptionCounts },
       attitudeCounts: figure.attitudeCounts || { ...defaultAttitudeCounts },
+      ratingCounts: figure.ratingCounts || { ...defaultRatingCounts },
       isFeatured: figure.isFeatured || false, 
     };
     const { createdAt, ...figureDataForFirestore } = figureDataWithDefaults;
@@ -205,7 +211,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
 
       // Destructure all known fields to separate them from the rest
       const { 
-          id, createdAt, nameLower: nameLowerInput, perceptionCounts, attitudeCounts,
+          id, createdAt, nameLower: nameLowerInput, perceptionCounts, attitudeCounts, ratingCounts,
           name, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
           height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
@@ -242,6 +248,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       if (sportSubcategory !== undefined) updatePayload.sportSubcategory = sportSubcategory;
       if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
       if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
+      if (ratingCounts) updatePayload.ratingCounts = ratingCounts;
       if (socialLinks) updatePayload.socialLinks = socialLinks;
       if (relatedFigureIds) updatePayload.relatedFigureIds = relatedFigureIds;
       
@@ -818,4 +825,61 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
     }
     return [];
   }
+}
+
+// --- Ratings ---
+export async function submitStarRating(
+    figureId: string,
+    userId: string,
+    rating: RatingValue | null
+): Promise<void> {
+    const figureDocRef = doc(db, 'figures', figureId);
+    const userRatingDocRef = doc(db, 'userRatings', `${userId}_${figureId}`);
+
+    await runTransaction(db, async (transaction) => {
+        const figureDoc = await transaction.get(figureDocRef);
+        if (!figureDoc.exists()) {
+            throw new Error("Figure document not found.");
+        }
+        const figureData = figureDoc.data();
+        const newRatingCounts = { ...defaultRatingCounts, ...figureData.ratingCounts };
+        
+        const userRatingDoc = await transaction.get(userRatingDocRef);
+        const previousRating = userRatingDoc.exists() ? userRatingDoc.data().rating as RatingValue : null;
+
+        if (previousRating !== null) {
+            newRatingCounts[previousRating] = Math.max(0, (newRatingCounts[previousRating] || 0) - 1);
+        }
+        if (rating !== null) {
+            newRatingCounts[rating] = (newRatingCounts[rating] || 0) + 1;
+        }
+
+        transaction.update(figureDocRef, { ratingCounts: newRatingCounts });
+
+        if (rating !== null) {
+            transaction.set(userRatingDocRef, {
+                userId,
+                figureId,
+                rating,
+                addedAt: serverTimestamp()
+            });
+        } else if (userRatingDoc.exists()) {
+            transaction.delete(userRatingDocRef);
+        }
+    });
+
+    // Update local storage
+    if (typeof window !== 'undefined') {
+        try {
+            const localKey = 'wikistars5-userRatings';
+            let ratings: RatingVote[] = JSON.parse(localStorage.getItem(localKey) || '[]');
+            ratings = ratings.filter(r => r.figureId !== figureId);
+            if (rating !== null) {
+                ratings.push({ figureId, rating, addedAt: new Date().toISOString() });
+            }
+            localStorage.setItem(localKey, JSON.stringify(ratings));
+        } catch (e) {
+            console.error("Failed to update ratings in localStorage", e);
+        }
+    }
 }

@@ -4,6 +4,7 @@ import type { Timestamp } from 'firebase/firestore';
 
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
+export type RatingValue = 0 | 1 | 2 | 3 | 4 | 5;
 
 export interface Figure {
   id: string;
@@ -46,6 +47,7 @@ export interface Figure {
 
   perceptionCounts: Record<EmotionKey, number>;
   attitudeCounts: Record<AttitudeKey, number>;
+  ratingCounts?: Record<string, number>;
   
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
@@ -62,6 +64,12 @@ export interface EmotionVote {
   figureId: string;
   emotion: EmotionKey;
   addedAt: string; 
+}
+
+export interface RatingVote {
+    figureId: string;
+    rating: RatingValue;
+    addedAt: string;
 }
 
 export interface Country {

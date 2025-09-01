@@ -39,7 +39,7 @@ import { CommentSection } from "@/components/comments/CommentSection";
 import { differenceInHours } from 'date-fns';
 import { TopStreaks } from "@/components/figures/TopStreaks";
 import { useAuth } from "@/hooks/useAuth";
-import { countryCodeToNameMap } from "@/config/countries";
+import { StarRatingVote } from "@/components/figures/StarRatingVote";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -191,15 +191,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
             </TabsContent>
             
             <TabsContent value="ratings">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Calificaciones</CardTitle>
-                        <CardDescription>Esta sección está en construcción.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p>Próximamente aquí verás más estadísticas.</p>
-                    </CardContent>
-                </Card>
+                 <StarRatingVote figure={figure} />
             </TabsContent>
           </Tabs>
         </div> 
