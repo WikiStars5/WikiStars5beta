@@ -21,7 +21,7 @@ interface StarRatingVoteProps {
 }
 
 const defaultRatingCountsData: Record<string, number> = {
-  "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
+  "0": 0, "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
 };
 
 const RATING_OPTIONS: {
@@ -30,6 +30,7 @@ const RATING_OPTIONS: {
   colorClass: string;
   selectedClass: string;
 }[] = [
+  { value: 0, label: '0 Estrellas', colorClass: 'border-gray-500/50 text-gray-500 hover:bg-gray-500/10 hover:border-gray-500', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-gray-500 border-gray-500' },
   { value: 1, label: '1 Estrella', colorClass: 'border-destructive/50 text-destructive hover:bg-destructive/10 hover:border-destructive', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-destructive border-destructive' },
   { value: 2, label: '2 Estrellas', colorClass: 'border-orange-500/50 text-orange-500 hover:bg-orange-500/10 hover:border-orange-500', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-orange-500 border-orange-500' },
   { value: 3, label: '3 Estrellas', colorClass: 'border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10 hover:border-yellow-500', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-yellow-500 border-yellow-500' },
@@ -163,7 +164,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
             <p className="text-sm text-muted-foreground mt-1">{totalVotes} {totalVotes === 1 ? 'calificación' : 'calificaciones'}</p>
           </div>
           <div className="w-full flex-grow space-y-1.5">
-            {[5, 4, 3, 2, 1].map(star => {
+            {[5, 4, 3, 2, 1, 0].map(star => {
               const count = ratingCounts[star] || 0;
               const percentage = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
               return (
@@ -184,7 +185,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
           {isAuthLoading ? (
              <div className="flex justify-center items-center h-24"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
           ) : (
-             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {RATING_OPTIONS.map(({ value, label, colorClass, selectedClass }) => (
                 <Button
                   key={value}
