@@ -1,3 +1,4 @@
+
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 
@@ -35,6 +36,7 @@ export interface Figure {
     facebook?: string;
     linkedin?: string;
     discord?: string;
+    tiktok?: string;
   };
 
   perceptionCounts: Record<EmotionKey, number>;

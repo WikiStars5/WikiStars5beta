@@ -1,3 +1,4 @@
+
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -38,6 +39,7 @@ export interface Figure {
     facebook?: string;
     linkedin?: string;
     discord?: string;
+    tiktok?: string;
   };
 
   relatedFigureIds?: string[];

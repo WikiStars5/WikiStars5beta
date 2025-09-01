@@ -57,6 +57,7 @@ const SOCIAL_MEDIA_CONFIG = {
   twitter: { label: 'X (Twitter)', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Ftwitter.webp?alt=media&token=492950d1-1987-48f0-a149-02290cfa1ffc' },
   youtube: { label: 'YouTube', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Fyoutube.png?alt=media&token=8952da33-736f-4718-b6d9-fcc99dd93111' },
   facebook: { label: 'Facebook', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Ffacebook.png?alt=media&token=100d82e3-e8fe-4f84-96a2-79a23fed43b4' },
+  tiktok: { label: 'TikTok', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Ftiktok.png?alt=media&token=87f84943-a74c-4916-9a2c-c4a2b3451cbc' },
   linkedin: { label: 'LinkedIn', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flinkedin.png?alt=media&token=cdc7c2b8-e71a-47de-b261-b44b96f5bf0a' },
   discord: { label: 'Discord', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Fdiscord.png?alt=media&token=dbb8b8d1-c5d8-4673-b91f-25b1d796195c' },
 };
@@ -109,6 +110,7 @@ type SocialLinkErrors = {
   twitter?: string;
   youtube?: string;
   facebook?: string;
+  tiktok?: string;
   linkedin?: string;
   discord?: string;
 };
@@ -169,6 +171,9 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     }
     if (sanitizedLinks.facebook && !sanitizedLinks.facebook.includes('facebook.com')) {
       errors.facebook = 'URL de Facebook no válida.';
+    }
+    if (sanitizedLinks.tiktok && !sanitizedLinks.tiktok.includes('tiktok.com')) {
+      errors.tiktok = 'URL de TikTok no válida.';
     }
     if (sanitizedLinks.linkedin && !sanitizedLinks.linkedin.includes('linkedin.com')) {
       errors.linkedin = 'URL de LinkedIn no válida.';
@@ -411,6 +416,11 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                    <Label htmlFor="facebook">Facebook</Label>
                    <Input id="facebook" value={(socialLinks as Record<string, string>)?.facebook || ''} onChange={(e) => handleSocialLinkChange('facebook', e.target.value)} placeholder="https://facebook.com/..." />
                    {linkErrors.facebook && <p className="text-xs text-destructive mt-1">{linkErrors.facebook}</p>}
+                  </div>
+                  <div>
+                   <Label htmlFor="tiktok">TikTok</Label>
+                   <Input id="tiktok" value={(socialLinks as Record<string, string>)?.tiktok || ''} onChange={(e) => handleSocialLinkChange('tiktok', e.target.value)} placeholder="https://tiktok.com/@..." />
+                   {linkErrors.tiktok && <p className="text-xs text-destructive mt-1">{linkErrors.tiktok}</p>}
                   </div>
                  <div>
                    <Label htmlFor="linkedin">LinkedIn</Label>
