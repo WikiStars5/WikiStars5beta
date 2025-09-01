@@ -27,10 +27,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { CountryCombobox } from '../shared/CountryCombobox';
 import { COUNTRIES, countryCodeToNameMap } from '@/config/countries';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
 import { format, differenceInYears } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { DatePicker } from '../shared/DatePicker';
 
 
 interface FigureInfoProps {
@@ -315,31 +314,10 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 </div>
                 <div>
                   <Label htmlFor="birthDateOrAge">Fecha de Nacimiento</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !birthDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {birthDate ? format(birthDate, "PPP", { locale: es }) : <span>Elige una fecha</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={birthDate}
-                        onSelect={setBirthDate}
-                        captionLayout="dropdown-buttons"
-                        fromYear={1900}
-                        toYear={new Date().getFullYear()}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DatePicker
+                    date={birthDate}
+                    onDateChange={setBirthDate}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="maritalStatus">Estado Civil</Label>
