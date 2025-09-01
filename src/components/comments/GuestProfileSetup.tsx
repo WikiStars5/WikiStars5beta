@@ -33,6 +33,7 @@ interface GuestProfileSetupProps {
 export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onCancelEdit }: GuestProfileSetupProps) {
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isCountrySet, setIsCountrySet] = useState(false);
 
     const { control, handleSubmit, reset, formState: { errors } } = useForm<GuestProfileFormValues>({
         resolver: zodResolver(guestProfileFormSchema),
@@ -48,11 +49,16 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
             const guestUsername = localStorage.getItem('wikistars5-guestUsername') || '';
             const guestGenderValue = GENDER_OPTIONS.find(opt => opt.label === localStorage.getItem('wikistars5-guestGender'))?.value || '';
             const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
+            
             reset({
                 username: guestUsername,
                 gender: guestGenderValue,
                 countryCode: guestCountryCode,
             });
+
+            if (guestCountryCode) {
+              setIsCountrySet(true);
+            }
         }
     }, [reset]);
 
@@ -69,7 +75,11 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
             const genderLabel = GENDER_OPTIONS.find(opt => opt.value === data.gender)?.label || '';
             localStorage.setItem('wikistars5-guestUsername', data.username);
             localStorage.setItem('wikistars5-guestGender', genderLabel);
-            localStorage.setItem('wikistars5-guestCountryCode', data.countryCode || '');
+            
+            // Only set country if it's not already set
+            if (!isCountrySet && data.countryCode) {
+                localStorage.setItem('wikistars5-guestCountryCode', data.countryCode);
+            }
       
             toast({
               title: "¡Perfil de Invitado Guardado!",
@@ -151,9 +161,11 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
                                 <CountryCombobox
                                     value={field.value ?? ''}
                                     onChange={field.onChange}
+                                    disabled={isCountrySet}
                                 />
                             )}
                         />
+                        {isCountrySet && <p className="text-xs text-muted-foreground mt-1">La nacionalidad no se puede cambiar una vez establecida.</p>}
                     </div>
                     
                     <div className="flex justify-end gap-2 pt-2">
