@@ -21,7 +21,7 @@ interface StarRatingVoteProps {
 }
 
 const defaultRatingCountsData: Record<string, number> = {
-  "0": 0, "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
+  "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
 };
 
 const RATING_OPTIONS: {
@@ -30,13 +30,20 @@ const RATING_OPTIONS: {
   colorClass: string;
   selectedClass: string;
 }[] = [
-  { value: 0, label: '0 Estrellas', colorClass: 'border-destructive/50 text-destructive hover:bg-destructive/10 hover:border-destructive', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-destructive border-destructive' },
   { value: 1, label: '1 Estrella', colorClass: 'border-destructive/50 text-destructive hover:bg-destructive/10 hover:border-destructive', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-destructive border-destructive' },
   { value: 2, label: '2 Estrellas', colorClass: 'border-orange-500/50 text-orange-500 hover:bg-orange-500/10 hover:border-orange-500', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-orange-500 border-orange-500' },
   { value: 3, label: '3 Estrellas', colorClass: 'border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10 hover:border-yellow-500', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-yellow-500 border-yellow-500' },
   { value: 4, label: '4 Estrellas', colorClass: 'border-lime-500/50 text-lime-500 hover:bg-lime-500/10 hover:border-lime-500', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-lime-500 border-lime-500' },
   { value: 5, label: '5 Estrellas', colorClass: 'border-green-500/50 text-green-500 hover:bg-green-500/10 hover:border-green-500', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-green-500 border-green-500' },
 ];
+
+const RATING_SOUNDS: Record<string, string> = {
+  "1": "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457",
+  "2": "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar2.mp3?alt=media&token=58cbf607-df0b-4bbd-b28e-291cf1951c18",
+  "3": "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar3.mp3?alt=media&token=df67dc5b-28ab-4773-8266-60b9127a325f",
+  "4": "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826",
+  "5": "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f",
+};
 
 const RatingDisplay = ({ rating, maxRating = 5 }: { rating: number, maxRating?: number }) => {
     const fullStars = Math.floor(rating);
@@ -58,6 +65,14 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
   const [ratingCounts, setRatingCounts] = useState<Record<string, number>>(figure.ratingCounts || defaultRatingCountsData);
   const [isLoading, setIsLoading] = useState<RatingValue | null>(null);
   const { toast } = useToast();
+  const audioPlayers = useMemo(() => {
+    if (typeof window === 'undefined') return {};
+    return Object.keys(RATING_SOUNDS).reduce((acc, key) => {
+        acc[key] = new Audio(RATING_SOUNDS[key]);
+        acc[key].preload = 'auto';
+        return acc;
+    }, {} as Record<string, HTMLAudioElement>);
+  }, []);
 
   const { totalVotes, averageRating } = useMemo(() => {
     const votes = Object.values(ratingCounts).reduce((sum, count) => sum + count, 0);
@@ -114,7 +129,13 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
     try {
         await submitStarRating(figure.id, currentFirebaseUser.uid, newRating);
         setSelectedRating(newRating);
+
         if (newRating !== null) {
+            const sound = audioPlayers[newRating];
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(err => console.error("Audio playback error:", err));
+            }
             toast({ title: "¡Calificación Guardada!", description: `Has calificado a ${figure.name} con ${newRating} ${newRating === 1 ? 'estrella' : 'estrellas'}.`,
             action: <ShareButton figureName={figure.name} figureId={figure.id} showText />});
         } else {
@@ -142,7 +163,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
             <p className="text-sm text-muted-foreground mt-1">{totalVotes} {totalVotes === 1 ? 'calificación' : 'calificaciones'}</p>
           </div>
           <div className="w-full flex-grow space-y-1.5">
-            {[5, 4, 3, 2, 1, 0].map(star => {
+            {[5, 4, 3, 2, 1].map(star => {
               const count = ratingCounts[star] || 0;
               const percentage = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
               return (
@@ -163,7 +184,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
           {isAuthLoading ? (
              <div className="flex justify-center items-center h-24"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
           ) : (
-             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
               {RATING_OPTIONS.map(({ value, label, colorClass, selectedClass }) => (
                 <Button
                   key={value}
