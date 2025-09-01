@@ -37,6 +37,7 @@ export interface Figure {
     youtube?: string;
     facebook?: string;
     linkedin?: string;
+    discord?: string;
   };
 
   relatedFigureIds?: string[];

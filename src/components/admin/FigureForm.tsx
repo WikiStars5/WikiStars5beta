@@ -85,6 +85,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     youtube: '',
     facebook: '',
     linkedin: '',
+    discord: '',
   });
 
   const [perceptionCounts, setPerceptionCounts] = useState(initialData?.perceptionCounts || { ...defaultPerceptionCounts });
@@ -403,6 +404,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div><Label htmlFor="youtube">YouTube</Label><Input id="youtube" value={(socialLinks as Record<string,string>)['youtube'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, youtube: e.target.value}))} placeholder="URL de YouTube" /></div>
         <div><Label htmlFor="facebook">Facebook</Label><Input id="facebook" value={(socialLinks as Record<string,string>)['facebook'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, facebook: e.target.value}))} placeholder="URL de Facebook" /></div>
         <div><Label htmlFor="linkedin">LinkedIn</Label><Input id="linkedin" value={(socialLinks as Record<string,string>)['linkedin'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, linkedin: e.target.value}))} placeholder="URL de LinkedIn" /></div>
+        <div><Label htmlFor="discord">Discord</Label><Input id="discord" value={(socialLinks as Record<string,string>)['discord'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, discord: e.target.value}))} placeholder="Enlace de invitación de Discord" /></div>
       </div>
       
       <div className="mt-6 border-t pt-4 border-border">

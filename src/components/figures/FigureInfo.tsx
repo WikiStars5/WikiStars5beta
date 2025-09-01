@@ -58,6 +58,7 @@ const SOCIAL_MEDIA_CONFIG = {
   youtube: { label: 'YouTube', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Fyoutube.png?alt=media&token=8952da33-736f-4718-b6d9-fcc99dd93111' },
   facebook: { label: 'Facebook', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Ffacebook.png?alt=media&token=100d82e3-e8fe-4f84-96a2-79a23fed43b4' },
   linkedin: { label: 'LinkedIn', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flinkedin.png?alt=media&token=cdc7c2b8-e71a-47de-b261-b44b96f5bf0a' },
+  discord: { label: 'Discord', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Fdiscord.png?alt=media&token=6a1a743c-6878-45d4-9610-5a21035b1c55' },
 };
 
 
@@ -109,6 +110,7 @@ type SocialLinkErrors = {
   youtube?: string;
   facebook?: string;
   linkedin?: string;
+  discord?: string;
 };
 
 export function FigureInfo({ figure }: FigureInfoProps) {
@@ -170,6 +172,9 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     }
     if (sanitizedLinks.linkedin && !sanitizedLinks.linkedin.includes('linkedin.com')) {
       errors.linkedin = 'URL de LinkedIn no válida.';
+    }
+     if (sanitizedLinks.discord && !sanitizedLinks.discord.includes('discord.gg')) {
+      errors.discord = 'Debe ser un enlace de invitación de Discord (discord.gg/...).';
     }
     setLinkErrors(errors);
     return Object.keys(errors).length === 0;
@@ -411,6 +416,11 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                    <Label htmlFor="linkedin">LinkedIn</Label>
                    <Input id="linkedin" value={(socialLinks as Record<string, string>)?.linkedin || ''} onChange={(e) => handleSocialLinkChange('linkedin', e.target.value)} placeholder="https://linkedin.com/..." />
                    {linkErrors.linkedin && <p className="text-xs text-destructive mt-1">{linkErrors.linkedin}</p>}
+                  </div>
+                 <div>
+                   <Label htmlFor="discord">Discord</Label>
+                   <Input id="discord" value={(socialLinks as Record<string, string>)?.discord || ''} onChange={(e) => handleSocialLinkChange('discord', e.target.value)} placeholder="https://discord.gg/..." />
+                   {linkErrors.discord && <p className="text-xs text-destructive mt-1">{linkErrors.discord}</p>}
                   </div>
                </div>
             </div>

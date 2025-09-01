@@ -34,6 +34,7 @@ export interface Figure {
     youtube?: string;
     facebook?: string;
     linkedin?: string;
+    discord?: string;
   };
 
   perceptionCounts: Record<EmotionKey, number>;
