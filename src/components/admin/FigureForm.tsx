@@ -377,6 +377,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
                         mode="single"
                         selected={birthDate}
                         onSelect={setBirthDate}
+                        captionLayout="dropdown-buttons"
+                        fromYear={1900}
+                        toYear={new Date().getFullYear()}
                         initialFocus
                     />
                 </PopoverContent>
