@@ -14,8 +14,7 @@ import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserPlus, Save, Loader2, Edit, X } from 'lucide-react';
 import { CountryCombobox } from '../shared/CountryCombobox';
-import { signInAnonymously } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { useAuth } from '@/hooks/useAuth';
 
 const guestProfileFormSchema = z.object({
   username: z.string().min(3, "Tu nombre debe tener al menos 3 caracteres.").max(30, "Tu nombre no puede exceder los 30 caracteres."),
@@ -32,6 +31,7 @@ interface GuestProfileSetupProps {
 
 export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onCancelEdit }: GuestProfileSetupProps) {
     const { toast } = useToast();
+    const { firebaseUser } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCountrySet, setIsCountrySet] = useState(false);
 
@@ -65,18 +65,18 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
 
     const onSubmit = async (data: GuestProfileFormValues) => {
         setIsSubmitting(true);
+        if (!firebaseUser || !firebaseUser.isAnonymous) {
+            toast({ title: "Error", description: "No se pudo encontrar una sesión de invitado válida.", variant: "destructive"});
+            setIsSubmitting(false);
+            return;
+        }
+
         try {
-          // The core change: only sign in anonymously when the user commits by saving their profile.
-          if (!auth.currentUser) {
-            await signInAnonymously(auth);
-          }
-          
           if (typeof window !== 'undefined') {
             const genderLabel = GENDER_OPTIONS.find(opt => opt.value === data.gender)?.label || '';
             localStorage.setItem('wikistars5-guestUsername', data.username);
             localStorage.setItem('wikistars5-guestGender', genderLabel);
             
-            // Allow setting country only once for consistency
             if (!isCountrySet && data.countryCode) {
                 localStorage.setItem('wikistars5-guestCountryCode', data.countryCode);
             }
@@ -86,7 +86,6 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
               description: `Tu información local ha sido guardada.`,
             });
             
-            // This custom event is crucial for other components to react to the profile update.
             window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
             onProfileSave();
           }

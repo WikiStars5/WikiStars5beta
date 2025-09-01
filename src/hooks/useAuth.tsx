@@ -1,7 +1,8 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, type User as FirebaseUser } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
@@ -26,14 +27,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // This listener correctly handles all auth state changes without forcing a login.
     const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
         // A user is signed in (can be anonymous or registered).
         setFirebaseUser(fbUser);
         
         if (fbUser.isAnonymous) {
-          // If anonymous, there's no Firestore profile to fetch.
+          // If anonymous, there's no Firestore profile to fetch. User is not null.
           setUser(null); 
           setIsLoading(false);
           return;
@@ -58,10 +58,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Cleanup the profile listener when the user changes.
         return () => unsubscribeSnapshot();
       } else {
-        // No user is signed in at all.
-        setUser(null);
-        setFirebaseUser(null);
-        setIsLoading(false);
+        // No user is signed in, so sign in anonymously.
+        signInAnonymously(auth).catch((error) => {
+            console.error("Error signing in anonymously:", error);
+            // Handle error, maybe show a message to the user
+            setIsLoading(false);
+        });
       }
     });
 
