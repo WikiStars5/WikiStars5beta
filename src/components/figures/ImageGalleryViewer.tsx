@@ -21,14 +21,15 @@ interface ImageGalleryViewerProps {
 }
 
 export function ImageGalleryViewer({ imageUrl, isOpen, onClose }: ImageGalleryViewerProps) {
-  const [isFullScreen, setIsFullScreen] = React.useState(false);
+  const [isEnlarged, setIsEnlarged] = React.useState(false);
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isOpen) return;
       if (event.key === 'Escape') {
-        if (isFullScreen) {
-          setIsFullScreen(false); // First, exit fullscreen mode
+        if (isEnlarged) {
+          setIsEnlarged(false); // First, exit enlarged mode
+          event.preventDefault(); // Prevent the dialog from closing immediately
         } else {
           onClose(); // Then, close the dialog
         }
@@ -37,30 +38,30 @@ export function ImageGalleryViewer({ imageUrl, isOpen, onClose }: ImageGalleryVi
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, isFullScreen]);
+  }, [isOpen, onClose, isEnlarged]);
 
-  const toggleFullScreen = () => {
-    setIsFullScreen(!isFullScreen);
-  };
+  // Reset state when dialog is closed
+  React.useEffect(() => {
+    if (!isOpen) {
+      setIsEnlarged(false);
+    }
+  }, [isOpen]);
   
   if (!isOpen || !imageUrl) {
     return null;
   }
   
-  // This is the corrected implementation. It uses `cn` to conditionally apply classes,
-  // which is a cleaner and more reliable way to handle dynamic styling.
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent 
         className={cn(
           "p-0 border-0 bg-black/90 backdrop-blur-md overflow-hidden flex flex-col items-center justify-center transition-all duration-300 ease-in-out",
-          isFullScreen 
-            ? 'fixed inset-0 w-screen h-screen max-w-none rounded-none' 
-            : 'sm:max-w-screen-lg h-[90vh] sm:rounded-lg'
+          isEnlarged
+            ? 'w-[98vw] h-[98vh] max-w-[98vw]' 
+            : 'sm:max-w-screen-lg h-[90vh]'
         )}
         onInteractOutside={(e) => {
-          // Prevent closing when clicking outside if in fullscreen mode
-          if (isFullScreen) {
+          if (isEnlarged) {
             e.preventDefault();
           }
         }}
@@ -70,10 +71,18 @@ export function ImageGalleryViewer({ imageUrl, isOpen, onClose }: ImageGalleryVi
           Imagen de perfil.
         </DialogDescription>
         <div className="absolute top-2 right-2 z-50 flex gap-2">
-          <Button variant="ghost" size="icon" onClick={toggleFullScreen} className="text-white hover:bg-white/20 hover:text-white">
-            {isFullScreen ? <Minimize className="h-6 w-6" /> : <Maximize className="h-6 w-6" />}
-            <span className="sr-only">{isFullScreen ? "Salir de pantalla completa" : "Pantalla completa"}</span>
-          </Button>
+          {isEnlarged ? (
+             <Button variant="ghost" size="icon" onClick={() => setIsEnlarged(false)} className="text-white hover:bg-white/20 hover:text-white">
+                <Minimize className="h-6 w-6" />
+                <span className="sr-only">Achicar</span>
+            </Button>
+          ) : (
+             <Button variant="ghost" size="icon" onClick={() => setIsEnlarged(true)} className="text-white hover:bg-white/20 hover:text-white">
+                <Maximize className="h-6 w-6" />
+                <span className="sr-only">Agrandar</span>
+            </Button>
+          )}
+
           <DialogClose asChild>
             <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 hover:text-white">
               <X className="h-6 w-6" />
