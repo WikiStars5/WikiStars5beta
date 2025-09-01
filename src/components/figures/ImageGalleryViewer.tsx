@@ -68,13 +68,13 @@ export function ImageGalleryViewer({ imageUrl, isOpen, onClose }: ImageGalleryVi
         </div>
 
         <div 
-          className="w-full h-full flex items-center justify-center relative"
+          className="w-full h-full flex items-center justify-center relative p-4"
         >
           <Image
             src={imageUrl}
             alt="Visor de imagen"
             fill
-            className="object-contain p-4"
+            className="object-contain"
             sizes="100vw"
             priority
             data-ai-hint="full screen image"
