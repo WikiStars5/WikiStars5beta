@@ -7,7 +7,7 @@ import {
   ImageOff, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
   MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight,
-  Archive, Bike, UserPlus, Flame
+  Archive, Bike, UserPlus, Flame, BarChart3
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
@@ -25,7 +25,7 @@ import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useRouter } from "next/navigation";
 import { ShareButton } from "@/components/shared/ShareButton";
-import type { Figure, LocalUserStreak } from "@/lib/types";
+import type { Figure, LocalUserStreak, UserProfile } from "@/lib/types";
 import { 
   grantFirstGlanceAchievement,
 } from '@/app/actions/achievementActions';
@@ -39,6 +39,8 @@ import { CommentSection } from "@/components/comments/CommentSection";
 import { differenceInHours } from 'date-fns';
 import { TopStreaks } from "@/components/figures/TopStreaks";
 import { useAuth } from "@/hooks/useAuth";
+import { countryCodeToNameMap } from "@/config/countries";
+import { RatingsTabContent } from "@/components/figures/RatingsTabContent";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -51,12 +53,13 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
   const { toast } = useToast();
-  const { firebaseUser, isAnonymous } = useAuth();
+  const { user: firestoreUser, firebaseUser, isLoading: isAuthLoading, isAnonymous } = useAuth();
   
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   
   const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
   const [headerStreak, setHeaderStreak] = React.useState<number | null>(null);
+
 
   const checkHeaderStreak = React.useCallback(async () => {
     if (typeof window !== 'undefined' && id && firebaseUser) {
@@ -136,7 +139,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   }
 
 
-  if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (figure === undefined || isAuthLoading) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!figure) return <div>Figura no encontrada.</div>;
 
   return (
@@ -155,20 +158,26 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-3 space-y-8">
-          <Tabs defaultValue="attitude-poll" className="w-full">
+          <Tabs defaultValue="ratings" className="w-full">
             <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20"> 
               <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
-              <TabsTrigger value="attitude-poll" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><MessageSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
-              <TabsTrigger value="perception-emotions" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
+              <TabsTrigger value="ratings" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><BarChart3 className="h-4 sm:h-5 w-4 sm:w-5" />Calificaciones</TabsTrigger>
               <TabsTrigger value="top-streaks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Flame className="h-4 sm:h-5 w-4 sm:w-5" />Top Rachas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal-info">
                 <FigureInfo figure={figure} />
             </TabsContent>
+            
+            <TabsContent value="ratings">
+                <RatingsTabContent 
+                  figureId={figure.id} 
+                  figureName={figure.name} 
+                  initialAttitudeCounts={figure.attitudeCounts} 
+                  initialPerceptionCounts={figure.perceptionCounts}
+                />
+            </TabsContent>
 
-            <TabsContent value="attitude-poll"><AttitudeVote figureId={figure.id} figureName={figure.name} initialAttitudeCounts={figure.attitudeCounts} /></TabsContent>
-            <TabsContent value="perception-emotions"><PerceptionEmotions figureId={figure.id} figureName={figure.name} initialPerceptionCounts={figure.perceptionCounts} /></TabsContent>
             <TabsContent value="top-streaks">
                 <TopStreaks figureId={figure.id} />
             </TabsContent>
