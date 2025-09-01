@@ -173,8 +173,8 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     if (sanitizedLinks.linkedin && !sanitizedLinks.linkedin.includes('linkedin.com')) {
       errors.linkedin = 'URL de LinkedIn no válida.';
     }
-     if (sanitizedLinks.discord && !sanitizedLinks.discord.includes('discord.gg')) {
-      errors.discord = 'Debe ser un enlace de invitación de Discord (discord.gg/...).';
+    if (sanitizedLinks.discord && !(sanitizedLinks.discord.includes('discord.gg') || sanitizedLinks.discord.includes('discord.com/invite'))) {
+      errors.discord = 'Debe ser un enlace de invitación de Discord (discord.gg/... o discord.com/invite/...).';
     }
     setLinkErrors(errors);
     return Object.keys(errors).length === 0;
