@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -53,6 +54,8 @@ const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
   desagrado: { label: 'Desagrado', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb' },
   furia: { label: 'Furia', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f' },
 };
+
+const FIRE_GIF_URL = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/image%2Ffire.gif?alt=media&token=fd18d32d-c443-4da6-a369-e55ae241f7c5";
 
 interface StreakWithFigure extends LocalUserStreak {
     figure?: Figure;
@@ -400,7 +403,17 @@ export default function ProfilePage() {
                                       <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
                                           <Avatar className="h-12 w-12"><AvatarImage src={correctMalformedUrl(streak.figure?.photoUrl) || undefined} alt={streak.figure?.name} /><AvatarFallback>{streak.figure?.name.charAt(0)}</AvatarFallback></Avatar>
                                           <div className="flex-grow"><p className="font-semibold">{streak.figure?.name}</p><p className="text-sm text-muted-foreground">Último comentario: {new Date(streak.lastCommentDate).toLocaleDateString()}</p></div>
-                                          <div className="flex items-center gap-2 text-orange-500 font-bold"><Flame className="h-5 w-5"/><span>{streak.currentStreak}</span></div>
+                                          <div className="flex items-center gap-2 text-orange-500 font-bold">
+                                              <Image
+                                                  src={FIRE_GIF_URL}
+                                                  alt="Racha de fuego"
+                                                  width={20}
+                                                  height={20}
+                                                  unoptimized
+                                                  data-ai-hint="fire gif"
+                                              />
+                                              <span>{streak.currentStreak}</span>
+                                          </div>
                                       </Link>
                                   ))}
                               </div>
