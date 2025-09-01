@@ -12,7 +12,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Instagram, Twitter, Youtube, Facebook, User as UserIcon, CalendarIcon, Linkedin
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff
 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +52,15 @@ const MARITAL_STATUS_OPTIONS = [
     { value: 'Conviviente / En unión de hecho', label: 'Conviviente / En unión de hecho' },
 ];
 
+const SOCIAL_MEDIA_CONFIG = {
+  instagram: { label: 'Instagram', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Finstagram.png?alt=media&token=91707034-56b6-411f-9504-9273dd0f8b64' },
+  twitter: { label: 'X (Twitter)', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Ftwitter.webp?alt=media&token=492950d1-1987-48f0-a149-02290cfa1ffc' },
+  youtube: { label: 'YouTube', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Fyoutube.png?alt=media&token=8952da33-736f-4718-b6d9-fcc99dd93111' },
+  facebook: { label: 'Facebook', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Ffacebook.png?alt=media&token=100d82e3-e8fe-4f84-96a2-79a23fed43b4' },
+  linkedin: { label: 'LinkedIn', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flinkedin.png?alt=media&token=cdc7c2b8-e71a-47de-b261-b44b96f5bf0a' },
+};
+
+
 const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value, imageUrl }) => {
   if (!value && !imageUrl) return null;
 
@@ -81,13 +90,13 @@ const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value, imageUrl 
   );
 };
 
-const SocialLink: React.FC<{ href?: string; icon: React.ElementType; label: string }> = ({ href, icon: Icon, label }) => {
+const SocialLink: React.FC<{ href?: string; imageUrl: string; label: string }> = ({ href, imageUrl, label }) => {
   if (!href) return null;
 
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
-      <div className="w-12 h-12 rounded-full border flex items-center justify-center bg-muted/50 hover:border-primary">
-          <Icon className="w-6 h-6" />
+      <div className="w-12 h-12 rounded-full border flex items-center justify-center bg-muted/50 hover:border-primary p-2">
+          <Image src={imageUrl} alt={label} width={32} height={32} className="object-contain" />
       </div>
       <span className="text-xs">{label}</span>
     </a>
@@ -424,7 +433,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 {hasBasicInfo && (
                   <div className="space-y-4">
                       <h3 className="font-headline text-lg">Básica</h3>
-                      <InfoItem icon={UserIcon} label="Nombre" value={figure.name} />
+                      <InfoItem icon={UserCircle} label="Nombre" value={figure.name} />
                       <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
                       <InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} imageUrl={nationalityFlagUrl} />
                       <InfoItem icon={Users} label="Género" value={genderInfo} />
@@ -459,12 +468,11 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 <Separator/>
                 <div>
                    <h3 className="font-headline text-lg mb-4">Redes Sociales</h3>
-                   <div className="flex items-center gap-6">
-                      <SocialLink href={figure.socialLinks?.instagram} icon={Instagram} label="Instagram" />
-                      <SocialLink href={figure.socialLinks?.twitter} icon={Twitter} label="X (Twitter)" />
-                      <SocialLink href={figure.socialLinks?.youtube} icon={Youtube} label="YouTube" />
-                      <SocialLink href={figure.socialLinks?.facebook} icon={Facebook} label="Facebook" />
-                      <SocialLink href={figure.socialLinks?.linkedin} icon={Linkedin} label="LinkedIn" />
+                   <div className="flex items-center gap-6 flex-wrap">
+                      {Object.entries(SOCIAL_MEDIA_CONFIG).map(([key, { label, imageUrl }]) => {
+                        const link = (figure.socialLinks as Record<string, string> | undefined)?.[key];
+                        return link ? <SocialLink key={key} href={link} imageUrl={imageUrl} label={label} /> : null;
+                      })}
                    </div>
                 </div>
               </>
