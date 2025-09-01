@@ -76,7 +76,7 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
             localStorage.setItem('wikistars5-guestUsername', data.username);
             localStorage.setItem('wikistars5-guestGender', genderLabel);
             
-            // Only set country if it's not already set
+            // Allow setting country only once for consistency
             if (!isCountrySet && data.countryCode) {
                 localStorage.setItem('wikistars5-guestCountryCode', data.countryCode);
             }

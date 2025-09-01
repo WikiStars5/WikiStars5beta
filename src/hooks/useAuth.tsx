@@ -1,10 +1,9 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
 interface AuthContextType {
@@ -27,17 +26,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // This listener correctly handles all auth state changes without forcing a login.
     const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
+        // A user is signed in (can be anonymous or registered).
         setFirebaseUser(fbUser);
         
         if (fbUser.isAnonymous) {
-          setUser(null); // Anonymous users don't have a Firestore profile
+          // If anonymous, there's no Firestore profile to fetch.
+          setUser(null); 
           setIsLoading(false);
           return;
         }
 
-        // For registered users, listen to their profile
+        // For registered users, listen to their profile document for real-time updates.
         const userDocRef = doc(db, 'users', fbUser.uid);
         const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -53,15 +55,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsLoading(false);
         });
 
+        // Cleanup the profile listener when the user changes.
         return () => unsubscribeSnapshot();
       } else {
-        // No user is signed in, not even anonymous.
+        // No user is signed in at all.
         setUser(null);
         setFirebaseUser(null);
         setIsLoading(false);
       }
     });
 
+    // Cleanup the main auth listener when the component unmounts.
     return () => unsubscribeAuth();
   }, []);
   
