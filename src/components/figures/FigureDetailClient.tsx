@@ -61,55 +61,23 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
   const [headerStreak, setHeaderStreak] = React.useState<number | null>(null);
   
-  // State to hold all comments for the scrolling logic
-  const [allComments, setAllComments] = React.useState<CommentType[]>([]);
+  // State to hold the comment ID from the URL
+  const [highlightedCommentId, setHighlightedCommentId] = React.useState<string | null>(null);
 
 
-  // This effect will try to scroll to a comment whenever the `allComments` state updates.
+  // This effect will run once when the component mounts to check the URL.
   React.useEffect(() => {
-    const commentIdToScrollTo = searchParams.get('comment');
-    if (commentIdToScrollTo && allComments.length > 0) {
-      const element = document.getElementById(commentIdToScrollTo);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Clean up the URL
+    const commentIdFromUrl = searchParams.get('comment');
+    if (commentIdFromUrl) {
+        setHighlightedCommentId(commentIdFromUrl);
+        
+        // Clean up the URL after grabbing the comment ID.
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.delete('comment');
         router.replace(newUrl.toString(), { scroll: false });
-      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allComments]); // Dependency on `allComments` is key.
-
-  // Fetch all comments and their replies to populate the `allComments` state.
-  React.useEffect(() => {
-    if (!id) return;
-
-    const fetchAllCommentsAndReplies = async () => {
-      const commentsPath = `figures/${id}/comments`;
-      const commentsQuery = query(collection(db, commentsPath), orderBy('createdAt', 'desc'));
-      
-      onSnapshot(commentsQuery, async (snapshot) => {
-        const fetchedComments = snapshot.docs.map(mapDocToComment);
-        const allDocs: CommentType[] = [...fetchedComments];
-
-        // This is a simplified fetch; a production app might need a more robust recursive fetch.
-        for (const comment of fetchedComments) {
-            if (comment.replyCount > 0) {
-                const repliesPath = `${commentsPath}/${comment.id}/replies`;
-                const repliesQuery = query(collection(db, repliesPath), orderBy('createdAt', 'asc'));
-                const repliesSnapshot = await getDocs(repliesQuery);
-                const fetchedReplies = repliesSnapshot.docs.map(mapDocToComment);
-                allDocs.push(...fetchedReplies);
-            }
-        }
-        setAllComments(allDocs);
-      });
-    };
-
-    fetchAllCommentsAndReplies();
-
-  }, [id]);
+  }, []); // Run only once on mount
 
 
   const checkHeaderStreak = React.useCallback(async () => {
@@ -247,7 +215,11 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
       
       <StarRatingVote figure={figure} />
       
-      <CommentSection figure={figure} onCommentPosted={handleCommentPosted} />
+      <CommentSection 
+        figure={figure} 
+        onCommentPosted={handleCommentPosted} 
+        highlightedCommentId={highlightedCommentId} 
+      />
       
       <RelatedProfiles figure={figure} />
       

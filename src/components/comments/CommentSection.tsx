@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -22,6 +23,7 @@ import { countryCodeToNameMap } from '@/config/countries';
 interface CommentSectionProps {
   figure: Figure;
   onCommentPosted: (streak: number | null) => void;
+  highlightedCommentId?: string | null;
 }
 
 const MAX_COMMENT_LENGTH = 1000;
@@ -39,7 +41,7 @@ const RATING_SOUNDS: Record<RatingValue, string> = {
 };
 
 
-export function CommentSection({ figure, onCommentPosted }: CommentSectionProps) {
+export function CommentSection({ figure, onCommentPosted, highlightedCommentId }: CommentSectionProps) {
   const [commentText, setCommentText] = React.useState('');
   const [selectedRating, setSelectedRating] = React.useState<RatingValue | null>(null);
   const [hoveredRating, setHoveredRating] = React.useState<RatingValue | null>(null);
@@ -305,6 +307,7 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
                     comment={comment}
                     parentPath={`figures/${figure.id}/comments`}
                     onReplyPosted={onCommentPosted}
+                    highlightedCommentId={highlightedCommentId}
                   />
                 ))}
                 {comments.length > INITIAL_COMMENTS_TO_SHOW && (

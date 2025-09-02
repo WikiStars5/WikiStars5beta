@@ -54,6 +54,7 @@ interface CommentItemProps {
     comment: CommentType;
     parentPath: string;
     onReplyPosted: (streak: number | null) => void;
+    highlightedCommentId?: string | null;
 }
 
 const RatingDisplay = ({ rating, maxRating = 5 }: { rating: RatingValue, maxRating?: number }) => {
@@ -87,7 +88,8 @@ export function CommentItem({
     figure, 
     comment, 
     parentPath,
-    onReplyPosted
+    onReplyPosted,
+    highlightedCommentId,
 }: CommentItemProps) {
     const [isReplying, setIsReplying] = React.useState(false);
     const [replyText, setReplyText] = React.useState('');
@@ -97,6 +99,9 @@ export function CommentItem({
     const [isPostingReply, setIsPostingReply] = React.useState(false);
     const { toast } = useToast();
     const { user: firestoreUser, firebaseUser, isAnonymous } = useAuth();
+    const [isHighlighted, setIsHighlighted] = React.useState(false);
+    const commentRef = React.useRef<HTMLDivElement>(null);
+
 
     const [isExpanded, setIsExpanded] = React.useState(false);
     const isLongComment = comment.text.length > TRUNCATE_LENGTH;
@@ -108,6 +113,16 @@ export function CommentItem({
     const canDelete = firebaseUser?.uid === comment.authorId;
     const hasLiked = firebaseUser ? comment.likes.includes(firebaseUser.uid) : false;
     const hasDisliked = firebaseUser ? comment.dislikes.includes(firebaseUser.uid) : false;
+
+    React.useEffect(() => {
+        if (comment.id === highlightedCommentId && commentRef.current) {
+            commentRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setIsHighlighted(true);
+            const timer = setTimeout(() => setIsHighlighted(false), 5000); // Highlight for 5 seconds
+            return () => clearTimeout(timer);
+        }
+    }, [comment.id, highlightedCommentId]);
+
 
     const genderSymbol = React.useMemo(() => {
         const genderOpt = GENDER_OPTIONS.find(g => g.label === comment.authorGender || g.value === comment.authorGender);
@@ -143,9 +158,8 @@ export function CommentItem({
     }, [fetchReplies]);
 
     const handleShare = async () => {
-        const commentId = `comment-${comment.id}`;
         const url = new URL(`${window.location.origin}/figures/${figure.id}`);
-        url.searchParams.set('comment', commentId);
+        url.searchParams.set('comment', comment.id); // Use a query param
         
         try {
             await navigator.clipboard.writeText(url.toString());
@@ -297,8 +311,11 @@ export function CommentItem({
     };
 
     return (
-        <div className={cn(depth > 0 && "ml-4 md:ml-8")} id={`comment-${comment.id}`}>
-            <div className="flex-grow bg-muted p-3 rounded-lg">
+        <div ref={commentRef} className={cn(depth > 0 && "ml-4 md:ml-8")} id={`comment-${comment.id}`}>
+            <div className={cn(
+                "flex-grow bg-muted p-3 rounded-lg transition-colors duration-1000",
+                isHighlighted ? "bg-primary/20" : ""
+            )}>
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
@@ -440,6 +457,7 @@ export function CommentItem({
                                 comment={reply}
                                 parentPath={`${currentPath}/replies`}
                                 onReplyPosted={onReplyPosted}
+                                highlightedCommentId={highlightedCommentId}
                             />
                         ))
                     )}
