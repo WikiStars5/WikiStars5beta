@@ -8,7 +8,7 @@ import type { User } from 'firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Trash2, Send, Loader2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Trash2, Send, Loader2, Share2 } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { addReply, deleteComment, toggleLikeComment, toggleDislikeComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
@@ -110,6 +110,24 @@ export function CommentItem({
         const unsubscribe = fetchReplies();
         return () => unsubscribe && unsubscribe();
     }, [fetchReplies]);
+
+    const handleShare = async () => {
+        const commentUrl = `${window.location.origin}/figures/${figure.id}#comment-${comment.id}`;
+        try {
+            await navigator.clipboard.writeText(commentUrl);
+            toast({
+                title: "¡Enlace Copiado!",
+                description: "Se ha copiado un enlace directo a este comentario."
+            });
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+            toast({
+                title: "Error al Copiar",
+                description: "No se pudo copiar el enlace. Inténtalo de nuevo.",
+                variant: "destructive"
+            });
+        }
+    };
 
     const handleLike = async () => {
         if (!firebaseUser) {
@@ -245,7 +263,7 @@ export function CommentItem({
     };
 
     return (
-        <div className={cn("flex gap-4", depth > 0 && "ml-4 md:ml-8")}>
+        <div className={cn("flex gap-4", depth > 0 && "ml-4 md:ml-8")} id={`comment-${comment.id}`}>
             <Avatar className="h-10 w-10">
                 <AvatarImage src={correctMalformedUrl(comment.authorPhotoUrl)} alt={comment.authorName} />
                 <AvatarFallback>{comment.authorName?.charAt(0).toUpperCase()}</AvatarFallback>
@@ -285,6 +303,9 @@ export function CommentItem({
                             <MessageSquareReply className="mr-1 h-3 w-3" /> Responder
                         </Button>
                     )}
+                     <Button variant="ghost" size="sm" onClick={handleShare} className="text-xs h-auto py-1 px-2">
+                        <Share2 className="mr-1 h-3 w-3" /> Compartir
+                    </Button>
                     {canDelete && (
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
