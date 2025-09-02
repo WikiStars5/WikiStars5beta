@@ -8,7 +8,7 @@ import type { User } from 'firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Trash2, Send, Loader2, Share2, Star } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Trash2, Send, Loader2, Share2, Star, StarOff } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { addReply, deleteComment, toggleLikeComment, toggleDislikeComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
@@ -56,6 +56,16 @@ interface CommentItemProps {
 }
 
 const RatingDisplay = ({ rating, maxRating = 5 }: { rating: RatingValue, maxRating?: number }) => {
+    // If rating is 0, show a single crossed-out star.
+    if (rating === 0) {
+        return (
+            <div className="flex items-center gap-0.5" title="0 Estrellas">
+                <StarOff className="h-4 w-4 text-destructive" />
+            </div>
+        );
+    }
+    
+    // For ratings 1-5, show the filled/unfilled stars.
     return (
         <div className="flex items-center gap-0.5">
             {[...Array(maxRating)].map((_, i) => (
