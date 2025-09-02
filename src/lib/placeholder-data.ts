@@ -611,33 +611,51 @@ async function deleteRepliesRecursive(collectionPath: string, batch: any) {
 
 export async function deleteComment(documentPath: string): Promise<void> {
   const commentRef = doc(db, documentPath);
-  const batch = writeBatch(db);
 
-  // Recursively delete all nested replies
-  await deleteRepliesRecursive(`${documentPath}/replies`, batch);
-  
-  // Delete the main comment
-  batch.delete(commentRef);
-  
-  await batch.commit();
+  await runTransaction(db, async (transaction) => {
+    const commentDoc = await transaction.get(commentRef);
+    if (!commentDoc.exists()) {
+      // If the comment is already gone, there's nothing to do.
+      return;
+    }
+    const commentData = commentDoc.data();
+    const rating = commentData.rating;
 
-  // Update reply count on the parent if it's a reply
-  const pathParts = documentPath.split('/');
-  // A reply path will have an odd number of segments > 3, e.g. figures/id/comments/id/replies/id (6 segments for collection ref, 7 for doc)
-  // The path to a document must have an even number of segments.
-  // figures/{figureId}/comments/{commentId} -> 4 segments (parent is collection)
-  // figures/{figureId}/comments/{commentId}/replies/{replyId} -> 6 segments (parent is document)
-  if (pathParts.length > 4 && pathParts[pathParts.length - 2] === 'replies') { 
-    const parentRef = doc(db, pathParts.slice(0, -2).join('/'));
-    await runTransaction(db, async (transaction) => {
+    // If the comment had a rating, decrement the figure's rating count.
+    if (rating !== undefined && rating !== null) {
+      const figureRef = doc(db, 'figures', commentData.figureId);
+      const figureDoc = await transaction.get(figureRef);
+      if (figureDoc.exists()) {
+        const figureData = figureDoc.data();
+        const currentCounts = figureData.ratingCounts || { ...defaultRatingCounts };
+        const newCount = Math.max(0, (currentCounts[rating] || 0) - 1);
+        const newRatingCounts = { ...currentCounts, [rating]: newCount };
+        transaction.update(figureRef, { ratingCounts: newRatingCounts });
+      }
+    }
+
+    // Now, delete the comment itself.
+    transaction.delete(commentRef);
+
+    // After deleting the comment, update the parent's reply count if applicable.
+    const pathParts = documentPath.split('/');
+    if (pathParts.length > 4 && pathParts[pathParts.length - 2] === 'replies') {
+      const parentRef = doc(db, pathParts.slice(0, -2).join('/'));
       const parentDoc = await transaction.get(parentRef);
       if (parentDoc.exists()) {
-          const newReplyCount = Math.max(0, (parentDoc.data().replyCount || 0) - 1);
-          transaction.update(parentRef, { replyCount: newReplyCount });
+        const newReplyCount = Math.max(0, (parentDoc.data().replyCount || 0) - 1);
+        transaction.update(parentRef, { replyCount: newReplyCount });
       }
-    });
-  }
+    }
+  });
+
+  // Since replies are subcollections, they need to be deleted separately.
+  // This is a "best-effort" background deletion and is not part of the main transaction.
+  const batch = writeBatch(db);
+  await deleteRepliesRecursive(`${documentPath}/replies`, batch);
+  await batch.commit();
 }
+
 
 // --- Streaks ---
 
