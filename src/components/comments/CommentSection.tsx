@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -5,10 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, MessagesSquare, Send } from 'lucide-react';
+import { Loader2, MessagesSquare, Send, Star } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import type { Figure, Comment as CommentType, UserProfile } from '@/lib/types';
-import { addComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
+import type { Figure, Comment as CommentType, UserProfile, RatingValue } from '@/lib/types';
+import { addComment, mapDocToComment, updateStreak, submitStarRating } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -26,8 +27,12 @@ interface CommentSectionProps {
 const MAX_COMMENT_LENGTH = 1000;
 const INITIAL_COMMENTS_TO_SHOW = 5;
 
+const RATING_OPTIONS: RatingValue[] = [1, 2, 3, 4, 5];
+
 export function CommentSection({ figure, onCommentPosted }: CommentSectionProps) {
   const [commentText, setCommentText] = React.useState('');
+  const [selectedRating, setSelectedRating] = React.useState<RatingValue | null>(null);
+  const [hoveredRating, setHoveredRating] = React.useState<RatingValue | null>(null);
   const [comments, setComments] = React.useState<CommentType[]>([]);
   const [isPosting, setIsPosting] = React.useState(false);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
@@ -103,7 +108,7 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
   
 
   const handlePostComment = async () => {
-    if (!currentUser) {
+    if (!currentUser || !firebaseUser) {
       toast({ title: "Error", description: "Debes tener un perfil para comentar.", variant: "destructive" });
       return;
     }
@@ -131,25 +136,29 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
           isAnonymous: currentUser.isAnonymous || false,
       };
 
+      // Submit rating if one is selected
+      if (selectedRating !== null) {
+        await submitStarRating(figure.id, firebaseUser.uid, selectedRating);
+      }
+
       await addComment(figure.id, authorData, commentText.trim());
       
       const newStreak = await updateStreak(figure.id, authorData);
       onCommentPosted(newStreak);
 
       setCommentText('');
-      toast({ title: "¡Comentario Publicado!", description: "Gracias por tu contribución." });
+      setSelectedRating(null); // Reset rating after posting
+      toast({ title: "¡Opinión Publicada!", description: "Gracias por tu contribución." });
 
     } catch (error: any) {
       console.error("Error posting comment: ", error);
-      toast({ title: "Error", description: error.message || "No se pudo publicar tu comentario.", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "No se pudo publicar tu opinión.", variant: "destructive" });
     } finally {
       setIsPosting(false);
     }
   };
 
   const renderCommentInput = () => {
-    // La lógica de isAuthLoading se movió fuera de esta función.
-    // Esta función ahora solo determina si el usuario tiene un perfil.
     if (!currentUser) {
       return (
           <div className="text-center p-4 border-2 border-dashed rounded-lg">
@@ -159,7 +168,6 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
       );
     }
 
-    // Aquí iría el resto de la lógica para el formulario de comentario
     return (
       <div className="flex gap-4">
           <Avatar className="h-10 w-10 mt-1">
@@ -167,8 +175,24 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
               <AvatarFallback>{currentUser.username?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-grow space-y-2">
+              <div className="flex items-center gap-1 mb-2">
+                  {RATING_OPTIONS.map((rating) => (
+                      <Star
+                          key={rating}
+                          className={cn(
+                              "h-7 w-7 cursor-pointer transition-colors",
+                              (hoveredRating ?? selectedRating ?? 0) >= rating
+                                  ? "text-primary fill-primary"
+                                  : "text-muted-foreground/50 hover:text-primary"
+                          )}
+                          onMouseEnter={() => setHoveredRating(rating)}
+                          onMouseLeave={() => setHoveredRating(null)}
+                          onClick={() => setSelectedRating(rating)}
+                      />
+                  ))}
+              </div>
               <Textarea
-                  placeholder="Escribe tu comentario aquí..."
+                  placeholder="Escribe tu opinión aquí..."
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   rows={3}
@@ -191,7 +215,6 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
 
   const commentsToShow = showAllComments ? comments : comments.slice(0, INITIAL_COMMENTS_TO_SHOW);
 
-  // La lógica de renderizado condicional principal se coloca aquí.
   if (isAuthLoading) {
     return (
       <Card className="border border-white/20 bg-black">
@@ -202,13 +225,12 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
     );
   }
 
-  // Si la autenticación ha terminado, se renderiza el contenido principal.
   return (
     <>
       <Card className="border border-white/20 bg-black">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <MessagesSquare /> Comentarios y Discusión
+            <MessagesSquare /> Opiniones y Discusión
           </CardTitle>
           <CardDescription>
             Comparte tu opinión sobre {figure.name}. Sé respetuoso y mantén la conversación constructiva.
@@ -216,7 +238,6 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
         </CardHeader>
         <CardContent className="space-y-6">
           
-          {/* El renderizado del formulario ya no tiene la lógica de carga */}
           {renderCommentInput()}
 
           <Separator />
@@ -248,7 +269,7 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
               </>
             ) : (
               <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
-                Aún no hay comentarios. ¡Sé el primero en compartir tu opinión!
+                Aún no hay opiniones. ¡Sé el primero en compartir la tuya!
               </p>
             )}
           </div>

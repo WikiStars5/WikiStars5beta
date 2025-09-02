@@ -46,7 +46,7 @@ interface FigureDetailClientProps {
 }
 
 export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
-  const routeParams = useParams<{ id: string }>();
+  const routeParams = useParams<{ id:string }>();
   const id = routeParams?.id;
   const router = useRouter();
 
@@ -178,7 +178,6 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
               <TabsTrigger value="attitude" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><CheckSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
               <TabsTrigger value="emotion" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
               <TabsTrigger value="top-streaks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Flame className="h-4 sm:h-5 w-4 sm:w-5" />Top Rachas</TabsTrigger>
-              <TabsTrigger value="ratings" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><BarChart3 className="h-4 sm:h-5 w-4 sm:w-5" />Calificaciones</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal-info">
@@ -205,13 +204,12 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
                 <TopStreaks figureId={figure.id} />
             </TabsContent>
             
-            <TabsContent value="ratings">
-                 <StarRatingVote figure={figure} />
-            </TabsContent>
           </Tabs>
         </div> 
       </div>
-
+      
+      <StarRatingVote figure={figure} />
+      
       <CommentSection figure={figure} onCommentPosted={handleCommentPosted} />
       
       <RelatedProfiles figure={figure} />
