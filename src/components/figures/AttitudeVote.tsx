@@ -218,14 +218,14 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                   <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
                   <span className="text-xs font-medium">{label}</span>
                   <span className="text-sm font-bold">
-                    {figureAttitudeCounts[key] || 0}
+                    {(figureAttitudeCounts[key] || 0).toLocaleString()}
                   </span>
                 </Button>
               ))}
             </div>
         )}
         <div className="text-center text-muted-foreground">
-          <p>Total de respuestas: <span className="font-bold">{totalVotes}</span></p>
+          <p>Total de respuestas: <span className="font-bold">{totalVotes.toLocaleString()}</span></p>
         </div>
       </CardContent>
     </Card>

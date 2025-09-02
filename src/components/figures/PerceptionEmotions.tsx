@@ -217,14 +217,14 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
                   </div>
                   <span className="text-xs font-medium text-center block">{label}</span>
                   <span className="text-sm font-bold">
-                    {figurePerceptionCounts[key] || 0}
+                    {(figurePerceptionCounts[key] || 0).toLocaleString()}
                   </span>
                 </Button>
               ))}
             </div>
         )}
         <div className="text-center text-muted-foreground">
-          <p>Total de respuestas: <span className="font-bold">{totalVotes}</span></p>
+          <p>Total de respuestas: <span className="font-bold">{totalVotes.toLocaleString()}</span></p>
         </div>
       </CardContent>
     </Card>
