@@ -30,6 +30,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Image from 'next/image';
 
 const MAX_COMMENT_LENGTH = 1000;
+const TRUNCATE_LENGTH = 280; // Characters to show before truncating
 const MAX_REPLY_DEPTH = 4; // Set a maximum nesting level for replies
 
 function timeSince(date: Date): string {
@@ -96,6 +97,9 @@ export function CommentItem({
     const [isPostingReply, setIsPostingReply] = React.useState(false);
     const { toast } = useToast();
     const { user: firestoreUser, firebaseUser, isAnonymous } = useAuth();
+
+    const [isExpanded, setIsExpanded] = React.useState(false);
+    const isLongComment = comment.text.length > TRUNCATE_LENGTH;
     
     const currentPath = `${parentPath}/${comment.id}`;
     const depth = (parentPath.match(/replies/g) || []).length;
@@ -324,7 +328,21 @@ export function CommentItem({
                     </div>
                 )}
                 
-                <p className="text-sm mt-2 whitespace-pre-wrap ml-10">{comment.text}</p>
+                <p className="text-sm mt-2 whitespace-pre-wrap ml-10">
+                  {isLongComment && !isExpanded 
+                    ? `${comment.text.substring(0, TRUNCATE_LENGTH)}...` 
+                    : comment.text
+                  }
+                </p>
+                {isLongComment && (
+                  <Button 
+                    variant="link" 
+                    className="text-xs p-0 h-auto ml-10" 
+                    onClick={() => setIsExpanded(!isExpanded)}
+                  >
+                    {isExpanded ? 'Ver menos' : 'Ver más'}
+                  </Button>
+                )}
             </div>
             <div className="flex items-center gap-2 mt-1 px-1 ml-10">
                 <Button variant="ghost" size="sm" onClick={handleLike} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
