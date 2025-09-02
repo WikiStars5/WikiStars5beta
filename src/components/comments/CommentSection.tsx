@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -70,7 +69,6 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
   React.useEffect(() => {
     updateUserState();
   
-    // Listen for custom event that signals profile update
     const handleProfileUpdate = () => {
       updateUserState();
     };
@@ -80,7 +78,6 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
       window.removeEventListener('guestProfileUpdated', handleProfileUpdate);
     };
   }, [updateUserState]);
-
 
   React.useEffect(() => {
     setIsLoadingComments(true);
@@ -151,14 +148,8 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
   };
 
   const renderCommentInput = () => {
-    if (isAuthLoading) {
-      return (
-        <div className="flex justify-center items-center h-24">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      );
-    }
-
+    // La lógica de isAuthLoading se movió fuera de esta función.
+    // Esta función ahora solo determina si el usuario tiene un perfil.
     if (!currentUser) {
       return (
           <div className="text-center p-4 border-2 border-dashed rounded-lg">
@@ -168,37 +159,50 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
       );
     }
 
+    // Aquí iría el resto de la lógica para el formulario de comentario
     return (
-        <div className="flex gap-4">
-            <Avatar className="h-10 w-10 mt-1">
-                <AvatarImage src={correctMalformedUrl(currentUser.photoURL)} alt={currentUser.username} />
-                <AvatarFallback>{currentUser.username?.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex-grow space-y-2">
-                <Textarea
-                    placeholder="Escribe tu comentario aquí..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    rows={3}
-                    className="bg-muted border-border/50 focus:bg-background"
-                    maxLength={MAX_COMMENT_LENGTH}
-                />
-                <div className="flex justify-between items-center">
-                    <p className={cn("text-xs text-muted-foreground", commentText.length > MAX_COMMENT_LENGTH && "text-destructive")}>
-                        {commentText.length} / {MAX_COMMENT_LENGTH}
-                    </p>
-                    <Button onClick={handlePostComment} disabled={isPosting}>
-                        {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
-                        Publicar
-                    </Button>
-                </div>
-            </div>
-        </div>
+      <div className="flex gap-4">
+          <Avatar className="h-10 w-10 mt-1">
+              <AvatarImage src={correctMalformedUrl(currentUser.photoURL)} alt={currentUser.username} />
+              <AvatarFallback>{currentUser.username?.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="flex-grow space-y-2">
+              <Textarea
+                  placeholder="Escribe tu comentario aquí..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  rows={3}
+                  className="bg-muted border-border/50 focus:bg-background"
+                  maxLength={MAX_COMMENT_LENGTH}
+              />
+              <div className="flex justify-between items-center">
+                  <p className={cn("text-xs text-muted-foreground", commentText.length > MAX_COMMENT_LENGTH && "text-destructive")}>
+                      {commentText.length} / {MAX_COMMENT_LENGTH}
+                  </p>
+                  <Button onClick={handlePostComment} disabled={isPosting}>
+                      {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+                      Publicar
+                  </Button>
+              </div>
+          </div>
+      </div>
     );
   };
 
   const commentsToShow = showAllComments ? comments : comments.slice(0, INITIAL_COMMENTS_TO_SHOW);
 
+  // La lógica de renderizado condicional principal se coloca aquí.
+  if (isAuthLoading) {
+    return (
+      <Card className="border border-white/20 bg-black">
+        <CardContent className="flex justify-center items-center h-48">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Si la autenticación ha terminado, se renderiza el contenido principal.
   return (
     <>
       <Card className="border border-white/20 bg-black">
@@ -212,6 +216,7 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
         </CardHeader>
         <CardContent className="space-y-6">
           
+          {/* El renderizado del formulario ya no tiene la lógica de carga */}
           {renderCommentInput()}
 
           <Separator />
@@ -234,12 +239,12 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
                   />
                 ))}
                 {comments.length > INITIAL_COMMENTS_TO_SHOW && (
-                   <div className="text-center pt-4">
+                    <div className="text-center pt-4">
                       <Button variant="outline" onClick={() => setShowAllComments(!showAllComments)}>
                           {showAllComments ? 'Mostrar menos comentarios' : `Ver los ${comments.length - INITIAL_COMMENTS_TO_SHOW} comentarios restantes`}
                       </Button>
-                  </div>
-                )}
+                    </div>
+                  )}
               </>
             ) : (
               <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
