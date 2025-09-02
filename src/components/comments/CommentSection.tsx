@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, MessagesSquare, Send, Star } from 'lucide-react';
+import { Loader2, MessagesSquare, Send, Star, StarOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import type { Figure, Comment as CommentType, UserProfile, RatingValue } from '@/lib/types';
 import { addComment, mapDocToComment, updateStreak, submitStarRating } from '@/lib/placeholder-data';
@@ -29,6 +29,16 @@ const INITIAL_COMMENTS_TO_SHOW = 5;
 
 const RATING_OPTIONS: RatingValue[] = [1, 2, 3, 4, 5];
 
+const RATING_SOUNDS: Record<RatingValue, string> = {
+    0: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar0.mp3?alt=media&token=48731777-62f4-413c-8a21-4f183c577d61',
+    1: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457',
+    2: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar2.mp3?alt=media&token=58cbf607-df0b-4bbd-b28e-291cf1951c18',
+    3: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar3.mp3?alt=media&token=df67dc5b-28ab-4773-8266-60b9127a325f',
+    4: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826',
+    5: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f',
+};
+
+
 export function CommentSection({ figure, onCommentPosted }: CommentSectionProps) {
   const [commentText, setCommentText] = React.useState('');
   const [selectedRating, setSelectedRating] = React.useState<RatingValue | null>(null);
@@ -37,11 +47,31 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
   const [isPosting, setIsPosting] = React.useState(false);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [showAllComments, setShowAllComments] = React.useState(false);
+  
+  const audioRefs = React.useRef<Record<RatingValue, HTMLAudioElement | null>>({ 0: null, 1: null, 2: null, 3: null, 4: null, 5: null });
 
   const { user: firestoreUser, firebaseUser, isLoading: isAuthLoading, isAnonymous } = useAuth();
   const [currentUser, setCurrentUser] = React.useState<UserProfile | null>(null);
 
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    // Preload audio files
+    Object.entries(RATING_SOUNDS).forEach(([key, src]) => {
+        const rating = parseInt(key) as RatingValue;
+        const audio = new Audio(src);
+        audio.preload = 'auto';
+        audioRefs.current[rating] = audio;
+    });
+  }, []);
+
+  const playRatingSound = (rating: RatingValue) => {
+    const audio = audioRefs.current[rating];
+    if (audio) {
+      audio.currentTime = 0; // Rewind to the start
+      audio.play().catch(e => console.error("Error playing sound:", e));
+    }
+  };
 
   const updateUserState = React.useCallback(() => {
     if (isAuthLoading) {
@@ -139,9 +169,10 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
       // Submit rating if one is selected
       if (selectedRating !== null) {
         await submitStarRating(figure.id, firebaseUser.uid, selectedRating);
+        playRatingSound(selectedRating);
       }
 
-      await addComment(figure.id, authorData, commentText.trim());
+      await addComment(figure.id, authorData, commentText.trim(), selectedRating);
       
       const newStreak = await updateStreak(figure.id, authorData);
       onCommentPosted(newStreak);
@@ -157,6 +188,12 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
       setIsPosting(false);
     }
   };
+
+  const handleRatingClick = (rating: RatingValue) => {
+    if (isPosting) return;
+    const newRating = selectedRating === rating ? null : rating;
+    setSelectedRating(newRating);
+  }
 
   const renderCommentInput = () => {
     if (!currentUser) {
@@ -175,21 +212,32 @@ export function CommentSection({ figure, onCommentPosted }: CommentSectionProps)
               <AvatarFallback>{currentUser.username?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-grow space-y-2">
-              <div className="flex items-center gap-1 mb-2">
-                  {RATING_OPTIONS.map((rating) => (
-                      <Star
-                          key={rating}
-                          className={cn(
-                              "h-7 w-7 cursor-pointer transition-colors",
-                              (hoveredRating ?? selectedRating ?? 0) >= rating
-                                  ? "text-primary fill-primary"
-                                  : "text-muted-foreground/50 hover:text-primary"
-                          )}
-                          onMouseEnter={() => setHoveredRating(rating)}
-                          onMouseLeave={() => setHoveredRating(null)}
-                          onClick={() => setSelectedRating(rating)}
-                      />
-                  ))}
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <Button
+                    variant={selectedRating === 0 ? "destructive" : "outline"}
+                    size="sm"
+                    onClick={() => handleRatingClick(0)}
+                    className="flex items-center gap-1"
+                  >
+                      <StarOff className="h-4 w-4"/>
+                      0 Estrellas
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {RATING_OPTIONS.map((rating) => (
+                        <Star
+                            key={rating}
+                            className={cn(
+                                "h-7 w-7 cursor-pointer transition-colors",
+                                (hoveredRating ?? selectedRating ?? -1) >= rating
+                                    ? "text-primary fill-primary"
+                                    : "text-muted-foreground/50 hover:text-primary"
+                            )}
+                            onMouseEnter={() => setHoveredRating(rating)}
+                            onMouseLeave={() => setHoveredRating(null)}
+                            onClick={() => handleRatingClick(rating)}
+                        />
+                    ))}
+                  </div>
               </div>
               <Textarea
                   placeholder="Escribe tu opinión aquí..."

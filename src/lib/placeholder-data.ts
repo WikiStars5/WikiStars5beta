@@ -421,6 +421,7 @@ export const mapDocToComment = (docSnap: DocumentData): Comment => {
     authorCountry: data.authorCountry,
     authorCountryCode: data.authorCountryCode,
     text: data.text,
+    rating: data.rating,
     createdAt: data.createdAt,
     likes: data.likes || [],
     likeCount: data.likeCount || 0,
@@ -443,11 +444,12 @@ export async function addComment(
     countryCode: string;
     isAnonymous: boolean;
   },
-  text: string
+  text: string,
+  rating?: RatingValue | null
 ): Promise<string> {
     const commentsCollectionRef = collection(db, `figures/${figureId}/comments`);
     
-    const commentData = {
+    const commentData: Omit<Comment, 'id' | 'createdAt' | 'replies'> & { createdAt: any } = {
         figureId: figureId,
         authorId: authorData.id,
         authorName: authorData.name,
@@ -456,6 +458,7 @@ export async function addComment(
         authorCountry: authorData.country,
         authorCountryCode: authorData.countryCode,
         text: text,
+        rating: rating ?? undefined,
         createdAt: serverTimestamp(),
         likes: [],
         likeCount: 0,

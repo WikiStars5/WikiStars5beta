@@ -114,6 +114,7 @@ export interface Comment {
   authorCountry?: string;
   authorCountryCode?: string;
   text: string;
+  rating?: RatingValue;
   createdAt: Timestamp;
   likes: string[]; // Array of user IDs who liked the comment
   likeCount: number;

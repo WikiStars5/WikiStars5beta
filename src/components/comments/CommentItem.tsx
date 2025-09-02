@@ -3,12 +3,12 @@
 "use client";
 
 import * as React from 'react';
-import type { Figure, Comment as CommentType } from '@/lib/types';
+import type { Figure, Comment as CommentType, RatingValue } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Trash2, Send, Loader2, Share2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Trash2, Send, Loader2, Share2, Star } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { addReply, deleteComment, toggleLikeComment, toggleDislikeComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
@@ -54,6 +54,23 @@ interface CommentItemProps {
     parentPath: string;
     onReplyPosted: (streak: number | null) => void;
 }
+
+const RatingDisplay = ({ rating, maxRating = 5 }: { rating: RatingValue, maxRating?: number }) => {
+    return (
+        <div className="flex items-center gap-0.5">
+            {[...Array(maxRating)].map((_, i) => (
+                <Star 
+                    key={`star-${i}`} 
+                    className={cn(
+                        "h-4 w-4",
+                        rating >= (i + 1) ? "text-primary fill-current" : "text-muted-foreground/30"
+                    )}
+                />
+            ))}
+        </div>
+    );
+};
+
 
 export function CommentItem({ 
     figure, 
@@ -289,7 +306,12 @@ export function CommentItem({
                             <p className="text-xs text-muted-foreground">{timeSince(comment.createdAt.toDate())}</p>
                         )}
                     </div>
-                    <p className="text-sm mt-1 whitespace-pre-wrap">{comment.text}</p>
+                    {comment.rating !== undefined && comment.rating !== null && (
+                        <div className="mt-2">
+                           <RatingDisplay rating={comment.rating} />
+                        </div>
+                    )}
+                    <p className="text-sm mt-2 whitespace-pre-wrap">{comment.text}</p>
                 </div>
                 <div className="flex items-center gap-2 mt-1 px-1">
                     <Button variant="ghost" size="sm" onClick={handleLike} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
