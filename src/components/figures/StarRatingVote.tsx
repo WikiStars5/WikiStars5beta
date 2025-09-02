@@ -85,9 +85,9 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
                     const percentage = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
                     return (
                         <div key={star} className="flex items-center gap-2 text-sm">
-                        <span className="w-12 text-right text-muted-foreground">{star} <Star className="inline h-3 w-3 mb-0.5" /></span>
+                        <span className="flex-shrink-0 w-12 text-right text-muted-foreground">{star} <Star className="inline h-3 w-3 mb-0.5" /></span>
                         <Progress value={percentage} className="h-2 w-full" />
-                        <span className="w-8 text-left font-mono text-muted-foreground">{count.toLocaleString()}</span>
+                        <span className="flex-shrink-0 w-24 text-right font-mono text-muted-foreground">{count.toLocaleString()}</span>
                         </div>
                     );
                     })}
