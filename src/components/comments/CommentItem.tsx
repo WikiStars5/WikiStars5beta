@@ -143,9 +143,12 @@ export function CommentItem({
     }, [fetchReplies]);
 
     const handleShare = async () => {
-        const commentUrl = `${window.location.origin}/figures/${figure.id}#comment-${comment.id}`;
+        const commentId = `comment-${comment.id}`;
+        const url = new URL(`${window.location.origin}/figures/${figure.id}`);
+        url.searchParams.set('comment', commentId);
+        
         try {
-            await navigator.clipboard.writeText(commentUrl);
+            await navigator.clipboard.writeText(url.toString());
             toast({
                 title: "¡Enlace Copiado!",
                 description: "Se ha copiado un enlace directo a este comentario."

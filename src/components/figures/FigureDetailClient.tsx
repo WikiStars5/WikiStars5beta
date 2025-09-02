@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -23,31 +24,33 @@ import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useToast } from "@/hooks/use-toast";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ShareButton } from "@/components/shared/ShareButton";
-import type { Figure, LocalUserStreak, UserProfile } from "@/lib/types";
+import type { Figure, LocalUserStreak, UserProfile, Comment as CommentType } from "@/lib/types";
 import { 
   grantFirstGlanceAchievement,
 } from '@/app/actions/achievementActions';
 import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
-import { doc, onSnapshot, getDoc, Timestamp } from "firebase/firestore";
+import { doc, onSnapshot, getDoc, Timestamp, collection, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { mapDocToFigure } from "@/lib/placeholder-data";
+import { mapDocToComment, mapDocToFigure } from "@/lib/placeholder-data";
 import { RelatedProfiles } from "@/components/figures/RelatedProfiles";
 import { CommentSection } from "@/components/comments/CommentSection";
 import { differenceInHours } from 'date-fns';
 import { TopStreaks } from "@/components/figures/TopStreaks";
 import { useAuth } from "@/hooks/useAuth";
+import { StarRatingVote } from "@/components/figures/StarRatingVote";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
 }
 
 export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
-  const routeParams = useParams<{ id: string }>();
-  const id = routeParams?.id;
+  const routeParams = useParams<{ id:string }>();
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const id = routeParams?.id;
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
   const { toast } = useToast();
@@ -57,6 +60,56 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   
   const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
   const [headerStreak, setHeaderStreak] = React.useState<number | null>(null);
+  
+  // State to hold all comments for the scrolling logic
+  const [allComments, setAllComments] = React.useState<CommentType[]>([]);
+
+
+  // This effect will try to scroll to a comment whenever the `allComments` state updates.
+  React.useEffect(() => {
+    const commentIdToScrollTo = searchParams.get('comment');
+    if (commentIdToScrollTo && allComments.length > 0) {
+      const element = document.getElementById(commentIdToScrollTo);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Clean up the URL
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('comment');
+        router.replace(newUrl.toString(), { scroll: false });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allComments]); // Dependency on `allComments` is key.
+
+  // Fetch all comments and their replies to populate the `allComments` state.
+  React.useEffect(() => {
+    if (!id) return;
+
+    const fetchAllCommentsAndReplies = async () => {
+      const commentsPath = `figures/${id}/comments`;
+      const commentsQuery = query(collection(db, commentsPath), orderBy('createdAt', 'desc'));
+      
+      onSnapshot(commentsQuery, async (snapshot) => {
+        const fetchedComments = snapshot.docs.map(mapDocToComment);
+        const allDocs: CommentType[] = [...fetchedComments];
+
+        // This is a simplified fetch; a production app might need a more robust recursive fetch.
+        for (const comment of fetchedComments) {
+            if (comment.replyCount > 0) {
+                const repliesPath = `${commentsPath}/${comment.id}/replies`;
+                const repliesQuery = query(collection(db, repliesPath), orderBy('createdAt', 'asc'));
+                const repliesSnapshot = await getDocs(repliesQuery);
+                const fetchedReplies = repliesSnapshot.docs.map(mapDocToComment);
+                allDocs.push(...fetchedReplies);
+            }
+        }
+        setAllComments(allDocs);
+      });
+    };
+
+    fetchAllCommentsAndReplies();
+
+  }, [id]);
 
 
   const checkHeaderStreak = React.useCallback(async () => {
@@ -156,7 +209,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
         <div className="lg:col-span-3 space-y-8">
-          <Tabs defaultValue="attitude" className="w-full">
+           <Tabs defaultValue="attitude" className="w-full">
             <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20"> 
               <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
               <TabsTrigger value="attitude" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><CheckSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
@@ -187,10 +240,13 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
             <TabsContent value="top-streaks">
                 <TopStreaks figureId={figure.id} />
             </TabsContent>
+            
           </Tabs>
         </div> 
       </div>
-
+      
+      <StarRatingVote figure={figure} />
+      
       <CommentSection figure={figure} onCommentPosted={handleCommentPosted} />
       
       <RelatedProfiles figure={figure} />
