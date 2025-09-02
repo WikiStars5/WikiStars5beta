@@ -77,7 +77,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
                 <div className="flex flex-col items-center justify-center">
                     <p className="text-5xl font-bold text-primary">{averageRating.toFixed(1)}</p>
                     <RatingDisplay rating={averageRating} />
-                    <p className="text-sm text-muted-foreground mt-1">{totalVotes} {totalVotes === 1 ? 'calificación' : 'calificaciones'}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{totalVotes.toLocaleString()} {totalVotes === 1 ? 'calificación' : 'calificaciones'}</p>
                 </div>
                 <div className="w-full flex-grow space-y-1.5">
                     {[5, 4, 3, 2, 1, 0].map(star => {
@@ -87,7 +87,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
                         <div key={star} className="flex items-center gap-2 text-sm">
                         <span className="w-12 text-right text-muted-foreground">{star} <Star className="inline h-3 w-3 mb-0.5" /></span>
                         <Progress value={percentage} className="h-2 w-full" />
-                        <span className="w-8 text-left font-mono text-muted-foreground">{count}</span>
+                        <span className="w-8 text-left font-mono text-muted-foreground">{count.toLocaleString()}</span>
                         </div>
                     );
                     })}
