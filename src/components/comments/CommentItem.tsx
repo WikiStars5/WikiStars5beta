@@ -290,14 +290,14 @@ export function CommentItem({
     };
 
     return (
-        <div className={cn("flex gap-4", depth > 0 && "ml-4 md:ml-8")} id={`comment-${comment.id}`}>
-            <Avatar className="h-10 w-10">
-                <AvatarImage src={correctMalformedUrl(comment.authorPhotoUrl)} alt={comment.authorName} />
-                <AvatarFallback>{comment.authorName?.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex-grow">
-                <div className="bg-muted p-3 rounded-lg rounded-tl-none">
-                    <div className="flex justify-between items-center">
+        <div className={cn(depth > 0 && "ml-4 md:ml-8")} id={`comment-${comment.id}`}>
+            <div className="flex-grow bg-muted p-3 rounded-lg">
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={correctMalformedUrl(comment.authorPhotoUrl)} alt={comment.authorName} />
+                            <AvatarFallback>{comment.authorName?.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
                         <div className="flex items-center gap-1.5">
                             <p className="font-semibold text-sm">{comment.authorName}</p>
                             {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={comment.authorGender}>{genderSymbol}</span>}
@@ -312,116 +312,118 @@ export function CommentItem({
                                 />
                             )}
                         </div>
-                        {comment.createdAt && (
-                            <p className="text-xs text-muted-foreground">{timeSince(comment.createdAt.toDate())}</p>
-                        )}
                     </div>
-                    {comment.rating !== undefined && comment.rating !== null && (
-                        <div className="mt-2">
-                           <RatingDisplay rating={comment.rating} />
-                        </div>
-                    )}
-                    <p className="text-sm mt-2 whitespace-pre-wrap">{comment.text}</p>
-                </div>
-                <div className="flex items-center gap-2 mt-1 px-1">
-                    <Button variant="ghost" size="sm" onClick={handleLike} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
-                        <ThumbsUp className={cn("mr-1 h-3 w-3 transition-all duration-200 ease-in-out active:scale-150", hasLiked && "fill-current text-blue-500")} /> {comment.likeCount}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={handleDislike} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
-                        <ThumbsDown className={cn("mr-1 h-3 w-3 transition-all duration-200 ease-in-out active:scale-150", hasDisliked && "fill-current text-destructive")} /> {comment.dislikeCount}
-                    </Button>
-                    {canReply && (
-                        <Button variant="ghost" size="sm" onClick={() => setIsReplying(!isReplying)} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
-                            <MessageSquareReply className="mr-1 h-3 w-3" /> Responder
-                        </Button>
-                    )}
-                     <Button variant="ghost" size="sm" onClick={handleShare} className="text-xs h-auto py-1 px-2">
-                        <Share2 className="mr-1 h-3 w-3" /> Compartir
-                    </Button>
-                    {canDelete && (
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="text-xs h-auto py-1 px-2 text-destructive hover:text-destructive">
-                                    <Trash2 className="mr-1 h-3 w-3" /> Eliminar
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar comentario?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    ¿Confirmas que quieres eliminar este comentario? Todas las respuestas anidadas también serán eliminadas. Esta acción no se puede deshacer.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>No</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                    {comment.createdAt && (
+                        <p className="text-xs text-muted-foreground flex-shrink-0">{timeSince(comment.createdAt.toDate())}</p>
                     )}
                 </div>
-
-                {isReplying && (
-                    <div className="mt-2 flex gap-2 items-start">
-                        <Avatar className="h-8 w-8">
-                             <AvatarImage src={correctMalformedUrl(firestoreUser?.photoURL)} alt={firestoreUser?.username} />
-                            <AvatarFallback>{firestoreUser?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-grow space-y-2">
-                             <Textarea 
-                                placeholder={`Respondiendo a ${comment.authorName}...`} 
-                                value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                                rows={2}
-                                className="text-sm"
-                                maxLength={MAX_COMMENT_LENGTH}
-                             />
-                             <div className="flex justify-between items-center">
-                                <p className={cn(
-                                    "text-xs text-muted-foreground",
-                                    replyText.length > MAX_COMMENT_LENGTH && "text-destructive"
-                                )}>
-                                    {replyText.length} / {MAX_COMMENT_LENGTH}
-                                </p>
-                                <div className="flex gap-2">
-                                    <Button variant="ghost" size="sm" onClick={() => setIsReplying(false)}>Cancelar</Button>
-                                    <Button size="sm" onClick={handlePostReply} disabled={isPostingReply}>
-                                        {isPostingReply ? <Loader2 className="mr-1 h-4 w-4 animate-spin"/> : <Send className="mr-1 h-4 w-4"/>}
-                                        Enviar
-                                    </Button>
-                                </div>
-                             </div>
-                        </div>
+                
+                {comment.rating !== undefined && comment.rating !== null && (
+                    <div className="mt-2 ml-10">
+                        <RatingDisplay rating={comment.rating} />
                     </div>
                 )}
                 
-                 {comment.replyCount > 0 && (
-                    <div className="mt-2">
-                        <Button variant="link" size="sm" className="text-xs p-0 h-auto" onClick={() => setShowReplies(!showReplies)}>
-                            <CornerDownRight className="mr-1 h-3 w-3" />
-                            {showReplies ? 'Ocultar respuestas' : `${comment.replyCount} ${comment.replyCount === 1 ? 'respuesta' : 'respuestas'}`}
-                        </Button>
-                    </div>
+                <p className="text-sm mt-2 whitespace-pre-wrap ml-10">{comment.text}</p>
+            </div>
+            <div className="flex items-center gap-2 mt-1 px-1 ml-10">
+                <Button variant="ghost" size="sm" onClick={handleLike} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
+                    <ThumbsUp className={cn("mr-1 h-3 w-3 transition-all duration-200 ease-in-out active:scale-150", hasLiked && "fill-current text-blue-500")} /> {comment.likeCount}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleDislike} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
+                    <ThumbsDown className={cn("mr-1 h-3 w-3 transition-all duration-200 ease-in-out active:scale-150", hasDisliked && "fill-current text-destructive")} /> {comment.dislikeCount}
+                </Button>
+                {canReply && (
+                    <Button variant="ghost" size="sm" onClick={() => setIsReplying(!isReplying)} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
+                        <MessageSquareReply className="mr-1 h-3 w-3" /> Responder
+                    </Button>
                 )}
-
-                {showReplies && (
-                    <div className="mt-4 space-y-4">
-                        {isLoadingReplies ? (
-                           <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Cargando respuestas...</div>
-                        ) : (
-                            replies.map(reply => (
-                                <CommentItem 
-                                    key={reply.id} 
-                                    figure={figure}
-                                    comment={reply}
-                                    parentPath={`${currentPath}/replies`}
-                                    onReplyPosted={onReplyPosted}
-                                />
-                            ))
-                        )}
-                    </div>
+                    <Button variant="ghost" size="sm" onClick={handleShare} className="text-xs h-auto py-1 px-2">
+                    <Share2 className="mr-1 h-3 w-3" /> Compartir
+                </Button>
+                {canDelete && (
+                        <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="text-xs h-auto py-1 px-2 text-destructive hover:text-destructive">
+                                <Trash2 className="mr-1 h-3 w-3" /> Eliminar
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar comentario?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                ¿Confirmas que quieres eliminar este comentario? Todas las respuestas anidadas también serán eliminadas. Esta acción no se puede deshacer.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>No</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 )}
             </div>
+
+            {isReplying && (
+                <div className="mt-2 flex gap-2 items-start ml-10">
+                    <Avatar className="h-8 w-8">
+                            <AvatarImage src={correctMalformedUrl(firestoreUser?.photoURL)} alt={firestoreUser?.username} />
+                        <AvatarFallback>{firestoreUser?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-grow space-y-2">
+                            <Textarea 
+                            placeholder={`Respondiendo a ${comment.authorName}...`} 
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            rows={2}
+                            className="text-sm"
+                            maxLength={MAX_COMMENT_LENGTH}
+                            />
+                            <div className="flex justify-between items-center">
+                            <p className={cn(
+                                "text-xs text-muted-foreground",
+                                replyText.length > MAX_COMMENT_LENGTH && "text-destructive"
+                            )}>
+                                {replyText.length} / {MAX_COMMENT_LENGTH}
+                            </p>
+                            <div className="flex gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => setIsReplying(false)}>Cancelar</Button>
+                                <Button size="sm" onClick={handlePostReply} disabled={isPostingReply}>
+                                    {isPostingReply ? <Loader2 className="mr-1 h-4 w-4 animate-spin"/> : <Send className="mr-1 h-4 w-4"/>}
+                                    Enviar
+                                </Button>
+                            </div>
+                            </div>
+                    </div>
+                </div>
+            )}
+            
+                {comment.replyCount > 0 && (
+                <div className="mt-2 ml-10">
+                    <Button variant="link" size="sm" className="text-xs p-0 h-auto" onClick={() => setShowReplies(!showReplies)}>
+                        <CornerDownRight className="mr-1 h-3 w-3" />
+                        {showReplies ? 'Ocultar respuestas' : `${comment.replyCount} ${comment.replyCount === 1 ? 'respuesta' : 'respuestas'}`}
+                    </Button>
+                </div>
+            )}
+
+            {showReplies && (
+                <div className="mt-4 space-y-4">
+                    {isLoadingReplies ? (
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Cargando respuestas...</div>
+                    ) : (
+                        replies.map(reply => (
+                            <CommentItem 
+                                key={reply.id} 
+                                figure={figure}
+                                comment={reply}
+                                parentPath={`${currentPath}/replies`}
+                                onReplyPosted={onReplyPosted}
+                            />
+                        ))
+                    )}
+                </div>
+            )}
         </div>
     );
 }
