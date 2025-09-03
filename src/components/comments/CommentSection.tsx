@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, MessagesSquare, Send, Star, StarOff } from 'lucide-react';
+import { Loader2, MessagesSquare, Send, Star, StarOff, Smile } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import type { Figure, Comment as CommentType, UserProfile, RatingValue } from '@/lib/types';
 import { addComment, mapDocToComment, updateStreak, submitStarRating } from '@/lib/placeholder-data';
@@ -19,6 +19,7 @@ import { GuestProfileSetup } from './GuestProfileSetup';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { countryCodeToNameMap } from '@/config/countries';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
 interface CommentSectionProps {
   figure: Figure;
@@ -30,6 +31,11 @@ const MAX_COMMENT_LENGTH = 1000;
 const INITIAL_COMMENTS_TO_SHOW = 5;
 
 const RATING_OPTIONS: RatingValue[] = [1, 2, 3, 4, 5];
+
+const EMOJI_LIST = [
+  '😂', '❤️', '😍', '🤔', '😊', '👍', '👎', '🔥', '👏', '🙏',
+  '😭', '😱', '😡', '🤯', '💯', '✅', '👀', '✨', '🎉', '🌟'
+];
 
 const RATING_SOUNDS: Record<RatingValue, string> = {
     0: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar0.mp3?alt=media&token=48731777-62f4-413c-8a21-4f183c577d61',
@@ -49,6 +55,7 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
   const [isPosting, setIsPosting] = React.useState(false);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [showAllComments, setShowAllComments] = React.useState(false);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   
   const audioRefs = React.useRef<Record<RatingValue, HTMLAudioElement | null>>({ 0: null, 1: null, 2: null, 3: null, 4: null, 5: null });
 
@@ -197,6 +204,25 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
     setSelectedRating(newRating);
   }
 
+  const handleEmojiSelect = (emoji: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const newText = text.substring(0, start) + emoji + text.substring(end);
+
+    setCommentText(newText);
+
+    // Focus the textarea and set the cursor position after the inserted emoji
+    textarea.focus();
+    setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+    }, 0);
+  };
+
+
   const renderCommentInput = () => {
     if (!currentUser) {
       return (
@@ -241,14 +267,40 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
                     ))}
                   </div>
               </div>
-              <Textarea
-                  placeholder="Escribe tu opinión aquí..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  rows={3}
-                  className="bg-muted border-border/50 focus:bg-background"
-                  maxLength={MAX_COMMENT_LENGTH}
-              />
+              <div className="relative">
+                <Textarea
+                    ref={textareaRef}
+                    placeholder="Escribe tu opinión aquí..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    rows={3}
+                    className="bg-muted border-border/50 focus:bg-background pr-10"
+                    maxLength={MAX_COMMENT_LENGTH}
+                />
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="absolute bottom-2 right-2 h-7 w-7 text-muted-foreground">
+                            <Smile className="h-5 w-5" />
+                            <span className="sr-only">Añadir emoji</span>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-2">
+                        <div className="grid grid-cols-5 gap-1">
+                            {EMOJI_LIST.map(emoji => (
+                                <Button 
+                                    key={emoji}
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="text-xl"
+                                    onClick={() => handleEmojiSelect(emoji)}
+                                >
+                                    {emoji}
+                                </Button>
+                            ))}
+                        </div>
+                    </PopoverContent>
+                </Popover>
+              </div>
               <div className="flex justify-between items-center">
                   <p className={cn("text-xs text-muted-foreground", commentText.length > MAX_COMMENT_LENGTH && "text-destructive")}>
                       {commentText.length} / {MAX_COMMENT_LENGTH}
