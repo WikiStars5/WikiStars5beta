@@ -1,3 +1,4 @@
+
 "use client"; 
 
 import { Logo } from '@/components/shared/Logo';
@@ -14,7 +15,6 @@ import { User } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
-import { PrimaryNav } from './PrimaryNav';
 
 
 export function Header() {
@@ -28,9 +28,8 @@ export function Header() {
           <Logo />
         </div>
         
-        {/* Center Section - Main Navigation */}
+        {/* Center Section - Empty */}
         <div className="hidden md:flex flex-grow items-center justify-center">
-            <PrimaryNav />
         </div>
 
         {/* Right Section */}
