@@ -183,17 +183,26 @@ export function GuestNotificationBell() {
                 <TabsList className="grid w-full grid-cols-4 h-auto p-0 rounded-none border-b">
                     <TabsTrigger value="all" className="py-2 rounded-none text-xs"><Bell className="mr-2 h-4 w-4"/>Todo</TabsTrigger>
                     
-                     <Tooltip><TooltipTrigger asChild>
-                        <TabsTrigger value="replies" className="py-2 rounded-none text-xs"><MessageSquareReply className="h-4 w-4"/></TabsTrigger>
-                    </TooltipTrigger><TooltipContent><p>Respuestas</p></TooltipContent></Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <TabsTrigger value="replies" className="py-2 rounded-none text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"><MessageSquareReply className="h-4 w-4"/></TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Respuestas</p></TooltipContent>
+                    </Tooltip>
                     
-                    <Tooltip><TooltipTrigger asChild>
-                        <TabsTrigger value="likes" className="py-2 rounded-none text-xs"><ThumbsUp className="h-4 w-4"/></TabsTrigger>
-                    </TooltipTrigger><TooltipContent><p>Me gusta</p></TooltipContent></Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <TabsTrigger value="likes" className="py-2 rounded-none text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"><ThumbsUp className="h-4 w-4"/></TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Me gusta</p></TooltipContent>
+                    </Tooltip>
                     
-                    <Tooltip><TooltipTrigger asChild>
-                        <TabsTrigger value="dislikes" className="py-2 rounded-none text-xs"><ThumbsDown className="h-4 w-4"/></TabsTrigger>
-                    </TooltipTrigger><TooltipContent><p>No me gusta</p></TooltipContent></Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <TabsTrigger value="dislikes" className="py-2 rounded-none text-xs data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"><ThumbsDown className="h-4 w-4"/></TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent><p>No me gusta</p></TooltipContent>
+                    </Tooltip>
                 </TabsList>
                 <ScrollArea className="h-[400px]">
                     <TabsContent value="all">
