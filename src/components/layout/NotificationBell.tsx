@@ -12,7 +12,7 @@ import { markNotificationAsRead, markAllNotificationsAsRead } from '@/app/action
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Bell, CheckCheck, MessageSquareReply, Heart, ThumbsDown } from 'lucide-react';
+import { Bell, CheckCheck, MessageSquareReply, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -206,7 +206,7 @@ export function NotificationBell() {
                     </TooltipTrigger><TooltipContent><p>Respuestas</p></TooltipContent></Tooltip>
                     
                     <Tooltip><TooltipTrigger asChild>
-                        <TabsTrigger value="likes" className="py-2 rounded-none text-xs"><Heart className="h-4 w-4"/></TabsTrigger>
+                        <TabsTrigger value="likes" className="py-2 rounded-none text-xs"><ThumbsUp className="h-4 w-4"/></TabsTrigger>
                     </TooltipTrigger><TooltipContent><p>Me gusta</p></TooltipContent></Tooltip>
                     
                     <Tooltip><TooltipTrigger asChild>

@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Bell, CheckCheck, Heart, MessageSquareReply, ThumbsDown } from 'lucide-react';
+import { Bell, CheckCheck, ThumbsUp, MessageSquareReply, ThumbsDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -188,7 +188,7 @@ export function GuestNotificationBell() {
                     </TooltipTrigger><TooltipContent><p>Respuestas</p></TooltipContent></Tooltip>
                     
                     <Tooltip><TooltipTrigger asChild>
-                        <TabsTrigger value="likes" className="py-2 rounded-none text-xs"><Heart className="h-4 w-4"/></TabsTrigger>
+                        <TabsTrigger value="likes" className="py-2 rounded-none text-xs"><ThumbsUp className="h-4 w-4"/></TabsTrigger>
                     </TooltipTrigger><TooltipContent><p>Me gusta</p></TooltipContent></Tooltip>
                     
                     <Tooltip><TooltipTrigger asChild>
