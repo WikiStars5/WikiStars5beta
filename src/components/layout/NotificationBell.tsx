@@ -209,7 +209,7 @@ export function NotificationBell() {
                     
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <TabsTrigger value="likes" className="py-2 rounded-none text-xs"><ThumbsUp className="h-4 w-4"/></TabsTrigger>
+                           <TabsTrigger value="likes" className="py-2 rounded-none text-xs"><ThumbsUp className="h-4 w-4"/></TabsTrigger>
                         </TooltipTrigger>
                         <TooltipContent><p>Me gusta</p></TooltipContent>
                     </Tooltip>
