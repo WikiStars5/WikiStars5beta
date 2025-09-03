@@ -1,4 +1,3 @@
-
 "use client"; 
 
 import { Logo } from '@/components/shared/Logo';
@@ -9,6 +8,7 @@ import { SearchBar } from '@/components/shared/SearchBar';
 import { useState, useEffect } from 'react';
 import { InstallPwaButton } from './InstallPwaButton';
 import { useAuth } from '@/hooks/useAuth';
+import { NotificationBell } from './NotificationBell';
 
 export function Header() {
   const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
@@ -56,6 +56,7 @@ export function Header() {
             <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">
               Explorar
             </Link>
+            <NotificationBell />
             {isAnonymous && guestProfileExists && (
               <Link href="/profile" className="text-foreground/70 hover:text-foreground transition-colors">
                 Mi Perfil

@@ -40,20 +40,10 @@ export function NotificationBell() {
   const [isOpen, setIsOpen] = React.useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  
-  const [notificationSound, setNotificationSound] = React.useState<HTMLAudioElement | null>(null);
-  const soundTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  // Effect to create the audio element once on the client
-  React.useEffect(() => {
-    const sound = new Audio("https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711");
-    sound.preload = 'auto';
-    setNotificationSound(sound);
-  }, []);
-
-  // Effect to manage user authentication state
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      // We only care about registered users for this component
       if (user && !user.isAnonymous) {
         setCurrentUser(user);
       } else {
@@ -65,7 +55,6 @@ export function NotificationBell() {
     return () => unsubscribe();
   }, []);
 
-  // Separate effect for listening to notifications
   React.useEffect(() => {
     if (!currentUser) return;
 
@@ -80,37 +69,13 @@ export function NotificationBell() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const serverNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
       setNotifications(serverNotifications);
+      setUnreadCount(serverNotifications.filter(n => !n.isRead).length);
     }, (error) => {
       console.error("Error fetching notifications:", error);
     });
 
     return () => unsubscribe();
   }, [currentUser]);
-
-  // Separate effect to handle unread count and play sound
-  React.useEffect(() => {
-    const newUnreadCount = notifications.filter(n => !n.isRead).length;
-
-    if (newUnreadCount > unreadCount) {
-      if (soundTimeoutRef.current) {
-        clearTimeout(soundTimeoutRef.current);
-      }
-      soundTimeoutRef.current = setTimeout(() => {
-        notificationSound?.play().catch(err => {
-          console.warn("Notification sound was blocked by browser autoplay policy.", err);
-        });
-      }, 300); // Small delay to bundle rapid updates
-    }
-
-    setUnreadCount(newUnreadCount);
-    
-    return () => {
-      if (soundTimeoutRef.current) {
-        clearTimeout(soundTimeoutRef.current);
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notifications, notificationSound]);
 
 
   const handleNotificationClick = async (notification: Notification) => {
