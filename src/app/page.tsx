@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ForYouSection } from "@/components/foryou/ForYouSection";
@@ -15,7 +14,7 @@ function HeroSection() {
   return (
     <section className="text-center py-16 md:py-24">
       <h1 className="text-4xl md:text-5xl font-bold font-headline mb-4">
-        Bienvenido a WikiStars5
+        Bienvenido a <span className="text-primary">WikiStars5</span>
       </h1>
       <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
         La plataforma interactiva para explorar, calificar y debatir sobre la percepción pública de tus figuras favoritas. Descubre perfiles detallados, vota sobre tu actitud y emociones, y únete a la conversación global.
