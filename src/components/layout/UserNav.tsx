@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ADMIN_UID } from '@/config/admin';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { GuestNotificationBell } from './GuestNotificationBell';
 
 export function UserNav() {
   const { user: currentUser, firebaseUser, isAnonymous, isLoading } = useAuth();
@@ -47,13 +48,8 @@ export function UserNav() {
   }
 
   if (isAnonymous || !currentUser) {
-    return (
-      <Button asChild variant="ghost" size="icon" className="h-9 w-9">
-        <Link href="/login" aria-label="Acceder como Administrador">
-          <User className="h-5 w-5 text-foreground/70" />
-        </Link>
-      </Button>
-    );
+    // For anonymous users, show the guest notification bell instead of a login button.
+    return <GuestNotificationBell />;
   }
 
   // This check is now more robust. It checks the UID from the Firebase user object

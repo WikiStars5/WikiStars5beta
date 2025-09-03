@@ -1,3 +1,4 @@
+
 "use client"; 
 
 import { Logo } from '@/components/shared/Logo';
@@ -57,6 +58,7 @@ export function Header() {
               Explorar
             </Link>
             
+            {/* The NotificationBell is for registered users */}
             <NotificationBell />
             
             {/* The profile link is useful for both guests (to edit their local profile) and registered users. */}
