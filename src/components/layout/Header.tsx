@@ -56,12 +56,13 @@ export function Header() {
             <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">
               Explorar
             </Link>
+            
             <NotificationBell />
-            {isAnonymous && guestProfileExists && (
-              <Link href="/profile" className="text-foreground/70 hover:text-foreground transition-colors">
-                Mi Perfil
-              </Link>
-            )}
+            
+            {/* The profile link is useful for both guests (to edit their local profile) and registered users. */}
+            <Link href="/profile" className="text-foreground/70 hover:text-foreground transition-colors">
+              Mi Perfil
+            </Link>
           </nav>
 
           <InstallPwaButton />
