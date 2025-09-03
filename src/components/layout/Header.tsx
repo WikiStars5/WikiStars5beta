@@ -14,6 +14,7 @@ import { User } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
+import { PrimaryNav } from './PrimaryNav';
 
 
 export function Header() {
@@ -27,10 +28,18 @@ export function Header() {
           <Logo />
         </div>
         
+        {/* Center Section - Main Navigation */}
+        <div className="hidden md:flex flex-grow items-center justify-center">
+            <PrimaryNav />
+        </div>
+
         {/* Right Section */}
         <div className="flex items-center gap-1 md:gap-2 lg:gap-3">
           <div className="hidden md:flex items-center">
-            <SearchBar />
+             <SearchBar 
+              startAsIcon={true}
+              onFocusChange={setIsHeaderSearchFocused} 
+            />
             <NotificationBell />
             <TooltipProvider>
               <Tooltip>
