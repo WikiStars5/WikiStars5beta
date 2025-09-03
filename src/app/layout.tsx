@@ -5,6 +5,7 @@ import { Footer } from '@/components/layout/Footer';
 import type { ReactNode } from 'react';
 import { ClientProviders } from '@/components/layout/ClientProviders';
 import type { Metadata } from 'next';
+import { PrimaryNav } from '@/components/layout/PrimaryNav';
 
 const logoUrl = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194";
 
@@ -53,6 +54,7 @@ export default function RootLayout({
           <div className="flex flex-col min-h-screen">
             <Header />
             <main className="flex-grow w-full max-w-6xl mx-auto py-8 px-4">
+              <PrimaryNav />
               {children}
             </main>
             <Footer />

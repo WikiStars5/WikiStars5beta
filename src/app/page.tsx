@@ -10,48 +10,6 @@ import { getAllFiguresFromFirestore } from '@/lib/placeholder-data';
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
-
-const NavLink = ({
-  href,
-  label,
-  icon: Icon,
-}: {
-  href: string;
-  label: string;
-  icon: React.ElementType;
-}) => {
-  const pathname = usePathname();
-  const isActive = pathname === href;
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            asChild
-            variant="ghost"
-            className={cn(
-              "h-14 w-20 rounded-lg transition-colors duration-200 flex flex-col items-center justify-center gap-1",
-              isActive ? "bg-primary/10 text-primary" : "text-foreground/60 hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <Link href={href}>
-              <Icon className="h-6 w-6" />
-            </Link>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{label}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-};
-
 
 function HeroSection() {
   return (
@@ -121,11 +79,6 @@ export default function HomePage() {
 
   return (
     <div className="space-y-12">
-      <nav className="flex justify-center items-center gap-4 mb-8">
-          <NavLink href="/" label="Inicio" icon={Home} />
-          <NavLink href="/figures" label="Explorar" icon={SearchIcon} />
-      </nav>
-
       <HeroSection />
       <HowItWorks />
 
