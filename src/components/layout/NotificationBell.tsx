@@ -17,6 +17,7 @@ import { cn, correctMalformedUrl } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 
 function timeSince(date: Date): string {
@@ -195,28 +196,39 @@ export function NotificationBell() {
             </Button>
           )}
         </div>
-        <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 h-auto p-0 rounded-none border-b">
-                <TabsTrigger value="all" className="py-2 rounded-none text-xs"><Bell className="mr-2 h-4 w-4"/>Todo</TabsTrigger>
-                <TabsTrigger value="replies" className="py-2 rounded-none text-xs"><MessageSquareReply className="mr-2 h-4 w-4"/>Respuestas</TabsTrigger>
-                <TabsTrigger value="likes" className="py-2 rounded-none text-xs"><Heart className="mr-2 h-4 w-4"/>Me gusta</TabsTrigger>
-                <TabsTrigger value="dislikes" className="py-2 rounded-none text-xs"><ThumbsDown className="mr-2 h-4 w-4"/>No me gusta</TabsTrigger>
-            </TabsList>
-            <ScrollArea className="h-[400px]">
-                <TabsContent value="all">
-                    {renderNotificationList(notifications, "No tienes notificaciones.")}
-                </TabsContent>
-                <TabsContent value="replies">
-                    {renderNotificationList(replyNotifications, "No tienes respuestas nuevas.")}
-                </TabsContent>
-                <TabsContent value="likes">
-                    {renderNotificationList(likeNotifications, "Nadie le ha dado 'me gusta' a tus comentarios aún.")}
-                </TabsContent>
-                 <TabsContent value="dislikes">
-                    {renderNotificationList(dislikeNotifications, "Nadie ha marcado 'no me gusta' en tus comentarios.")}
-                </TabsContent>
-            </ScrollArea>
-        </Tabs>
+        <TooltipProvider>
+            <Tabs defaultValue="all" className="w-full">
+                <TabsList className="grid w-full grid-cols-4 h-auto p-0 rounded-none border-b">
+                    <TabsTrigger value="all" className="py-2 rounded-none text-xs"><Bell className="mr-2 h-4 w-4"/>Todo</TabsTrigger>
+                    
+                    <Tooltip><TooltipTrigger asChild>
+                        <TabsTrigger value="replies" className="py-2 rounded-none text-xs"><MessageSquareReply className="h-4 w-4"/></TabsTrigger>
+                    </TooltipTrigger><TooltipContent><p>Respuestas</p></TooltipContent></Tooltip>
+                    
+                    <Tooltip><TooltipTrigger asChild>
+                        <TabsTrigger value="likes" className="py-2 rounded-none text-xs"><Heart className="h-4 w-4"/></TabsTrigger>
+                    </TooltipTrigger><TooltipContent><p>Me gusta</p></TooltipContent></Tooltip>
+                    
+                    <Tooltip><TooltipTrigger asChild>
+                        <TabsTrigger value="dislikes" className="py-2 rounded-none text-xs"><ThumbsDown className="h-4 w-4"/></TabsTrigger>
+                    </TooltipTrigger><TooltipContent><p>No me gusta</p></TooltipContent></Tooltip>
+                </TabsList>
+                <ScrollArea className="h-[400px]">
+                    <TabsContent value="all">
+                        {renderNotificationList(notifications, "No tienes notificaciones.")}
+                    </TabsContent>
+                    <TabsContent value="replies">
+                        {renderNotificationList(replyNotifications, "No tienes respuestas nuevas.")}
+                    </TabsContent>
+                    <TabsContent value="likes">
+                        {renderNotificationList(likeNotifications, "Nadie le ha dado 'me gusta' a tus comentarios aún.")}
+                    </TabsContent>
+                    <TabsContent value="dislikes">
+                        {renderNotificationList(dislikeNotifications, "Nadie ha marcado 'no me gusta' en tus comentarios.")}
+                    </TabsContent>
+                </ScrollArea>
+            </Tabs>
+        </TooltipProvider>
       </PopoverContent>
     </Popover>
   );
