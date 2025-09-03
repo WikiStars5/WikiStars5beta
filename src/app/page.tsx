@@ -1,121 +1,112 @@
-
 "use client";
 
-import { useState, useEffect } from "react";
 import { ForYouSection } from "@/components/foryou/ForYouSection";
+import { Button } from "@/components/ui/button";
 import type { Figure } from "@/lib/types";
+import { MoveRight } from "lucide-react";
+import Link from "next/link";
+import { getFeaturedFiguresFromFirestore, getAllFiguresFromFirestore } from '@/lib/placeholder-data';
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Lightbulb, Loader2 } from "lucide-react";
-import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
+import { Terminal } from "lucide-react";
 
-// Fisher-Yates shuffle algorithm
-function shuffleArray(array: any[]) {
-  let currentIndex = array.length, randomIndex;
-  while (currentIndex !== 0) {
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-    [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex], array[currentIndex]];
-  }
-  return array;
+
+function HeroSection() {
+  return (
+    <section className="text-center py-16 md:py-24">
+      <h1 className="text-4xl md:text-5xl font-bold font-headline mb-4">
+        Bienvenido a WikiStars5
+      </h1>
+      <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
+        La plataforma interactiva para explorar, calificar y debatir sobre la percepción pública de tus figuras favoritas. Descubre perfiles detallados, vota sobre tu actitud y emociones, y únete a la conversación global.
+      </p>
+      <div className="max-w-md mx-auto">
+         <p className="text-sm text-muted-foreground mb-4">
+            Escribe un nombre y presiona enter o haz clic en buscar.
+        </p>
+      </div>
+    </section>
+  );
 }
 
-interface RecommendationSection {
-  title: string;
-  figures: Figure[];
+function HowItWorks() {
+    const steps = [
+        { title: 'Descubre Figuras', description: 'Busca o navega a través de perfiles de figuras públicas de diversos campos.', },
+        { title: 'Expresa tu Percepción', description: 'Vota por la emoción que te provoca una figura y mira los resultados globales.', },
+        { title: 'Únete a las Discusiones', description: 'Comparte tus opiniones en las secciones de comentarios y reacciona a los demás.', },
+        { title: 'Comparte Perfiles', description: 'Comparte fácilmente perfiles con tus amigos en redes sociales.', }
+    ];
+
+    return (
+        <section className="py-16">
+            <h2 className="text-3xl font-bold text-center mb-10">Cómo Funciona WikiStars5</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {steps.map((step, index) => (
+                    <div key={index} className="text-center p-6 bg-card rounded-lg border">
+                        <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
+                        <p className="text-muted-foreground">{step.description}</p>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
 }
 
-export default function ForYouPage() {
-  const [recommendations, setRecommendations] = useState<RecommendationSection[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchRecommendations = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const allFigures = await getAllFiguresFromFirestore();
-        
-        if (allFigures.length === 0) {
-          setRecommendations([]);
-          setIsLoading(false);
-          return;
-        }
+export default function HomePage() {
+   const [featuredFigures, setFeaturedFigures] = useState<Figure[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-        // Shuffle the array to get random figures for our sections
-        const shuffledFigures = shuffleArray([...allFigures]);
+    useEffect(() => {
+        const fetchFigures = async () => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                const figures = await getAllFiguresFromFirestore();
+                const featured = figures.filter(f => f.isFeatured).slice(0, 10);
+                setFeaturedFigures(featured);
+            } catch (err: any) {
+                setError("Error al cargar las figuras destacadas. Revisa las reglas de Firestore o la conexión.");
+                console.error(err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-        const sections: RecommendationSection[] = [];
-        
-        // Create a "Sugerencias para ti" section with up to 10 figures
-        const suggestions = shuffledFigures.slice(0, 10);
-        if (suggestions.length > 0) {
-          sections.push({
-            title: "Sugerencias para ti",
-            figures: suggestions
-          });
-        }
-
-        // Create a "Descubrimientos" section with the next 10 figures
-        const discoveries = shuffledFigures.slice(10, 20);
-        if (discoveries.length > 0) {
-          sections.push({
-            title: "Descubrimientos",
-            figures: discoveries
-          });
-        }
-        
-        setRecommendations(sections);
-
-      } catch (err: any) {
-        console.error("Error fetching figures for For You page:", err);
-        setError(`Error al cargar datos: ${err.message}`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchRecommendations();
-  }, []);
+        fetchFigures();
+    }, []);
 
   return (
     <div className="space-y-12">
-      <div className="text-left">
-        <h1 className="text-4xl font-bold font-headline mb-2">Para Ti</h1>
-        <p className="text-lg text-muted-foreground">
-          Recomendaciones de figuras basadas en tendencias y popularidad.
-        </p>
-      </div>
+      <HeroSection />
+      <HowItWorks />
 
-      {isLoading ? (
-        <div className="flex justify-center items-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="ml-4 text-muted-foreground">Buscando recomendaciones...</p>
-        </div>
-      ) : error ? (
+      {error && (
         <Alert variant="destructive">
-          <Lightbulb className="h-4 w-4" />
-          <AlertTitle>Error al Cargar Recomendaciones</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+            <Terminal className="h-4 w-4" />
+            <AlertTitle>Error de Carga</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
         </Alert>
-      ) : recommendations.length === 0 ? (
-        <Alert>
-          <Lightbulb className="h-4 w-4" />
-          <AlertTitle>¡Aún no hay recomendaciones!</AlertTitle>
-          <AlertDescription>
-            Añade figuras en el panel de administración para que aparezcan aquí.
-          </AlertDescription>
-        </Alert>
-      ) : (
-        recommendations.map((section) => (
-          <ForYouSection
-            key={section.title}
-            title={section.title}
-            figures={section.figures}
-          />
-        ))
       )}
+
+      {!isLoading && !error && featuredFigures.length > 0 && (
+         <ForYouSection title="Figuras Destacadas" figures={featuredFigures} />
+      )}
+      
+       {!isLoading && !error && featuredFigures.length === 0 && (
+         <div className="text-center py-10">
+            <p className="text-muted-foreground">No hay figuras disponibles en Firestore en este momento.</p>
+        </div>
+      )}
+
+       <div className="text-center py-8">
+            <Button asChild variant="outline">
+                <Link href="/figures">
+                    Explorar Todas las Figuras <MoveRight className="ml-2 h-4 w-4" />
+                </Link>
+            </Button>
+        </div>
     </div>
   );
 }

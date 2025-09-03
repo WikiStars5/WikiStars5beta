@@ -1,4 +1,5 @@
 
+
 "use client"; 
 
 import { Logo } from '@/components/shared/Logo';
@@ -11,61 +12,81 @@ import { InstallPwaButton } from './InstallPwaButton';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from './NotificationBell';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { User } from 'lucide-react';
+import { User, Home, Compass, Search as SearchIcon } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { Button } from '../ui/button';
+
+const NavLink = ({
+  href,
+  label,
+  icon: Icon,
+}: {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+}) => {
+  const pathname = usePathname();
+  const isActive = pathname === href;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            asChild
+            variant="ghost"
+            className={cn(
+              "h-12 w-16 rounded-lg transition-colors duration-200",
+              isActive ? "bg-primary/10 text-primary" : "text-foreground/60 hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Link href={href}>
+              <Icon className="h-6 w-6" />
+              <span className="sr-only">{label}</span>
+            </Link>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{label}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 
 export function Header() {
   const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
-  const { isAnonymous } = useAuth();
-  const [guestProfileExists, setGuestProfileExists] = useState(false);
-
-  useEffect(() => {
-    // This effect ensures the state is read from the client side, avoiding hydration issues.
-    if (typeof window !== 'undefined') {
-        const checkGuestProfile = () => {
-            const guestName = localStorage.getItem('wikistars5-guestUsername');
-            setGuestProfileExists(!!guestName);
-        };
-        
-        if (isAnonymous) {
-            checkGuestProfile();
-            // Listen for custom event that signals profile update
-            window.addEventListener('guestProfileUpdated', checkGuestProfile);
-        } else {
-            setGuestProfileExists(false);
-        }
-
-        return () => {
-            window.removeEventListener('guestProfileUpdated', checkGuestProfile);
-        }
-    }
-  }, [isAnonymous]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
       <div className="flex h-18 w-full max-w-6xl items-center justify-between mx-auto py-3 px-4">
+        {/* Left Section */}
         <div className="flex items-center gap-2 md:gap-4">
           <Logo />
-          <div className={`hidden md:block transition-all duration-300 ease-in-out ${isHeaderSearchFocused ? 'w-72' : 'w-auto'}`}>
-            <SearchBar 
-              startAsIcon={true} 
-              onFocusChange={setIsHeaderSearchFocused}
-              className={isHeaderSearchFocused ? "w-full" : "w-9"}
-            />
+          <div className="hidden md:block">
+             <SearchBar />
           </div>
         </div>
+
+        {/* Center Section - Main Navigation */}
+        <div className="hidden md:flex flex-grow justify-center items-center">
+            <nav className="flex items-center gap-4 text-sm">
+                <NavLink href="/" label="Inicio" icon={Home} />
+                <NavLink href="/foryou" label="Para Ti" icon={Compass} />
+                <NavLink href="/figures" label="Explorar" icon={SearchIcon} />
+            </nav>
+        </div>
         
-        <div className={`flex items-center gap-1 md:gap-2 lg:gap-3 transition-opacity duration-300 ${isHeaderSearchFocused && !isHeaderSearchFocused ? 'opacity-0 md:opacity-100' : 'opacity-100'}`}>
-          <nav className={`flex items-center gap-4 text-sm transition-opacity duration-300 ${isHeaderSearchFocused ? 'lg:flex opacity-0 lg:opacity-100' : 'flex opacity-100'}`}>
-            <Link href="/figures" className="text-foreground/70 hover:text-foreground transition-colors">
-              Explorar
-            </Link>
-            
+        {/* Right Section */}
+        <div className="flex items-center gap-1 md:gap-2 lg:gap-3">
+          <div className="hidden md:flex items-center">
             <NotificationBell />
-            
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link href="/profile" className="text-foreground/70 hover:text-foreground transition-colors">
+                  <Link href="/profile" className="text-foreground/70 hover:text-foreground transition-colors p-2 rounded-full">
                     <User className="h-5 w-5" />
                     <span className="sr-only">Mi Perfil</span>
                   </Link>
@@ -75,15 +96,13 @@ export function Header() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-
-          </nav>
-
-          <InstallPwaButton />
+            <InstallPwaButton />
+          </div>
           <MobileSearchButton />
-          
           <UserNav />
         </div>
       </div>
     </header>
   );
 }
+
