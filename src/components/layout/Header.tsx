@@ -1,5 +1,4 @@
 
-
 "use client"; 
 
 import { Logo } from '@/components/shared/Logo';
@@ -74,7 +73,6 @@ export function Header() {
         <div className="hidden md:flex flex-grow justify-center items-center">
             <nav className="flex items-center gap-4 text-sm">
                 <NavLink href="/" label="Inicio" icon={Home} />
-                <NavLink href="/foryou" label="Para Ti" icon={Compass} />
                 <NavLink href="/figures" label="Explorar" icon={SearchIcon} />
             </nav>
         </div>
@@ -105,4 +103,3 @@ export function Header() {
     </header>
   );
 }
-
