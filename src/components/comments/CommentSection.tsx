@@ -20,6 +20,9 @@ import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { countryCodeToNameMap } from '@/config/countries';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import Picker, { EmojiClickData, Theme } from 'emoji-picker-react';
+import { useTheme } from 'next-themes';
+
 
 interface CommentSectionProps {
   figure: Figure;
@@ -31,11 +34,6 @@ const MAX_COMMENT_LENGTH = 1000;
 const INITIAL_COMMENTS_TO_SHOW = 5;
 
 const RATING_OPTIONS: RatingValue[] = [1, 2, 3, 4, 5];
-
-const EMOJI_LIST = [
-  '😂', '❤️', '😍', '🤔', '😊', '👍', '👎', '🔥', '👏', '🙏',
-  '😭', '😱', '😡', '🤯', '💯', '✅', '👀', '✨', '🎉', '🌟'
-];
 
 const RATING_SOUNDS: Record<RatingValue, string> = {
     0: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar0.mp3?alt=media&token=48731777-62f4-413c-8a21-4f183c577d61',
@@ -61,7 +59,7 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
 
   const { user: firestoreUser, firebaseUser, isLoading: isAuthLoading, isAnonymous } = useAuth();
   const [currentUser, setCurrentUser] = React.useState<UserProfile | null>(null);
-
+  const { theme } = useTheme();
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -204,21 +202,21 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
     setSelectedRating(newRating);
   }
 
-  const handleEmojiSelect = (emoji: string) => {
+  const handleEmojiSelect = (emojiData: EmojiClickData) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const text = textarea.value;
-    const newText = text.substring(0, start) + emoji + text.substring(end);
+    const newText = text.substring(0, start) + emojiData.emoji + text.substring(end);
 
     setCommentText(newText);
 
     // Focus the textarea and set the cursor position after the inserted emoji
     textarea.focus();
     setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+        textarea.selectionStart = textarea.selectionEnd = start + emojiData.emoji.length;
     }, 0);
   };
 
@@ -284,20 +282,15 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
                             <span className="sr-only">Añadir emoji</span>
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-2">
-                        <div className="grid grid-cols-5 gap-1">
-                            {EMOJI_LIST.map(emoji => (
-                                <Button 
-                                    key={emoji}
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="text-xl"
-                                    onClick={() => handleEmojiSelect(emoji)}
-                                >
-                                    {emoji}
-                                </Button>
-                            ))}
-                        </div>
+                    <PopoverContent className="w-auto p-0 border-0">
+                        <Picker 
+                          onEmojiClick={handleEmojiSelect}
+                          theme={theme === 'dark' ? Theme.DARK : Theme.LIGHT}
+                          lazyLoadEmojis={true}
+                          searchDisabled={true}
+                          height={350}
+                          width={300}
+                        />
                     </PopoverContent>
                 </Popover>
               </div>
