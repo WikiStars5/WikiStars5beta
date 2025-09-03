@@ -10,6 +10,8 @@ import { useState, useEffect } from 'react';
 import { InstallPwaButton } from './InstallPwaButton';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from './NotificationBell';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { User } from 'lucide-react';
 
 export function Header() {
   const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
@@ -58,13 +60,22 @@ export function Header() {
               Explorar
             </Link>
             
-            {/* The NotificationBell is for registered users */}
             <NotificationBell />
             
-            {/* The profile link is useful for both guests (to edit their local profile) and registered users. */}
-            <Link href="/profile" className="text-foreground/70 hover:text-foreground transition-colors">
-              Mi Perfil
-            </Link>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/profile" className="text-foreground/70 hover:text-foreground transition-colors">
+                    <User className="h-5 w-5" />
+                    <span className="sr-only">Mi Perfil</span>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Mi Perfil</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
           </nav>
 
           <InstallPwaButton />
