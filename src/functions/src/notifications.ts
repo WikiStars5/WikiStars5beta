@@ -1,4 +1,5 @@
 
+
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 
@@ -41,16 +42,22 @@ export const sendPushNotification = onDocumentCreated("notifications/{notificati
   let notificationTitle = "Nueva Actividad";
   let notificationBody = "Alguien ha interactuado con tu contenido.";
 
-  if (type === "reply") {
-    notificationTitle = "Tienes una nueva respuesta";
-    notificationBody = `${actorName} ha respondido a tu comentario sobre ${figureName}.`;
-  } else if (type === "like") {
-    notificationTitle = "¡A alguien le gustó tu comentario!";
-    notificationBody = `${actorName} le ha dado "me gusta" a tu comentario sobre ${figureName}.`;
-  } else {
-    // Keep a generic message for other potential types, or just return.
-    console.log(`Handling generic or unknown notification type: ${type}`);
-    notificationBody = `${actorName} ha interactuado con tu contenido sobre ${figureName}.`
+  switch (type) {
+    case "reply":
+      notificationTitle = "Tienes una nueva respuesta";
+      notificationBody = `${actorName} ha respondido a tu comentario sobre ${figureName}.`;
+      break;
+    case "like":
+      notificationTitle = "¡A alguien le gustó tu comentario!";
+      notificationBody = `${actorName} le ha dado "me gusta" a tu comentario sobre ${figureName}.`;
+      break;
+    case "dislike":
+      notificationTitle = "Reacción a tu comentario";
+      notificationBody = `${actorName} no está de acuerdo con tu comentario sobre ${figureName}.`;
+      break;
+    default:
+      console.log(`Handling generic or unknown notification type: ${type}`);
+      notificationBody = `${actorName} ha interactuado con tu contenido sobre ${figureName}.`
   }
   
   // This is the correct payload structure for Webpush notifications via FCM.

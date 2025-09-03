@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -11,7 +12,7 @@ import { markNotificationAsRead, markAllNotificationsAsRead } from '@/app/action
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Bell, CheckCheck, MessageSquareReply, Heart } from 'lucide-react';
+import { Bell, CheckCheck, MessageSquareReply, Heart, ThumbsDown } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -81,7 +82,7 @@ export function NotificationBell() {
   const handleNotificationClick = async (notification: Notification) => {
     // Navigate immediately for the best user experience.
     // Use replyId for reply notifications, and commentId for like notifications.
-    const commentIdForUrl = notification.type === 'reply' ? notification.replyId : notification.commentId;
+    const commentIdForUrl = notification.replyId || notification.commentId;
     const url = `/figures/${notification.figureId}#comment-${commentIdForUrl}`;
     router.push(url);
     setIsOpen(false);
@@ -115,6 +116,8 @@ export function NotificationBell() {
 
   const replyNotifications = notifications.filter(n => n.type === 'reply');
   const likeNotifications = notifications.filter(n => n.type === 'like');
+  const dislikeNotifications = notifications.filter(n => n.type === 'dislike');
+
 
   const renderNotificationItem = (notification: Notification) => (
     <div
@@ -136,10 +139,16 @@ export function NotificationBell() {
             {' '}ha respondido a tu comentario sobre{' '}
             <span className="font-semibold">{notification.figureName}</span>.
           </p>
-        ) : (
+        ) : notification.type === 'like' ? (
           <p>
             <span className="font-semibold">{notification.actorName}</span>
             {' '}le ha dado me gusta a tu comentario sobre{' '}
+            <span className="font-semibold">{notification.figureName}</span>.
+          </p>
+        ) : (
+           <p>
+            <span className="font-semibold">{notification.actorName}</span>
+            {' '}no está de acuerdo con tu comentario sobre{' '}
             <span className="font-semibold">{notification.figureName}</span>.
           </p>
         )}
@@ -151,6 +160,16 @@ export function NotificationBell() {
         <div className="w-2 h-2 rounded-full bg-primary mt-1" title="No leído"></div>
       )}
     </div>
+  );
+
+  const renderNotificationList = (list: Notification[], emptyMessage: string) => (
+      list.length > 0 ? (
+          <div className="divide-y">
+              {list.map(renderNotificationItem)}
+          </div>
+      ) : (
+          <p className="text-center text-sm text-muted-foreground p-8">{emptyMessage}</p>
+      )
   );
 
   return (
@@ -176,29 +195,25 @@ export function NotificationBell() {
             </Button>
           )}
         </div>
-        <Tabs defaultValue="replies" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 h-auto p-0 rounded-none border-b">
+        <Tabs defaultValue="all" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 h-auto p-0 rounded-none border-b">
+                <TabsTrigger value="all" className="py-2 rounded-none text-xs"><Bell className="mr-2 h-4 w-4"/>Todo</TabsTrigger>
                 <TabsTrigger value="replies" className="py-2 rounded-none text-xs"><MessageSquareReply className="mr-2 h-4 w-4"/>Respuestas</TabsTrigger>
                 <TabsTrigger value="likes" className="py-2 rounded-none text-xs"><Heart className="mr-2 h-4 w-4"/>Me gusta</TabsTrigger>
+                <TabsTrigger value="dislikes" className="py-2 rounded-none text-xs"><ThumbsDown className="mr-2 h-4 w-4"/>No me gusta</TabsTrigger>
             </TabsList>
             <ScrollArea className="h-[400px]">
+                <TabsContent value="all">
+                    {renderNotificationList(notifications, "No tienes notificaciones.")}
+                </TabsContent>
                 <TabsContent value="replies">
-                    {replyNotifications.length > 0 ? (
-                        <div className="divide-y">
-                            {replyNotifications.map(renderNotificationItem)}
-                        </div>
-                    ) : (
-                        <p className="text-center text-sm text-muted-foreground p-8">No tienes respuestas nuevas.</p>
-                    )}
+                    {renderNotificationList(replyNotifications, "No tienes respuestas nuevas.")}
                 </TabsContent>
                 <TabsContent value="likes">
-                    {likeNotifications.length > 0 ? (
-                        <div className="divide-y">
-                            {likeNotifications.map(renderNotificationItem)}
-                        </div>
-                    ) : (
-                        <p className="text-center text-sm text-muted-foreground p-8">Nadie le ha dado 'me gusta' a tus comentarios aún.</p>
-                    )}
+                    {renderNotificationList(likeNotifications, "Nadie le ha dado 'me gusta' a tus comentarios aún.")}
+                </TabsContent>
+                 <TabsContent value="dislikes">
+                    {renderNotificationList(dislikeNotifications, "Nadie ha marcado 'no me gusta' en tus comentarios.")}
                 </TabsContent>
             </ScrollArea>
         </Tabs>

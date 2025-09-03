@@ -1,3 +1,4 @@
+
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -140,7 +141,7 @@ export interface Notification {
   figureName: string;
   commentId: string; 
   replyId?: string; 
-  type: 'like' | 'reply' | 'system';
+  type: 'like' | 'dislike' | 'reply' | 'system';
   isRead: boolean;
   createdAt: Timestamp;
 }

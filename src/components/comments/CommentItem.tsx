@@ -158,7 +158,7 @@ export function CommentItem({
     }, [fetchReplies]);
 
     const handleShare = async () => {
-        const url = new URL(`${window.location.origin}/figures/${figure.id}`);
+        const url = new URL(window.location.href);
         url.searchParams.set('comment', comment.id); // Use a query param
         
         try {
@@ -211,7 +211,14 @@ export function CommentItem({
             return;
         }
         try {
-            await toggleDislikeComment(currentPath, firebaseUser.uid);
+             await toggleDislikeComment(
+                currentPath,
+                firebaseUser.uid,
+                comment.authorId,
+                figure.id,
+                figure.name,
+                comment.id
+            );
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
         }
