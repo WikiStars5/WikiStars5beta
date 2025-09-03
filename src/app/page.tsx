@@ -1,92 +1,121 @@
-import { SearchBar } from "@/components/shared/SearchBar";
-import { FigureListItem } from "@/components/figures/FigureListItem";
-import { getFeaturedFiguresFromFirestore } from "@/lib/placeholder-data";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { Lightbulb, Users, MessageSquareText, Share2 } from "lucide-react";
-import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  alternates: {
-    canonical: "/",
-  },
-};
+"use client";
 
-export const revalidate = 60; // Revalidate every 60 seconds
+import { useState, useEffect } from "react";
+import { ForYouSection } from "@/components/foryou/ForYouSection";
+import type { Figure } from "@/lib/types";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Lightbulb, Loader2 } from "lucide-react";
+import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 
-export default async function HomePage() {
-  const featuredFigures = await getFeaturedFiguresFromFirestore(4); 
+// Fisher-Yates shuffle algorithm
+function shuffleArray(array: any[]) {
+  let currentIndex = array.length, randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+  return array;
+}
+
+interface RecommendationSection {
+  title: string;
+  figures: Figure[];
+}
+
+export default function ForYouPage() {
+  const [recommendations, setRecommendations] = useState<RecommendationSection[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const allFigures = await getAllFiguresFromFirestore();
+        
+        if (allFigures.length === 0) {
+          setRecommendations([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Shuffle the array to get random figures for our sections
+        const shuffledFigures = shuffleArray([...allFigures]);
+
+        const sections: RecommendationSection[] = [];
+        
+        // Create a "Sugerencias para ti" section with up to 10 figures
+        const suggestions = shuffledFigures.slice(0, 10);
+        if (suggestions.length > 0) {
+          sections.push({
+            title: "Sugerencias para ti",
+            figures: suggestions
+          });
+        }
+
+        // Create a "Descubrimientos" section with the next 10 figures
+        const discoveries = shuffledFigures.slice(10, 20);
+        if (discoveries.length > 0) {
+          sections.push({
+            title: "Descubrimientos",
+            figures: discoveries
+          });
+        }
+        
+        setRecommendations(sections);
+
+      } catch (err: any) {
+        console.error("Error fetching figures for For You page:", err);
+        setError(`Error al cargar datos: ${err.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchRecommendations();
+  }, []);
 
   return (
-    <div className="space-y-16">
-      <section className="text-center py-12 md:py-20 bg-gradient-to-br from-primary/10 via-background to-accent/10 rounded-lg shadow-sm">
-        <div className="container max-w-3xl mx-auto flex flex-col items-center">
-          <h1 className="text-4xl md:text-5xl font-bold font-headline mb-6 text-foreground">
-            Bienvenido a <span className="text-primary">WikiStars5</span>
-          </h1>
-          <p className="text-lg md:text-xl text-foreground/80 mb-8 text-center">
-            La plataforma interactiva para explorar, calificar y debatir sobre la percepción pública de tus figuras favoritas. Descubre perfiles detallados, vota sobre tu actitud y emociones, y únete a la conversación global.
-          </p>
-          <div className="w-full max-w-xl">
-            <SearchBar />
-          </div>
-           <p className="text-sm text-muted-foreground mt-4 text-center">
-            Escribe un nombre y presiona enter o haz clic en buscar.
-          </p>
-        </div>
-      </section>
+    <div className="space-y-12">
+      <div className="text-left">
+        <h1 className="text-4xl font-bold font-headline mb-2">Para Ti</h1>
+        <p className="text-lg text-muted-foreground">
+          Recomendaciones de figuras basadas en tendencias y popularidad.
+        </p>
+      </div>
 
-      <section id="how-it-works" className="py-12">
-        <h2 className="text-3xl font-bold font-headline text-center mb-10">Cómo Funciona WikiStars5</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-          <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
-            <Lightbulb className="w-12 h-12 text-primary mb-4" />
-            <h3 className="text-xl font-headline mb-2">Descubre Figuras</h3>
-            <p className="text-sm text-muted-foreground">
-              Busca o navega a través de perfiles de figuras públicas de diversos campos.
-            </p>
-          </div>
-          <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
-            <Users className="w-12 h-12 text-primary mb-4" />
-            <h3 className="text-xl font-headline mb-2">Expresa tu Percepción</h3>
-            <p className="text-sm text-muted-foreground">
-              Vota por la emoción que te provoca una figura y mira los resultados globales.
-            </p>
-          </div>
-          <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
-            <MessageSquareText className="w-12 h-12 text-primary mb-4" />
-            <h3 className="text-xl font-headline mb-2">Únete a las Discusiones</h3>
-            <p className="text-sm text-muted-foreground">
-              Comparte tus opiniones en las secciones de comentarios y reacciona a los demás.
-            </p>
-          </div>
-          <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md hover:shadow-lg transition-shadow">
-            <Share2 className="w-12 h-12 text-primary mb-4" />
-            <h3 className="text-xl font-headline mb-2">Comparte Perfiles</h3>
-            <p className="text-sm text-muted-foreground">
-              Comparte fácilmente perfiles con tus amigos en redes sociales.
-            </p>
-          </div>
+      {isLoading ? (
+        <div className="flex justify-center items-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="ml-4 text-muted-foreground">Buscando recomendaciones...</p>
         </div>
-      </section>
-
-      <section id="browse" className="py-12">
-        <h2 className="text-3xl font-bold font-headline text-center mb-10">Figuras Destacadas</h2>
-        {featuredFigures.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {featuredFigures.map((figure) => (
-              <FigureListItem key={figure.id} figure={figure} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-center text-muted-foreground">No hay figuras disponibles en Firestore en este momento.</p>
-        )}
-        <div className="text-center mt-8">
-          <Button size="lg" variant="outline" asChild>
-            <Link href="/figures">Explorar Todas las Figuras</Link>
-          </Button>
-        </div>
-      </section>
+      ) : error ? (
+        <Alert variant="destructive">
+          <Lightbulb className="h-4 w-4" />
+          <AlertTitle>Error al Cargar Recomendaciones</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : recommendations.length === 0 ? (
+        <Alert>
+          <Lightbulb className="h-4 w-4" />
+          <AlertTitle>¡Aún no hay recomendaciones!</AlertTitle>
+          <AlertDescription>
+            Añade figuras en el panel de administración para que aparezcan aquí.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        recommendations.map((section) => (
+          <ForYouSection
+            key={section.title}
+            title={section.title}
+            figures={section.figures}
+          />
+        ))
+      )}
     </div>
   );
 }
