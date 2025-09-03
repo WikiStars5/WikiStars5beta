@@ -1,4 +1,3 @@
-
 "use client"; 
 
 import { Logo } from '@/components/shared/Logo';
@@ -11,49 +10,10 @@ import { InstallPwaButton } from './InstallPwaButton';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from './NotificationBell';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { User, Home, Compass, Search as SearchIcon } from 'lucide-react';
+import { User } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
-
-const NavLink = ({
-  href,
-  label,
-  icon: Icon,
-}: {
-  href: string;
-  label: string;
-  icon: React.ElementType;
-}) => {
-  const pathname = usePathname();
-  const isActive = pathname === href;
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            asChild
-            variant="ghost"
-            className={cn(
-              "h-12 w-16 rounded-lg transition-colors duration-200",
-              isActive ? "bg-primary/10 text-primary" : "text-foreground/60 hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <Link href={href}>
-              <Icon className="h-6 w-6" />
-              <span className="sr-only">{label}</span>
-            </Link>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{label}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-};
-
 
 export function Header() {
   const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
@@ -69,13 +29,7 @@ export function Header() {
           </div>
         </div>
 
-        {/* Center Section - Main Navigation */}
-        <div className="hidden md:flex flex-grow justify-center items-center">
-            <nav className="flex items-center gap-4 text-sm">
-                <NavLink href="/" label="Inicio" icon={Home} />
-                <NavLink href="/figures" label="Explorar" icon={SearchIcon} />
-            </nav>
-        </div>
+        {/* Center Section - Main Navigation - Removed per user request */}
         
         {/* Right Section */}
         <div className="flex items-center gap-1 md:gap-2 lg:gap-3">
