@@ -50,6 +50,7 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     gender: data.gender || "",
     category: data.category || "",
     sportSubcategory: data.sportSubcategory || "",
+    tags: data.tags || [],
     alias: data.alias || "",
     species: data.species || "",
     firstAppearance: data.firstAppearance || "",
@@ -215,7 +216,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
           name, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
           height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
-          category, sportSubcategory, relatedFigureIds, socialLinks, ...rest
+          category, sportSubcategory, relatedFigureIds, socialLinks, tags, ...rest
       } = figure;
 
       const updatePayload: { [key: string]: any } = {};
@@ -246,6 +247,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured;
       if (category !== undefined) updatePayload.category = category;
       if (sportSubcategory !== undefined) updatePayload.sportSubcategory = sportSubcategory;
+      if (tags !== undefined) updatePayload.tags = tags;
       if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
       if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
       if (ratingCounts) updatePayload.ratingCounts = ratingCounts;

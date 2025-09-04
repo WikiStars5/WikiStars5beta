@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Sparkles, Loader2, CalendarIcon } from 'lucide-react';
+import { Terminal, Sparkles, Loader2, CalendarIcon, X } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey } from '@/lib/types';
@@ -19,12 +19,8 @@ import { CATEGORY_OPTIONS } from '@/config/categories';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { CountryCombobox } from '../shared/CountryCombobox';
 import { countryCodeToNameMap } from '@/config/countries';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 import { DatePicker } from '../shared/DatePicker';
+import { Badge } from '../ui/badge';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -89,6 +85,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     tiktok: '',
   });
 
+  const [tags, setTags] = useState<string[]>(initialData?.tags || []);
+  const [currentTag, setCurrentTag] = useState('');
+
   const [perceptionCounts, setPerceptionCounts] = useState(initialData?.perceptionCounts || { ...defaultPerceptionCounts });
   const [attitudeCounts, setAttitudeCounts] = useState(initialData?.attitudeCounts || { ...defaultAttitudeCounts });
   
@@ -126,6 +125,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setDistinctiveFeatures(initialData.distinctiveFeatures || '');
       setIsFeatured(initialData.isFeatured || false);
       setSocialLinks(initialData.socialLinks || {});
+      setTags(initialData.tags || []);
 
       setPerceptionCounts(initialData.perceptionCounts || { ...defaultPerceptionCounts });
       setAttitudeCounts(initialData.attitudeCounts || { ...defaultAttitudeCounts });
@@ -154,6 +154,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setDistinctiveFeatures('');
       setIsFeatured(false);
       setSocialLinks({});
+      setTags([]);
       setPerceptionCounts({ ...defaultPerceptionCounts });
       setAttitudeCounts({ ...defaultAttitudeCounts });
     }
@@ -165,6 +166,25 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setSportSubcategory('');
     }
   }, [category]);
+  
+  const handleAddTag = () => {
+    const newTag = currentTag.trim();
+    if (newTag && !tags.includes(newTag)) {
+        setTags([...tags, newTag]);
+        setCurrentTag('');
+    }
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAddTag();
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -202,6 +222,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         gender: gender.trim(),
         category: category.trim(),
         sportSubcategory: category === 'Deportista' ? sportSubcategory.trim() : '',
+        tags: tags,
         alias: alias.trim(),
         species: species.trim(),
         firstAppearance: firstAppearance.trim(),
@@ -408,6 +429,39 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div><Label htmlFor="linkedin">LinkedIn</Label><Input id="linkedin" value={(socialLinks as Record<string,string>)['linkedin'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, linkedin: e.target.value}))} placeholder="URL de LinkedIn" /></div>
         <div><Label htmlFor="discord">Discord</Label><Input id="discord" value={(socialLinks as Record<string,string>)['discord'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, discord: e.target.value}))} placeholder="Enlace de invitación de Discord" /></div>
       </div>
+
+       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Etiquetas (Tags)</h3>
+        <div>
+            <Label htmlFor="tags">Añadir Etiquetas</Label>
+            <div className="flex gap-2">
+                <Input
+                    id="tags"
+                    value={currentTag}
+                    onChange={(e) => setCurrentTag(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                    placeholder="Ej: K-Pop, Cantante, Actriz"
+                />
+                <Button type="button" onClick={handleAddTag}>Añadir</Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+                Presiona Enter o haz clic en "Añadir" para agregar una etiqueta.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-2">
+                {tags.map(tag => (
+                    <Badge key={tag} variant="secondary" className="text-sm">
+                        {tag}
+                        <button
+                            type="button"
+                            onClick={() => handleRemoveTag(tag)}
+                            className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive"
+                            aria-label={`Eliminar etiqueta ${tag}`}
+                        >
+                            <X className="h-3 w-3" />
+                        </button>
+                    </Badge>
+                ))}
+            </div>
+        </div>
       
       <div className="mt-6 border-t pt-4 border-border">
         <div className="flex items-center space-x-2">

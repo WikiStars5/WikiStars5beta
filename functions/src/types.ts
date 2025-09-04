@@ -1,3 +1,5 @@
+
+
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 
@@ -14,6 +16,7 @@ export interface Figure {
   gender?: string;
   category?: string;
   sportSubcategory?: string; 
+  tags?: string[]; // New field for tags
 
   alias?: string;
   species?: string; 
@@ -33,9 +36,10 @@ export interface Figure {
     twitter?: string;
     youtube?: string;
     facebook?: string;
+    linkedin?: string;
+    discord?: string;
+    tiktok?: string;
   };
-  
-  relatedFigureIds?: string[];
 
   perceptionCounts: Record<EmotionKey, number>;
   attitudeCounts: Record<AttitudeKey, number>;

@@ -20,16 +20,16 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { updateFigureInFirestore } from '@/lib/placeholder-data';
 import { cn, correctMalformedUrl } from '@/lib/utils';
-import { useAuth } from '@/hooks/useAuth';
 import Image from 'next/image';
 import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { CountryCombobox } from '../shared/CountryCombobox';
-import { COUNTRIES, countryCodeToNameMap } from '@/config/countries';
+import { countryCodeToNameMap } from '@/config/countries';
 import { format, differenceInYears } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DatePicker } from '../shared/DatePicker';
+import { FigureTags } from './FigureTags';
 
 
 interface FigureInfoProps {
@@ -250,8 +250,9 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     figure.eyeColor ||
     figure.distinctiveFeatures;
   const hasSocialLinks = Object.values(figure.socialLinks || {}).some(link => !!link);
+  const hasTags = figure.tags && figure.tags.length > 0;
 
-  const hasAnyInfo = hasBasicInfo || hasDetailedInfo || hasPhysicalInfo || hasSocialLinks;
+  const hasAnyInfo = hasBasicInfo || hasDetailedInfo || hasPhysicalInfo || hasSocialLinks || hasTags;
 
   const birthDateAndAge = useMemo(() => {
     if (figure.birthDateOrAge) {
@@ -497,6 +498,13 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 </div>
               </>
             )}
+             {(hasSocialLinks || hasTags) && <Separator />}
+             {hasTags && (
+                <div>
+                    <h3 className="font-headline text-lg mb-4">Etiquetas</h3>
+                    <FigureTags tags={figure.tags!} />
+                </div>
+             )}
           </div>
         )}
       </CardContent>
