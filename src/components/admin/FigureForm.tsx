@@ -21,6 +21,8 @@ import { CountryCombobox } from '../shared/CountryCombobox';
 import { countryCodeToNameMap } from '@/config/countries';
 import { DatePicker } from '../shared/DatePicker';
 import { Badge } from '../ui/badge';
+import { TAG_OPTIONS } from '@/config/tags';
+import { Combobox } from '../shared/Combobox';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -86,7 +88,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   });
 
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
-  const [currentTag, setCurrentTag] = useState('');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   const [perceptionCounts, setPerceptionCounts] = useState(initialData?.perceptionCounts || { ...defaultPerceptionCounts });
   const [attitudeCounts, setAttitudeCounts] = useState(initialData?.attitudeCounts || { ...defaultAttitudeCounts });
@@ -168,17 +170,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   }, [category]);
   
   const handleAddTag = () => {
-    const newTag = currentTag.trim();
-    if (newTag && !tags.includes(newTag)) {
-        setTags([...tags, newTag]);
-        setCurrentTag('');
-    }
-  };
-
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        handleAddTag();
+    if (selectedTag && !tags.includes(selectedTag)) {
+        setTags([...tags, selectedTag]);
+        setSelectedTag(null); // Reset the combobox
     }
   };
 
@@ -430,38 +424,39 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div><Label htmlFor="discord">Discord</Label><Input id="discord" value={(socialLinks as Record<string,string>)['discord'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, discord: e.target.value}))} placeholder="Enlace de invitación de Discord" /></div>
       </div>
 
-       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Etiquetas (Tags)</h3>
-        <div>
-            <Label htmlFor="tags">Añadir Etiquetas</Label>
-            <div className="flex gap-2">
-                <Input
-                    id="tags"
-                    value={currentTag}
-                    onChange={(e) => setCurrentTag(e.target.value)}
-                    onKeyDown={handleTagKeyDown}
-                    placeholder="Ej: K-Pop, Cantante, Actriz"
-                />
-                <Button type="button" onClick={handleAddTag}>Añadir</Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-                Presiona Enter o haz clic en "Añadir" para agregar una etiqueta.
-            </p>
-            <div className="flex flex-wrap gap-2 mt-2">
-                {tags.map(tag => (
-                    <Badge key={tag} variant="secondary" className="text-sm">
-                        {tag}
-                        <button
-                            type="button"
-                            onClick={() => handleRemoveTag(tag)}
-                            className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive"
-                            aria-label={`Eliminar etiqueta ${tag}`}
-                        >
-                            <X className="h-3 w-3" />
-                        </button>
-                    </Badge>
-                ))}
-            </div>
+      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Etiquetas (Tags)</h3>
+      <div>
+        <Label htmlFor="tags-combobox">Añadir Etiquetas</Label>
+        <div className="flex gap-2">
+          <Combobox
+            options={TAG_OPTIONS.map(tag => ({ value: tag, label: tag }))}
+            value={selectedTag || ''}
+            onChange={(value) => setSelectedTag(value)}
+            placeholder="Selecciona una etiqueta..."
+          />
+          <Button type="button" onClick={handleAddTag} disabled={!selectedTag}>
+            Añadir
+          </Button>
         </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Las etiquetas se usan para agrupar y descubrir perfiles similares.
+        </p>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {tags.map(tag => (
+            <Badge key={tag} variant="secondary" className="text-sm">
+              {tag}
+              <button
+                type="button"
+                onClick={() => handleRemoveTag(tag)}
+                className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive"
+                aria-label={`Eliminar etiqueta ${tag}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      </div>
       
       <div className="mt-6 border-t pt-4 border-border">
         <div className="flex items-center space-x-2">

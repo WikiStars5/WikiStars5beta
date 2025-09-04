@@ -31,7 +31,8 @@ import { es } from 'date-fns/locale';
 import { DatePicker } from '../shared/DatePicker';
 import { FigureTags } from './FigureTags';
 import { Badge } from '../ui/badge';
-
+import { TAG_OPTIONS } from '@/config/tags';
+import { Combobox } from '../shared/Combobox';
 
 interface FigureInfoProps {
   figure: Figure;
@@ -134,7 +135,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   const [photoUrl, setPhotoUrl] = useState(figure.photoUrl || '');
   const [socialLinks, setSocialLinks] = useState(figure.socialLinks || {});
   const [tags, setTags] = useState(figure.tags || []);
-  const [currentTag, setCurrentTag] = useState('');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   
   const [isSaving, setIsSaving] = useState(false);
   const [linkErrors, setLinkErrors] = useState<SocialLinkErrors>({});
@@ -157,7 +158,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
       setPhotoUrl(figure.photoUrl || '');
       setSocialLinks(figure.socialLinks || {});
       setTags(figure.tags || []);
-      setCurrentTag('');
+      setSelectedTag(null);
     }
   }, [isEditing, figure]);
 
@@ -191,17 +192,9 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   };
 
   const handleAddTag = () => {
-    const newTag = currentTag.trim();
-    if (newTag && !tags.includes(newTag)) {
-        setTags([...tags, newTag]);
-        setCurrentTag('');
-    }
-  };
-
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        handleAddTag();
+    if (selectedTag && !tags.includes(selectedTag)) {
+        setTags([...tags, selectedTag]);
+        setSelectedTag(null);
     }
   };
 
@@ -467,29 +460,30 @@ export function FigureInfo({ figure }: FigureInfoProps) {
             <div>
               <h3 className="font-semibold mb-2">Editar Etiquetas</h3>
               <div className="flex gap-2">
-                <Input
-                    id="tags"
-                    value={currentTag}
-                    onChange={(e) => setCurrentTag(e.target.value)}
-                    onKeyDown={handleTagKeyDown}
-                    placeholder="Ej: K-Pop, Cantante"
+                <Combobox
+                  options={TAG_OPTIONS.map(tag => ({ value: tag, label: tag }))}
+                  value={selectedTag || ''}
+                  onChange={(value) => setSelectedTag(value)}
+                  placeholder="Selecciona una etiqueta..."
                 />
-                <Button type="button" onClick={handleAddTag}>Añadir</Button>
+                <Button type="button" onClick={handleAddTag} disabled={!selectedTag}>
+                  Añadir
+                </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Presiona Enter o haz clic en "Añadir".</p>
+              <p className="text-xs text-muted-foreground mt-1">Selecciona de la lista predefinida de etiquetas.</p>
               <div className="flex flex-wrap gap-2 mt-2">
                 {tags.map(tag => (
-                    <Badge key={tag} variant="secondary" className="text-sm">
-                        {tag}
-                        <button
-                            type="button"
-                            onClick={() => handleRemoveTag(tag)}
-                            className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive"
-                            aria-label={`Eliminar etiqueta ${tag}`}
-                        >
-                            <X className="h-3 w-3" />
-                        </button>
-                    </Badge>
+                  <Badge key={tag} variant="secondary" className="text-sm">
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTag(tag)}
+                      className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive"
+                      aria-label={`Eliminar etiqueta ${tag}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -572,4 +566,3 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     </Card>
   );
 }
-
