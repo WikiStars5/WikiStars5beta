@@ -9,6 +9,7 @@ import { getAllFiguresFromFirestore } from '@/lib/placeholder-data';
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
+import { SearchBar } from "@/components/shared/SearchBar";
 
 function HeroSection() {
   return (
@@ -20,7 +21,8 @@ function HeroSection() {
         La plataforma interactiva para explorar, calificar y debatir sobre la percepción pública de tus figuras favoritas. Descubre perfiles detallados, vota sobre tu actitud y emociones, y únete a la conversación global.
       </p>
       <div className="max-w-md mx-auto">
-         <p className="text-sm text-muted-foreground mb-4">
+        <SearchBar />
+        <p className="text-sm text-muted-foreground mt-2">
             Escribe un nombre y presiona enter o haz clic en buscar.
         </p>
       </div>
