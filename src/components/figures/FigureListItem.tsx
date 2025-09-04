@@ -42,7 +42,7 @@ export function FigureListItem({ figure, cardStyle = 'default' }: FigureListItem
           <div className="flex flex-col">
             <p className="text-sm font-medium text-foreground truncate group-hover:text-primary">{figure.name}</p>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-               <span className="text-xs text-muted-foreground">{figure.category || 'Sin categoría'}</span>
+               {figure.category && <span className="text-xs text-muted-foreground">{figure.category}</span>}
             </div>
           </div>
         </div>
@@ -74,7 +74,7 @@ export function FigureListItem({ figure, cardStyle = 'default' }: FigureListItem
         <CardContent className="p-4 flex-grow flex flex-col">
            <h3 className="text-lg font-headline mb-1 group-hover:text-primary flex-grow">{figure.name}</h3>
           <div className="flex items-center gap-1.5 text-sm mt-2 pt-2 border-t">
-              <span className="text-xs text-muted-foreground">{figure.category || 'Sin categoría'}</span>
+              {figure.category && <span className="text-xs text-muted-foreground">{figure.category}</span>}
           </div>
         </CardContent>
       </Card>
