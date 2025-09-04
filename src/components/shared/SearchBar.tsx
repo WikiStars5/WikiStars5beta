@@ -159,7 +159,7 @@ export function SearchBar({
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Buscar una figura..."
+          placeholder="Buscar en WikiStars5"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => { 

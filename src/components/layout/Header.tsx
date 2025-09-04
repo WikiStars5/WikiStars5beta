@@ -6,15 +6,11 @@ import { UserNav } from '@/components/layout/UserNav';
 import Link from 'next/link'; 
 import { MobileSearchButton } from './MobileSearchButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { InstallPwaButton } from './InstallPwaButton';
-import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from './NotificationBell';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { User } from 'lucide-react';
-import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { Button } from '../ui/button';
 import { PrimaryNav } from './PrimaryNav';
 
 
@@ -27,6 +23,12 @@ export function Header() {
         {/* Left Section */}
         <div className="flex items-center gap-2 md:gap-4">
           <Logo />
+          <div className="hidden md:flex items-center">
+             <SearchBar 
+              startAsIcon={true}
+              onFocusChange={setIsHeaderSearchFocused} 
+            />
+          </div>
         </div>
         
         {/* Center Section - Navigation */}
@@ -37,10 +39,6 @@ export function Header() {
         {/* Right Section */}
         <div className="flex items-center gap-1 md:gap-2 lg:gap-3">
           <div className="hidden md:flex items-center">
-             <SearchBar 
-              startAsIcon={true}
-              onFocusChange={setIsHeaderSearchFocused} 
-            />
             <NotificationBell />
             <TooltipProvider>
               <Tooltip>
