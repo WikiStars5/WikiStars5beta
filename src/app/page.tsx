@@ -14,7 +14,7 @@ import { SearchBar } from "@/components/shared/SearchBar";
 
 function HeroSection() {
   return (
-    <section className="text-center py-16 md:py-24">
+    <section className="text-center py-12 md:py-16">
       <h1 className="text-4xl md:text-5xl font-bold font-headline mb-4">
         Bienvenido a <span className="text-primary">WikiStars5</span>
       </h1>
