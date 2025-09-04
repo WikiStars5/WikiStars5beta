@@ -180,7 +180,7 @@ export function SearchBar({
               }
             }, 100);
           }}
-          className="text-sm h-9 flex-grow pl-10 pr-10 rounded-md shadow-sm border-input focus:ring-1 focus:ring-primary/50 bg-background"
+          className="text-sm h-9 flex-grow pl-10 pr-10 rounded-full shadow-sm border-none bg-muted focus:ring-1 focus:ring-primary/50"
         />
         {isLoading && query.length >= 2 && (
            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
