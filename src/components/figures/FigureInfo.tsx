@@ -484,6 +484,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                   </div>
                 )}
             </div>
+            
             {hasSocialLinks && (
               <>
                 <Separator/>
@@ -498,13 +499,15 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 </div>
               </>
             )}
-             {(hasSocialLinks || hasTags) && <Separator />}
-             {hasTags && (
-                <div>
-                    <h3 className="font-headline text-lg mb-4">Etiquetas</h3>
-                    <FigureTags tags={figure.tags!} />
-                </div>
-             )}
+
+            {hasTags && hasSocialLinks && <Separator />}
+
+            {hasTags && (
+               <div>
+                   <h3 className="font-headline text-lg mb-4">Etiquetas</h3>
+                   <FigureTags tags={figure.tags!} />
+               </div>
+            )}
           </div>
         )}
       </CardContent>
