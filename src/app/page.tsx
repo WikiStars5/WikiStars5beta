@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ForYouSection } from "@/components/foryou/ForYouSection";
@@ -17,10 +18,7 @@ function HeroSection() {
       <h1 className="text-4xl md:text-5xl font-bold font-headline mb-4">
         Bienvenido a <span className="text-primary">WikiStars5</span>
       </h1>
-      <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-        La plataforma interactiva para explorar, calificar y debatir sobre la percepción pública de tus figuras favoritas. Descubre perfiles detallados, vota sobre tu actitud y emociones, y únete a la conversación global.
-      </p>
-      <div className="max-w-md mx-auto">
+      <div className="max-w-md mx-auto mt-8">
         <SearchBar />
         <p className="text-sm text-muted-foreground mt-2">
             Escribe un nombre y presiona enter o haz clic en buscar.
