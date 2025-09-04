@@ -23,16 +23,12 @@ function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
 
 interface SearchBarProps {
   initialQuery?: string;
-  startAsIcon?: boolean;
-  onFocusChange?: (isFocused: boolean) => void;
   className?: string;
   onResultClick?: (figure: Figure) => void;
 }
 
 export function SearchBar({ 
   initialQuery = '', 
-  startAsIcon = false, 
-  onFocusChange, 
   className,
   onResultClick
 }: SearchBarProps) {
@@ -40,7 +36,6 @@ export function SearchBar({
   const [results, setResults] = useState<Figure[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isInputActive, setIsInputActive] = useState(!startAsIcon);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -72,48 +67,38 @@ export function SearchBar({
   );
 
   useEffect(() => {
-    if (isInputActive && initialQuery.trim().length >= 2) {
+    if (initialQuery.trim().length >= 2) {
       debouncedSearch(initialQuery);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInputActive, initialQuery]);
+  }, [initialQuery]);
 
   useEffect(() => {
-    if (isInputActive && query.trim() === '') {
+    if (query.trim() === '') {
       setResults([]);
       setIsLoading(false);
       setIsDropdownOpen(false);
       return;
     }
-    if (isInputActive) {
-      debouncedSearch(query);
-    }
-  }, [query, debouncedSearch, isInputActive]);
+    debouncedSearch(query);
+  }, [query, debouncedSearch]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
-        if (startAsIcon && query.trim() === '' && isInputActive) {
-          setIsInputActive(false);
-          onFocusChange?.(false);
-        }
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [searchContainerRef, startAsIcon, query, isInputActive, onFocusChange]);
+  }, [searchContainerRef]);
 
   const handleResultItemClick = (figure: Figure) => {
     setQuery('');
     setResults([]);
     setIsDropdownOpen(false);
-    if (startAsIcon) {
-      setIsInputActive(false);
-      onFocusChange?.(false);
-    }
     if (onResultClick) {
       onResultClick(figure);
     }
@@ -123,34 +108,8 @@ export function SearchBar({
     setQuery('');
     setResults([]);
     setIsDropdownOpen(false);
-    if (startAsIcon && isInputActive) {
-      setIsInputActive(false);
-      onFocusChange?.(false);
-    }
     inputRef.current?.focus(); 
   };
-
-  const handleIconClick = () => {
-    setIsInputActive(true);
-    onFocusChange?.(true);
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 0);
-  };
-
-  if (startAsIcon && !isInputActive) {
-    return (
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        onClick={handleIconClick} 
-        className={cn("h-9 w-9 text-foreground/70 hover:text-foreground", className)}
-        aria-label="Abrir búsqueda"
-      >
-        <Search className="h-5 w-5" />
-      </Button>
-    );
-  }
 
   return (
     <div className={cn("relative w-full", className)} ref={searchContainerRef}>
@@ -164,19 +123,11 @@ export function SearchBar({
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => { 
             if (query.trim().length > 0) setIsDropdownOpen(true);
-            onFocusChange?.(true);
-            if (!isInputActive && startAsIcon) {
-              setIsInputActive(true);
-            }
           }}
           onBlur={() => {
             setTimeout(() => {
               if (!searchContainerRef.current?.contains(document.activeElement)) {
                 setIsDropdownOpen(false);
-                if (startAsIcon && query.trim() === '' && isInputActive) {
-                  setIsInputActive(false);
-                  onFocusChange?.(false);
-                }
               }
             }, 100);
           }}

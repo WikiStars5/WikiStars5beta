@@ -24,10 +24,7 @@ export function Header() {
         <div className="flex items-center gap-2 md:gap-4">
           <Logo />
           <div className="hidden md:flex items-center">
-             <SearchBar 
-              startAsIcon={true}
-              onFocusChange={setIsHeaderSearchFocused} 
-            />
+             <SearchBar />
           </div>
         </div>
         
