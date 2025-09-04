@@ -30,6 +30,7 @@ import { format, differenceInYears } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DatePicker } from '../shared/DatePicker';
 import { FigureTags } from './FigureTags';
+import { Badge } from '../ui/badge';
 
 
 interface FigureInfoProps {
@@ -132,6 +133,8 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   const [maritalStatus, setMaritalStatus] = useState(figure.maritalStatus || '');
   const [photoUrl, setPhotoUrl] = useState(figure.photoUrl || '');
   const [socialLinks, setSocialLinks] = useState(figure.socialLinks || {});
+  const [tags, setTags] = useState(figure.tags || []);
+  const [currentTag, setCurrentTag] = useState('');
   
   const [isSaving, setIsSaving] = useState(false);
   const [linkErrors, setLinkErrors] = useState<SocialLinkErrors>({});
@@ -153,6 +156,8 @@ export function FigureInfo({ figure }: FigureInfoProps) {
       setMaritalStatus(figure.maritalStatus || '');
       setPhotoUrl(figure.photoUrl || '');
       setSocialLinks(figure.socialLinks || {});
+      setTags(figure.tags || []);
+      setCurrentTag('');
     }
   }, [isEditing, figure]);
 
@@ -185,6 +190,26 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     return Object.keys(errors).length === 0;
   };
 
+  const handleAddTag = () => {
+    const newTag = currentTag.trim();
+    if (newTag && !tags.includes(newTag)) {
+        setTags([...tags, newTag]);
+        setCurrentTag('');
+    }
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAddTag();
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+
   const handleSave = async () => {
     if (!validateLinks()) {
       toast({
@@ -208,7 +233,8 @@ export function FigureInfo({ figure }: FigureInfoProps) {
         birthDateOrAge: birthDate ? birthDate.toISOString() : '',
         maritalStatus,
         photoUrl: correctedUrl,
-        socialLinks: socialLinks
+        socialLinks: socialLinks,
+        tags: tags,
       });
       toast({
         title: "Perfil Actualizado",
@@ -435,6 +461,38 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                   </div>
                </div>
             </div>
+            
+            <Separator />
+            
+            <div>
+              <h3 className="font-semibold mb-2">Editar Etiquetas</h3>
+              <div className="flex gap-2">
+                <Input
+                    id="tags"
+                    value={currentTag}
+                    onChange={(e) => setCurrentTag(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                    placeholder="Ej: K-Pop, Cantante"
+                />
+                <Button type="button" onClick={handleAddTag}>Añadir</Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Presiona Enter o haz clic en "Añadir".</p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {tags.map(tag => (
+                    <Badge key={tag} variant="secondary" className="text-sm">
+                        {tag}
+                        <button
+                            type="button"
+                            onClick={() => handleRemoveTag(tag)}
+                            className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive"
+                            aria-label={`Eliminar etiqueta ${tag}`}
+                        >
+                            <X className="h-3 w-3" />
+                        </button>
+                    </Badge>
+                ))}
+              </div>
+            </div>
 
             <div className="flex justify-end gap-2 pt-4 border-t">
               <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={isSaving}>
@@ -500,7 +558,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
               </>
             )}
 
-            {hasTags && hasSocialLinks && <Separator />}
+            {hasTags && <Separator />}
 
             {hasTags && (
                <div>
@@ -514,3 +572,4 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     </Card>
   );
 }
+
