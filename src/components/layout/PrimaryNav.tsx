@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -24,13 +23,14 @@ const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; ico
           <Button
             asChild
             variant="ghost"
+            size="icon"
             className={cn(
-              "flex flex-col items-center justify-center gap-1 h-14 w-28 rounded-lg transition-colors duration-200",
-              isActive ? 'bg-primary/10 text-primary' : 'text-foreground/60 hover:bg-muted hover:text-foreground'
+              "h-9 w-9", // Compact icon button style
+              isActive ? 'bg-primary/10 text-primary' : 'text-foreground/70 hover:text-foreground'
             )}
           >
             <Link href={href}>
-              <Icon className="h-6 w-6" />
+              <Icon className="h-5 w-5" />
               <span className="sr-only">{label}</span>
             </Link>
           </Button>
@@ -46,7 +46,7 @@ const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; ico
 
 export function PrimaryNav() {
   return (
-    <nav className="flex justify-center items-center gap-4 mb-8">
+    <nav className="flex items-center gap-1">
       {navLinks.map((link) => (
         <NavLink key={link.href} {...link} />
       ))}
