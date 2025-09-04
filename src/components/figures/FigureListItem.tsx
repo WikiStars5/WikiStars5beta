@@ -6,12 +6,35 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImageOff, Star } from "lucide-react";
-import { correctMalformedUrl } from "@/lib/utils";
+import { correctMalformedUrl, cn } from "@/lib/utils";
+import * as React from 'react';
 
 interface FigureListItemProps {
   figure: Figure;
   cardStyle?: 'default' | 'playstore';
 }
+
+const StarRating = ({ ratingCounts }: { ratingCounts: Record<string, number> | undefined }) => {
+    const { averageRating, totalVotes } = React.useMemo(() => {
+        if (!ratingCounts) return { averageRating: 0, totalVotes: 0 };
+        const votes = Object.values(ratingCounts).reduce((sum, count) => sum + count, 0);
+        if (votes === 0) return { averageRating: 0, totalVotes: 0 };
+        const weightedSum = Object.entries(ratingCounts).reduce((sum, [rating, count]) => sum + parseInt(rating) * count, 0);
+        return { totalVotes: votes, averageRating: weightedSum / votes };
+    }, [ratingCounts]);
+
+    if (totalVotes === 0) {
+        return null; // No mostrar nada si no hay votos
+    }
+
+    return (
+        <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground font-bold">{averageRating.toFixed(1)}</span>
+            <Star className="h-3 w-3 text-primary fill-current" />
+        </div>
+    );
+};
+
 
 export function FigureListItem({ figure, cardStyle = 'default' }: FigureListItemProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
@@ -43,6 +66,12 @@ export function FigureListItem({ figure, cardStyle = 'default' }: FigureListItem
             <p className="text-sm font-medium text-foreground truncate group-hover:text-primary">{figure.name}</p>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                {figure.category && <span className="text-xs text-muted-foreground">{figure.category}</span>}
+               {figure.ratingCounts && (
+                   <>
+                    {figure.category && <span className="mx-1">•</span>}
+                    <StarRating ratingCounts={figure.ratingCounts} />
+                   </>
+                )}
             </div>
           </div>
         </div>
@@ -73,9 +102,12 @@ export function FigureListItem({ figure, cardStyle = 'default' }: FigureListItem
         </div>
         <CardContent className="p-4 flex-grow flex flex-col">
            <h3 className="text-lg font-headline mb-1 group-hover:text-primary flex-grow">{figure.name}</h3>
-          <div className="flex items-center gap-1.5 text-sm mt-2 pt-2 border-t">
-              {figure.category && <span className="text-xs text-muted-foreground">{figure.category}</span>}
-          </div>
+           <StarRating ratingCounts={figure.ratingCounts} />
+           {figure.category && (
+            <div className="flex items-center gap-1.5 text-sm mt-2 pt-2 border-t">
+              <span className="text-xs text-muted-foreground">{figure.category}</span>
+            </div>
+           )}
         </CardContent>
       </Card>
     </Link>
