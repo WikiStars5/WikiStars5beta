@@ -197,7 +197,7 @@ export function NotificationBell() {
         </div>
         <TooltipProvider>
             <Tabs defaultValue="all" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 h-auto p-0 rounded-none border-b">
+                <TabsList className="grid w-full grid-cols-4 h-auto p-0 rounded-none border-b bg-transparent">
                     <TabsTrigger value="all" className="py-2 rounded-none text-xs"><Bell className="mr-2 h-4 w-4"/>Todo</TabsTrigger>
                     
                     <Tooltip>
