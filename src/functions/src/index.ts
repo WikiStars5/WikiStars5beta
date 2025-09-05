@@ -213,44 +213,45 @@ export const searchFiguresByFilters = onCall(async (request) => {
   try {
     let figuresQuery: Query = db.collection('figures');
 
-    // Filter by single equality conditions first
+    // Equality filters
     if (nationalityCode) {
       figuresQuery = figuresQuery.where('nationalityCode', '==', nationalityCode);
     }
     if (gender) {
-      // Assuming gender is stored as 'Masculino' or 'Femenino'
       figuresQuery = figuresQuery.where('gender', '==', gender);
     }
-    // Important: array-contains-any can only be used once per query.
     if (tags && Array.isArray(tags) && tags.length > 0) {
       figuresQuery = figuresQuery.where('tags', 'array-contains-any', tags);
     }
+    
+    // Range filters
+    let hasRangeFilter = false;
+    if (minAge) {
+      figuresQuery = figuresQuery.orderBy('age').where('age', '>=', Number(minAge));
+      hasRangeFilter = true;
+    }
+    if (maxAge) {
+       if (!minAge) figuresQuery = figuresQuery.orderBy('age');
+       figuresQuery = figuresQuery.where('age', '<=', Number(maxAge));
+       hasRangeFilter = true;
+    }
 
-    // Then, add range filters. Firestore requires the first orderBy to match the field in the first range filter.
-    // We will arbitrarily order by age first if it's present, otherwise height.
-    if (minAge || maxAge) {
-      figuresQuery = figuresQuery.orderBy('age');
-      if (minAge) {
-        figuresQuery = figuresQuery.where('age', '>=', Number(minAge));
-      }
-      if (maxAge) {
-        figuresQuery = figuresQuery.where('age', '<=', Number(maxAge));
-      }
+    if (minHeight) {
+      if (!hasRangeFilter) figuresQuery = figuresQuery.orderBy('heightCm');
+      figuresQuery = figuresQuery.where('heightCm', '>=', Number(minHeight));
+      hasRangeFilter = true;
+    }
+    if (maxHeight) {
+      if (!hasRangeFilter || (hasRangeFilter && !minHeight)) figuresQuery = figuresQuery.orderBy('heightCm');
+      figuresQuery = figuresQuery.where('heightCm', '<=', Number(maxHeight));
+      hasRangeFilter = true;
     }
     
-    if (minHeight || maxHeight) {
-        // If age filter was not applied, we need to order by heightCm first.
-        if (!minAge && !maxAge) {
-           figuresQuery = figuresQuery.orderBy('heightCm');
-        }
-        if (minHeight) {
-            figuresQuery = figuresQuery.where('heightCm', '>=', Number(minHeight));
-        }
-        if (maxHeight) {
-            figuresQuery = figuresQuery.where('heightCm', '<=', Number(maxHeight));
-        }
+    // Default ordering if no range filter is applied
+    if (!hasRangeFilter) {
+      figuresQuery = figuresQuery.orderBy('name');
     }
-    
+
     figuresQuery = figuresQuery.limit(100);
 
     const querySnapshot = await figuresQuery.get();
@@ -267,7 +268,7 @@ export const searchFiguresByFilters = onCall(async (request) => {
   } catch (error: any) {
     console.error("Error searching figures by filters:", error);
      if (error.code === 'failed-precondition' || (error.message && String(error.message).toLowerCase().includes("index"))) {
-        return { success: false, error: 'La búsqueda requiere un índice de Firestore que no existe. Revisa los logs para crear el índice necesario.' };
+        return { success: false, error: 'La búsqueda requiere un índice de Firestore que no existe. Revisa los logs de la función en la consola de Firebase para crear el índice necesario.' };
     }
     return { success: false, error: 'Ocurrió un error al buscar las figuras.' };
   }
@@ -278,5 +279,3 @@ export const searchFiguresByFilters = onCall(async (request) => {
 import "./notifications";
 // Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.
 import "./triggers";
-
-    
