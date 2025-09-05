@@ -33,6 +33,7 @@ import { FigureTags } from './FigureTags';
 import { Badge } from '../ui/badge';
 import { TAG_OPTIONS } from '@/config/tags';
 import { Combobox } from '../shared/Combobox';
+import { Slider } from '../ui/slider';
 
 interface FigureInfoProps {
   figure: Figure;
@@ -132,6 +133,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
       : undefined
   );
   const [maritalStatus, setMaritalStatus] = useState(figure.maritalStatus || '');
+  const [heightCm, setHeightCm] = useState<number>(figure.heightCm || 150);
   const [photoUrl, setPhotoUrl] = useState(figure.photoUrl || '');
   const [socialLinks, setSocialLinks] = useState(figure.socialLinks || {});
   const [tags, setTags] = useState(figure.tags || []);
@@ -155,6 +157,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
           : undefined
       );
       setMaritalStatus(figure.maritalStatus || '');
+      setHeightCm(figure.heightCm || 150);
       setPhotoUrl(figure.photoUrl || '');
       setSocialLinks(figure.socialLinks || {});
       setTags(figure.tags || []);
@@ -225,6 +228,8 @@ export function FigureInfo({ figure }: FigureInfoProps) {
         gender,
         birthDateOrAge: birthDate ? birthDate.toISOString() : '',
         maritalStatus,
+        height: `${heightCm} cm`,
+        heightCm: heightCm,
         photoUrl: correctedUrl,
         socialLinks: socialLinks,
         tags: tags,
@@ -372,6 +377,17 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="heightCm">Altura ({heightCm} cm)</Label>
+                  <Slider
+                    id="heightCm"
+                    min={50}
+                    max={250}
+                    step={1}
+                    value={[heightCm]}
+                    onValueChange={(value) => setHeightCm(value[0])}
+                  />
                 </div>
               </div>
             </div>
