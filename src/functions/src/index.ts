@@ -8,9 +8,9 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
-import type { UserProfile } from "./types";
+import type { UserProfile, Figure } from "./types";
 import { COUNTRIES } from "./countries";
-import type { DocumentData } from "firebase-admin/firestore";
+import type { DocumentData, Query } from "firebase-admin/firestore";
 
 // Centralized Admin UID for security checks.
 const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
@@ -162,6 +162,86 @@ export const getAllUsers = onCall(async (request) => {
         }
         return { success: false, error: error.message || 'Un error desconocido ocurrió en la Cloud Function.' };
     }
+});
+
+
+const mapDocToFigure = (docSnap: DocumentData): Figure => {
+  const data = docSnap.data() as DocumentData;
+  const createdAtTimestamp = data.createdAt;
+  
+  return {
+    id: docSnap.id,
+    name: data.name || "",
+    nameLower: data.nameLower || (data.name ? data.name.toLowerCase() : ""),
+    photoUrl: data.photoUrl || "",
+    description: data.description || "",
+    nationality: data.nationality || "",
+    nationalityCode: data.nationalityCode || "",
+    occupation: data.occupation || "",
+    gender: data.gender || "",
+    category: data.category || "",
+    sportSubcategory: data.sportSubcategory || "",
+    tags: data.tags || [],
+    alias: data.alias || "",
+    species: data.species || "",
+    firstAppearance: data.firstAppearance || "",
+    birthDateOrAge: data.birthDateOrAge || "",
+    birthPlace: data.birthPlace || "",
+    statusLiveOrDead: data.statusLiveOrDead || "",
+    maritalStatus: data.maritalStatus || "",
+    height: data.height || "",
+    weight: data.weight || "",
+    hairColor: data.hairColor || "",
+    eyeColor: data.eyeColor || "",
+    distinctiveFeatures: data.distinctiveFeatures || "",
+    socialLinks: data.socialLinks || {},
+    perceptionCounts: data.perceptionCounts || {},
+    attitudeCounts: data.attitudeCounts || {},
+    createdAt: createdAtTimestamp && typeof createdAtTimestamp.toDate === 'function' 
+                 ? createdAtTimestamp.toDate().toISOString() 
+                 : undefined,
+    status: data.status || 'approved',
+    isFeatured: data.isFeatured || false,
+  };
+};
+
+export const searchFiguresByFilters = onCall(async (request) => {
+  const { nationalityCode, gender, tags } = request.data;
+
+  try {
+    let figuresQuery: Query = db.collection('figures');
+
+    if (nationalityCode) {
+      figuresQuery = figuresQuery.where('nationalityCode', '==', nationalityCode);
+    }
+    if (gender) {
+      figuresQuery = figuresQuery.where('gender', '==', gender);
+    }
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      figuresQuery = figuresQuery.where('tags', 'array-contains-any', tags);
+    }
+    
+    // Add a limit to prevent excessive reads, adjust as needed
+    figuresQuery = figuresQuery.limit(100);
+
+    const querySnapshot = await figuresQuery.get();
+    
+    const figures: Figure[] = [];
+    if (!querySnapshot.empty) {
+      querySnapshot.forEach((docSnap) => {
+        figures.push(mapDocToFigure(docSnap));
+      });
+    }
+
+    return { success: true, figures };
+
+  } catch (error: any) {
+    console.error("Error searching figures by filters:", error);
+     if (error.code === 'failed-precondition' || (error.message && String(error.message).toLowerCase().includes("index"))) {
+        return { success: false, error: 'La búsqueda requiere un índice de Firestore que no existe. Revisa los logs para crear el índice necesario.' };
+    }
+    return { success: false, error: 'Ocurrió un error al buscar las figuras.' };
+  }
 });
 
 
