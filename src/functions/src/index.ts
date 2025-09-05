@@ -186,10 +186,12 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
     species: data.species || "",
     firstAppearance: data.firstAppearance || "",
     birthDateOrAge: data.birthDateOrAge || "",
+    age: data.age,
     birthPlace: data.birthPlace || "",
     statusLiveOrDead: data.statusLiveOrDead || "",
     maritalStatus: data.maritalStatus || "",
     height: data.height || "",
+    heightCm: data.heightCm,
     weight: data.weight || "",
     hairColor: data.hairColor || "",
     eyeColor: data.eyeColor || "",
@@ -206,7 +208,7 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
 };
 
 export const searchFiguresByFilters = onCall(async (request) => {
-  const { nationalityCode, gender, tags } = request.data;
+  const { nationalityCode, gender, tags, minAge, maxAge, minHeight, maxHeight } = request.data;
 
   try {
     let figuresQuery: Query = db.collection('figures');
@@ -217,11 +219,22 @@ export const searchFiguresByFilters = onCall(async (request) => {
     if (gender) {
       figuresQuery = figuresQuery.where('gender', '==', gender);
     }
+    if (minAge) {
+      figuresQuery = figuresQuery.where('age', '>=', Number(minAge));
+    }
+    if (maxAge) {
+      figuresQuery = figuresQuery.where('age', '<=', Number(maxAge));
+    }
+    if (minHeight) {
+      figuresQuery = figuresQuery.where('heightCm', '>=', Number(minHeight));
+    }
+    if (maxHeight) {
+      figuresQuery = figuresQuery.where('heightCm', '<=', Number(maxHeight));
+    }
     if (tags && Array.isArray(tags) && tags.length > 0) {
       figuresQuery = figuresQuery.where('tags', 'array-contains-any', tags);
     }
     
-    // Add a limit to prevent excessive reads, adjust as needed
     figuresQuery = figuresQuery.limit(100);
 
     const querySnapshot = await figuresQuery.get();

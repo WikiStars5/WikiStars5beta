@@ -55,10 +55,12 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     species: data.species || "",
     firstAppearance: data.firstAppearance || "",
     birthDateOrAge: data.birthDateOrAge || "",
+    age: data.age,
     birthPlace: data.birthPlace || "",
     statusLiveOrDead: data.statusLiveOrDead || "",
     maritalStatus: data.maritalStatus || "",
     height: data.height || "",
+    heightCm: data.heightCm,
     weight: data.weight || "",
     hairColor: data.hairColor || "",
     eyeColor: data.eyeColor || "",
@@ -214,8 +216,8 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       const { 
           id, createdAt, nameLower: nameLowerInput, perceptionCounts, attitudeCounts, ratingCounts,
           name, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
-          firstAppearance, birthDateOrAge, birthPlace, statusLiveOrDead, maritalStatus,
-          height, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
+          firstAppearance, birthDateOrAge, age, birthPlace, statusLiveOrDead, maritalStatus,
+          height, heightCm, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
           category, sportSubcategory, relatedFigureIds, socialLinks, tags, ...rest
       } = figure;
 
@@ -235,10 +237,12 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       if (species !== undefined) updatePayload.species = species;
       if (firstAppearance !== undefined) updatePayload.firstAppearance = firstAppearance;
       if (birthDateOrAge !== undefined) updatePayload.birthDateOrAge = birthDateOrAge;
+      if (age !== undefined) updatePayload.age = age;
       if (birthPlace !== undefined) updatePayload.birthPlace = birthPlace;
       if (statusLiveOrDead !== undefined) updatePayload.statusLiveOrDead = statusLiveOrDead;
       if (maritalStatus !== undefined) updatePayload.maritalStatus = maritalStatus;
       if (height !== undefined) updatePayload.height = height;
+      if (heightCm !== undefined) updatePayload.heightCm = heightCm;
       if (weight !== undefined) updatePayload.weight = weight;
       if (hairColor !== undefined) updatePayload.hairColor = hairColor;
       if (eyeColor !== undefined) updatePayload.eyeColor = eyeColor;

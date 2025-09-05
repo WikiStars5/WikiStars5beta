@@ -23,6 +23,7 @@ import { DatePicker } from '../shared/DatePicker';
 import { Badge } from '../ui/badge';
 import { TAG_OPTIONS } from '@/config/tags';
 import { Combobox } from '../shared/Combobox';
+import { differenceInYears } from 'date-fns';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -204,6 +205,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       }
       
       const finalPhotoUrlToSave = photoUrl.trim() || 'https://placehold.co/400x600.png';
+      
+      const age = birthDate ? differenceInYears(new Date(), birthDate) : undefined;
+      const heightCm = height ? parseInt(height.replace(/\D/g, ''), 10) || undefined : undefined;
 
       const figureData: Omit<Figure, 'id' | 'createdAt'> & { createdAt?: any } = { 
         name: name.trim(),
@@ -221,10 +225,12 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         species: species.trim(),
         firstAppearance: firstAppearance.trim(),
         birthDateOrAge: birthDate ? birthDate.toISOString() : '',
+        age: age,
         birthPlace: birthPlace.trim(),
         statusLiveOrDead: statusLiveOrDead.trim(),
         maritalStatus: maritalStatus.trim(),
         height: height.trim(),
+        heightCm: heightCm,
         weight: weight.trim(),
         hairColor: hairColor.trim(),
         eyeColor: eyeColor.trim(),
@@ -406,7 +412,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Apariencia y Rasgos Físicos</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><Label htmlFor="height">Altura</Label><Input id="height" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Ej: 1.68 cm" /></div>
+        <div><Label htmlFor="height">Altura (ej. 168 cm)</Label><Input id="height" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Ej: 168 cm" /></div>
         <div><Label htmlFor="weight">Peso</Label><Input id="weight" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="Ej: 56 kg (Opcional)" /></div>
         <div><Label htmlFor="hairColor">Color de Cabello</Label><Input id="hairColor" value={hairColor} onChange={(e) => setHairColor(e.target.value)} placeholder="Ej: Negro" /></div>
         <div><Label htmlFor="eyeColor">Color de Ojos</Label><Input id="eyeColor" value={eyeColor} onChange={(e) => setEyeColor(e.target.value)} placeholder="Ej: Violeta, Azules" /></div>

@@ -1,4 +1,5 @@
 
+
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 
@@ -20,10 +21,12 @@ export interface Figure {
   species?: string; 
   firstAppearance?: string; 
   birthDateOrAge?: string; 
+  age?: number;
   birthPlace?: string;
   statusLiveOrDead?: string; 
   maritalStatus?: string; 
   height?: string;
+  heightCm?: number;
   weight?: string; 
   hairColor?: string;
   eyeColor?: string; 

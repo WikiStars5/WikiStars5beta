@@ -19,6 +19,8 @@ import { app } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 
 interface FiguresPageClientProps {
@@ -49,11 +51,23 @@ export function FiguresPageClient({
   const [selectedGender, setSelectedGender] = useState<string>('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState<string | null>(null);
+  const [minAge, setMinAge] = useState<string>('');
+  const [maxAge, setMaxAge] = useState<string>('');
+  const [minHeight, setMinHeight] = useState<string>('');
+  const [maxHeight, setMaxHeight] = useState<string>('');
+
 
   const genderOptions: GenderOption[] = GENDER_OPTIONS.filter(opt => opt.value === 'male' || opt.value === 'female');
   const tagOptions = TAG_OPTIONS.map(tag => ({ value: tag, label: tag }));
 
-  const activeFilterCount = (selectedNationality ? 1 : 0) + (selectedGender ? 1 : 0) + selectedTags.length;
+  const activeFilterCount = 
+    (selectedNationality ? 1 : 0) + 
+    (selectedGender ? 1 : 0) + 
+    selectedTags.length +
+    (minAge ? 1 : 0) +
+    (maxAge ? 1 : 0) +
+    (minHeight ? 1 : 0) +
+    (maxHeight ? 1 : 0);
 
   const handleAddTag = () => {
     if (currentTag && !selectedTags.includes(currentTag)) {
@@ -74,6 +88,10 @@ export function FiguresPageClient({
       nationalityCode: selectedNationality || undefined,
       gender: selectedGender || undefined,
       tags: selectedTags.length > 0 ? selectedTags : undefined,
+      minAge: minAge || undefined,
+      maxAge: maxAge || undefined,
+      minHeight: minHeight || undefined,
+      maxHeight: maxHeight || undefined,
     };
 
     try {
@@ -97,6 +115,10 @@ export function FiguresPageClient({
     setSelectedNationality('');
     setSelectedGender('');
     setSelectedTags([]);
+    setMinAge('');
+    setMaxAge('');
+    setMinHeight('');
+    setMaxHeight('');
     setFigures(initialFigures); // Reset to initial state
   };
 
@@ -177,12 +199,12 @@ export function FiguresPageClient({
                 <ScrollArea className="h-[calc(100vh-150px)] pr-4">
                   <div className="space-y-6 py-4">
                       <div>
-                          <h3 className="font-semibold mb-2">Nacionalidad</h3>
+                          <Label className="font-semibold mb-2 block">Nacionalidad</Label>
                           <CountryCombobox value={selectedNationality} onChange={setSelectedNationality} />
                       </div>
 
                       <div>
-                          <h3 className="font-semibold mb-2">Género</h3>
+                          <Label className="font-semibold mb-2 block">Género</Label>
                           <Combobox 
                               options={genderOptions.map(g => ({ value: g.label, label: g.label }))}
                               value={selectedGender}
@@ -190,9 +212,27 @@ export function FiguresPageClient({
                               placeholder="Selecciona un género..."
                           />
                       </div>
+
+                      <div>
+                        <Label className="font-semibold mb-2 block">Rango de Edad</Label>
+                        <div className="flex items-center gap-2">
+                           <Input type="number" placeholder="Mín." value={minAge} onChange={(e) => setMinAge(e.target.value)} className="w-full"/>
+                           <span>-</span>
+                           <Input type="number" placeholder="Máx." value={maxAge} onChange={(e) => setMaxAge(e.target.value)} className="w-full"/>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="font-semibold mb-2 block">Rango de Altura (cm)</Label>
+                        <div className="flex items-center gap-2">
+                           <Input type="number" placeholder="Mín." value={minHeight} onChange={(e) => setMinHeight(e.target.value)} className="w-full"/>
+                           <span>-</span>
+                           <Input type="number" placeholder="Máx." value={maxHeight} onChange={(e) => setMaxHeight(e.target.value)} className="w-full"/>
+                        </div>
+                      </div>
                       
                       <div>
-                        <h3 className="font-semibold mb-2">Etiquetas</h3>
+                        <Label className="font-semibold mb-2 block">Etiquetas</Label>
                         <div className="flex gap-2">
                            <Combobox
                               options={tagOptions}

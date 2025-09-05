@@ -25,10 +25,12 @@ export interface Figure {
   species?: string; 
   firstAppearance?: string; 
   birthDateOrAge?: string; 
+  age?: number; // Numeric age for querying
   birthPlace?: string;
   statusLiveOrDead?: string; 
   maritalStatus?: string; 
   height?: string;
+  heightCm?: number; // Numeric height in cm for querying
   weight?: string; 
   hairColor?: string;
   eyeColor?: string; 
