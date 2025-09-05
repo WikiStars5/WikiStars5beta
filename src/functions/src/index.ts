@@ -213,26 +213,42 @@ export const searchFiguresByFilters = onCall(async (request) => {
   try {
     let figuresQuery: Query = db.collection('figures');
 
+    // Filter by single equality conditions first
     if (nationalityCode) {
       figuresQuery = figuresQuery.where('nationalityCode', '==', nationalityCode);
     }
     if (gender) {
+      // Assuming gender is stored as 'Masculino' or 'Femenino'
       figuresQuery = figuresQuery.where('gender', '==', gender);
     }
-    if (minAge) {
-      figuresQuery = figuresQuery.where('age', '>=', Number(minAge));
-    }
-    if (maxAge) {
-      figuresQuery = figuresQuery.where('age', '<=', Number(maxAge));
-    }
-    if (minHeight) {
-      figuresQuery = figuresQuery.where('heightCm', '>=', Number(minHeight));
-    }
-    if (maxHeight) {
-      figuresQuery = figuresQuery.where('heightCm', '<=', Number(maxHeight));
-    }
+    // Important: array-contains-any can only be used once per query.
     if (tags && Array.isArray(tags) && tags.length > 0) {
       figuresQuery = figuresQuery.where('tags', 'array-contains-any', tags);
+    }
+
+    // Then, add range filters. Firestore requires the first orderBy to match the field in the first range filter.
+    // We will arbitrarily order by age first if it's present, otherwise height.
+    if (minAge || maxAge) {
+      figuresQuery = figuresQuery.orderBy('age');
+      if (minAge) {
+        figuresQuery = figuresQuery.where('age', '>=', Number(minAge));
+      }
+      if (maxAge) {
+        figuresQuery = figuresQuery.where('age', '<=', Number(maxAge));
+      }
+    }
+    
+    if (minHeight || maxHeight) {
+        // If age filter was not applied, we need to order by heightCm first.
+        if (!minAge && !maxAge) {
+           figuresQuery = figuresQuery.orderBy('heightCm');
+        }
+        if (minHeight) {
+            figuresQuery = figuresQuery.where('heightCm', '>=', Number(minHeight));
+        }
+        if (maxHeight) {
+            figuresQuery = figuresQuery.where('heightCm', '<=', Number(maxHeight));
+        }
     }
     
     figuresQuery = figuresQuery.limit(100);
@@ -262,3 +278,5 @@ export const searchFiguresByFilters = onCall(async (request) => {
 import "./notifications";
 // Triggers are no longer needed for counters, but keeping the file in case other triggers are added later.
 import "./triggers";
+
+    

@@ -207,7 +207,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       const finalPhotoUrlToSave = photoUrl.trim() || 'https://placehold.co/400x600.png';
       
       const age = birthDate ? differenceInYears(new Date(), birthDate) : undefined;
-      const heightCm = height ? parseInt(height.replace(/D/g, ''), 10) || undefined : undefined;
+      const heightCm = height ? parseInt(height.replace(/\D/g, ''), 10) || undefined : undefined;
 
       const figureData: Omit<Figure, 'id' | 'createdAt'> & { createdAt?: any } = { 
         name: name.trim(),
@@ -492,3 +492,5 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 };
 
 export default FigureForm;
+
+    
