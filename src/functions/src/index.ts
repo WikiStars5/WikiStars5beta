@@ -208,28 +208,30 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
 };
 
 export const searchFiguresByFilters = onCall(async (request) => {
-  const { nationalityCode, gender, tags } = request.data;
+  const { nationalityCode, tags } = request.data;
   
   try {
     let figuresQuery: Query = db.collection('figures');
     
-    // Apply filters one by one, which is more robust for Firestore
-    if (nationalityCode) {
+    let hasFilter = false;
+
+    if (nationalityCode && typeof nationalityCode === 'string') {
       figuresQuery = figuresQuery.where('nationalityCode', '==', nationalityCode);
+      hasFilter = true;
     }
-    // Note: Chaining multiple 'where' filters on different fields requires a composite index.
-    // To avoid this, we'll do the primary filtering on the backend and secondary on the client.
-    // We prioritize the most specific filter here. Let's assume tags or nationality are more specific.
+    
     if (tags && Array.isArray(tags) && tags.length > 0) {
-      // array-contains-any is limited to 10 values, and only one per query.
       figuresQuery = figuresQuery.where('tags', 'array-contains-any', tags.slice(0, 10));
+      hasFilter = true;
     }
     
-    // We will apply the 'gender' filter and range filters (age, height) on the client side
-    // from the initial dataset to avoid complex composite index requirements on the backend.
+    if (hasFilter) {
+      figuresQuery = figuresQuery.orderBy('name').limit(300);
+    } else {
+      // If no filters are provided, just get the most recent figures to avoid an error.
+      figuresQuery = figuresQuery.orderBy('name').limit(300);
+    }
     
-    // Order by name to have a consistent result set
-    figuresQuery = figuresQuery.orderBy('name').limit(300); // Fetch a larger batch for client-side filtering
 
     const querySnapshot = await figuresQuery.get();
     
@@ -244,7 +246,6 @@ export const searchFiguresByFilters = onCall(async (request) => {
 
   } catch (error: any) {
     console.error("Error in searchFiguresByFilters Cloud Function:", error);
-    // Provide a more helpful error message if an index is missing.
     if (error.code === 'failed-precondition' || (error.message && String(error.message).toLowerCase().includes("index"))) {
         return { success: false, error: 'La búsqueda requiere un índice de Firestore que no existe. Por favor, revisa los logs de la función en la consola de Firebase para crear el índice necesario.' };
     }
