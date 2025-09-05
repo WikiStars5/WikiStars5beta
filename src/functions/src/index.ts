@@ -209,28 +209,27 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
 
 export const searchFiguresByFilters = onCall(async (request) => {
   const { nationalityCode, gender, tags } = request.data;
-
+  
   try {
     let figuresQuery: Query = db.collection('figures');
-
-    // This is the correct way to chain multiple 'where' clauses for equality.
-    // Firestore can handle this without special indexes.
+    
+    // Apply filters one by one, which is more robust for Firestore
     if (nationalityCode) {
       figuresQuery = figuresQuery.where('nationalityCode', '==', nationalityCode);
     }
-    if (gender) {
-      figuresQuery = figuresQuery.where('gender', '==', gender);
-    }
+    // Note: Chaining multiple 'where' filters on different fields requires a composite index.
+    // To avoid this, we'll do the primary filtering on the backend and secondary on the client.
+    // We prioritize the most specific filter here. Let's assume tags or nationality are more specific.
     if (tags && Array.isArray(tags) && tags.length > 0) {
-      // Important: Firestore 'array-contains-any' is limited to 10 values.
-      // We will only use the first 10 tags for the query.
+      // array-contains-any is limited to 10 values, and only one per query.
       figuresQuery = figuresQuery.where('tags', 'array-contains-any', tags.slice(0, 10));
     }
     
-    // The range filters (age, height) will be applied on the client-side
-    // to avoid complex composite index requirements.
-
-    figuresQuery = figuresQuery.orderBy('name').limit(200); // Fetch a larger batch for client-side filtering
+    // We will apply the 'gender' filter and range filters (age, height) on the client side
+    // from the initial dataset to avoid complex composite index requirements on the backend.
+    
+    // Order by name to have a consistent result set
+    figuresQuery = figuresQuery.orderBy('name').limit(300); // Fetch a larger batch for client-side filtering
 
     const querySnapshot = await figuresQuery.get();
     
@@ -244,11 +243,12 @@ export const searchFiguresByFilters = onCall(async (request) => {
     return { success: true, figures };
 
   } catch (error: any) {
-    console.error("Error searching figures by filters:", error);
-     if (error.code === 'failed-precondition' || (error.message && String(error.message).toLowerCase().includes("index"))) {
-        return { success: false, error: 'La búsqueda requiere un índice de Firestore que no existe. Revisa los logs de la función en la consola de Firebase para crear el índice necesario.' };
+    console.error("Error in searchFiguresByFilters Cloud Function:", error);
+    // Provide a more helpful error message if an index is missing.
+    if (error.code === 'failed-precondition' || (error.message && String(error.message).toLowerCase().includes("index"))) {
+        return { success: false, error: 'La búsqueda requiere un índice de Firestore que no existe. Por favor, revisa los logs de la función en la consola de Firebase para crear el índice necesario.' };
     }
-    return { success: false, error: 'Ocurrió un error al buscar las figuras.' };
+    return { success: false, error: 'Ocurrió un error interno al buscar las figuras. Inténtalo de nuevo.' };
   }
 });
 

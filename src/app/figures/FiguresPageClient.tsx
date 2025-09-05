@@ -84,14 +84,19 @@ export function FiguresPageClient({
     setIsFiltering(true);
     setIsFilterSheetOpen(false);
 
-    // Step 1: Backend Query (for indexed fields)
-    const backendFilters = {
-      nationalityCode: selectedNationality || undefined,
-      gender: selectedGender || undefined,
-      tags: selectedTags.length > 0 ? selectedTags : undefined,
-    };
+    // Step 1: Backend Query (for indexed fields like nationality or tags)
+    // We prioritize the most specific filter to send to the backend.
+    const backendFilters: { nationalityCode?: string; tags?: string[] } = {};
+    if (selectedNationality) {
+      backendFilters.nationalityCode = selectedNationality;
+    } else if (selectedTags.length > 0) {
+      backendFilters.tags = selectedTags;
+    }
 
     try {
+      // If no specific backend filter is set, we still need all figures for client-side filtering.
+      // In a real large-scale app, we might prevent this or use a default popular list.
+      // For now, we'll call the function even if backendFilters is empty, which will return all figures up to the limit.
       const result = await searchFiguresByFiltersCallable(backendFilters);
       const data = result.data as { success: boolean, figures?: Figure[], error?: string };
       
@@ -101,30 +106,45 @@ export function FiguresPageClient({
         return;
       }
       
-      // Step 2: Frontend Filtering (for non-indexed or range fields)
-      let filteredResults = data.figures;
+      // Step 2: Client-Side Filtering (for all other fields)
+      let clientFilteredResults = data.figures;
       const minAgeNum = minAge ? parseInt(minAge) : null;
       const maxAgeNum = maxAge ? parseInt(maxAge) : null;
       const minHeightNum = minHeight ? parseInt(minHeight) : null;
       const maxHeightNum = maxHeight ? parseInt(maxHeight) : null;
+      const genderLabel = GENDER_OPTIONS.find(g => g.value === selectedGender)?.label;
 
-      if (minAgeNum || maxAgeNum || minHeightNum || maxHeightNum) {
-        filteredResults = filteredResults.filter(figure => {
-            const age = figure.age;
-            const height = figure.heightCm;
+      clientFilteredResults = clientFilteredResults.filter(figure => {
+          // Gender filter
+          if (genderLabel && figure.gender !== genderLabel) return false;
 
-            const ageMatch = (!minAgeNum || (age && age >= minAgeNum)) && (!maxAgeNum || (age && age <= maxAgeNum));
-            const heightMatch = (!minHeightNum || (height && height >= minHeightNum)) && (!maxHeightNum || (height && height <= maxHeightNum));
-            
-            return ageMatch && heightMatch;
-        });
-      }
+          // Tags filter (if nationality was the backend filter)
+          if (selectedNationality && selectedTags.length > 0) {
+            if (!selectedTags.every(tag => figure.tags?.includes(tag))) return false;
+          }
 
-      setFigures(filteredResults);
+          // Age range filter
+          const age = figure.age;
+          const ageMatch = (!minAgeNum || (age && age >= minAgeNum)) && (!maxAgeNum || (age && age <= maxAgeNum));
+          if (!ageMatch) return false;
+
+          // Height range filter
+          const height = figure.heightCm;
+          const heightMatch = (!minHeightNum || (height && height >= minHeightNum)) && (!maxHeightNum || (height && height <= maxHeightNum));
+          if (!heightMatch) return false;
+          
+          return true; // If all filters pass
+      });
+
+      setFigures(clientFilteredResults);
 
     } catch (error: any) {
-      toast({ title: "Error", description: "Ocurrió un error al buscar las figuras.", variant: "destructive" });
-      console.error(error);
+      console.error("Error calling searchFiguresByFilters:", error);
+      let errorMessage = "Ocurrió un error al buscar las figuras.";
+      if (error.code === 'functions/internal') {
+        errorMessage = "Error interno del servidor. Revisa los logs de la Cloud Function.";
+      }
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     } finally {
       setIsFiltering(false);
     }
@@ -225,7 +245,7 @@ export function FiguresPageClient({
                       <div>
                           <Label className="font-semibold mb-2 block">Género</Label>
                           <Combobox 
-                              options={genderOptions.map(g => ({ value: g.label, label: g.label }))}
+                              options={genderOptions}
                               value={selectedGender}
                               onChange={(val) => setSelectedGender(val || '')}
                               placeholder="Selecciona un género..."
