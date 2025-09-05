@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -13,8 +12,6 @@ import Image from 'next/image';
 import { ShareButton } from '../shared/ShareButton';
 import { grantEmocionAlDescubiertoAchievement } from '@/app/actions/achievementActions';
 import { useAuth } from '@/hooks/useAuth';
-import { signInAnonymously } from 'firebase/auth';
-
 
 interface PerceptionEmotionsProps {
   figureId: string;
@@ -80,29 +77,19 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
   }, [figureId, firebaseUser]);
 
   const handleEmotionClick = async (emotionKeyClicked: EmotionKey) => {
-    if (isLoadingEmotionAction) return;
-    setIsLoadingEmotionAction(emotionKeyClicked);
-    
-    let currentFirebaseUser = firebaseUser;
-
-    // Silently sign in anonymously if there's no user. This is the key change.
-    if (!currentFirebaseUser) {
-        try {
-            const userCredential = await signInAnonymously(auth);
-            currentFirebaseUser = userCredential.user;
-        } catch (error) {
-            console.error("Error signing in anonymously:", error);
-            toast({ title: "Error de Votación", description: "No se pudo registrar tu identidad para votar. Inténtalo de nuevo.", variant: "destructive" });
-            setIsLoadingEmotionAction(null);
-            return;
+    if (isLoadingEmotionAction || !firebaseUser) {
+       if (!isAuthLoading) {
+            toast({ title: "Acción requerida", description: "Por favor, espera un momento mientras preparamos tu sesión para votar.", variant: "destructive" });
         }
-    }
+      return;
+    };
+    setIsLoadingEmotionAction(emotionKeyClicked);
     
     const newEmotionToSet = selectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
     
     try {
         const figureDocRef = doc(db, 'figures', figureId);
-        const userVoteDocRef = doc(db, 'userPerceptions', `${currentFirebaseUser.uid}_${figureId}`);
+        const userVoteDocRef = doc(db, 'userPerceptions', `${firebaseUser.uid}_${figureId}`);
 
         await runTransaction(db, async (transaction) => {
             const figureDoc = await transaction.get(figureDocRef);
@@ -126,7 +113,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
             transaction.update(figureDocRef, { perceptionCounts: newCounts });
 
             if (newEmotionToSet) {
-                transaction.set(userVoteDocRef, { userId: currentFirebaseUser!.uid, figureId, emotion: newEmotionToSet, addedAt: serverTimestamp() });
+                transaction.set(userVoteDocRef, { userId: firebaseUser!.uid, figureId, emotion: newEmotionToSet, addedAt: serverTimestamp() });
             } else if (userVoteDoc.exists()) {
                 transaction.delete(userVoteDocRef);
             }
@@ -147,7 +134,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         setSelectedEmotion(newEmotionToSet);
 
         if (!isAnonymous && newEmotionToSet) {
-            const achievementResult = await grantEmocionAlDescubiertoAchievement(currentFirebaseUser.uid);
+            const achievementResult = await grantEmocionAlDescubiertoAchievement(firebaseUser.uid);
             if (achievementResult.unlocked) {
                 toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
             }
