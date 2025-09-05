@@ -413,6 +413,40 @@ export const getFiguresByIds = async (ids: string[]): Promise<Figure[]> => {
 };
 
 
+export const getFiguresByTag = async (tag: string): Promise<Figure[]> => {
+  const figures: Figure[] = [];
+  try {
+    const figuresCollectionRef = collection(db, "figures");
+    const q = query(figuresCollectionRef, where('tags', 'array-contains', tag), limit(50));
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((docSnap) => {
+      figures.push(mapDocToFigure(docSnap));
+    });
+    return figures;
+  } catch (error) {
+    console.error(`Error fetching figures for tag "${tag}":`, error);
+    return [];
+  }
+};
+
+
+export const getFiguresByNationality = async (nationalityCode: string): Promise<Figure[]> => {
+  const figures: Figure[] = [];
+  try {
+    const figuresCollectionRef = collection(db, "figures");
+    const q = query(figuresCollectionRef, where('nationalityCode', '==', nationalityCode), limit(50));
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((docSnap) => {
+      figures.push(mapDocToFigure(docSnap));
+    });
+    return figures;
+  } catch (error) {
+    console.error(`Error fetching figures for nationality "${nationalityCode}":`, error);
+    return [];
+  }
+};
+
+
 // --- Comments ---
 
 export const mapDocToComment = (docSnap: DocumentData): Comment => {

@@ -12,7 +12,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Link as LinkIcon
 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,7 @@ import { Badge } from '../ui/badge';
 import { TAG_OPTIONS } from '@/config/tags';
 import { Combobox } from '../shared/Combobox';
 import { Slider } from '../ui/slider';
+import Link from 'next/link';
 
 interface FigureInfoProps {
   figure: Figure;
@@ -44,6 +45,7 @@ interface InfoItemProps {
   label: string;
   value?: React.ReactNode;
   imageUrl?: string | null;
+  href?: string;
 }
 
 const MARITAL_STATUS_OPTIONS = [
@@ -66,8 +68,27 @@ const SOCIAL_MEDIA_CONFIG = {
 };
 
 
-const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value, imageUrl }) => {
+const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value, imageUrl, href }) => {
   if (!value && !imageUrl) return null;
+
+  const content = (
+    <>
+        {imageUrl && (
+            <Image
+            src={imageUrl}
+            alt={typeof value === 'string' ? value : label}
+            width={20}
+            height={15}
+            className="w-5 h-auto flex-shrink-0"
+            />
+        )}
+        {typeof value === 'string' ? (
+            <p className="text-muted-foreground text-sm">{value}</p>
+        ) : (
+            value
+        )}
+    </>
+  );
 
   return (
     <div className="flex items-start gap-3">
@@ -75,20 +96,12 @@ const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value, imageUrl 
       <div>
         <p className="font-semibold">{label}</p>
         <div className="flex items-center gap-2 mt-1">
-          {imageUrl && (
-            <Image
-              src={imageUrl}
-              alt={typeof value === 'string' ? value : label}
-              width={20}
-              height={15}
-              className="w-5 h-auto flex-shrink-0"
-            />
-          )}
-          {typeof value === 'string' ? (
-             <p className="text-muted-foreground text-sm">{value}</p>
-          ) : (
-            value
-          )}
+          {href ? (
+             <Link href={href} className="flex items-center gap-2 text-primary hover:underline transition-colors">
+                {content}
+                <LinkIcon className="h-3 w-3" />
+            </Link>
+          ) : content}
         </div>
       </div>
     </div>
@@ -524,7 +537,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                       <h3 className="font-headline text-lg">Básica</h3>
                       <InfoItem icon={UserCircle} label="Nombre" value={figure.name} />
                       <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
-                      <InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} imageUrl={nationalityFlagUrl} />
+                      <InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} />
                       <InfoItem icon={Users} label="Género" value={genderInfo} />
                       <InfoItem icon={BookOpen} label="Categoría" value={figure.category} />
                   </div>
