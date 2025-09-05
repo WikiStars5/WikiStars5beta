@@ -84,25 +84,44 @@ export function FiguresPageClient({
     setIsFiltering(true);
     setIsFilterSheetOpen(false);
 
-    const filters = {
+    // Step 1: Backend Query (for indexed fields)
+    const backendFilters = {
       nationalityCode: selectedNationality || undefined,
       gender: selectedGender || undefined,
       tags: selectedTags.length > 0 ? selectedTags : undefined,
-      minAge: minAge || undefined,
-      maxAge: maxAge || undefined,
-      minHeight: minHeight || undefined,
-      maxHeight: maxHeight || undefined,
     };
 
     try {
-      const result = await searchFiguresByFiltersCallable(filters);
+      const result = await searchFiguresByFiltersCallable(backendFilters);
       const data = result.data as { success: boolean, figures?: Figure[], error?: string };
       
-      if (data.success && data.figures) {
-        setFigures(data.figures);
-      } else {
+      if (!data.success || !data.figures) {
         toast({ title: "Error de Búsqueda", description: data.error || "No se pudieron aplicar los filtros.", variant: "destructive" });
+        setFigures([]);
+        return;
       }
+      
+      // Step 2: Frontend Filtering (for non-indexed or range fields)
+      let filteredResults = data.figures;
+      const minAgeNum = minAge ? parseInt(minAge) : null;
+      const maxAgeNum = maxAge ? parseInt(maxAge) : null;
+      const minHeightNum = minHeight ? parseInt(minHeight) : null;
+      const maxHeightNum = maxHeight ? parseInt(maxHeight) : null;
+
+      if (minAgeNum || maxAgeNum || minHeightNum || maxHeightNum) {
+        filteredResults = filteredResults.filter(figure => {
+            const age = figure.age;
+            const height = figure.heightCm;
+
+            const ageMatch = (!minAgeNum || (age && age >= minAgeNum)) && (!maxAgeNum || (age && age <= maxAgeNum));
+            const heightMatch = (!minHeightNum || (height && height >= minHeightNum)) && (!maxHeightNum || (height && height <= maxHeightNum));
+            
+            return ageMatch && heightMatch;
+        });
+      }
+
+      setFigures(filteredResults);
+
     } catch (error: any) {
       toast({ title: "Error", description: "Ocurrió un error al buscar las figuras.", variant: "destructive" });
       console.error(error);

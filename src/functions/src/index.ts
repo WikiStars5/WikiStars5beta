@@ -208,12 +208,13 @@ const mapDocToFigure = (docSnap: DocumentData): Figure => {
 };
 
 export const searchFiguresByFilters = onCall(async (request) => {
-  const { nationalityCode, gender, tags, minAge, maxAge, minHeight, maxHeight } = request.data;
+  const { nationalityCode, gender, tags } = request.data;
 
   try {
     let figuresQuery: Query = db.collection('figures');
 
-    // Equality filters
+    // This is the correct way to chain multiple 'where' clauses for equality.
+    // Firestore can handle this without special indexes.
     if (nationalityCode) {
       figuresQuery = figuresQuery.where('nationalityCode', '==', nationalityCode);
     }
@@ -221,38 +222,15 @@ export const searchFiguresByFilters = onCall(async (request) => {
       figuresQuery = figuresQuery.where('gender', '==', gender);
     }
     if (tags && Array.isArray(tags) && tags.length > 0) {
-      figuresQuery = figuresQuery.where('tags', 'array-contains-any', tags);
+      // Important: Firestore 'array-contains-any' is limited to 10 values.
+      // We will only use the first 10 tags for the query.
+      figuresQuery = figuresQuery.where('tags', 'array-contains-any', tags.slice(0, 10));
     }
     
-    // Range filters
-    let hasRangeFilter = false;
-    if (minAge) {
-      figuresQuery = figuresQuery.orderBy('age').where('age', '>=', Number(minAge));
-      hasRangeFilter = true;
-    }
-    if (maxAge) {
-       if (!minAge) figuresQuery = figuresQuery.orderBy('age');
-       figuresQuery = figuresQuery.where('age', '<=', Number(maxAge));
-       hasRangeFilter = true;
-    }
+    // The range filters (age, height) will be applied on the client-side
+    // to avoid complex composite index requirements.
 
-    if (minHeight) {
-      if (!hasRangeFilter) figuresQuery = figuresQuery.orderBy('heightCm');
-      figuresQuery = figuresQuery.where('heightCm', '>=', Number(minHeight));
-      hasRangeFilter = true;
-    }
-    if (maxHeight) {
-      if (!hasRangeFilter || (hasRangeFilter && !minHeight)) figuresQuery = figuresQuery.orderBy('heightCm');
-      figuresQuery = figuresQuery.where('heightCm', '<=', Number(maxHeight));
-      hasRangeFilter = true;
-    }
-    
-    // Default ordering if no range filter is applied
-    if (!hasRangeFilter) {
-      figuresQuery = figuresQuery.orderBy('name');
-    }
-
-    figuresQuery = figuresQuery.limit(100);
+    figuresQuery = figuresQuery.orderBy('name').limit(200); // Fetch a larger batch for client-side filtering
 
     const querySnapshot = await figuresQuery.get();
     
