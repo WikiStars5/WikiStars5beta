@@ -444,6 +444,7 @@ export const TAG_OPTIONS: string[] = [
     'Tenis de mesa',
     'Terror',
     'Thrash metal',
+    'TikToker',
     'Timor Oriental',
     'Tiro con arco',
     'Tiro deportivo',
