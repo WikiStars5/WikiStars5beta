@@ -5,7 +5,6 @@ import { ThemeProvider } from 'next-themes';
 import { Toaster } from "@/components/ui/toaster";
 import React, { type ReactNode, useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
-import { PushNotificationManager } from '../shared/PushNotificationManager';
 import { Loader2 } from 'lucide-react';
 
 // Este componente hijo se asegura de que la UI solo se renderice
@@ -46,7 +45,6 @@ export function ClientProviders({ children }: { children: ReactNode }) {
     >
       <AuthProvider>
         <AuthGate>
-          <PushNotificationManager />
           {children}
           <Toaster />
         </AuthGate>
