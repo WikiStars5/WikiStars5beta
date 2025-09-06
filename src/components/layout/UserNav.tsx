@@ -13,14 +13,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User, LogOut, ShieldCheck, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation'; 
 import { correctMalformedUrl } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { ADMIN_UID } from '@/config/admin';
 
 export function UserNav() {
-  const { user: currentUser, firebaseUser, isAnonymous, isLoading, logout } = useAuth();
-  const router = useRouter();
+  const { user: currentUser, isAnonymous, isLoading, logout } = useAuth();
 
   if (isLoading) {
     return (
@@ -41,7 +39,7 @@ export function UserNav() {
     );
   }
 
-  const isAdmin = (firebaseUser?.uid === ADMIN_UID) || (currentUser.role === 'admin');
+  const isAdmin = currentUser.role === 'admin';
   const displayName = currentUser.username || "Usuario";
   const photoURL = currentUser.photoURL;
   const email = currentUser.email;

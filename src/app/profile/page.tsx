@@ -61,7 +61,7 @@ interface StreakWithFigure extends LocalUserStreak {
 }
 
 export default function ProfilePage() {
-  const { user: firestoreUser, firebaseUser, isLoading, isAnonymous, logout } = useAuth();
+  const { user: firestoreUser, isLoading, isAnonymous, logout } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -83,7 +83,7 @@ export default function ProfilePage() {
   });
   
   const loadLocalData = useCallback(async () => {
-    if (typeof window === 'undefined' || !firebaseUser) return;
+    if (typeof window === 'undefined') return;
     setIsDataLoading(true);
     try {
       const getFromStorage = (key: string) => JSON.parse(localStorage.getItem(key) || '[]');
@@ -118,7 +118,7 @@ export default function ProfilePage() {
     } finally {
       setIsDataLoading(false);
     }
-  }, [firebaseUser, toast]);
+  }, [toast]);
 
 
   useEffect(() => {
@@ -129,18 +129,18 @@ export default function ProfilePage() {
         gender: firestoreUser.gender ?? '',
       });
     }
-    if (!isLoading && firebaseUser) {
+    if (!isLoading) {
       loadLocalData();
     }
-  }, [isLoading, firestoreUser, firebaseUser, reset, loadLocalData]);
+  }, [isLoading, firestoreUser, reset, loadLocalData]);
 
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
-    if (isAnonymous || !firebaseUser) return;
+    if (isAnonymous || !firestoreUser) return;
     try {
       await updateUserProfileCallable(data);
-      if (firebaseUser) {
-        await updateProfile(firebaseUser, { displayName: data.username });
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: data.username });
       }
       toast({ title: "Perfil Actualizado", description: "Tus cambios han sido guardados." });
     } catch (error: any) {
@@ -228,13 +228,13 @@ export default function ProfilePage() {
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center p-4">
              <Card className="max-w-md">
                 <CardHeader>
-                    <CardTitle>Cargando Perfil...</CardTitle>
+                    <CardTitle>Error al Cargar Perfil</CardTitle>
                     <CardDescription>
-                        Estamos recuperando los datos de tu perfil. Si esto tarda mucho, intenta refrescar la página.
+                        No pudimos cargar los datos de tu perfil. Por favor, intenta refrescar la página. Si el problema persiste, contacta a soporte.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <Button onClick={() => window.location.reload()}>Refrescar Página</Button>
                 </CardContent>
             </Card>
         </div>

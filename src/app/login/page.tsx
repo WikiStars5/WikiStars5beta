@@ -44,7 +44,6 @@ export default function LoginPage() {
         description: 'Bienvenido de nuevo.',
       });
       router.push('/profile'); // Redirect to profile to see admin options
-      router.refresh();
     } catch (error: any) {
       // This is the expected flow for a failed login, not an application error.
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {

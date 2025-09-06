@@ -41,7 +41,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       // The onAuthStateChanged listener will handle redirecting to an anonymous session.
       router.push('/');
-      router.refresh();
     } catch (error) {
       console.error("Error logging out: ", error);
       toast({ title: "Cierre de Sesión Fallido", description: "No se pudo cerrar tu sesión.", variant: "destructive" });
@@ -61,6 +60,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (docSnap.exists()) {
               setUser(docSnap.data() as UserProfile);
             } else {
+              // This can happen briefly after account creation before the profile is created.
+              // We'll set user to null, but keep listening.
               setUser(null);
             }
             setIsLoading(false);
@@ -72,11 +73,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return () => unsubscribeSnapshot();
         }
       } else {
-        setIsLoading(true); // Set loading while we sign in anonymously
-        signInAnonymously(auth).catch((error) => {
-          console.error("Critical error: Could not sign in anonymously.", error);
-          setIsLoading(false);
-        });
+        // No user is signed in at all. Begin anonymous sign-in.
+        setIsLoading(true); 
+        try {
+            await signInAnonymously(auth);
+            // The onAuthStateChanged listener will be called again with the new anonymous user.
+        } catch (error) {
+           console.error("Critical error: Could not sign in anonymously.", error);
+           setIsLoading(false);
+        }
       }
     });
 
