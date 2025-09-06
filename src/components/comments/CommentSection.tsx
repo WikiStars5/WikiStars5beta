@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, MessagesSquare, Send, Star, StarOff, Smile } from 'lucide-react';
+import { Loader2, MessagesSquare, Send, Star, StarOff, Smile, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import type { Figure, Comment as CommentType, UserProfile, RatingValue } from '@/lib/types';
 import { addComment, mapDocToComment, updateStreak, submitStarRating } from '@/lib/placeholder-data';
@@ -15,13 +15,12 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { CommentItem } from './CommentItem';
-import { GuestProfileSetup } from './GuestProfileSetup';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
-import { countryCodeToNameMap } from '@/config/countries';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import Picker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { useTheme } from 'next-themes';
+import Link from 'next/link';
 
 
 interface CommentSectionProps {
@@ -57,8 +56,7 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
   
   const audioRefs = React.useRef<Record<RatingValue, HTMLAudioElement | null>>({ 0: null, 1: null, 2: null, 3: null, 4: null, 5: null });
 
-  const { user: firestoreUser, firebaseUser, isLoading: isAuthLoading, isAnonymous } = useAuth();
-  const [currentUser, setCurrentUser] = React.useState<UserProfile | null>(null);
+  const { user: firestoreUser, firebaseUser, isLoading: isAuthLoading } = useAuth();
   const { theme } = useTheme();
   const { toast } = useToast();
 
@@ -79,47 +77,6 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
       audio.play().catch(e => console.error("Error playing sound:", e));
     }
   };
-
-  const updateUserState = React.useCallback(() => {
-    if (isAuthLoading) {
-      return;
-    }
-  
-    if (isAnonymous) {
-      const guestUsername = localStorage.getItem('wikistars5-guestUsername');
-      if (guestUsername) {
-        setCurrentUser({
-          uid: firebaseUser?.uid || 'guest-uid',
-          username: guestUsername,
-          gender: localStorage.getItem('wikistars5-guestGender') || '',
-          countryCode: localStorage.getItem('wikistars5-guestCountryCode') || '',
-          country: countryCodeToNameMap.get(localStorage.getItem('wikistars5-guestCountryCode') || ''),
-          email: null,
-          role: 'user',
-          isAnonymous: true,
-          createdAt: new Date().toISOString(),
-          photoURL: null,
-        });
-      } else {
-        setCurrentUser(null);
-      }
-    } else {
-      setCurrentUser(firestoreUser);
-    }
-  }, [isAuthLoading, isAnonymous, firebaseUser, firestoreUser]);
-
-  React.useEffect(() => {
-    updateUserState();
-  
-    const handleProfileUpdate = () => {
-      updateUserState();
-    };
-    window.addEventListener('guestProfileUpdated', handleProfileUpdate);
-    
-    return () => {
-      window.removeEventListener('guestProfileUpdated', handleProfileUpdate);
-    };
-  }, [updateUserState]);
 
   React.useEffect(() => {
     setIsLoadingComments(true);
@@ -145,7 +102,7 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
   
 
   const handlePostComment = async () => {
-    if (!currentUser || !firebaseUser) {
+    if (!firestoreUser || !firebaseUser) {
       toast({ title: "Error", description: "Debes tener un perfil para comentar.", variant: "destructive" });
       return;
     }
@@ -164,13 +121,13 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
     setIsPosting(true);
     try {
       const authorData = {
-          id: currentUser.uid,
-          name: currentUser.username,
-          photoUrl: currentUser.photoURL || null,
-          gender: currentUser.gender || '',
-          country: currentUser.country || '',
-          countryCode: currentUser.countryCode || '',
-          isAnonymous: currentUser.isAnonymous || false,
+          id: firestoreUser.uid,
+          name: firestoreUser.username,
+          photoUrl: firestoreUser.photoURL || null,
+          gender: firestoreUser.gender || '',
+          country: firestoreUser.country || '',
+          countryCode: firestoreUser.countryCode || '',
+          isAnonymous: firestoreUser.isAnonymous || false,
       };
 
       // Submit rating if one is selected
@@ -222,11 +179,15 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
 
 
   const renderCommentInput = () => {
-    if (!currentUser) {
+    if (!firestoreUser) {
       return (
-          <div className="text-center p-4 border-2 border-dashed rounded-lg">
-              <p className="mb-4 text-muted-foreground">Para comentar, primero debes crear un perfil de invitado.</p>
-              <GuestProfileSetup onProfileSave={updateUserState} />
+          <div className="text-center p-4 border-2 border-dashed rounded-lg bg-muted/50">
+              <p className="mb-4 text-muted-foreground font-medium">Para comentar y calificar, necesitas una cuenta.</p>
+              <Button asChild>
+                <Link href="/login">
+                    <UserPlus className="mr-2 h-4 w-4" /> Iniciar Sesión o Registrarse
+                </Link>
+              </Button>
           </div>
       );
     }
@@ -234,8 +195,8 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
     return (
       <div className="flex gap-4">
           <Avatar className="h-10 w-10 mt-1">
-              <AvatarImage src={correctMalformedUrl(currentUser.photoURL)} alt={currentUser.username} />
-              <AvatarFallback>{currentUser.username?.charAt(0).toUpperCase()}</AvatarFallback>
+              <AvatarImage src={correctMalformedUrl(firestoreUser.photoURL)} alt={firestoreUser.username} />
+              <AvatarFallback>{firestoreUser.username?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-grow space-y-2">
               <div className="flex items-center gap-2 mb-2 flex-wrap">

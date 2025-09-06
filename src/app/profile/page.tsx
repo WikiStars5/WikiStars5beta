@@ -33,7 +33,6 @@ import Image from 'next/image';
 import { StreakAnimation } from '@/components/shared/StreakAnimation';
 import { getFiguresByIds } from '@/lib/placeholder-data';
 import { countryCodeToNameMap } from '@/config/countries';
-import { GuestProfileSetup } from '@/components/comments/GuestProfileSetup';
 import { differenceInHours } from 'date-fns';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 
@@ -77,38 +76,11 @@ export default function ProfilePage() {
 
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [animationStreak, setAnimationStreak] = useState<number | null>(null);
-  
-  const [guestProfile, setGuestProfile] = useState<{username: string; gender: string; countryCode: string} | null>(null);
-  const [isEditingGuestProfile, setIsEditingGuestProfile] = useState(false);
-
 
   const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: { username: '', countryCode: '', gender: '' },
   });
-
-  const getGuestProfile = useCallback(() => {
-    if (typeof window !== 'undefined') {
-        const storedGuestName = localStorage.getItem('wikistars5-guestUsername');
-        const storedGuestGender = localStorage.getItem('wikistars5-guestGender') || '';
-        const storedGuestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
-        if (storedGuestName) {
-            setGuestProfile({
-                username: storedGuestName,
-                gender: storedGuestGender,
-                countryCode: storedGuestCountryCode,
-            });
-        } else {
-            setGuestProfile(null);
-        }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isAnonymous) {
-        getGuestProfile();
-    }
-  }, [isAnonymous, getGuestProfile]);
   
   const loadLocalData = useCallback(async () => {
     if (!firebaseUser) return;
@@ -170,7 +142,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!isLoading) {
-      if (firestoreUser && !isAnonymous) {
+      if (firestoreUser) {
         reset({
           username: firestoreUser.username ?? '',
           countryCode: firestoreUser.countryCode ?? '',
@@ -179,7 +151,7 @@ export default function ProfilePage() {
       }
       loadLocalData();
     }
-  }, [isLoading, firestoreUser, isAnonymous, reset, loadLocalData]);
+  }, [isLoading, firestoreUser, reset, loadLocalData]);
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
@@ -213,278 +185,56 @@ export default function ProfilePage() {
     );
   }
 
-  const currentUser: UserProfile | null = isAnonymous
-    ? guestProfile ? {
-        uid: firebaseUser?.uid || 'guest',
-        username: guestProfile.username,
-        gender: guestProfile.gender,
-        countryCode: guestProfile.countryCode,
-        country: countryCodeToNameMap.get(guestProfile.countryCode),
-        email: null,
-        role: 'user',
-        isAnonymous: true,
-        createdAt: new Date().toISOString(),
-      } : null
-    : firestoreUser;
-  
-  if (!currentUser) {
+  if (!firestoreUser) {
      return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center p-4">
-             <Alert variant="destructive">
-                <ShieldCheck className="h-4 w-4" />
-                <AlertTitle>Perfil de Invitado no Configurado</AlertTitle>
-                <AlertDescription>
-                    No has configurado tu perfil de invitado. Ve a la sección de comentarios de cualquier figura para crear uno y poder ver tu actividad.
-                </AlertDescription>
-            </Alert>
+             <Card className="max-w-md">
+                <CardHeader>
+                    <CardTitle>Perfil de Invitado</CardTitle>
+                    <CardDescription>
+                        Para ver tu perfil, rachas y actividad, necesitas crear una cuenta.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button asChild>
+                        <Link href="/login">Iniciar Sesión o Registrarse</Link>
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
     );
   }
 
-  const isAdmin = currentUser.role === 'admin';
-  const displayName = currentUser.username || "Usuario";
+  const isAdmin = firestoreUser.role === 'admin';
+  const displayName = firestoreUser.username || "Usuario";
 
-  const AttitudeList = ({ attitudeKey, emptyMessage }: { attitudeKey: string, emptyMessage: string }) => {
-    const attitudeMap = new Map(attitudes.map(a => [a.figureId, a]));
-    const filteredFigures = attitudeFigures.filter(f => {
-        const attitude = attitudeMap.get(f.id);
-        return attitude?.attitude === attitudeKey;
-    });
-
-    return (
-      <div className="space-y-4">
-        {isDataLoading ? (
-           <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-        ) : filteredFigures.length > 0 ? (
-          filteredFigures.map(figure => {
-            const attitude = attitudeMap.get(figure.id);
-            let dateString = '';
-            if (attitude && attitude.addedAt && !isNaN(new Date(attitude.addedAt).getTime())) {
-              dateString = new Date(attitude.addedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            }
-
-            return (
-              <Link key={figure.id} href={`/figures/${figure.id}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={correctMalformedUrl(figure.photoUrl) || undefined} alt={figure.name} />
-                  <AvatarFallback>{figure.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-grow">
-                  <p className="font-semibold">{figure.name}</p>
-                  {dateString && <p className="text-xs text-muted-foreground">Marcado el {dateString}</p>}
-                </div>
+  return (
+    <div className="space-y-8">
+       <StreakAnimation 
+        streakCount={animationStreak}
+        isOpen={animationStreak !== null}
+        onClose={() => setAnimationStreak(null)}
+      />
+      <Card className="w-full shadow-xl overflow-hidden border border-white/20 bg-black">
+        <CardHeader className="items-center text-center p-6">
+          <Avatar className="h-24 w-24 mb-4 border-2 border-primary">
+            <AvatarImage src={correctMalformedUrl(firestoreUser.photoURL) || undefined} alt={displayName} />
+            <AvatarFallback className="text-3xl">
+              {displayName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <CardTitle className="text-3xl font-headline flex items-center gap-2">
+            {displayName}
+            {isAdmin && (
+              <Link href="/admin" title="Ir al Panel de Administración">
+                <ShieldCheck className="h-6 w-6 text-primary cursor-pointer hover:text-primary/80 transition-colors"/>
               </Link>
-            )
-          })
-        ) : (
-          <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
-            <p>{emptyMessage}</p>
-          </div>
-        )}
-      </div>
-    )
-  };
-  
-  const EmotionList = ({ emotionKey, emptyMessage }: { emotionKey: string, emptyMessage: string }) => {
-    const emotionMap = new Map(emotions.map(e => [e.figureId, e]));
-    const filteredFigures = emotionFigures.filter(f => {
-      const emotion = emotionMap.get(f.id);
-      return emotion?.emotion === emotionKey;
-    });
-
-    return (
-      <div className="space-y-4">
-        {isDataLoading ? (
-           <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-        ) : filteredFigures.length > 0 ? (
-          filteredFigures.map(figure => {
-            const emotion = emotionMap.get(f.id);
-            let dateString = '';
-            if (emotion && emotion.addedAt && !isNaN(new Date(emotion.addedAt).getTime())) {
-                dateString = new Date(emotion.addedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            }
-            return (
-              <Link key={figure.id} href={`/figures/${figure.id}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={correctMalformedUrl(figure.photoUrl) || undefined} alt={figure.name} />
-                  <AvatarFallback>{figure.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-grow">
-                  <p className="font-semibold">{figure.name}</p>
-                   {dateString && <p className="text-xs text-muted-foreground">Votado el {dateString}</p>}
-                </div>
-              </Link>
-            )
-          })
-        ) : (
-          <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md">
-            <p>{emptyMessage}</p>
-          </div>
-        )}
-      </div>
-    );
-  };
-  
-  const renderProfileForAnonymousUser = () => (
-    <>
-        <div className="w-full mt-6">
-            <Card className="border border-white/20 bg-black">
-                <CardHeader className="flex flex-row justify-between items-start">
-                    <div>
-                        <CardTitle>Tu Perfil de Invitado</CardTitle>
-                        <CardDescription>
-                            Aquí puedes ver y editar la información que se guarda en este dispositivo.
-                        </CardDescription>
-                    </div>
-                    {!isEditingGuestProfile && (
-                        <Button variant="outline" size="sm" onClick={() => setIsEditingGuestProfile(true)}>
-                            <Edit className="mr-2 h-4 w-4" /> Editar
-                        </Button>
-                    )}
-                </CardHeader>
-                <CardContent>
-                    {isEditingGuestProfile ? (
-                        <GuestProfileSetup 
-                            onProfileSave={() => {
-                                getGuestProfile();
-                                setIsEditingGuestProfile(false);
-                            }} 
-                            isEditingContext={true}
-                            onCancelEdit={() => setIsEditingGuestProfile(false)}
-                        />
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-4">
-                                <UserPlus className="h-5 w-5 text-muted-foreground" />
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Nombre de Usuario</p>
-                                    <p className="font-semibold">{guestProfile?.username}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <Venus className="h-5 w-5 text-muted-foreground" />
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Sexo</p>
-                                    <p className="font-semibold">{GENDER_OPTIONS.find(g => g.value === guestProfile?.gender)?.label || 'No especificado'}</p>
-                                </div>
-                            </div>
-                             <div className="flex items-center gap-4">
-                                <MapPin className="h-5 w-5 text-muted-foreground" />
-                                <div>
-                                    <p className="text-sm text-muted-foreground">País</p>
-                                    <p className="font-semibold">{countryCodeToNameMap.get(guestProfile?.countryCode || '') || 'No especificado'}</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-
-        <div className="w-full mt-6">
-          <Tabs defaultValue="rachas" className="w-full">
-              <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20">
-                  <TabsTrigger value="rachas"><Flame className="mr-2" />Rachas</TabsTrigger>
-                  <TabsTrigger value="actitud"><Heart className="mr-2" />Mi Actitud</TabsTrigger>
-                  <TabsTrigger value="emociones"><Smile className="mr-2" />Mis Emociones</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="rachas" className="mt-6">
-                  <Card className="border border-white/20 bg-black">
-                      <CardHeader>
-                          <CardTitle>Rachas de Actividad</CardTitle>
-                          <CardDescription>Tu historial de participación y rachas. ¡Gana una racha comentando o respondiendo en el perfil de un personaje por días consecutivos!</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                          {isDataLoading ? (
-                              <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                          ) : streaks.length > 0 ? (
-                              <div className="space-y-4">
-                                  {streaks.map(streak => (
-                                      <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="flex items-center gap-4 p-3 bg-muted/50 rounded-md hover:bg-muted transition-colors">
-                                          <Avatar className="h-12 w-12"><AvatarImage src={correctMalformedUrl(streak.figure?.photoUrl) || undefined} alt={streak.figure?.name} /><AvatarFallback>{streak.figure?.name.charAt(0)}</AvatarFallback></Avatar>
-                                          <div className="flex-grow"><p className="font-semibold">{streak.figure?.name}</p><p className="text-sm text-muted-foreground">Último comentario: {new Date(streak.lastCommentDate).toLocaleDateString()}</p></div>
-                                          <div className="flex items-center gap-2 text-orange-500 font-bold">
-                                              <Image
-                                                  src={FIRE_GIF_URL}
-                                                  alt="Racha de fuego"
-                                                  width={20}
-                                                  height={20}
-                                                  unoptimized
-                                                  data-ai-hint="fire gif"
-                                              />
-                                              <span>{streak.currentStreak}</span>
-                                          </div>
-                                      </Link>
-                                  ))}
-                              </div>
-                          ) : (
-                            <div className="text-sm text-muted-foreground text-center p-8 border-dashed border-2 rounded-md"><Flame className="mx-auto h-8 w-8 mb-2" /><p>Aún no tienes ninguna racha. ¡Comenta en el perfil de un personaje para empezar una!</p></div>
-                          )}
-                      </CardContent>
-                  </Card>
-              </TabsContent>
-              
-              <TabsContent value="actitud" className="mt-6">
-                  <Card className="border border-white/20 bg-black">
-                      <CardHeader>
-                          <CardTitle>Mi Actitud</CardTitle>
-                          <CardDescription>Aquí se muestran los personajes según la actitud que has votado por ellos.</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <Tabs defaultValue="fan" className="w-full">
-                            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
-                                <TabsTrigger value="fan" className="flex-col p-2 text-sm gap-1 h-auto"><span className="text-2xl" role="img" aria-label="Fan">😍</span>Fans</TabsTrigger>
-                                <TabsTrigger value="neutral" className="flex-col p-2 text-sm gap-1 h-auto"><span className="text-2xl" role="img" aria-label="Neutral">😐</span>Neutral</TabsTrigger>
-                                <TabsTrigger value="simp" className="flex-col p-2 text-sm gap-1 h-auto"><span className="text-2xl" role="img" aria-label="Simp">🥰</span>Simps</TabsTrigger>
-                                <TabsTrigger value="hater" className="flex-col p-2 text-sm gap-1 h-auto"><span className="text-2xl" role="img" aria-label="Hater">😡</span>Haters</TabsTrigger>
-                            </TabsList>
-                            <div className="mt-4">
-                              <TabsContent value="fan"><AttitudeList attitudeKey="fan" emptyMessage="Aún no has marcado a nadie como 'Fan'."/></TabsContent>
-                              <TabsContent value="neutral"><AttitudeList attitudeKey="neutral" emptyMessage="No has votado 'Neutral' por nadie."/></TabsContent>
-                              <TabsContent value="simp"><AttitudeList attitudeKey="simp" emptyMessage="No has marcado a nadie como 'Simp'."/></TabsContent>
-                              <TabsContent value="hater"><AttitudeList attitudeKey="hater" emptyMessage="No has marcado a nadie como 'Hater'."/></TabsContent>
-                            </div>
-                        </Tabs>
-                      </CardContent>
-                  </Card>
-              </TabsContent>
-
-              <TabsContent value="emociones" className="mt-6">
-                  <Card className="border border-white/20 bg-black">
-                    <CardHeader>
-                      <CardTitle>Mis Emociones</CardTitle>
-                      <CardDescription>Aquí verás los personajes según la emoción que te provocan.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Tabs defaultValue="alegria" className="w-full">
-                            <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar p-1 h-auto bg-muted rounded-md text-muted-foreground">
-                                {Object.entries(EMOTION_IMAGES).map(([key, {label, imageUrl}]) => (
-                                    <TabsTrigger key={key} value={key} className="text-sm p-3 flex-col h-auto flex-shrink-0 gap-2">
-                                        <Image src={imageUrl} alt={label} width={40} height={40} className="mb-1" />
-                                        {label}
-                                    </TabsTrigger>
-                                ))}
-                            </TabsList>
-                            <div className="mt-4">
-                              <TabsContent value="alegria"><EmotionList emotionKey="alegria" emptyMessage="No has votado 'Alegría' por nadie."/></TabsContent>
-                              <TabsContent value="envidia"><EmotionList emotionKey="envidia" emptyMessage="No has votado 'Envidia' por nadie."/></TabsContent>
-                              <TabsContent value="tristeza"><EmotionList emotionKey="tristeza" emptyMessage="No has votado 'Tristeza' por nadie."/></TabsContent>
-                              <TabsContent value="miedo"><EmotionList emotionKey="miedo" emptyMessage="No has votado 'Miedo' por nadie."/></TabsContent>
-                              <TabsContent value="desagrado"><EmotionList emotionKey="desagrado" emptyMessage="No has votado 'Desagrado' por nadie."/></TabsContent>
-                              <TabsContent value="furia"><EmotionList emotionKey="furia" emptyMessage="No has votado 'Furia' por nadie."/></TabsContent>
-                            </div>
-                        </Tabs>
-                      </CardContent>
-                  </Card>
-              </TabsContent>
-          </Tabs>
-      </div>
-    </>
-  );
-
-  const renderProfileForRegisteredUser = () => (
-    <>
+            )}
+          </CardTitle>
+          <CardDescription>{firestoreUser.email}</CardDescription>
+        </CardHeader>
+      </Card>
+      
       <div className="w-full mt-6">
           <Card className="border border-white/20 bg-black">
             <CardHeader className="flex flex-row justify-between items-start">
@@ -525,37 +275,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
       </div>
-    </>
-);
-
-  return (
-    <div className="space-y-8">
-       <StreakAnimation 
-        streakCount={animationStreak}
-        isOpen={animationStreak !== null}
-        onClose={() => setAnimationStreak(null)}
-      />
-      <Card className="w-full shadow-xl overflow-hidden border border-white/20 bg-black">
-        <CardHeader className="items-center text-center p-6">
-          <Avatar className="h-24 w-24 mb-4 border-2 border-primary">
-            <AvatarImage src={correctMalformedUrl(currentUser.photoURL) || undefined} alt={displayName} />
-            <AvatarFallback className="text-3xl">
-              {isAnonymous ? <User className="h-10 w-10"/> : displayName.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <CardTitle className="text-3xl font-headline flex items-center gap-2">
-            {displayName}
-            {isAdmin && (
-              <Link href="/admin" title="Ir al Panel de Administración">
-                <ShieldCheck className="h-6 w-6 text-primary cursor-pointer hover:text-primary/80 transition-colors"/>
-              </Link>
-            )}
-          </CardTitle>
-          <CardDescription>{isAnonymous ? 'Perfil de Invitado' : currentUser.email}</CardDescription>
-        </CardHeader>
-      </Card>
-      
-      {isAnonymous ? renderProfileForAnonymousUser() : renderProfileForRegisteredUser()}
 
     </div>
   );
