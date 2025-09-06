@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, signInAnonymously, type User as FirebaseUser } from 'firebase/auth';
-import { auth, db, app } from '@/lib/firebase'; // Import 'app' to ensure initialization
+import { auth, db, app } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
@@ -27,13 +27,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // By explicitly referencing 'app', we ensure the firebase.ts module runs and initializes.
-    if (!app) {
-      console.error("Firebase app not initialized!");
-      setIsLoading(false);
-      return;
-    }
-
     const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
@@ -61,10 +54,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         return () => unsubscribeSnapshot();
       } else {
-        signInAnonymously(auth).catch((error) => {
-            console.error("Error signing in anonymously:", error);
-            setIsLoading(false);
-        });
+        // If there's no user, we are logged out. The components will handle the anonymous sign-in on demand.
+        setUser(null);
+        setFirebaseUser(null);
+        setIsLoading(false);
       }
     });
 

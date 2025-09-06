@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -83,19 +84,28 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   }, [figureId, firebaseUser]);
 
   const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
-    if (isLoadingAttitudeAction || !firebaseUser) {
-        if (!isAuthLoading) {
-             toast({ title: "Acción requerida", description: "Por favor, espera un momento mientras preparamos tu sesión para votar.", variant: "destructive" });
-        }
-        return;
-    };
+    if (isLoadingAttitudeAction) return;
+
     setIsLoadingAttitudeAction(attitudeKeyClicked);
+
+    let currentUser = firebaseUser;
+    if (!currentUser) {
+        try {
+            const userCredential = await signInAnonymously(auth);
+            currentUser = userCredential.user;
+        } catch (error) {
+            console.error("Error signing in anonymously on demand:", error);
+            toast({ title: "Error de autenticación", description: "No se pudo iniciar la sesión de invitado para votar.", variant: "destructive" });
+            setIsLoadingAttitudeAction(null);
+            return;
+        }
+    }
     
     const newAttitudeToSet = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
     
     try {
         const figureDocRef = doc(db, 'figures', figureId);
-        const userVoteDocRef = doc(db, 'userAttitudes', `${firebaseUser.uid}_${figureId}`);
+        const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
 
         await runTransaction(db, async (transaction) => {
             const figureDoc = await transaction.get(figureDocRef);
@@ -119,7 +129,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
             transaction.update(figureDocRef, { attitudeCounts: newCounts });
             
             if (newAttitudeToSet) {
-                transaction.set(userVoteDocRef, { userId: firebaseUser!.uid, figureId, attitude: newAttitudeToSet, addedAt: serverTimestamp() });
+                transaction.set(userVoteDocRef, { userId: currentUser!.uid, figureId, attitude: newAttitudeToSet, addedAt: serverTimestamp() });
             } else if (userVoteDoc.exists()) {
                 transaction.delete(userVoteDocRef);
             }
@@ -141,7 +151,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       setSelectedAttitude(newAttitudeToSet);
 
       if (!isAnonymous && newAttitudeToSet) {
-          const achievementResult = await grantActitudDefinidaAchievement(firebaseUser.uid);
+          const achievementResult = await grantActitudDefinidaAchievement(currentUser.uid);
           if (achievementResult.unlocked) {
               toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
           }
