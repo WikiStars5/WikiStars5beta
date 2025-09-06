@@ -26,7 +26,7 @@ export function PushNotificationManager() {
         try {
           // This is the corrected VAPID key.
           const currentToken = await getToken(messaging, {
-            vapidKey: 'BFJgG3wIOFf5k3z4d6BTVb-B-iLwE0hZ9m_YJq8zG9g8H3fR2k8J5qZ5Z-zYJ8wX5j_H5wJq8zG9g8H3fR2k8J5qZ5Z-zYJ8wX5j_H5w',
+            vapidKey: 'BFJgG3wIOFf5k3z4d6BTVb-B-iLwE0hZ9m_YJq8zG9g8H3fR2k8J5qZ5Z-zYJ8wX5j_H5wJq8zG9g8',
           });
 
           if (currentToken) {
