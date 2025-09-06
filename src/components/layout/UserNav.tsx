@@ -69,13 +69,6 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        <Link href="/profile" passHref>
-          <DropdownMenuItem>
-            <User className="mr-2 h-4 w-4" />
-            <span>Mi Perfil</span>
-          </DropdownMenuItem>
-        </Link>
-        
         {isAdmin && (
           <Link href="/admin" passHref>
             <DropdownMenuItem>
@@ -84,8 +77,9 @@ export function UserNav() {
             </DropdownMenuItem>
           </Link>
         )}
+        
+        {isAdmin && <DropdownMenuSeparator />}
 
-        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Cerrar Sesión</span>

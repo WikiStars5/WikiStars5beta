@@ -37,19 +37,6 @@ export function Header() {
         <div className="flex items-center gap-1 md:gap-2 lg:gap-3">
           <div className="hidden md:flex items-center">
             <NotificationBell />
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link href="/profile" className="text-foreground/70 hover:text-foreground transition-colors p-2 rounded-full">
-                    <User className="h-5 w-5" />
-                    <span className="sr-only">Mi Perfil</span>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Mi Perfil</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
             <InstallPwaButton />
           </div>
           <MobileSearchButton />
