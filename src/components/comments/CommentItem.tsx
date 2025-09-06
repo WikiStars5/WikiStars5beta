@@ -1,35 +1,18 @@
 
-
 "use client";
 
 import * as React from 'react';
 import type { Figure, Comment as CommentType, RatingValue } from '@/lib/types';
-import type { User } from 'firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Trash2, Send, Loader2, Share2, Star, StarOff } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Loader2, Star, StarOff } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import { addReply, deleteComment, toggleLikeComment, toggleDislikeComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
+import { mapDocToComment } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, doc, serverTimestamp, addDoc } from 'firebase/firestore';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
-import { useAuth } from '@/hooks/useAuth';
 import Image from 'next/image';
 
-const MAX_COMMENT_LENGTH = 1000;
 const TRUNCATE_LENGTH = 280; // Characters to show before truncating
 const MAX_REPLY_DEPTH = 4; // Set a maximum nesting level for replies
 
@@ -53,12 +36,10 @@ interface CommentItemProps {
     figure: Figure;
     comment: CommentType;
     parentPath: string;
-    onReplyPosted: (streak: number | null) => void;
     highlightedCommentId?: string | null;
 }
 
 const RatingDisplay = ({ rating, maxRating = 5 }: { rating: RatingValue, maxRating?: number }) => {
-    // If rating is 0, show a single crossed-out star.
     if (rating === 0) {
         return (
             <div className="flex items-center gap-0.5" title="0 Estrellas">
@@ -67,7 +48,6 @@ const RatingDisplay = ({ rating, maxRating = 5 }: { rating: RatingValue, maxRati
         );
     }
     
-    // For ratings 1-5, show the filled/unfilled stars.
     return (
         <div className="flex items-center gap-0.5">
             {[...Array(maxRating)].map((_, i) => (
@@ -88,17 +68,11 @@ export function CommentItem({
     figure, 
     comment, 
     parentPath,
-    onReplyPosted,
     highlightedCommentId,
 }: CommentItemProps) {
-    const [isReplying, setIsReplying] = React.useState(false);
-    const [replyText, setReplyText] = React.useState('');
     const [replies, setReplies] = React.useState<CommentType[]>([]);
     const [isLoadingReplies, setIsLoadingReplies] = React.useState(false);
     const [showReplies, setShowReplies] = React.useState(false);
-    const [isPostingReply, setIsPostingReply] = React.useState(false);
-    const { toast } = useToast();
-    const { user: firestoreUser, firebaseUser, isAnonymous } = useAuth();
     const [isHighlighted, setIsHighlighted] = React.useState(false);
     const commentRef = React.useRef<HTMLDivElement>(null);
 
@@ -109,10 +83,6 @@ export function CommentItem({
     const currentPath = `${parentPath}/${comment.id}`;
     const depth = (parentPath.match(/replies/g) || []).length;
     const canReply = depth < MAX_REPLY_DEPTH;
-
-    const canDelete = firebaseUser?.uid === comment.authorId;
-    const hasLiked = firebaseUser ? comment.likes.includes(firebaseUser.uid) : false;
-    const hasDisliked = firebaseUser ? comment.dislikes.includes(firebaseUser.uid) : false;
 
     React.useEffect(() => {
         if (comment.id === highlightedCommentId && commentRef.current) {
@@ -156,166 +126,6 @@ export function CommentItem({
         const unsubscribe = fetchReplies();
         return () => unsubscribe && unsubscribe();
     }, [fetchReplies]);
-
-    const handleShare = async () => {
-        const url = new URL(window.location.href);
-        url.searchParams.set('comment', comment.id); // Use a query param
-        
-        try {
-            await navigator.clipboard.writeText(url.toString());
-            toast({
-                title: "¡Enlace Copiado!",
-                description: "Se ha copiado un enlace directo a este comentario."
-            });
-        } catch (err) {
-            console.error('Failed to copy text: ', err);
-            toast({
-                title: "Error al Copiar",
-                description: "No se pudo copiar el enlace. Inténtalo de nuevo.",
-                variant: "destructive"
-            });
-        }
-    };
-
-    const handleLike = async () => {
-        if (!firebaseUser) {
-            toast({ title: "Acción requerida", description: "Debes iniciar sesión o crear un perfil de invitado para dar me gusta.", variant: "destructive" });
-            return;
-        }
-        try {
-            const liked = await toggleLikeComment(currentPath, firebaseUser.uid);
-            
-            if (liked && comment.authorId !== firebaseUser.uid) {
-                const notificationsCollectionRef = collection(db, 'notifications');
-                await addDoc(notificationsCollectionRef, {
-                    type: 'like',
-                    userId: comment.authorId,
-                    actorId: firebaseUser.uid,
-                    actorName: firestoreUser?.username || 'Alguien',
-                    actorPhotoUrl: firestoreUser?.photoURL || '',
-                    figureId: figure.id,
-                    figureName: figure.name,
-                    commentId: comment.id,
-                    isRead: false,
-                    createdAt: serverTimestamp(),
-                });
-            }
-        } catch (error: any) {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
-        }
-    };
-
-    const handleDislike = async () => {
-        if (!firebaseUser) {
-            toast({ title: "Acción requerida", description: "Debes iniciar sesión para dar no me gusta.", variant: "destructive" });
-            return;
-        }
-        try {
-             await toggleDislikeComment(
-                currentPath,
-                firebaseUser.uid,
-                comment.authorId,
-                figure.id,
-                figure.name,
-                comment.id
-            );
-        } catch (error: any) {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
-        }
-    };
-
-    const handleDelete = async () => {
-        if (!canDelete) return;
-        try {
-            await deleteComment(currentPath);
-            toast({ title: "Comentario Eliminado" });
-        } catch (error: any) {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
-        }
-    };
-    
-    const handlePostReply = async () => {
-        if (!firebaseUser) return;
-        if (replyText.trim().length < 3) return;
-        if (replyText.length > MAX_COMMENT_LENGTH) {
-            toast({
-                title: "Respuesta demasiado larga",
-                description: `Tu respuesta no puede exceder los ${MAX_COMMENT_LENGTH} caracteres.`,
-                variant: "destructive"
-            });
-            return;
-        }
-        
-        setIsPostingReply(true);
-
-        let authorData;
-        if (isAnonymous) {
-            const guestUsername = localStorage.getItem('wikistars5-guestUsername');
-            const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
-            const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
-            if (!guestUsername) {
-                toast({ title: "Perfil de invitado no encontrado", description: "Por favor, configura tu perfil para responder.", variant: "destructive" });
-                setIsPostingReply(false);
-                return;
-            }
-            authorData = {
-                id: firebaseUser.uid,
-                name: guestUsername,
-                photoUrl: null,
-                gender: guestGender,
-                country: '', 
-                countryCode: guestCountryCode,
-                isAnonymous: true,
-            }
-        } else if (firestoreUser) {
-            authorData = {
-                id: firestoreUser.uid,
-                name: firestoreUser.username,
-                photoUrl: firestoreUser.photoURL || null,
-                gender: firestoreUser.gender || '',
-                country: firestoreUser.country || '',
-                countryCode: firestoreUser.countryCode || '',
-                isAnonymous: false,
-            }
-        } else {
-             toast({ title: "Error", description: "No se pudo obtener la información del autor.", variant: "destructive" });
-             setIsPostingReply(false);
-             return;
-        }
-
-        try {
-            const newReplyId = await addReply(currentPath, figure.id, authorData, replyText.trim());
-            const newStreak = await updateStreak(figure.id, authorData);
-            if (newStreak !== null) {
-                onReplyPosted(newStreak);
-            }
-
-            if (comment.authorId !== firebaseUser.uid) {
-                const notificationsCollectionRef = collection(db, 'notifications');
-                await addDoc(notificationsCollectionRef, {
-                    type: 'reply',
-                    userId: comment.authorId,
-                    actorId: authorData.id,
-                    actorName: authorData.name,
-                    actorPhotoUrl: authorData.photoUrl,
-                    figureId: figure.id,
-                    figureName: figure.name,
-                    commentId: comment.id,
-                    replyId: newReplyId, 
-                    isRead: false,
-                    createdAt: serverTimestamp(),
-                });
-            }
-
-            setReplyText('');
-            setIsReplying(false);
-            if (!showReplies) setShowReplies(true);
-        } catch (error: any) {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
-        } finally {
-            setIsPostingReply(false);
-        }
-    };
 
     return (
         <div ref={commentRef} className={cn(depth > 0 && "ml-4 md:ml-8")} id={`comment-${comment.id}`}>
@@ -372,78 +182,20 @@ export function CommentItem({
                 )}
             </div>
             <div className="flex items-center gap-2 mt-1 px-1 ml-10">
-                <Button variant="ghost" size="sm" onClick={handleLike} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
-                    <ThumbsUp className={cn("mr-1 h-3 w-3 transition-all duration-200 ease-in-out active:scale-150", hasLiked && "fill-current text-blue-500")} /> {comment.likeCount}
+                <Button variant="ghost" size="sm" disabled className="text-xs h-auto py-1 px-2">
+                    <ThumbsUp className="mr-1 h-3 w-3" /> {comment.likeCount}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={handleDislike} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
-                    <ThumbsDown className={cn("mr-1 h-3 w-3 transition-all duration-200 ease-in-out active:scale-150", hasDisliked && "fill-current text-destructive")} /> {comment.dislikeCount}
+                <Button variant="ghost" size="sm" disabled className="text-xs h-auto py-1 px-2">
+                    <ThumbsDown className="mr-1 h-3 w-3" /> {comment.dislikeCount}
                 </Button>
                 {canReply && (
-                    <Button variant="ghost" size="sm" onClick={() => setIsReplying(!isReplying)} disabled={!firebaseUser} className="text-xs h-auto py-1 px-2">
+                    <Button variant="ghost" size="sm" disabled className="text-xs h-auto py-1 px-2">
                         <MessageSquareReply className="mr-1 h-3 w-3" /> Responder
                     </Button>
                 )}
-                    <Button variant="ghost" size="sm" onClick={handleShare} className="text-xs h-auto py-1 px-2">
-                    <Share2 className="mr-1 h-3 w-3" /> Compartir
-                </Button>
-                {canDelete && (
-                        <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-xs h-auto py-1 px-2 text-destructive hover:text-destructive">
-                                <Trash2 className="mr-1 h-3 w-3" /> Eliminar
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar comentario?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                ¿Confirmas que quieres eliminar este comentario? Todas las respuestas anidadas también serán eliminadas. Esta acción no se puede deshacer.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>No</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                )}
             </div>
-
-            {isReplying && (
-                <div className="mt-2 flex gap-2 items-start ml-10">
-                    <Avatar className="h-8 w-8">
-                            <AvatarImage src={correctMalformedUrl(firestoreUser?.photoURL)} alt={firestoreUser?.username} />
-                        <AvatarFallback>{firestoreUser?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-grow space-y-2">
-                            <Textarea 
-                            placeholder={`Respondiendo a ${comment.authorName}...`} 
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            rows={2}
-                            className="text-sm"
-                            maxLength={MAX_COMMENT_LENGTH}
-                            />
-                            <div className="flex justify-between items-center">
-                            <p className={cn(
-                                "text-xs text-muted-foreground",
-                                replyText.length > MAX_COMMENT_LENGTH && "text-destructive"
-                            )}>
-                                {replyText.length} / {MAX_COMMENT_LENGTH}
-                            </p>
-                            <div className="flex gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => setIsReplying(false)}>Cancelar</Button>
-                                <Button size="sm" onClick={handlePostReply} disabled={isPostingReply}>
-                                    {isPostingReply ? <Loader2 className="mr-1 h-4 w-4 animate-spin"/> : <Send className="mr-1 h-4 w-4"/>}
-                                    Enviar
-                                </Button>
-                            </div>
-                            </div>
-                    </div>
-                </div>
-            )}
             
-                {comment.replyCount > 0 && (
+            {comment.replyCount > 0 && (
                 <div className="mt-2 ml-10">
                     <Button variant="link" size="sm" className="text-xs p-0 h-auto" onClick={() => setShowReplies(!showReplies)}>
                         <CornerDownRight className="mr-1 h-3 w-3" />
@@ -463,7 +215,6 @@ export function CommentItem({
                                 figure={figure}
                                 comment={reply}
                                 parentPath={`${currentPath}/replies`}
-                                onReplyPosted={onReplyPosted}
                                 highlightedCommentId={highlightedCommentId}
                             />
                         ))

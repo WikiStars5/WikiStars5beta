@@ -2,15 +2,11 @@
 "use client"; 
 
 import { Logo } from '@/components/shared/Logo';
-import { UserNav } from '@/components/layout/UserNav';
 import Link from 'next/link'; 
 import { MobileSearchButton } from './MobileSearchButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
 import { useState } from 'react';
 import { InstallPwaButton } from './InstallPwaButton';
-import { NotificationBell } from './NotificationBell';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { User } from 'lucide-react';
 import { PrimaryNav } from './PrimaryNav';
 
 
@@ -36,11 +32,9 @@ export function Header() {
         {/* Right Section */}
         <div className="flex items-center gap-1 md:gap-2 lg:gap-3">
           <div className="hidden md:flex items-center">
-            <NotificationBell />
             <InstallPwaButton />
           </div>
           <MobileSearchButton />
-          <UserNav />
         </div>
       </div>
     </header>

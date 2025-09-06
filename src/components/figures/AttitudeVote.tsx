@@ -12,7 +12,6 @@ import { Loader2 } from 'lucide-react';
 import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
-import { useAuth } from '@/hooks/useAuth';
 
 
 interface AttitudeVoteProps {
@@ -39,11 +38,9 @@ const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
 };
 
 export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, initialAttitudeCounts }) => {
-  const { firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [figureAttitudeCounts, setFigureAttitudeCounts] = useState<Record<AttitudeKey, number>>(initialAttitudeCounts || defaultAttitudeCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
-  const [isLoadingAttitudeAction, setIsLoadingAttitudeAction] = useState<AttitudeKey | null>(null);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -60,159 +57,42 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     }, (error) => {
       console.error("Error listening to figure document for attitudes:", error);
     });
-
-    if (firebaseUser) {
-        const localKey = 'wikistars5-userAttitudes';
-        try {
-            const localData = localStorage.getItem(localKey);
-            if (localData) {
-            const attitudes: Attitude[] = JSON.parse(localData);
-            const currentVote = attitudes.find(a => a.figureId === figureId);
-            if (currentVote) {
-                setSelectedAttitude(currentVote.attitude);
-            }
-            }
-        } catch (e) { console.error("Error reading attitudes from localStorage", e); }
-    } else {
-        setSelectedAttitude(null);
-    }
     
     return () => {
       unsubscribeFigure();
     };
-  }, [figureId, firebaseUser]);
-
-  const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
-    if (isLoadingAttitudeAction || isAuthLoading) return;
-
-    if (!firebaseUser) {
-        toast({ title: "Acción requerida", description: "Por favor, espera a que tu sesión se cargue o refresca la página.", variant: "destructive" });
-        return;
-    }
-
-    setIsLoadingAttitudeAction(attitudeKeyClicked);
-
-    const newAttitudeToSet = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
-    
-    try {
-        const figureDocRef = doc(db, 'figures', figureId);
-        const userVoteDocRef = doc(db, 'userAttitudes', `${firebaseUser.uid}_${figureId}`);
-
-        await runTransaction(db, async (transaction) => {
-            const figureDoc = await transaction.get(figureDocRef);
-            if (!figureDoc.exists()) {
-                throw new Error("La figura no fue encontrada.");
-            }
-            const figureData = figureDoc.data();
-
-            const userVoteDoc = await transaction.get(userVoteDocRef);
-            const previousAttitude = userVoteDoc.exists() ? userVoteDoc.data().attitude as AttitudeKey : null;
-            
-            const newCounts = { ...defaultAttitudeCountsData, ...figureData.attitudeCounts };
-
-            if (previousAttitude) {
-                newCounts[previousAttitude] = Math.max(0, (newCounts[previousAttitude] || 0) - 1);
-            }
-            if (newAttitudeToSet) {
-                newCounts[newAttitudeToSet] = (newCounts[newAttitudeToSet] || 0) + 1;
-            }
-
-            transaction.update(figureDocRef, { attitudeCounts: newCounts });
-            
-            if (newAttitudeToSet) {
-                transaction.set(userVoteDocRef, { userId: firebaseUser!.uid, figureId, attitude: newAttitudeToSet, addedAt: serverTimestamp() });
-            } else if (userVoteDoc.exists()) {
-                transaction.delete(userVoteDocRef);
-            }
-        });
-
-      try {
-        const localKey = 'wikistars5-userAttitudes';
-        const localData = localStorage.getItem(localKey);
-        let attitudes: Attitude[] = localData ? JSON.parse(localData) : [];
-        attitudes = attitudes.filter(a => a.figureId !== figureId); 
-        if (newAttitudeToSet) {
-            attitudes.push({ figureId, attitude: newAttitudeToSet, addedAt: new Date().toISOString() });
-        }
-        localStorage.setItem(localKey, JSON.stringify(attitudes));
-      } catch (e) {
-          console.error("Failed to update attitudes in localStorage", e);
-      }
-      
-      setSelectedAttitude(newAttitudeToSet);
-
-      if (!isAnonymous && newAttitudeToSet) {
-          const achievementResult = await grantActitudDefinidaAchievement(firebaseUser.uid);
-          if (achievementResult.unlocked) {
-              toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
-          }
-      }
-      
-      if (newAttitudeToSet) {
-          toast({
-              title: "¡Voto Registrado!",
-              description: "¡Gracias por tu voto! Compártelo para ver qué opinan los demás.",
-              duration: 8000,
-              action: <ShareButton figureName={figureName} figureId={figureId} showText />,
-          });
-      } else {
-          toast({ title: "Voto Eliminado", description: "Tu actitud ha sido eliminada." });
-      }
-
-    } catch (error: any) {
-      console.error("Error in attitude vote transaction:", error);
-      let errorMessage = "No se pudo registrar tu voto.";
-      if (error.code === 'permission-denied') {
-        errorMessage = "Error de permisos. Revisa tus reglas de seguridad de Firestore.";
-      } else {
-        errorMessage = `Error: ${error.message}`;
-      }
-      toast({ title: "Error al Votar", description: errorMessage, variant: "destructive" });
-
-    } finally {
-        setIsLoadingAttitudeAction(null);
-    }
-  };
+  }, [figureId]);
   
   return (
     <Card className="border border-white/20 bg-black">
       <CardHeader>
         <CardTitle>¿Qué te consideras?</CardTitle>
         <CardDescription>
-          Selecciona una opción para compartir tu postura. Tu voto es anónimo.
+          Votación deshabilitada. Se requiere un sistema de autenticación.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {isAuthLoading ? (
-            <div className="flex justify-center items-center h-40">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, colorClass, selectedClass }) => (
-                <Button
-                  key={key}
-                  variant="ghost"
-                  className={cn(
-                    "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 border bg-black",
-                    colorClass,
-                    selectedAttitude === key ? selectedClass : 'ring-0',
-                    (isLoadingAttitudeAction || !firebaseUser) && 'opacity-50 cursor-not-allowed'
-                  )}
-                  onClick={() => handleAttitudeClick(key)}
-                  disabled={!!isLoadingAttitudeAction || !firebaseUser}
-                  style={{ minHeight: '100px' }}
-                >
-                  {isLoadingAttitudeAction === key && <Loader2 className="absolute h-6 w-6 animate-spin" />}
-                  <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
-                  <span className="text-xs font-medium">{label}</span>
-                  <span className="text-sm font-bold">
-                    {(figureAttitudeCounts[key] || 0).toLocaleString()}
-                  </span>
-                </Button>
-              ))}
-            </div>
-        )}
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, colorClass, selectedClass }) => (
+            <Button
+              key={key}
+              variant="ghost"
+              className={cn(
+                "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 border bg-black",
+                colorClass,
+                'opacity-50 cursor-not-allowed'
+              )}
+              disabled={true}
+              style={{ minHeight: '100px' }}
+            >
+              <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
+              <span className="text-xs font-medium">{label}</span>
+              <span className="text-sm font-bold">
+                {(figureAttitudeCounts[key] || 0).toLocaleString()}
+              </span>
+            </Button>
+          ))}
+        </div>
         <div className="text-center text-muted-foreground">
           <p>Total de respuestas: <span className="font-bold">{totalVotes.toLocaleString()}</span></p>
         </div>

@@ -12,9 +12,6 @@ import {
 import Link from "next/link";
 import Image from "next/image"; 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { AttitudeVote } from '@/components/figures/AttitudeVote';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,23 +19,16 @@ import * as React from 'react';
 import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
-import { useToast } from "@/hooks/use-toast";
-import { useParams, useRouter } from "next/navigation";
-import { ShareButton } from "@/components/shared/ShareButton";
-import type { Figure, LocalUserStreak, UserProfile } from "@/lib/types";
-import { 
-  grantFirstGlanceAchievement,
-} from '@/app/actions/achievementActions';
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import type { Figure, LocalUserStreak, UserProfile, Comment as CommentType } from "@/lib/types";
 import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
-import { doc, onSnapshot, getDoc, Timestamp } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { mapDocToFigure } from "@/lib/placeholder-data";
 import { RelatedProfiles } from "@/components/figures/RelatedProfiles";
 import { CommentSection } from "@/components/comments/CommentSection";
-import { differenceInHours } from 'date-fns';
 import { TopStreaks } from "@/components/figures/TopStreaks";
-import { useAuth } from "@/hooks/useAuth";
 import { StarRatingVote } from "@/components/figures/StarRatingVote";
 
 interface FigureDetailClientProps {
@@ -47,64 +37,30 @@ interface FigureDetailClientProps {
 
 export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const routeParams = useParams<{ id:string }>();
-  const id = routeParams?.id;
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const id = routeParams?.id;
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
-  const { toast } = useToast();
-  const { user: firestoreUser, firebaseUser, isLoading: isAuthLoading, isAnonymous } = useAuth();
-  
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   
-  const [animationStreak, setAnimationStreak] = React.useState<number | null>(null);
-  const [headerStreak, setHeaderStreak] = React.useState<number | null>(null);
+  // State to hold the comment ID from the URL
+  const [highlightedCommentId, setHighlightedCommentId] = React.useState<string | null>(null);
 
 
-  const checkHeaderStreak = React.useCallback(async () => {
-    if (typeof window !== 'undefined' && id && firebaseUser) {
-        const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
-        if (streaksJSON) {
-            const localStreaks: LocalUserStreak[] = JSON.parse(streaksJSON);
-            const figureStreak = localStreaks.find(s => s.figureId === id);
-            
-            if (figureStreak) {
-                const lastCommentDate = new Date(figureStreak.lastCommentDate);
-                const hoursSinceLastComment = differenceInHours(new Date(), lastCommentDate);
-                
-                if (hoursSinceLastComment < 24) {
-                    setHeaderStreak(figureStreak.currentStreak);
-                } else {
-                    setHeaderStreak(null); // Streak expired
-                }
-            } else {
-                setHeaderStreak(null); // No streak for this figure
-            }
-        } else {
-            setHeaderStreak(null); // No streaks stored at all
-        }
-    } else {
-       setHeaderStreak(null);
-    }
-  }, [id, firebaseUser]);
-
-
+  // This effect will run once when the component mounts to check the URL.
   React.useEffect(() => {
-    if (firebaseUser && !firebaseUser.isAnonymous) { 
-        grantFirstGlanceAchievement(firebaseUser.uid).then(result => {
-          if (result.unlocked && result.message) {
-            toast({
-              title: '¡Logro Desbloqueado!',
-              description: result.message,
-            });
-          }
-        });
+    const commentIdFromUrl = searchParams.get('comment');
+    if (commentIdFromUrl) {
+        setHighlightedCommentId(commentIdFromUrl);
+        
+        // Clean up the URL after grabbing the comment ID.
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('comment');
+        router.replace(newUrl.toString(), { scroll: false });
     }
-  }, [firebaseUser, toast]); 
-
-  // Check streak whenever current user changes
-  React.useEffect(() => {
-    checkHeaderStreak();
-  }, [firebaseUser, checkHeaderStreak]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
   // Add a real-time listener to the figure document
   React.useEffect(() => {
@@ -147,27 +103,14 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
     }
   };
 
-  const handleCommentPosted = (streak: number | null) => {
-    setAnimationStreak(streak);
-    checkHeaderStreak(); // Re-check header streak after posting
-  }
-
-
-  if (figure === undefined || isAuthLoading) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!figure) return <div>Figura no encontrada.</div>;
 
   return (
     <div className="space-y-8 lg:space-y-12">
-      <StreakAnimation 
-        streakCount={animationStreak}
-        isOpen={animationStreak !== null}
-        onClose={() => setAnimationStreak(null)}
-      />
-      
       <ProfileHeader 
         figure={figure}
         onImageClick={handleOpenProfileImage}
-        streakCount={headerStreak}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
@@ -210,7 +153,10 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
       
       <StarRatingVote figure={figure} />
       
-      <CommentSection figure={figure} onCommentPosted={handleCommentPosted} />
+      <CommentSection 
+        figure={figure} 
+        highlightedCommentId={highlightedCommentId} 
+      />
       
       <RelatedProfiles figure={figure} />
       

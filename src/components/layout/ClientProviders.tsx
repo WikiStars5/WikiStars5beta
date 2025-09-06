@@ -4,8 +4,8 @@
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from "@/components/ui/toaster";
 import React, { type ReactNode } from 'react';
-import { AuthProvider } from '@/hooks/useAuth';
 
+// This component is no longer needed for AuthProvider, but we keep it for ThemeProvider and Toaster.
 export function ClientProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider
@@ -13,10 +13,8 @@ export function ClientProviders({ children }: { children: ReactNode }) {
       defaultTheme="dark"
       enableSystem={false}
     >
-      <AuthProvider>
-        {children}
-        <Toaster />
-      </AuthProvider>
+      {children}
+      <Toaster />
     </ThemeProvider>
   );
 }

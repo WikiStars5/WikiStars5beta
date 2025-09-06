@@ -3,14 +3,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Figure, RatingValue, RatingVote } from '@/lib/types';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Star, Check } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { signInAnonymously } from 'firebase/auth';
+import { Loader2, Star } from 'lucide-react';
 import { submitStarRating } from '@/lib/placeholder-data';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -39,7 +36,6 @@ const RatingDisplay = ({ rating, maxRating = 5 }: { rating: number, maxRating?: 
 };
 
 export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
-  const { firebaseUser, isLoading: isAuthLoading } = useAuth();
   const [ratingCounts, setRatingCounts] = useState<Record<string, number>>(figure.ratingCounts || defaultRatingCountsData);
   
   const { totalVotes, averageRating } = useMemo(() => {
@@ -60,40 +56,36 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
     }, (error) => console.error("Error listening to figure document for ratings:", error));
     
     return () => unsubscribeFigure();
-  }, [figure.id, firebaseUser]);
+  }, [figure.id]);
 
 
   return (
     <Card className="border border-white/20 bg-black">
       <CardHeader>
         <CardTitle>Calificaciones de la Comunidad</CardTitle>
-        <CardDescription>Resumen de las calificaciones para {figure.name}.</CardDescription>
+        <CardDescription>Resumen de las calificaciones para {figure.name}. El sistema de votación está actualmente deshabilitado.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
-        {isAuthLoading ? (
-            <div className="flex justify-center items-center h-24"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-        ): (
-             <div className="flex flex-col md:flex-row items-center gap-6 p-4 rounded-lg bg-muted/30">
-                <div className="flex flex-col items-center justify-center">
-                    <p className="text-5xl font-bold text-primary">{averageRating.toFixed(1)}</p>
-                    <RatingDisplay rating={averageRating} />
-                    <p className="text-sm text-muted-foreground mt-1">{totalVotes.toLocaleString()} {totalVotes === 1 ? 'calificación' : 'calificaciones'}</p>
-                </div>
-                <div className="w-full flex-grow space-y-1.5">
-                    {[5, 4, 3, 2, 1, 0].map(star => {
-                    const count = ratingCounts[star] || 0;
-                    const percentage = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
-                    return (
-                        <div key={star} className="flex items-center gap-2 text-sm">
-                        <span className="flex-shrink-0 w-12 text-right text-muted-foreground">{star} <Star className="inline h-3 w-3 mb-0.5" /></span>
-                        <Progress value={percentage} className="h-2 w-full" />
-                        <span className="flex-shrink-0 w-24 text-right font-mono text-muted-foreground">{count.toLocaleString()}</span>
-                        </div>
-                    );
-                    })}
-                </div>
+         <div className="flex flex-col md:flex-row items-center gap-6 p-4 rounded-lg bg-muted/30">
+            <div className="flex flex-col items-center justify-center">
+                <p className="text-5xl font-bold text-primary">{averageRating.toFixed(1)}</p>
+                <RatingDisplay rating={averageRating} />
+                <p className="text-sm text-muted-foreground mt-1">{totalVotes.toLocaleString()} {totalVotes === 1 ? 'calificación' : 'calificaciones'}</p>
             </div>
-        )}
+            <div className="w-full flex-grow space-y-1.5">
+                {[5, 4, 3, 2, 1, 0].map(star => {
+                const count = ratingCounts[star] || 0;
+                const percentage = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
+                return (
+                    <div key={star} className="flex items-center gap-2 text-sm">
+                    <span className="flex-shrink-0 w-12 text-right text-muted-foreground">{star} <Star className="inline h-3 w-3 mb-0.5" /></span>
+                    <Progress value={percentage} className="h-2 w-full" />
+                    <span className="flex-shrink-0 w-24 text-right font-mono text-muted-foreground">{count.toLocaleString()}</span>
+                    </div>
+                );
+                })}
+            </div>
+        </div>
       </CardContent>
     </Card>
   );

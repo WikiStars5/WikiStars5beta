@@ -1,82 +1,30 @@
 
-
 "use client";
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, MessagesSquare, Send, Star, StarOff, Smile, UserPlus } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import type { Figure, Comment as CommentType, UserProfile, RatingValue } from '@/lib/types';
-import { addComment, mapDocToComment, updateStreak, submitStarRating } from '@/lib/placeholder-data';
+import { Loader2, MessagesSquare, UserPlus } from 'lucide-react';
+import type { Figure, Comment as CommentType } from '@/lib/types';
+import { mapDocToComment } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { CommentItem } from './CommentItem';
-import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import Picker, { EmojiClickData, Theme } from 'emoji-picker-react';
-import { useTheme } from 'next-themes';
-import Link from 'next/link';
-
 
 interface CommentSectionProps {
   figure: Figure;
-  onCommentPosted: (streak: number | null) => void;
   highlightedCommentId?: string | null;
 }
 
-const MAX_COMMENT_LENGTH = 1000;
 const INITIAL_COMMENTS_TO_SHOW = 5;
 
-const RATING_OPTIONS: RatingValue[] = [1, 2, 3, 4, 5];
-
-const RATING_SOUNDS: Record<RatingValue, string> = {
-    0: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar0.mp3?alt=media&token=48731777-62f4-413c-8a21-4f183c577d61',
-    1: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457',
-    2: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar2.mp3?alt=media&token=58cbf607-df0b-4bbd-b28e-291cf1951c18',
-    3: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar3.mp3?alt=media&token=df67dc5b-28ab-4773-8266-60b9127a325f',
-    4: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826',
-    5: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f',
-};
-
-
-export function CommentSection({ figure, onCommentPosted, highlightedCommentId }: CommentSectionProps) {
-  const [commentText, setCommentText] = React.useState('');
-  const [selectedRating, setSelectedRating] = React.useState<RatingValue | null>(null);
-  const [hoveredRating, setHoveredRating] = React.useState<RatingValue | null>(null);
+export function CommentSection({ figure, highlightedCommentId }: CommentSectionProps) {
   const [comments, setComments] = React.useState<CommentType[]>([]);
-  const [isPosting, setIsPosting] = React.useState(false);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [showAllComments, setShowAllComments] = React.useState(false);
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-  
-  const audioRefs = React.useRef<Record<RatingValue, HTMLAudioElement | null>>({ 0: null, 1: null, 2: null, 3: null, 4: null, 5: null });
-
-  const { user: firestoreUser, firebaseUser, isLoading: isAuthLoading, isAnonymous } = useAuth();
-  const { theme } = useTheme();
   const { toast } = useToast();
-
-  React.useEffect(() => {
-    // Preload audio files
-    Object.entries(RATING_SOUNDS).forEach(([key, src]) => {
-        const rating = parseInt(key) as RatingValue;
-        const audio = new Audio(src);
-        audio.preload = 'auto';
-        audioRefs.current[rating] = audio;
-    });
-  }, []);
-
-  const playRatingSound = (rating: RatingValue) => {
-    const audio = audioRefs.current[rating];
-    if (audio) {
-      audio.currentTime = 0; // Rewind to the start
-      audio.play().catch(e => console.error("Error playing sound:", e));
-    }
-  };
 
   React.useEffect(() => {
     setIsLoadingComments(true);
@@ -101,221 +49,15 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
   }, [figure.id, toast]);
   
 
-  const handlePostComment = async () => {
-    if (!firebaseUser) {
-      toast({ title: "Error", description: "Debes tener un perfil para comentar.", variant: "destructive" });
-      return;
-    }
-    if (commentText.trim().length < 3) {
-      toast({ title: "Comentario muy corto", description: "Tu comentario debe tener al menos 3 caracteres.", variant: "destructive" });
-      return;
-    }
-    if (commentText.length > MAX_COMMENT_LENGTH) {
-      toast({
-          title: "Comentario demasiado largo",
-          description: `Tu comentario no puede exceder los ${MAX_COMMENT_LENGTH} caracteres.`,
-          variant: "destructive"
-      });
-      return;
-    }
-    setIsPosting(true);
-    try {
-        let authorData;
-        
-        if (isAnonymous) {
-            const guestUsername = localStorage.getItem('wikistars5-guestUsername');
-            if (!guestUsername) {
-                toast({ title: "Perfil de Invitado Incompleto", description: "Por favor, ve a tu perfil para establecer un nombre de invitado antes de comentar.", variant: "destructive" });
-                setIsPosting(false);
-                return;
-            }
-            authorData = {
-                id: firebaseUser.uid,
-                name: guestUsername,
-                photoUrl: null,
-                gender: localStorage.getItem('wikistars5-guestGender') || '',
-                country: '', // No country name for guests
-                countryCode: localStorage.getItem('wikistars5-guestCountryCode') || '',
-                isAnonymous: true,
-            };
-        } else if (firestoreUser) {
-            authorData = {
-                id: firestoreUser.uid,
-                name: firestoreUser.username,
-                photoUrl: firestoreUser.photoURL || null,
-                gender: firestoreUser.gender || '',
-                country: firestoreUser.country || '',
-                countryCode: firestoreUser.countryCode || '',
-                isAnonymous: false,
-            };
-        } else {
-            // This handles the case where the user is no longer anonymous, but the firestore profile is still loading.
-            toast({
-                title: "Cargando perfil...",
-                description: "Tu perfil se está sincronizando. Por favor, espera un momento y vuelve a intentarlo.",
-                variant: "destructive"
-            });
-            setIsPosting(false);
-            return;
-        }
-
-
-      // Submit rating if one is selected
-      if (selectedRating !== null) {
-        await submitStarRating(figure.id, firebaseUser.uid, selectedRating);
-        playRatingSound(selectedRating);
-      }
-
-      await addComment(figure.id, authorData, commentText.trim(), selectedRating);
-      
-      const newStreak = await updateStreak(figure.id, authorData);
-      onCommentPosted(newStreak);
-
-      setCommentText('');
-      setSelectedRating(null); // Reset rating after posting
-      toast({ title: "¡Opinión Publicada!", description: "Gracias por tu contribución." });
-
-    } catch (error: any) {
-      console.error("Error posting comment: ", error);
-      toast({ title: "Error", description: error.message || "No se pudo publicar tu opinión.", variant: "destructive" });
-    } finally {
-      setIsPosting(false);
-    }
-  };
-
-  const handleRatingClick = (rating: RatingValue) => {
-    if (isPosting) return;
-    const newRating = selectedRating === rating ? null : rating;
-    setSelectedRating(newRating);
-  }
-
-  const handleEmojiSelect = (emojiData: EmojiClickData) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-    const newText = text.substring(0, start) + emojiData.emoji + text.substring(end);
-
-    setCommentText(newText);
-
-    // Focus the textarea and set the cursor position after the inserted emoji
-    textarea.focus();
-    setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + emojiData.emoji.length;
-    }, 0);
-  };
-
-
   const renderCommentInput = () => {
-    if (!firebaseUser) {
-        return (
-            <div className="text-center p-4 border-2 border-dashed rounded-lg bg-muted/50">
-                <p className="mb-4 text-muted-foreground font-medium">Para comentar y calificar, necesitas una cuenta.</p>
-                <Button asChild>
-                  <Link href="/login">
-                      <UserPlus className="mr-2 h-4 w-4" /> Iniciar Sesión o Registrarse
-                  </Link>
-                </Button>
-            </div>
-        );
-    }
-
-    const displayName = isAnonymous 
-      ? localStorage.getItem('wikistars5-guestUsername') || 'Invitado' 
-      : firestoreUser?.username;
-    
-    const photoURL = isAnonymous ? null : firestoreUser?.photoURL;
-      
-    return (
-      <div className="flex gap-4">
-          <Avatar className="h-10 w-10 mt-1">
-              <AvatarImage src={correctMalformedUrl(photoURL)} alt={displayName} />
-              <AvatarFallback>{displayName?.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div className="flex-grow space-y-2">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <Button
-                    variant={selectedRating === 0 ? "destructive" : "outline"}
-                    size="sm"
-                    onClick={() => handleRatingClick(0)}
-                    className="flex items-center gap-1"
-                  >
-                      <StarOff className="h-4 w-4"/>
-                      0 Estrellas
-                  </Button>
-                  <div className="flex items-center gap-1">
-                    {RATING_OPTIONS.map((rating) => (
-                        <Star
-                            key={rating}
-                            className={cn(
-                                "h-7 w-7 cursor-pointer transition-colors",
-                                (hoveredRating ?? selectedRating ?? -1) >= rating
-                                    ? "text-primary fill-primary"
-                                    : "text-muted-foreground/50 hover:text-primary"
-                            )}
-                            onMouseEnter={() => setHoveredRating(rating)}
-                            onMouseLeave={() => setHoveredRating(null)}
-                            onClick={() => handleRatingClick(rating)}
-                        />
-                    ))}
-                  </div>
-              </div>
-              <div className="relative">
-                <Textarea
-                    ref={textareaRef}
-                    placeholder="Escribe tu opinión aquí..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    rows={3}
-                    className="bg-muted border-border/50 focus:bg-background pr-10"
-                    maxLength={MAX_COMMENT_LENGTH}
-                />
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" className="absolute bottom-2 right-2 h-7 w-7 text-muted-foreground">
-                            <Smile className="h-5 w-5" />
-                            <span className="sr-only">Añadir emoji</span>
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 border-0">
-                        <Picker 
-                          onEmojiClick={handleEmojiSelect}
-                          theme={theme === 'dark' ? Theme.DARK : Theme.LIGHT}
-                          lazyLoadEmojis={true}
-                          searchDisabled={true}
-                          height={350}
-                          width={300}
-                        />
-                    </PopoverContent>
-                </Popover>
-              </div>
-              <div className="flex justify-between items-center">
-                  <p className={cn("text-xs text-muted-foreground", commentText.length > MAX_COMMENT_LENGTH && "text-destructive")}>
-                      {commentText.length} / {MAX_COMMENT_LENGTH}
-                  </p>
-                  <Button onClick={handlePostComment} disabled={isPosting}>
-                      {isPosting ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
-                      Publicar
-                  </Button>
-              </div>
+      return (
+          <div className="text-center p-4 border-2 border-dashed rounded-lg bg-muted/50">
+              <p className="mb-4 text-muted-foreground font-medium">La creación de cuentas y los comentarios están deshabilitados temporalmente.</p>
           </div>
-      </div>
-    );
+      );
   };
 
   const commentsToShow = showAllComments ? comments : comments.slice(0, INITIAL_COMMENTS_TO_SHOW);
-
-  if (isAuthLoading) {
-    return (
-      <Card className="border border-white/20 bg-black">
-        <CardContent className="flex justify-center items-center h-48">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <>
@@ -348,7 +90,6 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
                     figure={figure}
                     comment={comment}
                     parentPath={`figures/${figure.id}/comments`}
-                    onReplyPosted={onCommentPosted}
                     highlightedCommentId={highlightedCommentId}
                   />
                 ))}
@@ -362,7 +103,7 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
               </>
             ) : (
               <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
-                Aún no hay opiniones. ¡Sé el primero en compartir la tuya!
+                Aún no hay opiniones.
               </p>
             )}
           </div>

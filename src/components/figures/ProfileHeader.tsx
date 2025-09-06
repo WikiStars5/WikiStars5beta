@@ -4,29 +4,18 @@
 import type { Figure } from "@/lib/types";
 import Image from "next/image";
 import { ShareButton } from "@/components/shared/ShareButton";
-import { correctMalformedUrl, cn } from "@/lib/utils";
-import type { User } from 'firebase/auth';
-import { Badge } from "@/components/ui/badge";
-import { Flame, Heart } from "lucide-react";
-import { Button } from "../ui/button";
-import { useToast } from "@/hooks/use-toast";
-import * as React from "react";
+import { correctMalformedUrl } from "@/lib/utils";
 
 interface ProfileHeaderProps {
   figure: Figure;
   onImageClick: (imageUrl: string) => void;
-  streakCount: number | null;
 }
-
-const FIRE_GIF_URL = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/image%2Ffire.gif?alt=media&token=fd18d32d-c443-4da6-a369-e55ae241f7c5";
 
 export function ProfileHeader({ 
   figure, 
   onImageClick,
-  streakCount,
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
-  const { toast } = useToast();
 
   return (
     <div className="w-full bg-black border border-white/20 p-4 sm:p-6 rounded-lg shadow-md">
@@ -66,22 +55,6 @@ export function ProfileHeader({
                 <div className="flex items-center gap-2">
                     <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
                 </div>
-                {streakCount && streakCount > 0 && (
-                  <div className="mt-2">
-                    <Badge variant="destructive" className="bg-orange-600/20 text-orange-400 border-orange-500/50 hover:bg-orange-600/30 flex items-center gap-2 py-1.5 px-3">
-                      <Image 
-                        src={FIRE_GIF_URL}
-                        alt="Racha de fuego"
-                        width={20}
-                        height={20}
-                        unoptimized
-                        className="h-6 w-6"
-                        data-ai-hint="fire gif"
-                      />
-                      <span className="font-bold text-sm">Día {streakCount}</span>
-                    </Badge>
-                  </div>
-                )}
               </div>
             </div>
             

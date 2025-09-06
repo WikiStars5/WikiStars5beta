@@ -3,7 +3,7 @@ import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import type { ReactNode } from 'react';
-import { ClientProviders } from '@/components/layout/ClientProviders';
+import { Toaster } from "@/components/ui/toaster";
 import type { Metadata } from 'next';
 
 const logoUrl = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194";
@@ -49,7 +49,6 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <ClientProviders>
           <div className="flex flex-col min-h-screen">
             <Header />
             <main className="flex-grow w-full max-w-6xl mx-auto py-8 px-4">
@@ -57,7 +56,7 @@ export default function RootLayout({
             </main>
             <Footer />
           </div>
-        </ClientProviders>
+          <Toaster />
       </body>
     </html>
   );
