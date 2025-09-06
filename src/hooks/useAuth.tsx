@@ -28,18 +28,16 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Only true on initial load
   const router = useRouter();
   const { toast } = useToast();
 
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
-      // Manually clear state immediately for instant UI feedback
       setUser(null);
       setFirebaseUser(null);
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
-      // The onAuthStateChanged listener will handle redirecting to an anonymous session.
       window.location.href = '/';
     } catch (error) {
       console.error("Error logging out: ", error);
@@ -48,43 +46,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [toast]);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
         if (fbUser.isAnonymous) {
-          setUser(null);
+          setUser(null); // Anonymous users don't have a firestore profile
           setIsLoading(false);
         } else {
+          // It's a registered user, listen for their profile document
           const userDocRef = doc(db, 'users', fbUser.uid);
           const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
               setUser(docSnap.data() as UserProfile);
             } else {
-              // This can happen briefly after account creation before the profile is created.
-              // We'll set user to null, but keep listening.
-              setUser(null);
+              setUser(null); // Profile might not be created yet
             }
-            // Always set loading to false after attempting to fetch the profile.
-            // This is the key fix for the infinite spinner.
-            setIsLoading(false);
+            setIsLoading(false); // <--- CRITICAL FIX: Always stop loading
           }, (error) => {
             console.error("Error with profile snapshot listener:", error);
             setUser(null);
-            // Also ensure loading is false on error.
-            setIsLoading(false);
+            setIsLoading(false); // <--- CRITICAL FIX: Also stop loading on error
           });
           return () => unsubscribeSnapshot();
         }
       } else {
-        // No user is signed in at all. Begin anonymous sign-in.
-        setIsLoading(true); 
-        try {
-            await signInAnonymously(auth);
-            // The onAuthStateChanged listener will be called again with the new anonymous user.
-        } catch (error) {
+        // No user at all, sign in anonymously
+        signInAnonymously(auth).catch((error) => {
            console.error("Critical error: Could not sign in anonymously.", error);
-           setIsLoading(false);
-        }
+           setIsLoading(false); // Stop loading even if anonymous sign-in fails
+        });
       }
     });
 
