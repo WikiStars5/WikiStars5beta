@@ -22,6 +22,7 @@ function AdminUsersPageComponent() {
       try {
         const result = await callFirebaseFunction('getAllUsers');
         if (result.success) {
+          // The function now returns pre-filtered and sorted users.
           setUsers(result.users);
         } else {
           throw new Error(result.error || 'Unknown error fetching users.');

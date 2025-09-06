@@ -10,7 +10,6 @@ import { onUserCreate } from "firebase-functions/v2/auth";
 
 import type { UserProfile } from "./types";
 import { COUNTRIES } from "./countries";
-import type { DocumentData } from "firebase-admin/firestore";
 
 // Centralized Admin UID for security checks.
 const ADMIN_UID = '252qq3sz2fWwHjQTF9JQWG65aiC2';
@@ -95,71 +94,51 @@ export const updateUserProfile = onCall(async (request) => {
     }
 });
 
-
-const convertTimestampToString = (timestamp: any): string | undefined => {
-  if (!timestamp) return undefined;
-  if (typeof timestamp.toDate === 'function') {
-    return timestamp.toDate().toISOString();
-  }
-  if (typeof timestamp === 'string') {
-    return timestamp;
-  }
-  if (timestamp instanceof Date) {
-    return timestamp.toISOString();
-  }
-  return undefined;
-};
-
-const mapDocToUserProfile = (uid: string, data: DocumentData): UserProfile => {
-  const createdAt = convertTimestampToString(data.createdAt) || new Date().toISOString();
-  return {
-    uid,
-    email: data.email || null,
-    username: data.username || '',
-    country: data.country || '',
-    countryCode: data.countryCode || '',
-    gender: data.gender || '', 
-    photoURL: data.photoURL || null,
-    role: data.role || 'user',
-    createdAt: createdAt,
-    lastLoginAt: convertTimestampToString(data.lastLoginAt),
-    fcmToken: data.fcmToken || undefined,
-    achievements: data.achievements || [],
-    isAnonymous: data.isAnonymous ?? false,
-  };
-};
-
+// A robust and simplified function to get all users for the admin panel.
 export const getAllUsers = onCall(async (request) => {
-    const uid = request.auth?.uid;
-    if (!uid) {
+    const callingUid = request.auth?.uid;
+    if (!callingUid) {
         throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
     }
-    
-    const userDoc = await db.collection('users').doc(uid).get();
+
+    // Verify the caller is an admin by checking their custom claims or Firestore role.
+    const userDoc = await db.collection('users').doc(callingUid).get();
     if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
-         throw new HttpsError('permission-denied', 'Only admins can call this function.');
+        throw new HttpsError('permission-denied', 'Only admins can call this function.');
     }
 
     try {
-        const usersCollectionRef = db.collection('users');
-        const querySnapshot = await usersCollectionRef.get();
-
-        const users: UserProfile[] = [];
-        if (!querySnapshot.empty) {
-            querySnapshot.forEach((docSnap) => {
-                users.push(mapDocToUserProfile(docSnap.id, docSnap.data()));
+        const listUsersResult = await auth.listUsers(1000); // Get up to 1000 users
+        const allFirestoreUsers = await db.collection('users').get();
+        const firestoreUsersMap = new Map(allFirestoreUsers.docs.map(doc => [doc.id, doc.data()]));
+        
+        const users = listUsersResult.users
+            // Filter out anonymous users which don't have an email
+            .filter(userRecord => userRecord.email)
+            .map(userRecord => {
+                const firestoreProfile = firestoreUsersMap.get(userRecord.uid);
+                return {
+                    uid: userRecord.uid,
+                    email: userRecord.email || null,
+                    username: firestoreProfile?.username || userRecord.displayName || 'N/A',
+                    photoURL: firestoreProfile?.photoURL || userRecord.photoURL || null,
+                    role: firestoreProfile?.role || 'user',
+                    country: firestoreProfile?.country || '',
+                    countryCode: firestoreProfile?.countryCode || '',
+                    gender: firestoreProfile?.gender || '',
+                    createdAt: userRecord.metadata.creationTime,
+                    lastLoginAt: userRecord.metadata.lastSignInTime,
+                    isAnonymous: false,
+                };
             });
-        }
-        
-        users.sort((a, b) => a.username.localeCompare(b.username));
-        
+
+        // Sort by creation date, newest first
+        users.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
         return { success: true, users: users };
 
     } catch (error: any) {
         console.error("Error fetching all users from Cloud Function:", error);
-        if (error.code === 'permission-denied' || String(error.message).toLowerCase().includes("permission")) {
-            return { success: false, error: 'Error de permisos de Firestore en la Cloud Function. Revisa las reglas de seguridad o los permisos de la cuenta de servicio.' };
-        }
-        return { success: false, error: error.message || 'Un error desconocido ocurrió en la Cloud Function.' };
+        throw new HttpsError('internal', `An unexpected error occurred: ${error.message}`);
     }
 });

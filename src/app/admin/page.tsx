@@ -42,10 +42,8 @@ export default function AdminDashboardPage() {
         
         const usersResult = await callFirebaseFunction('getAllUsers');
         if (usersResult.success) {
-          // Filter out anonymous users and sort by creation date
-          const registeredUsers = usersResult.users.filter((u: UserProfile) => !u.isAnonymous);
-          registeredUsers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          setUsers(registeredUsers);
+          // The function now returns users sorted by creation time, descending.
+          setUsers(usersResult.users);
         } else {
           throw new Error(usersResult.error || 'No se pudieron cargar los usuarios.');
         }
