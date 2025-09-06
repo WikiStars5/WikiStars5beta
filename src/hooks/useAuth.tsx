@@ -40,12 +40,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setFirebaseUser(null);
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       // The onAuthStateChanged listener will handle redirecting to an anonymous session.
-      router.push('/');
+      window.location.href = '/';
     } catch (error) {
       console.error("Error logging out: ", error);
       toast({ title: "Cierre de Sesión Fallido", description: "No se pudo cerrar tu sesión.", variant: "destructive" });
     }
-  }, [router, toast]);
+  }, [toast]);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
@@ -64,10 +64,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               // We'll set user to null, but keep listening.
               setUser(null);
             }
+            // Always set loading to false after attempting to fetch the profile.
+            // This is the key fix for the infinite spinner.
             setIsLoading(false);
           }, (error) => {
             console.error("Error with profile snapshot listener:", error);
             setUser(null);
+            // Also ensure loading is false on error.
             setIsLoading(false);
           });
           return () => unsubscribeSnapshot();
