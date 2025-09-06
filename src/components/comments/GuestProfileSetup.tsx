@@ -33,8 +33,7 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
     const { toast } = useToast();
     const { firebaseUser } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isCountrySet, setIsCountrySet] = useState(false);
-
+    
     const { control, handleSubmit, reset, formState: { errors } } = useForm<GuestProfileFormValues>({
         resolver: zodResolver(guestProfileFormSchema),
         defaultValues: {
@@ -47,18 +46,14 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const guestUsername = localStorage.getItem('wikistars5-guestUsername') || '';
-            const guestGenderValue = GENDER_OPTIONS.find(opt => opt.label === localStorage.getItem('wikistars5-guestGender'))?.value || '';
+            const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
             const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
             
             reset({
                 username: guestUsername,
-                gender: guestGenderValue,
+                gender: guestGender,
                 countryCode: guestCountryCode,
             });
-
-            if (guestCountryCode) {
-              setIsCountrySet(true);
-            }
         }
     }, [reset]);
 
@@ -73,19 +68,16 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
 
         try {
           if (typeof window !== 'undefined') {
-            const genderLabel = GENDER_OPTIONS.find(opt => opt.value === data.gender)?.label || '';
             localStorage.setItem('wikistars5-guestUsername', data.username);
-            localStorage.setItem('wikistars5-guestGender', genderLabel);
-            
-            if (!isCountrySet && data.countryCode) {
-                localStorage.setItem('wikistars5-guestCountryCode', data.countryCode);
-            }
+            localStorage.setItem('wikistars5-guestGender', data.gender || '');
+            localStorage.setItem('wikistars5-guestCountryCode', data.countryCode || '');
       
             toast({
               title: "¡Perfil de Invitado Guardado!",
-              description: `Tu información local ha sido guardada.`,
+              description: `Tu información local ha sido guardada como ${data.username}.`,
             });
             
+            // This custom event tells other parts of the app to update with the new guest info.
             window.dispatchEvent(new CustomEvent('guestProfileUpdated'));
             onProfileSave();
           }
@@ -103,7 +95,7 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
                  <CardHeader className="pb-4">
                     <CardTitle className="flex items-center gap-2 text-base"><UserPlus /> Configura tu Perfil de Invitado</CardTitle>
                     <CardDescription className="text-xs">
-                        Elige un nombre y género para poder comentar. Esta información se guardará solo en este dispositivo.
+                        Elige un nombre para poder comentar. Esta información se guardará solo en este dispositivo.
                     </CardDescription>
                 </CardHeader>
             )}
@@ -127,7 +119,7 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
                         )}
                     </div>
                     <div>
-                        <Label htmlFor="guest-gender">Sexo</Label>
+                        <Label htmlFor="guest-gender">Sexo (Opcional)</Label>
                             <Controller
                             name="gender"
                             control={control}
@@ -139,11 +131,9 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
                                         </SelectTrigger>
                                         <SelectContent>
                                         {GENDER_OPTIONS.map((opt) => (
-                                            (opt.value === 'male' || opt.value === 'female') && (
                                             <SelectItem key={opt.value} value={opt.value}>
                                                 {opt.label}
                                             </SelectItem>
-                                            )
                                         ))}
                                         </SelectContent>
                                     </Select>
@@ -152,7 +142,7 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
                         />
                     </div>
                      <div>
-                        <Label htmlFor="guest-country">País</Label>
+                        <Label htmlFor="guest-country">País (Opcional)</Label>
                         <Controller
                             name="countryCode"
                             control={control}
@@ -160,11 +150,9 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
                                 <CountryCombobox
                                     value={field.value ?? ''}
                                     onChange={field.onChange}
-                                    disabled={isCountrySet}
                                 />
                             )}
                         />
-                        {isCountrySet && <p className="text-xs text-muted-foreground mt-1">La nacionalidad no se puede cambiar una vez establecida.</p>}
                     </div>
                     
                     <div className="flex justify-end gap-2 pt-2">
