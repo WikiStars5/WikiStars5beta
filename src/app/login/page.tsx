@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -8,13 +9,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Loader2, LogIn } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const loginFormSchema = z.object({
   email: z.string().email({ message: 'Por favor, introduce un correo electrónico válido.' }),
@@ -63,8 +65,8 @@ export default function LoginPage() {
     <div className="flex items-center justify-center py-12">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-headline">Acceso de Administrador</CardTitle>
-          <CardDescription>Inicia sesión para gestionar la plataforma.</CardDescription>
+          <CardTitle className="text-2xl font-headline">Iniciar Sesión</CardTitle>
+          <CardDescription>Accede a tu cuenta para continuar.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -73,7 +75,7 @@ export default function LoginPage() {
               <Controller
                 name="email"
                 control={control}
-                render={({ field }) => <Input id="email" type="email" placeholder="admin@example.com" {...field} />}
+                render={({ field }) => <Input id="email" type="email" placeholder="tu@email.com" {...field} />}
               />
               {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
@@ -92,6 +94,15 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
+        <CardFooter className="flex-col items-center gap-4">
+            <Separator />
+            <p className="text-sm text-muted-foreground">
+                ¿No tienes una cuenta?{' '}
+                <Link href="/signup" className="font-semibold text-primary hover:underline">
+                    Regístrate
+                </Link>
+            </p>
+        </CardFooter>
       </Card>
     </div>
   );

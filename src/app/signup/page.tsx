@@ -1,7 +1,9 @@
+
 "use client";
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,10 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, UserPlus, ShieldAlert } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useAuth } from '@/hooks/useAuth'; // Import the useAuth hook
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, UserPlus } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const signupFormSchema = z.object({
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres.").max(30, "El nombre de usuario no puede exceder los 30 caracteres."),
@@ -28,7 +29,6 @@ export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, isLoading: isAuthLoading } = useAuth(); // Use our auth hook
 
   const { control, handleSubmit, formState: { errors } } = useForm<SignupFormValues>({
     resolver: zodResolver(signupFormSchema),
@@ -44,10 +44,10 @@ export default function SignupPage() {
       });
 
       toast({
-        title: "¡Cuenta Creada!",
-        description: "La nueva cuenta ha sido creada exitosamente.",
+        title: "¡Bienvenido a WikiStars5!",
+        description: "Tu cuenta ha sido creada exitosamente.",
       });
-      router.push('/admin/users'); // Redirect to user management
+      router.push('/profile'); // Redirect to user's new profile
       router.refresh();
     } catch (error: any) {
       console.error("Error during signup:", error);
@@ -61,42 +61,12 @@ export default function SignupPage() {
     }
   };
 
-  if (isAuthLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (user?.role !== 'admin') {
-    return (
-      <div className="flex items-center justify-center py-12">
-          <Card className="w-full max-w-md">
-             <CardHeader>
-                <CardTitle className="text-center">Acceso Denegado</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Alert variant="destructive">
-                  <ShieldAlert className="h-4 w-4" />
-                  <AlertTitle>No tienes permisos</AlertTitle>
-                  <AlertDescription>
-                    Esta página solo está disponible para administradores de la plataforma.
-                  </AlertDescription>
-                </Alert>
-            </CardContent>
-          </Card>
-      </div>
-    );
-  }
-
-  // Render the form only if the user is an admin
   return (
     <div className="flex items-center justify-center py-12">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-headline">Crear Nueva Cuenta</CardTitle>
-          <CardDescription>Usa este formulario para registrar nuevas cuentas de administrador o prueba.</CardDescription>
+          <CardTitle className="text-2xl font-headline">Crear una Cuenta</CardTitle>
+          <CardDescription>Regístrate para guardar tu perfil y participar en la comunidad.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -121,6 +91,15 @@ export default function SignupPage() {
             </Button>
           </form>
         </CardContent>
+         <CardFooter className="flex-col items-center gap-4">
+            <Separator />
+            <p className="text-sm text-muted-foreground">
+                ¿Ya tienes una cuenta?{' '}
+                <Link href="/login" className="font-semibold text-primary hover:underline">
+                    Inicia Sesión
+                </Link>
+            </p>
+        </CardFooter>
       </Card>
     </div>
   );
