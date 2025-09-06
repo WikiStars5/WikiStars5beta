@@ -83,77 +83,63 @@ export default function ProfilePage() {
   });
   
   const loadLocalData = useCallback(async () => {
-    if (!firebaseUser) return;
+    if (typeof window === 'undefined' || !firebaseUser) return;
     setIsDataLoading(true);
     try {
-        // Fetch local streaks
-        const streaksJSON = localStorage.getItem('wikistars5-userStreaks');
-        const localStreaks: LocalUserStreak[] = streaksJSON ? JSON.parse(streaksJSON) : [];
-        
-        // Filter out expired streaks
-        const now = new Date();
-        const activeStreaks = localStreaks.filter(streak => {
-            const lastCommentDate = new Date(streak.lastCommentDate);
-            return differenceInHours(now, lastCommentDate) < 24;
-        });
+      const getFromStorage = (key: string) => JSON.parse(localStorage.getItem(key) || '[]');
+      
+      const localStreaks: LocalUserStreak[] = getFromStorage('wikistars5-userStreaks');
+      const localAttitudes: Attitude[] = getFromStorage('wikistars5-userAttitudes');
+      const localEmotions: EmotionVote[] = getFromStorage('wikistars5-userEmotions');
+      
+      const now = new Date();
+      const activeStreaks = localStreaks.filter(streak => differenceInHours(now, new Date(streak.lastCommentDate)) < 24);
+      localStorage.setItem('wikistars5-userStreaks', JSON.stringify(activeStreaks));
+      setStreaks(activeStreaks);
+      setAttitudes(localAttitudes);
+      setEmotions(localEmotions);
 
-        // Update localStorage with only active streaks
-        localStorage.setItem('wikistars5-userStreaks', JSON.stringify(activeStreaks));
-        
-        const figureIdsForStreaks = activeStreaks.map(s => s.figureId);
-        if (figureIdsForStreaks.length > 0) {
-            const figures = await getFiguresByIds(figureIdsForStreaks);
-            const figuresMap = new Map(figures.map(f => [f.id, f]));
-            const streaksWithFigures = activeStreaks
-              .map(s => ({ ...s, figure: figuresMap.get(s.figureId) }))
-              .filter(s => s.figure); // Ensure figure exists
-            setStreaks(streaksWithFigures);
-        } else {
-            setStreaks([]);
-        }
-
-        // Fetch local attitudes & emotions
-        const attitudesJSON = localStorage.getItem('wikistars5-userAttitudes');
-        const localAttitudes: Attitude[] = attitudesJSON ? JSON.parse(attitudesJSON) : [];
-        setAttitudes(localAttitudes);
-        const attitudeFigureIds = localAttitudes.map(a => a.figureId);
-        if (attitudeFigureIds.length > 0) {
-            const figures = await getFiguresByIds(attitudeFigureIds);
-            setAttitudeFigures(figures);
-        }
-
-        const emotionsJSON = localStorage.getItem('wikistars5-userEmotions');
-        const localEmotions: EmotionVote[] = emotionsJSON ? JSON.parse(emotionsJSON) : [];
-        setEmotions(localEmotions);
-        const emotionFigureIds = localEmotions.map(e => e.figureId);
-        if (emotionFigureIds.length > 0) {
-            const figures = await getFiguresByIds(emotionFigureIds);
-            setEmotionFigures(figures);
-        }
-
+      const figureIds = new Set([
+        ...activeStreaks.map(s => s.figureId),
+        ...localAttitudes.map(a => a.figureId),
+        ...localEmotions.map(e => e.figureId),
+      ]);
+      
+      if (figureIds.size > 0) {
+        const figures = await getFiguresByIds(Array.from(figureIds));
+        const figuresMap = new Map(figures.map(f => [f.id, f]));
+        setStreaks(activeStreaks.map(s => ({ ...s, figure: figuresMap.get(s.figureId) })).filter(s => s.figure));
+        setAttitudeFigures(localAttitudes.map(a => figuresMap.get(a.figureId)).filter((f): f is Figure => !!f));
+        setEmotionFigures(localEmotions.map(e => figuresMap.get(e.figureId)).filter((f): f is Figure => !!f));
+      }
     } catch (error) {
-        console.error("Error loading profile data from localStorage:", error);
-        toast({ title: "Error", description: "No se pudieron cargar los datos de tu actividad local.", variant: "destructive" });
+      console.error("Error loading profile data from localStorage:", error);
+      toast({ title: "Error", description: "No se pudieron cargar los datos de tu actividad local.", variant: "destructive" });
     } finally {
-        setIsDataLoading(false);
+      setIsDataLoading(false);
     }
   }, [firebaseUser, toast]);
 
 
   useEffect(() => {
-    if (!isLoading) {
-      if (firestoreUser) {
-        reset({
-          username: firestoreUser.username ?? '',
-          countryCode: firestoreUser.countryCode ?? '',
-          gender: firestoreUser.gender ?? '',
-        });
-      }
+    // This effect handles setting form data for REGISTERED users
+    if (!isLoading && firestoreUser) {
+      reset({
+        username: firestoreUser.username ?? '',
+        countryCode: firestoreUser.countryCode ?? '',
+        gender: firestoreUser.gender ?? '',
+      });
+    }
+    // This effect loads local data (streaks, votes) for ALL users (guests and registered)
+    if (!isLoading && firebaseUser) {
       loadLocalData();
     }
-  }, [isLoading, firestoreUser, reset, loadLocalData]);
+  }, [isLoading, firestoreUser, firebaseUser, reset, loadLocalData]);
+
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
+    // This function is only for registered users
+    if (isAnonymous || !firebaseUser) return;
     try {
       await updateUserProfileCallable(data);
       if (firebaseUser) {
@@ -185,14 +171,14 @@ export default function ProfilePage() {
     );
   }
 
-  if (!firestoreUser) {
+  if (isAnonymous || !firestoreUser) {
      return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center p-4">
              <Card className="max-w-md">
                 <CardHeader>
                     <CardTitle>Perfil de Invitado</CardTitle>
                     <CardDescription>
-                        Para ver tu perfil, rachas y actividad, necesitas crear una cuenta.
+                        Para guardar tu perfil permanentemente y acceder a todas las funciones, crea una cuenta.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -240,7 +226,7 @@ export default function ProfilePage() {
             <CardHeader className="flex flex-row justify-between items-start">
               <div>
                   <CardTitle>Tu Información</CardTitle>
-                  <CardDescription>Edita los datos públicos de tu perfil.</CardDescription>
+                  <CardDescription>Edita los datos de tu perfil. Se guardarán en tu cuenta de forma permanente.</CardDescription>
               </div>
               <form onSubmit={handleSubmit(onProfileSubmit)}>
                 <Button type="submit" disabled={isSubmitting}>
