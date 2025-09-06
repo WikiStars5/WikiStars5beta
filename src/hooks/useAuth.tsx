@@ -1,8 +1,9 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, signInAnonymously, type User as FirebaseUser } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, app } from '@/lib/firebase'; // Import 'app' to ensure initialization
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
@@ -26,19 +27,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // By explicitly referencing 'app', we ensure the firebase.ts module runs and initializes.
+    if (!app) {
+      console.error("Firebase app not initialized!");
+      setIsLoading(false);
+      return;
+    }
+
     const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
-        // A user is signed in (can be anonymous or registered).
         setFirebaseUser(fbUser);
         
         if (fbUser.isAnonymous) {
-          // If anonymous, there's no Firestore profile to fetch. User is not null.
           setUser(null); 
           setIsLoading(false);
           return;
         }
 
-        // For registered users, listen to their profile document for real-time updates.
         const userDocRef = doc(db, 'users', fbUser.uid);
         const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -54,19 +59,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsLoading(false);
         });
 
-        // Cleanup the profile listener when the user changes.
         return () => unsubscribeSnapshot();
       } else {
-        // No user is signed in, so sign in anonymously.
         signInAnonymously(auth).catch((error) => {
             console.error("Error signing in anonymously:", error);
-            // Handle error, maybe show a message to the user
             setIsLoading(false);
         });
       }
     });
 
-    // Cleanup the main auth listener when the component unmounts.
     return () => unsubscribeAuth();
   }, []);
   
