@@ -43,9 +43,9 @@ export default function LoginPage() {
         title: 'Inicio de Sesión Exitoso',
         description: 'Bienvenido de nuevo.',
       });
-      router.push('/profile'); // Redirect to profile to see admin options
+      // Force a full page reload to ensure auth state is synced across the app
+      window.location.href = '/profile';
     } catch (error: any) {
-      // This is the expected flow for a failed login, not an application error.
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         toast({
           title: 'Error al Iniciar Sesión',
@@ -53,7 +53,6 @@ export default function LoginPage() {
           variant: 'destructive',
         });
       } else {
-        // Handle other, unexpected errors
         console.error('Error during login:', error);
         toast({
           title: 'Error al Iniciar Sesión',

@@ -52,8 +52,8 @@ export default function SignupPage() {
         title: "¡Bienvenido a WikiStars5!",
         description: "Tu cuenta ha sido creada exitosamente.",
       });
-      router.push('/profile'); // Redirect to user's new profile
-      router.refresh();
+      // Force a full page reload to ensure auth state is synced across the app
+      window.location.href = '/profile';
     } catch (error: any) {
       console.error("Error during signup:", error);
       let message = "No se pudo crear la cuenta.";
