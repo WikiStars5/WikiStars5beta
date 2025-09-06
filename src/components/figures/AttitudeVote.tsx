@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { Figure, AttitudeKey, Attitude } from '@/lib/types';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +13,6 @@ import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
 import { useAuth } from '@/hooks/useAuth';
-import { signInAnonymously } from 'firebase/auth';
 
 
 interface AttitudeVoteProps {
@@ -86,26 +85,18 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   const handleAttitudeClick = async (attitudeKeyClicked: AttitudeKey) => {
     if (isLoadingAttitudeAction) return;
 
+    if (!firebaseUser) {
+        toast({ title: "Error", description: "No se pudo iniciar la sesión de invitado para votar.", variant: "destructive" });
+        return;
+    }
+
     setIsLoadingAttitudeAction(attitudeKeyClicked);
 
-    let currentUser = firebaseUser;
-    if (!currentUser) {
-        try {
-            const userCredential = await signInAnonymously(auth);
-            currentUser = userCredential.user;
-        } catch (error) {
-            console.error("Error signing in anonymously on demand:", error);
-            toast({ title: "Error de autenticación", description: "No se pudo iniciar la sesión de invitado para votar.", variant: "destructive" });
-            setIsLoadingAttitudeAction(null);
-            return;
-        }
-    }
-    
     const newAttitudeToSet = selectedAttitude === attitudeKeyClicked ? null : attitudeKeyClicked;
     
     try {
         const figureDocRef = doc(db, 'figures', figureId);
-        const userVoteDocRef = doc(db, 'userAttitudes', `${currentUser.uid}_${figureId}`);
+        const userVoteDocRef = doc(db, 'userAttitudes', `${firebaseUser.uid}_${figureId}`);
 
         await runTransaction(db, async (transaction) => {
             const figureDoc = await transaction.get(figureDocRef);
@@ -129,7 +120,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
             transaction.update(figureDocRef, { attitudeCounts: newCounts });
             
             if (newAttitudeToSet) {
-                transaction.set(userVoteDocRef, { userId: currentUser!.uid, figureId, attitude: newAttitudeToSet, addedAt: serverTimestamp() });
+                transaction.set(userVoteDocRef, { userId: firebaseUser!.uid, figureId, attitude: newAttitudeToSet, addedAt: serverTimestamp() });
             } else if (userVoteDoc.exists()) {
                 transaction.delete(userVoteDocRef);
             }
@@ -151,7 +142,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       setSelectedAttitude(newAttitudeToSet);
 
       if (!isAnonymous && newAttitudeToSet) {
-          const achievementResult = await grantActitudDefinidaAchievement(currentUser.uid);
+          const achievementResult = await grantActitudDefinidaAchievement(firebaseUser.uid);
           if (achievementResult.unlocked) {
               toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
           }
@@ -206,10 +197,10 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                     "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 border bg-black",
                     colorClass,
                     selectedAttitude === key ? selectedClass : 'ring-0',
-                    isLoadingAttitudeAction === key && 'opacity-50 cursor-not-allowed'
+                    (isLoadingAttitudeAction || !firebaseUser) && 'opacity-50 cursor-not-allowed'
                   )}
                   onClick={() => handleAttitudeClick(key)}
-                  disabled={!!isLoadingAttitudeAction}
+                  disabled={!!isLoadingAttitudeAction || !firebaseUser}
                   style={{ minHeight: '100px' }}
                 >
                   {isLoadingAttitudeAction === key && <Loader2 className="absolute h-6 w-6 animate-spin" />}

@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { Figure, EmotionKey, EmotionVote } from '@/lib/types';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +13,6 @@ import Image from 'next/image';
 import { ShareButton } from '../shared/ShareButton';
 import { grantEmocionAlDescubiertoAchievement } from '@/app/actions/achievementActions';
 import { useAuth } from '@/hooks/useAuth';
-import { signInAnonymously } from 'firebase/auth';
 
 interface PerceptionEmotionsProps {
   figureId: string;
@@ -80,27 +79,19 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
 
   const handleEmotionClick = async (emotionKeyClicked: EmotionKey) => {
     if (isLoadingEmotionAction) return;
+
+    if (!firebaseUser) {
+        toast({ title: "Error", description: "No se pudo iniciar la sesión de invitado para votar.", variant: "destructive" });
+        return;
+    }
     
     setIsLoadingEmotionAction(emotionKeyClicked);
-
-    let currentUser = firebaseUser;
-    if (!currentUser) {
-        try {
-            const userCredential = await signInAnonymously(auth);
-            currentUser = userCredential.user;
-        } catch (error) {
-            console.error("Error signing in anonymously on demand:", error);
-            toast({ title: "Error de autenticación", description: "No se pudo iniciar la sesión de invitado para votar.", variant: "destructive" });
-            setIsLoadingEmotionAction(null);
-            return;
-        }
-    }
     
     const newEmotionToSet = selectedEmotion === emotionKeyClicked ? null : emotionKeyClicked;
     
     try {
         const figureDocRef = doc(db, 'figures', figureId);
-        const userVoteDocRef = doc(db, 'userPerceptions', `${currentUser.uid}_${figureId}`);
+        const userVoteDocRef = doc(db, 'userPerceptions', `${firebaseUser.uid}_${figureId}`);
 
         await runTransaction(db, async (transaction) => {
             const figureDoc = await transaction.get(figureDocRef);
@@ -124,7 +115,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
             transaction.update(figureDocRef, { perceptionCounts: newCounts });
 
             if (newEmotionToSet) {
-                transaction.set(userVoteDocRef, { userId: currentUser!.uid, figureId, emotion: newEmotionToSet, addedAt: serverTimestamp() });
+                transaction.set(userVoteDocRef, { userId: firebaseUser!.uid, figureId, emotion: newEmotionToSet, addedAt: serverTimestamp() });
             } else if (userVoteDoc.exists()) {
                 transaction.delete(userVoteDocRef);
             }
@@ -145,7 +136,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         setSelectedEmotion(newEmotionToSet);
 
         if (!isAnonymous && newEmotionToSet) {
-            const achievementResult = await grantEmocionAlDescubiertoAchievement(currentUser.uid);
+            const achievementResult = await grantEmocionAlDescubiertoAchievement(firebaseUser.uid);
             if (achievementResult.unlocked) {
                 toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
             }
@@ -197,10 +188,10 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
                   variant={selectedEmotion === key ? "default" : "outline"}
                   className={`flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 
                     ${selectedEmotion === key ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 dark:ring-offset-card' : `text-foreground ${colorClass}`}
-                    ${isLoadingEmotionAction === key ? 'opacity-50 cursor-not-allowed' : ''}
+                    ${(isLoadingEmotionAction || !firebaseUser) ? 'opacity-50 cursor-not-allowed' : ''}
                   `}
                   onClick={() => handleEmotionClick(key)}
-                  disabled={!!isLoadingEmotionAction}
+                  disabled={!!isLoadingEmotionAction || !firebaseUser}
                   style={{ minHeight: '120px' }}
                 >
                   {isLoadingEmotionAction === key && <Loader2 className="absolute h-6 w-6 animate-spin" />}

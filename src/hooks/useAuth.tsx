@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, signInAnonymously, type User as FirebaseUser } from 'firebase/auth';
-import { auth, db, app } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
@@ -29,14 +29,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
+        // User is signed in, either registered or anonymous
         setFirebaseUser(fbUser);
         
         if (fbUser.isAnonymous) {
-          setUser(null); 
+          setUser(null); // Anonymous users don't have a Firestore profile
           setIsLoading(false);
-          return;
+          return; // Stop here for anonymous users
         }
 
+        // For registered users, fetch their Firestore profile
         const userDocRef = doc(db, 'users', fbUser.uid);
         const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -52,12 +54,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsLoading(false);
         });
 
+        // Return the cleanup function for the snapshot listener
         return () => unsubscribeSnapshot();
       } else {
-        // If there's no user, we are logged out. The components will handle the anonymous sign-in on demand.
-        setUser(null);
-        setFirebaseUser(null);
-        setIsLoading(false);
+        // No user is signed in, so we sign them in anonymously.
+        signInAnonymously(auth).catch((error) => {
+          console.error("Error signing in anonymously:", error);
+          // If anonymous sign-in fails, we are not loading anymore
+          setUser(null);
+          setFirebaseUser(null);
+          setIsLoading(false);
+        });
       }
     });
 
