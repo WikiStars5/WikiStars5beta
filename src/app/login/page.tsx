@@ -44,7 +44,7 @@ export default function LoginPage() {
         description: 'Bienvenido de nuevo.',
       });
       // Force a full page reload to ensure auth state is synced across the app
-      window.location.href = '/profile';
+      window.location.href = '/';
     } catch (error: any) {
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         toast({

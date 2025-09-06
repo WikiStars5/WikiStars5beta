@@ -53,7 +53,7 @@ export default function SignupPage() {
         description: "Tu cuenta ha sido creada exitosamente.",
       });
       // Force a full page reload to ensure auth state is synced across the app
-      window.location.href = '/profile';
+      window.location.href = '/';
     } catch (error: any) {
       console.error("Error during signup:", error);
       let message = "No se pudo crear la cuenta.";
