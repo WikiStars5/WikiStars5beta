@@ -32,6 +32,11 @@ export default function SignupPage() {
 
   const { control, handleSubmit, formState: { errors } } = useForm<SignupFormValues>({
     resolver: zodResolver(signupFormSchema),
+    defaultValues: {
+      username: '',
+      email: '',
+      password: '',
+    },
   });
 
   const onSubmit = async (data: SignupFormValues) => {
