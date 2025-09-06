@@ -4,6 +4,7 @@
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from "@/components/ui/toaster";
 import React, { type ReactNode } from 'react';
+import { AuthProvider } from '@/hooks/use-auth';
 
 // This component provides client-side context, like the theme and toast notifications.
 export function ClientProviders({ children }: { children: ReactNode }) {
@@ -13,8 +14,10 @@ export function ClientProviders({ children }: { children: ReactNode }) {
       defaultTheme="dark"
       enableSystem={false}
     >
-      {children}
-      <Toaster />
+      <AuthProvider>
+        {children}
+        <Toaster />
+      </AuthProvider>
     </ThemeProvider>
   );
 }
