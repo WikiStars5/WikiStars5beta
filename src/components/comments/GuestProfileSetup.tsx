@@ -31,7 +31,7 @@ interface GuestProfileSetupProps {
 
 export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onCancelEdit }: GuestProfileSetupProps) {
     const { toast } = useToast();
-    const { firebaseUser } = useAuth();
+    const { firebaseUser } = useAuth(); // We only need firebaseUser to confirm a session exists
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const { control, handleSubmit, reset, formState: { errors } } = useForm<GuestProfileFormValues>({
@@ -43,6 +43,7 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
         },
     });
 
+    // On component mount, load existing data from localStorage into the form
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const guestUsername = localStorage.getItem('wikistars5-guestUsername') || '';
@@ -60,14 +61,16 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
 
     const onSubmit = async (data: GuestProfileFormValues) => {
         setIsSubmitting(true);
-        if (!firebaseUser || !firebaseUser.isAnonymous) {
-            toast({ title: "Error", description: "No se pudo encontrar una sesión de invitado válida.", variant: "destructive"});
+        // The only check we need is if a Firebase user (anonymous or not) exists.
+        if (!firebaseUser) {
+            toast({ title: "Error de Sesión", description: "Tu sesión no está activa. Por favor, refresca la página.", variant: "destructive"});
             setIsSubmitting(false);
             return;
         }
 
         try {
           if (typeof window !== 'undefined') {
+            // Save the data to localStorage
             localStorage.setItem('wikistars5-guestUsername', data.username);
             localStorage.setItem('wikistars5-guestGender', data.gender || '');
             localStorage.setItem('wikistars5-guestCountryCode', data.countryCode || '');
@@ -82,8 +85,8 @@ export function GuestProfileSetup({ onProfileSave, isEditingContext = false, onC
             onProfileSave();
           }
         } catch (error: any) {
-            console.error("Error creating guest profile:", error);
-            toast({ title: "Error", description: "No se pudo crear tu perfil de invitado.", variant: "destructive"});
+            console.error("Error saving guest profile:", error);
+            toast({ title: "Error", description: "No se pudo guardar tu perfil de invitado.", variant: "destructive"});
         } finally {
             setIsSubmitting(false);
         }

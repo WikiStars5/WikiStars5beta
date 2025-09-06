@@ -78,11 +78,11 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
   }, [figureId, firebaseUser]);
 
   const handleEmotionClick = async (emotionKeyClicked: EmotionKey) => {
-    if (isLoadingEmotionAction) return;
+    if (isLoadingEmotionAction || isAuthLoading) return;
 
     if (!firebaseUser) {
-        toast({ title: "Error", description: "No se pudo iniciar la sesión de invitado para votar.", variant: "destructive" });
-        return;
+      toast({ title: "Acción requerida", description: "Por favor, espera a que tu sesión se cargue o refresca la página.", variant: "destructive" });
+      return;
     }
     
     setIsLoadingEmotionAction(emotionKeyClicked);
