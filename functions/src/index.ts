@@ -13,7 +13,7 @@ import { COUNTRIES } from "./countries";
 import type { DocumentData } from "firebase-admin/firestore";
 
 // Centralized Admin UID for security checks.
-const ADMIN_UID = 'JZP4A5GvZUbWuT0Y1DIiawWcSUp2';
+const ADMIN_UID = '252qq3sz2fWwHjQTF9JQWG65aiC2';
 
 // Initialize Firebase Admin SDK if not already initialized
 if (!admin.apps.length) {
