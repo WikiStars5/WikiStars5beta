@@ -1,8 +1,9 @@
+
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
 
-import { initializeApp, getApp, type FirebaseApp } from "firebase/app";
+import { initializeApp, getApp, getApps, type FirebaseApp } from "firebase/app";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
@@ -17,14 +18,18 @@ const firebaseConfig = {
   measurementId: "G-XCFCPXNP56"
 };
 
-let app: FirebaseApp;
-try {
-  app = getApp();
-} catch (e) {
-  app = initializeApp(firebaseConfig);
-}
+// --- Inicialización Robusta para Next.js ---
+// Esta función garantiza que la app de Firebase se inicialice solo una vez.
+const getFirebaseApp = (): FirebaseApp => {
+  if (getApps().length === 0) {
+    return initializeApp(firebaseConfig);
+  }
+  return getApp();
+};
 
-export const storage: FirebaseStorage = getStorage(app);
-export const db: Firestore = getFirestore(app);
-export const auth: Auth = getAuth(app);
-export { app };
+const app: FirebaseApp = getFirebaseApp();
+const storage: FirebaseStorage = getStorage(app);
+const db: Firestore = getFirestore(app);
+const auth: Auth = getAuth(app);
+
+export { app, db, auth, storage };

@@ -57,13 +57,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Return the cleanup function for the snapshot listener
         return () => unsubscribeSnapshot();
       } else {
-        // No user is signed in, try to sign them in anonymously.
+        // No user is signed in, sign them in anonymously.
         try {
             await signInAnonymously(auth);
-            // The onAuthStateChanged listener will automatically rerun with the new anonymous user
+            // The onAuthStateChanged listener will automatically rerun with the new anonymous user.
+            // We don't need to setIsLoading(false) here, as the rerun will handle it.
         } catch (error) {
             console.error("Error signing in anonymously:", error);
-            // If anonymous sign-in fails, we are not loading anymore
+            // If anonymous sign-in fails, we are not loading anymore.
             setUser(null);
             setFirebaseUser(null);
             setIsLoading(false);
