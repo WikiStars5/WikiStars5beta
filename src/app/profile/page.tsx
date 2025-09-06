@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,14 +12,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, LogOut, ShieldCheck, Flame, Heart, Edit, Save, BarChart3, MapPin, Venus, Smile, UserPlus, Link2, X } from 'lucide-react';
+import { Loader2, User, LogOut, ShieldCheck, Save, UserPlus } from 'lucide-react';
 import { correctMalformedUrl } from '@/lib/utils';
 import Link from 'next/link';
-import { ADMIN_UID } from '@/config/admin';
-import { Separator } from '@/components/ui/separator';
-import type { UserProfile, LocalUserStreak, Attitude, Figure, EmotionVote, Streak } from '@/lib/types';
+import type { UserProfile } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { app, db } from '@/lib/firebase';
+import { app } from '@/lib/firebase';
 import { updateProfile } from 'firebase/auth';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -27,14 +25,8 @@ import { CountryCombobox } from '@/components/shared/CountryCombobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import Image from 'next/image';
-import { StreakAnimation } from '@/components/shared/StreakAnimation';
-import { getFiguresByIds } from '@/lib/placeholder-data';
-import { countryCodeToNameMap } from '@/config/countries';
-import { differenceInHours } from 'date-fns';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 
 const profileFormSchema = z.object({
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres.").max(30, "El nombre de usuario no puede exceder los 30 caracteres."),
@@ -45,81 +37,16 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 const updateUserProfileCallable = httpsCallable(getFunctions(app, 'us-central1'), 'updateUserProfile');
 
-const EMOTION_IMAGES: Record<string, {label: string, imageUrl: string}> = {
-  alegria: { label: 'Alegría', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414' },
-  envidia: { label: 'Envidia', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fenvidia.png?alt=media&token=940aa136-2235-48db-84d6-2c461730fde5' },
-  tristeza: { label: 'Tristeza', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ftrizteza.png?alt=media&token=0115df4b-55e4-4281-9cff-a8a560c38903' },
-  miedo: { label: 'Miedo', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985' },
-  desagrado: { label: 'Desagrado', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb' },
-  furia: { label: 'Furia', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f' },
-};
-
-const FIRE_GIF_URL = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/image%2Ffire.gif?alt=media&token=fd18d32d-c443-4da6-a369-e55ae241f7c5";
-
-interface StreakWithFigure extends LocalUserStreak {
-    figure?: Figure;
-}
 
 export default function ProfilePage() {
-  const { user: firestoreUser, isLoading, isAnonymous, logout } = useAuth();
+  const { user: firestoreUser, isLoading, isAnonymous, logout, firebaseUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  
-  // States for data
-  const [streaks, setStreaks] = useState<StreakWithFigure[]>([]);
-  const [attitudes, setAttitudes] = useState<Attitude[]>([]);
-  const [emotions, setEmotions] = useState<EmotionVote[]>([]);
-  
-  // States for figures related to votes
-  const [attitudeFigures, setAttitudeFigures] = useState<Figure[]>([]);
-  const [emotionFigures, setEmotionFigures] = useState<Figure[]>([]);
-
-  const [isDataLoading, setIsDataLoading] = useState(true);
-  const [animationStreak, setAnimationStreak] = useState<number | null>(null);
 
   const { control, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: { username: '', countryCode: '', gender: '' },
   });
-  
-  const loadLocalData = useCallback(async () => {
-    if (typeof window === 'undefined') return;
-    setIsDataLoading(true);
-    try {
-      const getFromStorage = (key: string) => JSON.parse(localStorage.getItem(key) || '[]');
-      
-      const localStreaks: LocalUserStreak[] = getFromStorage('wikistars5-userStreaks');
-      const localAttitudes: Attitude[] = getFromStorage('wikistars5-userAttitudes');
-      const localEmotions: EmotionVote[] = getFromStorage('wikistars5-userEmotions');
-      
-      const now = new Date();
-      const activeStreaks = localStreaks.filter(streak => differenceInHours(now, new Date(streak.lastCommentDate)) < 24);
-      localStorage.setItem('wikistars5-userStreaks', JSON.stringify(activeStreaks));
-      setStreaks(activeStreaks);
-      setAttitudes(localAttitudes);
-      setEmotions(localEmotions);
-
-      const figureIds = new Set([
-        ...activeStreaks.map(s => s.figureId),
-        ...localAttitudes.map(a => a.figureId),
-        ...localEmotions.map(e => e.figureId),
-      ]);
-      
-      if (figureIds.size > 0) {
-        const figures = await getFiguresByIds(Array.from(figureIds));
-        const figuresMap = new Map(figures.map(f => [f.id, f]));
-        setStreaks(activeStreaks.map(s => ({ ...s, figure: figuresMap.get(s.figureId) })).filter(s => s.figure));
-        setAttitudeFigures(localAttitudes.map(a => figuresMap.get(a.figureId)).filter((f): f is Figure => !!f));
-        setEmotionFigures(localEmotions.map(e => figuresMap.get(e.figureId)).filter((f): f is Figure => !!f));
-      }
-    } catch (error) {
-      console.error("Error loading profile data from localStorage:", error);
-      toast({ title: "Error", description: "No se pudieron cargar los datos de tu actividad local.", variant: "destructive" });
-    } finally {
-      setIsDataLoading(false);
-    }
-  }, [toast]);
-
 
   useEffect(() => {
     if (!isLoading && firestoreUser) {
@@ -129,18 +56,15 @@ export default function ProfilePage() {
         gender: firestoreUser.gender ?? '',
       });
     }
-    if (!isLoading) {
-      loadLocalData();
-    }
-  }, [isLoading, firestoreUser, reset, loadLocalData]);
+  }, [isLoading, firestoreUser, reset]);
 
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
-    if (isAnonymous || !firestoreUser) return;
+    if (isAnonymous || !firestoreUser || !firebaseUser) return;
     try {
       await updateUserProfileCallable(data);
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, { displayName: data.username });
+      if (firebaseUser) {
+        await updateProfile(firebaseUser, { displayName: data.username });
       }
       toast({ title: "Perfil Actualizado", description: "Tus cambios han sido guardados." });
     } catch (error: any) {
@@ -166,7 +90,6 @@ export default function ProfilePage() {
     localStorage.setItem('wikistars5-guestCountryCode', countryCode);
     localStorage.setItem('wikistars5-guestGender', gender);
     toast({ title: "Perfil de Invitado Guardado", description: "Tus preferencias se han guardado en este navegador."});
-    // Force re-render to reflect new name
     router.refresh();
   };
 
@@ -196,12 +119,16 @@ export default function ProfilePage() {
                         </div>
                         <div>
                             <Label htmlFor="countryCode">País</Label>
-                            <CountryCombobox
+                            <Controller
                                 name="countryCode"
-                                value={typeof window !== 'undefined' ? localStorage.getItem('wikistars5-guestCountryCode') || '' : ''}
-                                onChange={(value) => document.querySelector<HTMLInputElement>('input[name="countryCodeHidden"]')?.setAttribute('value', value || '')}
+                                control={control}
+                                render={({ field }) => (
+                                    <CountryCombobox
+                                        value={typeof window !== 'undefined' ? localStorage.getItem('wikistars5-guestCountryCode') || field.value || '' : ''}
+                                        onChange={field.onChange}
+                                    />
+                                )}
                             />
-                            <input type="hidden" name="countryCodeHidden" />
                         </div>
                          <div>
                             <Label htmlFor="gender">Sexo</Label>
@@ -228,10 +155,10 @@ export default function ProfilePage() {
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center p-4">
              <Card className="max-w-md">
                 <CardHeader>
-                    <CardTitle>Error al Cargar Perfil</CardTitle>
-                    <CardDescription>
+                    <AlertTitle>Error al Cargar Perfil</AlertTitle>
+                    <AlertDescription>
                         No pudimos cargar los datos de tu perfil. Por favor, intenta refrescar la página. Si el problema persiste, contacta a soporte.
-                    </CardDescription>
+                    </AlertDescription>
                 </CardHeader>
                 <CardContent>
                     <Button onClick={() => window.location.reload()}>Refrescar Página</Button>
@@ -246,11 +173,6 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8">
-       <StreakAnimation 
-        streakCount={animationStreak}
-        isOpen={animationStreak !== null}
-        onClose={() => setAnimationStreak(null)}
-      />
       <Card className="w-full shadow-xl overflow-hidden border border-white/20 bg-black">
         <CardHeader className="items-center text-center p-6">
           <Avatar className="h-24 w-24 mb-4 border-2 border-primary">
@@ -311,7 +233,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
       </div>
-
     </div>
   );
 }
