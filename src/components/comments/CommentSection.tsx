@@ -149,7 +149,14 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
                 isAnonymous: false,
             };
         } else {
-            throw new Error("No se pudo determinar la información del autor.");
+            // This handles the case where the user is no longer anonymous, but the firestore profile is still loading.
+            toast({
+                title: "Cargando perfil...",
+                description: "Tu perfil se está sincronizando. Por favor, espera un momento y vuelve a intentarlo.",
+                variant: "destructive"
+            });
+            setIsPosting(false);
+            return;
         }
 
 
@@ -203,8 +210,6 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
 
   const renderCommentInput = () => {
     if (!firebaseUser) {
-        // This case should ideally not be hit if auth provider handles anonymous sign-in,
-        // but it's a good fallback.
         return (
             <div className="text-center p-4 border-2 border-dashed rounded-lg bg-muted/50">
                 <p className="mb-4 text-muted-foreground font-medium">Para comentar y calificar, necesitas una cuenta.</p>
@@ -366,4 +371,3 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
     </>
   );
 }
-
