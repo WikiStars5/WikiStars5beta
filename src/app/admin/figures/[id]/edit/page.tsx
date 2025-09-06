@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation'; // Importar useParams
 import FigureForm from "@/components/admin/FigureForm"; 
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getFigureFromFirestore } from "@/lib/placeholder-data"; 
@@ -11,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
-export default function EditFigurePage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function EditFigurePage() {
+  const params = useParams(); // Usar el hook
+  const id = params.id as string; // Obtener el ID desde el hook
 
   const [figure, setFigure] = useState<Figure | null>(null);
   const [isLoading, setIsLoading] = useState(true);
