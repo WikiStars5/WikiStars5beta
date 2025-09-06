@@ -12,7 +12,7 @@ import { useToast } from './use-toast';
 interface AuthContextType {
   user: UserProfile | null;
   firebaseUser: FirebaseUser | null;
-  isLoading: boolean;
+  isLoading: boolean; // This will now represent only the INITIAL auth state loading
   isAnonymous: boolean;
   logout: () => Promise<void>;
 }
@@ -28,15 +28,13 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Only true on initial load
-  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true); // True only on initial app load
   const { toast } = useToast();
 
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
-      setUser(null);
-      setFirebaseUser(null);
+      // The onAuthStateChanged listener will handle setting users to null
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       window.location.href = '/';
     } catch (error) {
@@ -45,41 +43,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [toast]);
 
+  // Effect for handling Firebase Auth state changes (login, logout, initial load)
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
-        if (fbUser.isAnonymous) {
-          setUser(null); // Anonymous users don't have a firestore profile
-          setIsLoading(false);
-        } else {
-          // It's a registered user, listen for their profile document
-          const userDocRef = doc(db, 'users', fbUser.uid);
-          const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-              setUser(docSnap.data() as UserProfile);
-            } else {
-              setUser(null); // Profile might not be created yet
-            }
-            setIsLoading(false); // <--- CRITICAL FIX: Always stop loading
-          }, (error) => {
-            console.error("Error with profile snapshot listener:", error);
-            setUser(null);
-            setIsLoading(false); // <--- CRITICAL FIX: Also stop loading on error
-          });
-          return () => unsubscribeSnapshot();
-        }
       } else {
-        // No user at all, sign in anonymously
-        signInAnonymously(auth).catch((error) => {
-           console.error("Critical error: Could not sign in anonymously.", error);
-           setIsLoading(false); // Stop loading even if anonymous sign-in fails
-        });
+        // No user is logged in, and no anonymous session exists.
+        // This will trigger the useEffect below to sign in anonymously.
+        setFirebaseUser(null);
+        setUser(null);
       }
+      setIsLoading(false); // Auth state resolved, stop initial loading.
     });
 
-    return () => unsubscribeAuth();
+    return () => unsubscribe();
   }, []);
+
+  // Effect for fetching Firestore profile OR creating anonymous session
+  useEffect(() => {
+    if (isLoading) return; // Wait for initial auth state to be determined
+
+    if (firebaseUser) {
+      if (firebaseUser.isAnonymous) {
+        setUser(null); // No profile for anonymous users
+        return;
+      }
+      
+      // It's a registered user, listen for their profile.
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setUser(docSnap.data() as UserProfile);
+        } else {
+          // This can happen briefly after registration before the profile is created.
+          setUser(null);
+        }
+      }, (error) => {
+        console.error("Error with profile snapshot listener:", error);
+        setUser(null);
+      });
+      return () => unsubscribeSnapshot();
+
+    } else {
+      // Not loading, and no firebaseUser. This means we need an anonymous session.
+      signInAnonymously(auth).catch((error) => {
+         console.error("Critical error: Could not sign in anonymously.", error);
+      });
+    }
+
+  }, [firebaseUser, isLoading]); // Reruns when user logs in/out or on initial load
   
   const isAnonymous = firebaseUser?.isAnonymous ?? false;
   const value = { user, firebaseUser, isLoading, isAnonymous, logout };
