@@ -1,18 +1,34 @@
-"use client"; // Convert to client component
+
+"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Users, ListOrdered, PlusCircle, AlertTriangle, ImageUp, Loader2 } from "lucide-react";
+import { Users, ListOrdered, PlusCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
-// La importación de getAllUsers se ha eliminado para resolver el error de compilación.
-import type { Figure } from "@/lib/types";
+import { callFirebaseFunction } from "@/lib/firebase";
+import type { Figure, UserProfile } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { correctMalformedUrl } from "@/lib/utils";
+
+const formatDate = (dateString?: string) => {
+  if (!dateString) return 'N/A';
+  try {
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric', month: 'short', day: 'numeric',
+    });
+  } catch (e) { return 'Fecha inválida'; }
+};
+
 
 export default function AdminDashboardPage() {
   const [figures, setFigures] = useState<Figure[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -21,12 +37,22 @@ export default function AdminDashboardPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        // Ahora solo obtenemos los datos de las figuras.
         const figuresData = await getAllFiguresFromFirestore();
         setFigures(figuresData);
+        
+        const usersResult = await callFirebaseFunction('getAllUsers');
+        if (usersResult.success) {
+          // Filter out anonymous users and sort by creation date
+          const registeredUsers = usersResult.users.filter((u: UserProfile) => !u.isAnonymous);
+          registeredUsers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setUsers(registeredUsers);
+        } else {
+          throw new Error(usersResult.error || 'No se pudieron cargar los usuarios.');
+        }
+
       } catch (error: any) {
         console.error("Error fetching admin dashboard data:", error);
-        setFetchError(error.message || 'Ocurrió un error inesperado al cargar los datos de las figuras.');
+        setFetchError(error.message || 'Ocurrió un error inesperado al cargar los datos.');
       } finally {
         setIsLoading(false);
       }
@@ -36,6 +62,8 @@ export default function AdminDashboardPage() {
   }, []);
   
   const totalFigures = figures.length;
+  const totalUsers = users.length;
+  const recentUsers = users.slice(0, 5);
 
   return (
     <div className="space-y-8">
@@ -62,16 +90,68 @@ export default function AdminDashboardPage() {
               <Card className="hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total de Figuras</CardTitle>
-                  <Users className="h-5 w-5 text-muted-foreground" />
+                  <ListOrdered className="h-5 w-5 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{totalFigures}</div>
                   <p className="text-xs text-muted-foreground">perfiles gestionados en Firestore</p>
                 </CardContent>
               </Card>
-              {/* La tarjeta "Total de Usuarios" ha sido eliminada para evitar el error de compilación.
-                  Para reactivarla, asegúrate de que la obtención de datos se realice de manera segura para el entorno de compilación. */}
+              <Card className="hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Usuarios Registrados</CardTitle>
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{totalUsers}</div>
+                  <p className="text-xs text-muted-foreground">cuentas con email y contraseña</p>
+                </CardContent>
+              </Card>
             </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl font-headline">Usuarios Recientes</CardTitle>
+          <CardDescription>Los últimos 5 usuarios que se han registrado en la plataforma.</CardDescription>
+        </CardHeader>
+        <CardContent>
+           {isLoading ? (
+            <div className="flex justify-center items-center h-40">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : recentUsers.length > 0 ? (
+            <div className="overflow-x-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[60px] p-3"></TableHead>
+                    <TableHead className="p-3">Nombre</TableHead>
+                    <TableHead className="p-3">Email</TableHead>
+                    <TableHead className="p-3 text-right">Fecha de Registro</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentUsers.map((user) => (
+                    <TableRow key={user.uid}>
+                       <TableCell className="p-2">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src={correctMalformedUrl(user.photoURL) || undefined} alt={user.username} data-ai-hint="user avatar" />
+                          <AvatarFallback>{user.username ? user.username.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
+                        </Avatar>
+                      </TableCell>
+                      <TableCell className="font-medium p-3">{user.username}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground p-3">{user.email}</TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground p-3">{formatDate(user.createdAt)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+             <p className="text-center text-muted-foreground py-8">No hay usuarios registrados.</p>
           )}
         </CardContent>
       </Card>
@@ -82,21 +162,13 @@ export default function AdminDashboardPage() {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
           <Button asChild>
-            <Link href="/admin/figures/new">
-              <span className="flex items-center">
-                <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nueva Figura
-              </span>
-            </Link>
+            <Link href="/admin/figures/new"><span className="flex items-center"><PlusCircle /> Añadir Nueva Figura</span></Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/admin/figures">
-              <span className="flex items-center">
-                <ListOrdered className="mr-2 h-4 w-4" /> Gestionar Figuras
-              </span>
-            </Link>
+            <Link href="/admin/figures"><span className="flex items-center"><ListOrdered /> Gestionar Figuras</span></Link>
           </Button>
            <Button variant="outline" asChild>
-            <Link href="/admin/users">Gestionar Usuarios</Link>
+            <Link href="/admin/users"><span className="flex items-center"><Users /> Gestionar Usuarios</span></Link>
           </Button>
         </CardContent>
       </Card>
