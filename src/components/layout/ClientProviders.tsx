@@ -5,7 +5,7 @@ import { ThemeProvider } from 'next-themes';
 import { Toaster } from "@/components/ui/toaster";
 import React, { type ReactNode } from 'react';
 
-// This component is no longer needed for AuthProvider, but we keep it for ThemeProvider and Toaster.
+// This component provides client-side context, like the theme and toast notifications.
 export function ClientProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider

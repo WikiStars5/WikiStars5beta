@@ -8,6 +8,7 @@ import { SearchBar } from '@/components/shared/SearchBar';
 import { useState } from 'react';
 import { InstallPwaButton } from './InstallPwaButton';
 import { PrimaryNav } from './PrimaryNav';
+import { ThemeToggleButton } from './ThemeToggleButton';
 
 
 export function Header() {
@@ -31,6 +32,7 @@ export function Header() {
 
         {/* Right Section */}
         <div className="flex items-center gap-1 md:gap-2 lg:gap-3">
+          <ThemeToggleButton />
           <div className="hidden md:flex items-center">
             <InstallPwaButton />
           </div>
