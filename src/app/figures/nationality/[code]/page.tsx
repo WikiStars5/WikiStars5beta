@@ -24,10 +24,11 @@ export async function generateMetadata({ params }: NationalityPageProps): Promis
 }
 
 export default async function NationalityPage({ params }: NationalityPageProps) {
-  const countryCode = params.code.toUpperCase();
+  const { code } = params;
+  const countryCode = code.toUpperCase();
   const countryName = countryCodeToNameMap.get(countryCode) || "País Desconocido";
   const figures = await getFiguresByNationality(countryCode);
-  const flagUrl = `https://flagcdn.com/w160/${params.code.toLowerCase()}.png`;
+  const flagUrl = `https://flagcdn.com/w160/${code.toLowerCase()}.png`;
 
   return (
     <div className="space-y-8">

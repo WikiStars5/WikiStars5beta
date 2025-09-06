@@ -21,7 +21,8 @@ export async function generateMetadata({ params }: TagPageProps): Promise<Metada
 }
 
 export default async function TagPage({ params }: TagPageProps) {
-  const tag = decodeURIComponent(params.tag);
+  const { tag: encodedTag } = params;
+  const tag = decodeURIComponent(encodedTag);
   const figures = await getFiguresByTag(tag);
 
   return (
