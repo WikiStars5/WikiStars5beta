@@ -18,8 +18,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { ADMIN_UID } from '@/config/admin';
 
 export function UserNav() {
-  const { user: currentUser, isAnonymous, isLoading, logout } = useAuth();
+  const { user: currentUser, firebaseUser, isAnonymous, isLoading, logout } = useAuth();
 
+  // Condition 1: Overall auth state is loading (Firebase user is not yet known)
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-9 w-9">
@@ -28,9 +29,10 @@ export function UserNav() {
     );
   }
 
-  if (isAnonymous || !currentUser) {
+  // Condition 2: User is anonymous or logged out (no Firebase user)
+  if (isAnonymous || !firebaseUser) {
     return (
-      <Button variant="ghost" asChild>
+      <Button asChild>
         <Link href="/login">
           <User className="mr-2 h-4 w-4" />
           <span>Acceder</span>
@@ -39,6 +41,17 @@ export function UserNav() {
     );
   }
 
+  // Condition 3: A registered user is logged in, but their Firestore profile is still loading.
+  // This is the key change: we show a loader instead of the "Acceder" button.
+  if (!currentUser) {
+     return (
+      <div className="flex items-center justify-center h-9 w-9">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  
+  // Condition 4: Registered user and their profile are fully loaded.
   const isAdmin = currentUser.role === 'admin';
   const displayName = currentUser.username || "Usuario";
   const photoURL = currentUser.photoURL;
