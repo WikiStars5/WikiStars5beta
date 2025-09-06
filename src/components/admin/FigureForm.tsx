@@ -247,6 +247,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         figureData.createdAt = serverTimestamp();
       }
 
+      // Remove undefined values to prevent Firestore errors
+      Object.keys(figureData).forEach(key => {
+        if ((figureData as any)[key] === undefined) {
+          delete (figureData as any)[key];
+        }
+      });
+      
       const figureRef = doc(db, 'figures', figureDocId);
       await setDoc(figureRef, figureData, { merge: true });
 
