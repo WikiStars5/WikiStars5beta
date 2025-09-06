@@ -46,16 +46,22 @@ export default function LoginPage() {
       router.push('/profile'); // Redirect to profile to see admin options
       router.refresh();
     } catch (error: any) {
-      console.error('Error during login:', error);
-      let errorMessage = 'Ocurrió un error inesperado.';
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        errorMessage = 'El correo electrónico o la contraseña son incorrectos.';
+      // This is the expected flow for a failed login, not an application error.
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        toast({
+          title: 'Error al Iniciar Sesión',
+          description: 'El correo electrónico o la contraseña son incorrectos.',
+          variant: 'destructive',
+        });
+      } else {
+        // Handle other, unexpected errors
+        console.error('Error during login:', error);
+        toast({
+          title: 'Error al Iniciar Sesión',
+          description: 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
+          variant: 'destructive',
+        });
       }
-      toast({
-        title: 'Error al Iniciar Sesión',
-        description: errorMessage,
-        variant: 'destructive',
-      });
     } finally {
       setIsLoading(false);
     }
