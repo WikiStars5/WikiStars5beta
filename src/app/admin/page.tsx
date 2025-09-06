@@ -84,9 +84,6 @@ export default function AdminDashboardPage() {
           <Button variant="outline" asChild>
             <Link href="/admin/figures"><span className="flex items-center"><ListOrdered /> Gestionar Figuras</span></Link>
           </Button>
-           <Button variant="outline" asChild>
-            <Link href="/admin/users"><span className="flex items-center"><Users /> Gestionar Usuarios</span></Link>
-          </Button>
         </CardContent>
       </Card>
 
