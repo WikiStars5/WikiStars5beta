@@ -2,18 +2,15 @@
 "use client"; 
 
 import { Logo } from '@/components/shared/Logo';
-import Link from 'next/link'; 
 import { MobileSearchButton } from './MobileSearchButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
-import { useState } from 'react';
 import { InstallPwaButton } from './InstallPwaButton';
 import { PrimaryNav } from './PrimaryNav';
 import { ThemeToggleButton } from './ThemeToggleButton';
+import { UserNav } from './UserNav';
 
 
 export function Header() {
-  const [isHeaderSearchFocused, setIsHeaderSearchFocused] = useState(false);
-
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
       <div className="flex h-18 w-full max-w-6xl items-center justify-between mx-auto py-3 px-4">
@@ -33,6 +30,7 @@ export function Header() {
         {/* Right Section */}
         <div className="flex items-center gap-1 md:gap-2 lg:gap-3">
           <ThemeToggleButton />
+          <UserNav />
           <div className="hidden md:flex items-center">
             <InstallPwaButton />
           </div>
