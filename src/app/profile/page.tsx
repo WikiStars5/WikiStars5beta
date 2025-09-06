@@ -149,6 +149,27 @@ export default function ProfilePage() {
     }
   };
 
+  const handleGuestProfileSave = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!isAnonymous) return;
+    const formData = new FormData(e.currentTarget);
+    const username = formData.get('username') as string;
+    const countryCode = formData.get('countryCode') as string;
+    const gender = formData.get('gender') as string;
+    
+    if (username.length < 3) {
+      toast({ title: "Nombre muy corto", description: "El nombre de usuario debe tener al menos 3 caracteres.", variant: "destructive" });
+      return;
+    }
+    
+    localStorage.setItem('wikistars5-guestUsername', username);
+    localStorage.setItem('wikistars5-guestCountryCode', countryCode);
+    localStorage.setItem('wikistars5-guestGender', gender);
+    toast({ title: "Perfil de Invitado Guardado", description: "Tus preferencias se han guardado en este navegador."});
+    // Force re-render to reflect new name
+    router.refresh();
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
@@ -157,20 +178,63 @@ export default function ProfilePage() {
     );
   }
 
-  if (isAnonymous || !firestoreUser) {
+  if (isAnonymous) {
+     return (
+        <div className="space-y-8">
+            <Card className="max-w-lg mx-auto">
+                <CardHeader className="text-center">
+                    <CardTitle className="text-2xl font-headline">Perfil de Invitado</CardTitle>
+                    <CardDescription>
+                        Estás navegando como invitado. Tus datos se guardan solo en este navegador. Para un perfil permanente, crea una cuenta.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleGuestProfileSave} className="space-y-4">
+                        <div>
+                            <Label htmlFor="username">Nombre de Invitado</Label>
+                            <Input id="username" name="username" defaultValue={typeof window !== 'undefined' ? localStorage.getItem('wikistars5-guestUsername') || '' : ''} required />
+                        </div>
+                        <div>
+                            <Label htmlFor="countryCode">País</Label>
+                            <CountryCombobox
+                                name="countryCode"
+                                value={typeof window !== 'undefined' ? localStorage.getItem('wikistars5-guestCountryCode') || '' : ''}
+                                onChange={(value) => document.querySelector<HTMLInputElement>('input[name="countryCodeHidden"]')?.setAttribute('value', value || '')}
+                            />
+                            <input type="hidden" name="countryCodeHidden" />
+                        </div>
+                         <div>
+                            <Label htmlFor="gender">Sexo</Label>
+                            <Select name="gender" defaultValue={typeof window !== 'undefined' ? localStorage.getItem('wikistars5-guestGender') || '' : ''}>
+                                <SelectTrigger id="gender"><SelectValue placeholder="Selecciona tu sexo" /></SelectTrigger>
+                                <SelectContent>{GENDER_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                           <Button type="submit" className="w-full"><Save className="mr-2 h-4 w-4"/> Guardar Perfil</Button>
+                           <Button asChild variant="secondary" className="w-full">
+                            <Link href="/signup"><UserPlus className="mr-2 h-4 w-4"/> Crear Cuenta</Link>
+                           </Button>
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
+        </div>
+    );
+  }
+
+  if (!firestoreUser) {
      return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center p-4">
              <Card className="max-w-md">
                 <CardHeader>
-                    <CardTitle>Perfil de Invitado</CardTitle>
+                    <CardTitle>Cargando Perfil...</CardTitle>
                     <CardDescription>
-                        Para guardar tu perfil permanentemente y acceder a todas las funciones, crea una cuenta.
+                        Estamos recuperando los datos de tu perfil. Si esto tarda mucho, intenta refrescar la página.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Button asChild>
-                        <Link href="/login">Iniciar Sesión o Registrarse</Link>
-                    </Button>
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </CardContent>
             </Card>
         </div>

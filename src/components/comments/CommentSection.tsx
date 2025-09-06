@@ -56,7 +56,7 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
   
   const audioRefs = React.useRef<Record<RatingValue, HTMLAudioElement | null>>({ 0: null, 1: null, 2: null, 3: null, 4: null, 5: null });
 
-  const { user: firestoreUser, firebaseUser, isLoading: isAuthLoading } = useAuth();
+  const { user: firestoreUser, firebaseUser, isLoading: isAuthLoading, isAnonymous } = useAuth();
   const { theme } = useTheme();
   const { toast } = useToast();
 
@@ -102,7 +102,7 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
   
 
   const handlePostComment = async () => {
-    if (!firestoreUser || !firebaseUser) {
+    if (!firebaseUser) {
       toast({ title: "Error", description: "Debes tener un perfil para comentar.", variant: "destructive" });
       return;
     }
@@ -120,15 +120,38 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
     }
     setIsPosting(true);
     try {
-      const authorData = {
-          id: firestoreUser.uid,
-          name: firestoreUser.username,
-          photoUrl: firestoreUser.photoURL || null,
-          gender: firestoreUser.gender || '',
-          country: firestoreUser.country || '',
-          countryCode: firestoreUser.countryCode || '',
-          isAnonymous: firestoreUser.isAnonymous || false,
-      };
+        let authorData;
+        
+        if (isAnonymous) {
+            const guestUsername = localStorage.getItem('wikistars5-guestUsername');
+            if (!guestUsername) {
+                toast({ title: "Perfil de Invitado Incompleto", description: "Por favor, ve a tu perfil para establecer un nombre de invitado antes de comentar.", variant: "destructive" });
+                setIsPosting(false);
+                return;
+            }
+            authorData = {
+                id: firebaseUser.uid,
+                name: guestUsername,
+                photoUrl: null,
+                gender: localStorage.getItem('wikistars5-guestGender') || '',
+                country: '', // No country name for guests
+                countryCode: localStorage.getItem('wikistars5-guestCountryCode') || '',
+                isAnonymous: true,
+            };
+        } else if (firestoreUser) {
+            authorData = {
+                id: firestoreUser.uid,
+                name: firestoreUser.username,
+                photoUrl: firestoreUser.photoURL || null,
+                gender: firestoreUser.gender || '',
+                country: firestoreUser.country || '',
+                countryCode: firestoreUser.countryCode || '',
+                isAnonymous: false,
+            };
+        } else {
+            throw new Error("No se pudo determinar la información del autor.");
+        }
+
 
       // Submit rating if one is selected
       if (selectedRating !== null) {
@@ -179,24 +202,32 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
 
 
   const renderCommentInput = () => {
-    if (!firestoreUser) {
-      return (
-          <div className="text-center p-4 border-2 border-dashed rounded-lg bg-muted/50">
-              <p className="mb-4 text-muted-foreground font-medium">Para comentar y calificar, necesitas una cuenta.</p>
-              <Button asChild>
-                <Link href="/login">
-                    <UserPlus className="mr-2 h-4 w-4" /> Iniciar Sesión o Registrarse
-                </Link>
-              </Button>
-          </div>
-      );
+    if (!firebaseUser) {
+        // This case should ideally not be hit if auth provider handles anonymous sign-in,
+        // but it's a good fallback.
+        return (
+            <div className="text-center p-4 border-2 border-dashed rounded-lg bg-muted/50">
+                <p className="mb-4 text-muted-foreground font-medium">Para comentar y calificar, necesitas una cuenta.</p>
+                <Button asChild>
+                  <Link href="/login">
+                      <UserPlus className="mr-2 h-4 w-4" /> Iniciar Sesión o Registrarse
+                  </Link>
+                </Button>
+            </div>
+        );
     }
 
+    const displayName = isAnonymous 
+      ? localStorage.getItem('wikistars5-guestUsername') || 'Invitado' 
+      : firestoreUser?.username;
+    
+    const photoURL = isAnonymous ? null : firestoreUser?.photoURL;
+      
     return (
       <div className="flex gap-4">
           <Avatar className="h-10 w-10 mt-1">
-              <AvatarImage src={correctMalformedUrl(firestoreUser.photoURL)} alt={firestoreUser.username} />
-              <AvatarFallback>{firestoreUser.username?.charAt(0).toUpperCase()}</AvatarFallback>
+              <AvatarImage src={correctMalformedUrl(photoURL)} alt={displayName} />
+              <AvatarFallback>{displayName?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-grow space-y-2">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -335,3 +366,4 @@ export function CommentSection({ figure, onCommentPosted, highlightedCommentId }
     </>
   );
 }
+
