@@ -86,7 +86,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     if (isLoadingAttitudeAction) return;
 
     if (!firebaseUser) {
-        toast({ title: "Error", description: "No se pudo iniciar la sesión de invitado para votar.", variant: "destructive" });
+        toast({ title: "Acción requerida", description: "Espera un momento mientras preparamos tu sesión de invitado.", variant: "destructive" });
         return;
     }
 
@@ -203,7 +203,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                   disabled={!!isLoadingAttitudeAction || !firebaseUser}
                   style={{ minHeight: '100px' }}
                 >
-                  {isLoadingAttitudeAction === key && <Loader2 className="absolute h-6 w-6 animate-spin" />}
+                  {(isLoadingAttitudeAction === key || (!firebaseUser && isAuthLoading)) && <Loader2 className="absolute h-6 w-6 animate-spin" />}
                   <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
                   <span className="text-xs font-medium">{label}</span>
                   <span className="text-sm font-bold">
