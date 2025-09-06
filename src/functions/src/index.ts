@@ -8,7 +8,7 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
-import type { UserProfile, Figure } from "./types";
+import type { UserProfile } from "./types";
 import { COUNTRIES } from "./countries";
 import type { DocumentData, Query } from "firebase-admin/firestore";
 
