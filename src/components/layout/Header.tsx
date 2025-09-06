@@ -9,7 +9,6 @@ import { useState } from 'react';
 import { InstallPwaButton } from './InstallPwaButton';
 import { PrimaryNav } from './PrimaryNav';
 import { ThemeToggleButton } from './ThemeToggleButton';
-import { UserNav } from './UserNav';
 
 
 export function Header() {
@@ -37,7 +36,6 @@ export function Header() {
           <div className="hidden md:flex items-center">
             <InstallPwaButton />
           </div>
-          <UserNav />
           <MobileSearchButton />
         </div>
       </div>
