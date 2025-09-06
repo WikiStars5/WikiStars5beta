@@ -19,8 +19,8 @@ import { ADMIN_UID } from '@/config/admin';
 import { Separator } from '@/components/ui/separator';
 import type { UserProfile, LocalUserStreak, Attitude, Figure, EmotionVote, Streak } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import { auth, app, db } from '@/lib/firebase';
-import { signOut, linkWithCredential, EmailAuthProvider, updateProfile } from 'firebase/auth';
+import { app, db } from '@/lib/firebase';
+import { updateProfile } from 'firebase/auth';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { CountryCombobox } from '@/components/shared/CountryCombobox';
@@ -61,7 +61,7 @@ interface StreakWithFigure extends LocalUserStreak {
 }
 
 export default function ProfilePage() {
-  const { user: firestoreUser, firebaseUser, isLoading, isAnonymous } = useAuth();
+  const { user: firestoreUser, firebaseUser, isLoading, isAnonymous, logout } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -122,7 +122,6 @@ export default function ProfilePage() {
 
 
   useEffect(() => {
-    // This effect handles setting form data for REGISTERED users
     if (!isLoading && firestoreUser) {
       reset({
         username: firestoreUser.username ?? '',
@@ -130,7 +129,6 @@ export default function ProfilePage() {
         gender: firestoreUser.gender ?? '',
       });
     }
-    // This effect loads local data (streaks, votes) for ALL users (guests and registered)
     if (!isLoading && firebaseUser) {
       loadLocalData();
     }
@@ -138,7 +136,6 @@ export default function ProfilePage() {
 
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
-    // This function is only for registered users
     if (isAnonymous || !firebaseUser) return;
     try {
       await updateUserProfileCallable(data);
@@ -149,17 +146,6 @@ export default function ProfilePage() {
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({ title: "Error", description: error.message || "No se pudo actualizar tu perfil.", variant: "destructive" });
-    }
-  };
-  
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
-      router.push('/');
-    } catch (error) {
-      console.error("Error logging out from profile:", error);
-      toast({ title: "Error", description: "No se pudo cerrar la sesión.", variant: "destructive" });
     }
   };
 
@@ -257,7 +243,7 @@ export default function ProfilePage() {
                   </div>
                 </form>
               <Separator />
-              <Button onClick={handleLogout} variant="destructive" className="w-full sm:w-auto"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
+              <Button onClick={logout} variant="destructive" className="w-full sm:w-auto"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
             </CardContent>
           </Card>
       </div>
