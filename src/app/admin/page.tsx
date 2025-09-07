@@ -11,6 +11,7 @@ import type { Figure } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
 import { BatchUpdateTagsButton } from "@/components/admin/BatchUpdateTagsButton";
+import { BatchCreateFigures } from "@/components/admin/BatchCreateFigures";
 
 export default function AdminDashboardPage() {
   const [figures, setFigures] = useState<Figure[]>([]);
@@ -87,6 +88,8 @@ export default function AdminDashboardPage() {
           </Button>
         </CardContent>
       </Card>
+
+      <BatchCreateFigures />
 
       <Card>
         <CardHeader>
