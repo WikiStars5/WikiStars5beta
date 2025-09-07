@@ -208,6 +208,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       
       const age = birthDate ? differenceInYears(new Date(), birthDate) : undefined;
       const heightCm = height ? parseInt(height.replace(/\D/g, ''), 10) || undefined : undefined;
+      const tagsLower = tags.map(tag => tag.toLowerCase());
 
       const figureData: Partial<Figure> & { createdAt?: any } = { 
         name: name.trim(),
@@ -221,6 +222,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         category: category.trim(),
         sportSubcategory: category === 'Deportista' ? sportSubcategory.trim() : '',
         tags: tags,
+        tagsLower: tagsLower,
         alias: alias.trim(),
         species: species.trim(),
         firstAppearance: firstAppearance.trim(),
@@ -242,8 +244,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       };
       
       // Conditionally add fields only if they have a value
-      if (age) figureData.age = age;
-      if (heightCm) figureData.heightCm = heightCm;
+      if (age !== undefined) figureData.age = age;
+      if (heightCm !== undefined) figureData.heightCm = heightCm;
 
       if (!initialData?.id) { 
         figureData.createdAt = serverTimestamp();
@@ -263,10 +265,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       
       setTimeout(() => {
         if (!initialData?.id) { 
-          // This is a NEW figure, redirect to the public profile page
           router.push(`/figures/${figureDocId}`); 
         } else { 
-          // This is an EXISTING figure, redirect to the admin list
           router.push('/admin/figures');
         }
         router.refresh(); 
@@ -503,7 +503,3 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 };
 
 export default FigureForm;
-
-    
-
-    

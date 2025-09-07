@@ -17,6 +17,7 @@ function capitalizeFirstLetter(string: string) {
 
 export async function generateMetadata({ params }: TagPageProps): Promise<Metadata> {
   const decodedTag = decodeURIComponent(params.tag);
+  // For display, we can still try to capitalize it nicely.
   const displayTag = capitalizeFirstLetter(decodedTag);
   return {
     title: `Figuras etiquetadas como "${displayTag}"`,
@@ -29,11 +30,11 @@ export async function generateMetadata({ params }: TagPageProps): Promise<Metada
 
 export default async function TagPage({ params }: TagPageProps) {
   const { tag: encodedTag } = params;
-  const decodedTag = decodeURIComponent(encodedTag);
-  
-  // Capitalize the tag to match the casing stored in Firestore
-  const searchTag = capitalizeFirstLetter(decodedTag);
+  // The tag from the URL is always lowercase.
+  const searchTag = decodeURIComponent(encodedTag);
+  const displayTag = capitalizeFirstLetter(searchTag);
 
+  // We now pass the lowercase tag to the search function.
   const figures = await getFiguresByTag(searchTag);
 
   return (
@@ -41,7 +42,7 @@ export default async function TagPage({ params }: TagPageProps) {
       <section className="text-center">
         <div className="flex justify-center items-center gap-3">
              <Tag className="h-8 w-8 text-primary" />
-             <h1 className="text-4xl font-bold font-headline">Etiqueta: {searchTag}</h1>
+             <h1 className="text-4xl font-bold font-headline">Etiqueta: {displayTag}</h1>
         </div>
         <p className="text-lg text-muted-foreground mt-2">
           {figures.length} {figures.length === 1 ? 'perfil encontrado' : 'perfiles encontrados'} con esta etiqueta.
@@ -58,7 +59,7 @@ export default async function TagPage({ params }: TagPageProps) {
         <Alert>
           <AlertTitle>No se encontraron resultados</AlertTitle>
           <AlertDescription>
-            No hay perfiles que coincidan con la etiqueta "{searchTag}".
+            No hay perfiles que coincidan con la etiqueta "{displayTag}".
           </AlertDescription>
         </Alert>
       )}

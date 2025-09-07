@@ -51,6 +51,7 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     category: data.category || "",
     sportSubcategory: data.sportSubcategory || "",
     tags: data.tags || [],
+    tagsLower: data.tagsLower || [],
     alias: data.alias || "",
     species: data.species || "",
     firstAppearance: data.firstAppearance || "",
@@ -218,7 +219,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
           name, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, age, birthPlace, statusLiveOrDead, maritalStatus,
           height, heightCm, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
-          category, sportSubcategory, relatedFigureIds, socialLinks, tags, ...rest
+          category, sportSubcategory, relatedFigureIds, socialLinks, tags, tagsLower, ...rest
       } = figure;
 
       const updatePayload: { [key: string]: any } = {};
@@ -251,7 +252,10 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured;
       if (category !== undefined) updatePayload.category = category;
       if (sportSubcategory !== undefined) updatePayload.sportSubcategory = sportSubcategory;
-      if (tags !== undefined) updatePayload.tags = tags;
+      if (tags !== undefined) {
+        updatePayload.tags = tags;
+        updatePayload.tagsLower = tags.map(t => t.toLowerCase());
+      }
       if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
       if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
       if (ratingCounts) updatePayload.ratingCounts = ratingCounts;
@@ -417,7 +421,8 @@ export const getFiguresByTag = async (tag: string): Promise<Figure[]> => {
   const figures: Figure[] = [];
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef, where('tags', 'array-contains', tag), limit(50));
+    // We query against the new `tagsLower` field, which contains only lowercase tags.
+    const q = query(figuresCollectionRef, where('tagsLower', 'array-contains', tag.toLowerCase()), limit(50));
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach((docSnap) => {
       figures.push(mapDocToFigure(docSnap));

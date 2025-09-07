@@ -16,7 +16,8 @@ export interface Figure {
   gender?: string;
   category?: string;
   sportSubcategory?: string; 
-  tags?: string[]; // New field for tags
+  tags?: string[];
+  tagsLower?: string[];
 
   alias?: string;
   species?: string; 
