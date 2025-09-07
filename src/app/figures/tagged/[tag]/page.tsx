@@ -9,11 +9,18 @@ interface TagPageProps {
   params: { tag: string };
 }
 
+// Helper function to capitalize the first letter
+function capitalizeFirstLetter(string: string) {
+  if (!string) return string;
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
 export async function generateMetadata({ params }: TagPageProps): Promise<Metadata> {
-  const tag = decodeURIComponent(params.tag);
+  const decodedTag = decodeURIComponent(params.tag);
+  const displayTag = capitalizeFirstLetter(decodedTag);
   return {
-    title: `Figuras etiquetadas como "${tag}"`,
-    description: `Explora todas las figuras públicas etiquetadas como "${tag}" en WikiStars5.`,
+    title: `Figuras etiquetadas como "${displayTag}"`,
+    description: `Explora todas las figuras públicas etiquetadas como "${displayTag}" en WikiStars5.`,
     alternates: {
       canonical: `/figures/tagged/${params.tag}`,
     },
@@ -22,15 +29,19 @@ export async function generateMetadata({ params }: TagPageProps): Promise<Metada
 
 export default async function TagPage({ params }: TagPageProps) {
   const { tag: encodedTag } = params;
-  const tag = decodeURIComponent(encodedTag);
-  const figures = await getFiguresByTag(tag);
+  const decodedTag = decodeURIComponent(encodedTag);
+  
+  // Capitalize the tag to match the casing stored in Firestore
+  const searchTag = capitalizeFirstLetter(decodedTag);
+
+  const figures = await getFiguresByTag(searchTag);
 
   return (
     <div className="space-y-8">
       <section className="text-center">
         <div className="flex justify-center items-center gap-3">
              <Tag className="h-8 w-8 text-primary" />
-             <h1 className="text-4xl font-bold font-headline">Etiqueta: {tag}</h1>
+             <h1 className="text-4xl font-bold font-headline">Etiqueta: {searchTag}</h1>
         </div>
         <p className="text-lg text-muted-foreground mt-2">
           {figures.length} {figures.length === 1 ? 'perfil encontrado' : 'perfiles encontrados'} con esta etiqueta.
@@ -47,7 +58,7 @@ export default async function TagPage({ params }: TagPageProps) {
         <Alert>
           <AlertTitle>No se encontraron resultados</AlertTitle>
           <AlertDescription>
-            No hay perfiles que coincidan con la etiqueta "{tag}".
+            No hay perfiles que coincidan con la etiqueta "{searchTag}".
           </AlertDescription>
         </Alert>
       )}
