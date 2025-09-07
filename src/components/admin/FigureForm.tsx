@@ -225,12 +225,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         species: species.trim(),
         firstAppearance: firstAppearance.trim(),
         birthDateOrAge: birthDate ? birthDate.toISOString() : '',
-        age: age,
         birthPlace: birthPlace.trim(),
         statusLiveOrDead: statusLiveOrDead.trim(),
         maritalStatus: maritalStatus.trim(),
         height: height.trim(),
-        heightCm: heightCm,
         weight: weight.trim(),
         hairColor: hairColor.trim(),
         eyeColor: eyeColor.trim(),
@@ -242,6 +240,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
         status: initialData?.status || 'approved',
       };
+      
+      // Conditionally add fields only if they have a value
+      if (age) figureData.age = age;
+      if (heightCm) figureData.heightCm = heightCm;
 
       if (!initialData?.id) { 
         figureData.createdAt = serverTimestamp();
@@ -261,8 +263,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       
       setTimeout(() => {
         if (!initialData?.id) { 
-          router.push(`/admin/figures/${figureDocId}/edit`); 
+          // This is a NEW figure, redirect to the public profile page
+          router.push(`/figures/${figureDocId}`); 
         } else { 
+          // This is an EXISTING figure, redirect to the admin list
           router.push('/admin/figures');
         }
         router.refresh(); 
