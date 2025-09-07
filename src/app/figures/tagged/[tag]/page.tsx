@@ -1,4 +1,5 @@
 
+
 import { getFiguresByTag } from "@/lib/placeholder-data";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -12,7 +13,8 @@ interface TagPageProps {
 // Helper function to capitalize the first letter
 function capitalizeFirstLetter(string: string) {
   if (!string) return string;
-  return string.charAt(0).toUpperCase() + string.slice(1);
+  // Handle multi-word tags like "k-pop"
+  return string.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('-');
 }
 
 export async function generateMetadata({ params }: TagPageProps): Promise<Metadata> {

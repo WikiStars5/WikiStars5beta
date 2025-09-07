@@ -422,7 +422,7 @@ export const getFiguresByTag = async (tag: string): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
     // We query against the new `tagsLower` field, which contains only lowercase tags.
-    const q = query(figuresCollectionRef, where('tagsLower', 'array-contains', tag.toLowerCase()), limit(50));
+    const q = query(figuresCollectionRef, where('tagsLower', 'array-contains', tag), limit(50));
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach((docSnap) => {
       figures.push(mapDocToFigure(docSnap));
