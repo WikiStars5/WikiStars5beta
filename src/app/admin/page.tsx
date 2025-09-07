@@ -10,6 +10,7 @@ import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import type { Figure } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
+import { BatchUpdateTagsButton } from "@/components/admin/BatchUpdateTagsButton";
 
 export default function AdminDashboardPage() {
   const [figures, setFigures] = useState<Figure[]>([]);
@@ -94,6 +95,7 @@ export default function AdminDashboardPage() {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
            <BatchUpdateImagesButton />
+           <BatchUpdateTagsButton />
         </CardContent>
       </Card>
     </div>
