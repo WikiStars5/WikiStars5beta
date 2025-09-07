@@ -6,7 +6,6 @@ import { MobileSearchButton } from './MobileSearchButton';
 import { SearchBar } from '@/components/shared/SearchBar'; 
 import { InstallPwaButton } from './InstallPwaButton';
 import { PrimaryNav } from './PrimaryNav';
-import { ThemeToggleButton } from './ThemeToggleButton';
 import { UserNav } from './UserNav';
 
 
@@ -29,7 +28,6 @@ export function Header() {
 
         {/* Right Section */}
         <div className="flex items-center gap-1 md:gap-2 lg:gap-3">
-          <ThemeToggleButton />
           <UserNav />
           <div className="hidden md:flex items-center">
             <InstallPwaButton />
