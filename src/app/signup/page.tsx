@@ -10,50 +10,64 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, LogIn, Terminal } from 'lucide-react';
+import { Loader2, UserPlus, Terminal } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import type { UserProfile } from '@/lib/types';
 import Link from 'next/link';
 
-const loginSchema = z.object({
+const signupSchema = z.object({
+  username: z.string().min(3, { message: "El nombre de usuario debe tener al menos 3 caracteres." }).max(20, { message: "El nombre de usuario no puede tener más de 20 caracteres." }),
   email: z.string().email({ message: "Por favor, introduce un correo electrónico válido." }),
   password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
 });
 
-type LoginSchemaType = z.infer<typeof loginSchema>;
+type SignupSchemaType = z.infer<typeof signupSchema>;
 
-export default function LoginPage() {
+export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signIn } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
-  const form = useForm<LoginSchemaType>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<SignupSchemaType>({
+    resolver: zodResolver(signupSchema),
     defaultValues: {
+      username: '',
       email: '',
       password: '',
     },
   });
 
-  const onSubmit: SubmitHandler<LoginSchemaType> = async (data) => {
+  const onSubmit: SubmitHandler<SignupSchemaType> = async (data) => {
     setError(null);
     setIsSubmitting(true);
     try {
-      await signIn(data.email, data.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+
+      // Update the user's profile in Firebase Auth
+      await updateProfile(user, { displayName: data.username });
+
+      // The onUserCreate cloud function will handle creating the user profile in Firestore.
+      // We don't need to do it here anymore.
+
       toast({
-        title: "Inicio de Sesión Exitoso",
-        description: "Bienvenido de nuevo.",
+        title: "¡Cuenta Creada Exitosamente!",
+        description: `Bienvenido/a, ${data.username}. Ahora puedes iniciar sesión.`,
       });
-      router.push('/'); // Redirect to home page
+      router.push('/login'); // Redirect to login page after successful signup
+
     } catch (err: any) {
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-        setError("Las credenciales son incorrectas. Por favor, verifica tu correo y contraseña.");
+      if (err.code === 'auth/email-already-in-use') {
+        setError("Este correo electrónico ya está registrado. Por favor, intenta con otro.");
       } else {
         setError("Ocurrió un error inesperado. Por favor, inténtalo de nuevo.");
-        console.error("Login error:", err);
+        console.error("Signup error:", err);
       }
     } finally {
       setIsSubmitting(false);
@@ -64,8 +78,8 @@ export default function LoginPage() {
     <div className="flex items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-headline">Acceder a tu Cuenta</CardTitle>
-          <CardDescription>Introduce tus credenciales para continuar.</CardDescription>
+          <CardTitle className="text-2xl font-headline">Crear una Cuenta Nueva</CardTitle>
+          <CardDescription>Regístrate para empezar a participar.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -73,10 +87,27 @@ export default function LoginPage() {
               {error && (
                 <Alert variant="destructive">
                   <Terminal className="h-4 w-4" />
-                  <AlertTitle>Error de Inicio de Sesión</AlertTitle>
+                  <AlertTitle>Error de Registro</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
+               <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre de Usuario</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Tu nombre de usuario"
+                        {...field}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="email"
@@ -117,20 +148,20 @@ export default function LoginPage() {
                 {isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <LogIn className="mr-2 h-4 w-4" />
+                  <UserPlus className="mr-2 h-4 w-4" />
                 )}
-                {isSubmitting ? 'Iniciando sesión...' : 'Acceder'}
+                {isSubmitting ? 'Creando cuenta...' : 'Crear Cuenta'}
               </Button>
             </form>
           </Form>
         </CardContent>
         <CardFooter className="flex justify-center">
-          <p className="text-sm text-muted-foreground">
-            ¿No tienes una cuenta?{' '}
-            <Link href="/signup" className="text-primary hover:underline">
-              Regístrate aquí
-            </Link>
-          </p>
+            <p className="text-sm text-muted-foreground">
+                ¿Ya tienes una cuenta?{' '}
+                <Link href="/login" className="text-primary hover:underline">
+                    Inicia sesión aquí
+                </Link>
+            </p>
         </CardFooter>
       </Card>
     </div>

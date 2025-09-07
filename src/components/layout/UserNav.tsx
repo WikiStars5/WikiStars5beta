@@ -26,9 +26,14 @@ export function UserNav() {
 
   if (!firebaseUser) {
     return (
-      <Button asChild>
-        <Link href="/login">Acceder</Link>
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button asChild>
+          <Link href="/login">Acceder</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/signup">Registrarse</Link>
+        </Button>
+      </div>
     );
   }
 
