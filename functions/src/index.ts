@@ -142,3 +142,59 @@ export const getAllUsers = onCall(async (request) => {
         throw new HttpsError('internal', `An unexpected error occurred: ${error.message}`);
     }
 });
+
+
+/**
+ * Deletes a figure and all its associated subcollection data.
+ * This is a critical and destructive operation.
+ */
+export const deleteFigure = onCall(async (request) => {
+    // 1. Authentication and Authorization
+    const callingUid = request.auth?.uid;
+    if (!callingUid) {
+        throw new HttpsError('unauthenticated', 'You must be logged in to perform this action.');
+    }
+    const userDoc = await db.collection('users').doc(callingUid).get();
+    if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
+        throw new HttpsError('permission-denied', 'Only admins can delete figures.');
+    }
+
+    // 2. Input Validation
+    const { figureId } = request.data;
+    if (!figureId || typeof figureId !== 'string') {
+        throw new HttpsError('invalid-argument', 'A valid figureId must be provided.');
+    }
+
+    const figureRef = db.collection('figures').doc(figureId);
+
+    try {
+        // Use a batch to delete all documents atomically for a cleaner operation.
+        const batch = db.batch();
+
+        // 3. Delete all subcollections
+        const subcollections = ['comments', 'streaks'];
+        for (const subcollection of subcollections) {
+            const subcollectionRef = figureRef.collection(subcollection);
+            // It's necessary to delete documents within a subcollection before deleting the subcollection itself.
+            const snapshot = await subcollectionRef.get();
+            snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        }
+        
+        // Also delete from top-level userRatings collection
+        const userRatingsQuery = db.collection('userRatings').where('figureId', '==', figureId);
+        const userRatingsSnapshot = await userRatingsQuery.get();
+        userRatingsSnapshot.forEach(doc => batch.delete(doc.ref));
+
+        // 4. Delete the main figure document
+        batch.delete(figureRef);
+
+        // 5. Commit the batch
+        await batch.commit();
+        
+        return { success: true, message: `Successfully deleted figure ${figureId} and all associated data.` };
+
+    } catch (error) {
+        console.error(`Error deleting figure ${figureId}:`, error);
+        throw new HttpsError('internal', 'An error occurred while trying to delete the figure.');
+    }
+});
