@@ -5,7 +5,7 @@ import type { Figure } from '@/lib/types';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Use the production URL directly to ensure correctness.
-  const baseUrl = 'https://wikistars5.com';
+  const baseUrl = 'https://thewikistars5.com';
 
   // Get all figures to create dynamic routes
   const figures: Figure[] = await getAllFiguresFromFirestore();

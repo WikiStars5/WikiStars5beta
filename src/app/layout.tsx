@@ -9,7 +9,7 @@ import { ClientProviders } from '@/components/layout/ClientProviders';
 const logoUrl = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194";
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://wikistars5.com'),
+  metadataBase: new URL('https://thewikistars5.com'),
   manifest: '/manifest.json',
   title: 'WikiStars5 - Percepción de Figuras Públicas',
   description: 'Califica y discute sobre figuras públicas en WikiStars5.',
