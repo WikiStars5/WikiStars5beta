@@ -1,4 +1,5 @@
 
+
 // === src/lib/firebase.ts ===
 // Configuración y servicios de Firebase para tu aplicación.
 // Incluye Firestore, Authentication y Storage.
@@ -10,13 +11,13 @@ import { getAuth, type Auth } from "firebase/auth";
 import { getFunctions, httpsCallable, type Functions } from 'firebase/functions';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCwH29ruiIl_pohEoUHh7d26m5qCLCmYm0",
-  authDomain: "wikistars5-2yctr.firebaseapp.com",
-  projectId: "wikistars5-2yctr",
-  storageBucket: "wikistars5-2yctr.appspot.com",
-  messagingSenderId: "939359993461",
-  appId: "1:939359993461:web:c8aab67046db949495823c",
-  measurementId: "G-XCFCPXNP56"
+  "projectId": "wikistars5-2yctr",
+  "appId": "1:939359993461:web:8228c2d11941f46e95823c",
+  "storageBucket": "wikistars5-2yctr.firebasestorage.app",
+  "apiKey": "AIzaSyD_iNfeaKYwq8JVv6qqtEeXqHvCCJ1Wf48",
+  "authDomain": "wikistars5-2yctr.firebaseapp.com",
+  "measurementId": "G-8MY8KTGXP3",
+  "messagingSenderId": "939359993461"
 };
 
 // --- Inicialización Robusta para Next.js ---
