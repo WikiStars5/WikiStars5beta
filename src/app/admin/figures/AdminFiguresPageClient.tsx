@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import type { Figure } from "@/lib/types";
 import { PlusCircle, Star, Search as SearchIcon, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
@@ -17,7 +16,6 @@ import { getAdminFiguresList } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { DeleteAllFiguresButton } from "@/components/admin/DeleteAllFiguresButton";
-import { callFirebaseFunction } from "@/lib/firebase";
 
 
 function AdminFiguresPageComponent() {
@@ -74,38 +72,6 @@ function AdminFiguresPageComponent() {
       figure.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [localFigures, searchTerm]);
-
-  const handleToggleFeatured = async (figureId: string) => {
-    const originalFigures = [...localFigures];
-    const updateFunc = (prevFigures: Figure[]) =>
-      prevFigures.map(f =>
-        f.id === figureId ? { ...f, isFeatured: !(f.isFeatured || false) } : f
-      );
-    setLocalFigures(updateFunc);
-
-    try {
-        const result = await callFirebaseFunction('toggleFeaturedStatus', { figureId });
-
-        if (result.success) {
-            toast({
-                title: "Estado Actualizado",
-                description: result.message,
-            });
-            // The local state is already updated optimistically.
-            // If you wanted to be super-safe, you could re-fetch, but this is usually fine.
-        } else {
-            throw new Error(result.message || "No se pudo actualizar el estado.");
-        }
-    } catch (error: any) {
-        // Si falla, revertimos el cambio en la UI y mostramos un error
-        setLocalFigures(originalFigures);
-        toast({
-            title: "Error",
-            description: error.message || "No se pudo actualizar el estado.",
-            variant: "destructive",
-        });
-    }
-  };
 
   if (isLoading) {
     return (
@@ -177,7 +143,6 @@ function AdminFiguresPageComponent() {
                 <TableRow>
                   <TableHead className="w-[80px] p-3">Imagen</TableHead>
                   <TableHead className="p-3">Nombre</TableHead>
-                  <TableHead className="w-[130px] text-center p-3">Destacada</TableHead>
                   <TableHead className="text-right w-[100px] p-3">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -192,16 +157,10 @@ function AdminFiguresPageComponent() {
                         }}
                       />
                     </TableCell>
-                    <TableCell className="font-medium p-3">{figure.name}</TableCell>
-                    <TableCell className="text-center p-3">
-                      <div className="flex items-center justify-center">
-                        <Switch
-                          id={`featured-${figure.id}`}
-                          checked={figure.isFeatured || false}
-                          onCheckedChange={() => handleToggleFeatured(figure.id)}
-                          aria-label={figure.isFeatured ? "Desmarcar como destacada" : "Marcar como destacada"}
-                        />
-                        {figure.isFeatured && <Star className="ml-2 h-4 w-4 text-yellow-400 fill-yellow-400" />}
+                    <TableCell className="font-medium p-3">
+                      <div className="flex items-center gap-2">
+                        {figure.name}
+                        {figure.isFeatured && <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />}
                       </div>
                     </TableCell>
                     <TableCell className="text-right p-3">
