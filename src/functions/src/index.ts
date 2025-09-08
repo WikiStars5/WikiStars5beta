@@ -24,6 +24,36 @@ const db = admin.firestore();
 // running at the same time.
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
+
+/**
+ * Returns key statistics for the admin dashboard.
+ * Currently, it only returns the total number of figures.
+ */
+export const getDashboardStats = onCall(async (request) => {
+    const callingUid = request.auth?.uid;
+    if (!callingUid) {
+        throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
+    }
+
+    // Verify the caller is an admin.
+    const userDoc = await db.collection('users').doc(callingUid).get();
+    if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
+        throw new HttpsError('permission-denied', 'Only admins can call this function.');
+    }
+
+    try {
+        const figuresSnapshot = await db.collection('figures').get();
+        const totalFigures = figuresSnapshot.size;
+
+        return { success: true, stats: { totalFigures } };
+
+    } catch (error: any) {
+        console.error("Error fetching dashboard stats:", error);
+        throw new HttpsError('internal', `An unexpected error occurred: ${error.message}`);
+    }
+});
+
+
 // All user-related functions have been removed as the authentication system
 // has been disabled per user request.
 

@@ -6,15 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Users, ListOrdered, PlusCircle, AlertTriangle, Loader2 } from "lucide-react";
-import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
-import type { Figure } from "@/lib/types";
+import { callFirebaseFunction } from "@/lib/firebase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
 import { BatchUpdateTagsButton } from "@/components/admin/BatchUpdateTagsButton";
 import { BatchCreateFigures } from "@/components/admin/BatchCreateFigures";
 
 export default function AdminDashboardPage() {
-  const [figures, setFigures] = useState<Figure[]>([]);
+  const [totalFigures, setTotalFigures] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -23,8 +22,12 @@ export default function AdminDashboardPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const figuresData = await getAllFiguresFromFirestore();
-        setFigures(figuresData);
+        const result = await callFirebaseFunction('getDashboardStats');
+        if (result.success) {
+          setTotalFigures(result.stats.totalFigures);
+        } else {
+          throw new Error(result.error || 'Failed to fetch dashboard stats.');
+        }
       } catch (error: any) {
         console.error("Error fetching admin dashboard data:", error);
         setFetchError(error.message || 'Ocurrió un error inesperado al cargar los datos.');
@@ -35,8 +38,6 @@ export default function AdminDashboardPage() {
 
     fetchData();
   }, []);
-  
-  const totalFigures = figures.length;
 
   return (
     <div className="space-y-8">
