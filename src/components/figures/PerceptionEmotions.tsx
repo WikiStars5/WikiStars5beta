@@ -4,14 +4,15 @@
 import React, { useState, useEffect } from 'react';
 import type { Figure, EmotionKey, EmotionVote } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import { ShareButton } from '../shared/ShareButton';
 import { grantEmocionAlDescubiertoAchievement } from '@/app/actions/achievementActions';
+import { useAuth } from '@/hooks/use-auth';
+import { cn } from '@/lib/utils';
 
 interface PerceptionEmotionsProps {
   figureId: string;
@@ -19,13 +20,13 @@ interface PerceptionEmotionsProps {
   initialPerceptionCounts?: Record<EmotionKey, number>;
 }
 
-const EMOTIONS_CONFIG: { key: EmotionKey; label: string; imageUrl: string; colorClass: string }[] = [
-  { key: 'alegria', label: 'Alegría', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414`, colorClass: 'hover:bg-yellow-400/20 border-yellow-500 text-yellow-600' },
-  { key: 'envidia', label: 'Envidia', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fenvidia.png?alt=media&token=940aa136-2235-48db-84d6-2c461730fde5`, colorClass: 'hover:bg-green-400/20 border-green-500 text-green-600' },
-  { key: 'tristeza', label: 'Tristeza', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ftrizteza.png?alt=media&token=0115df4b-55e4-4281-9cff-a8a560c38903`, colorClass: 'hover:bg-blue-400/20 border-blue-500 text-blue-600' },
-  { key: 'miedo', label: 'Miedo', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985`, colorClass: 'hover:bg-purple-400/20 border-purple-500 text-purple-600' },
-  { key: 'desagrado', label: 'Desagrado', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb`, colorClass: 'hover:bg-lime-400/20 border-lime-500 text-lime-600' },
-  { key: 'furia', label: 'Furia', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f`, colorClass: 'hover:bg-red-400/20 border-red-500 text-red-600' },
+const EMOTIONS_CONFIG: { key: EmotionKey; label: string; imageUrl: string; colorClass: string, selectedClass: string }[] = [
+  { key: 'alegria', label: 'Alegría', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414`, colorClass: 'border-yellow-500/50 text-yellow-600 hover:bg-yellow-400/20', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-yellow-500 border-yellow-500' },
+  { key: 'envidia', label: 'Envidia', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fenvidia.png?alt=media&token=940aa136-2235-48db-84d6-2c461730fde5`, colorClass: 'border-green-500/50 text-green-600 hover:bg-green-400/20', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-green-500 border-green-500' },
+  { key: 'tristeza', label: 'Tristeza', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ftrizteza.png?alt=media&token=0115df4b-55e4-4281-9cff-a8a560c38903`, colorClass: 'border-blue-500/50 text-blue-600 hover:bg-blue-400/20', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-blue-500 border-blue-500' },
+  { key: 'miedo', label: 'Miedo', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985`, colorClass: 'border-purple-500/50 text-purple-600 hover:bg-purple-400/20', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-purple-500 border-purple-500' },
+  { key: 'desagrado', label: 'Desagrado', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb`, colorClass: 'border-lime-500/50 text-lime-600 hover:bg-lime-400/20', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-lime-500 border-lime-500' },
+  { key: 'furia', label: 'Furia', imageUrl: `https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f`, colorClass: 'border-red-500/50 text-red-600 hover:bg-red-400/20', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-red-500 border-red-500' },
 ];
 
 const defaultPerceptionCountsData: Record<EmotionKey, number> = {
@@ -33,10 +34,16 @@ const defaultPerceptionCountsData: Record<EmotionKey, number> = {
 };
 
 export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts }) => {
+  const { currentUser, firebaseUser, isLoading } = useAuth();
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
+  const [isVoting, setIsVoting] = useState(false);
   const [figurePerceptionCounts, setFigurePerceptionCounts] = useState<Record<EmotionKey, number>>(initialPerceptionCounts || defaultPerceptionCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
   const { toast } = useToast();
+
+  const getUserId = () => {
+    return firebaseUser?.uid || currentUser?.uid || localStorage.getItem('wikistars5-guestId');
+  };
 
   useEffect(() => {
     if (!figureId) return;
@@ -53,48 +60,149 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         console.error("Error listening to figure document for perceptions:", error);
     });
 
+    if (typeof window !== 'undefined') {
+        const storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem('wikistars5-userEmotions') || '[]');
+        const userVote = storedEmotions.find(e => e.figureId === figureId);
+        if (userVote) {
+            setSelectedEmotion(userVote.emotion);
+        }
+    }
+
     return () => {
       unsubscribeFigure();
     };
   }, [figureId]);
 
-  
+  const handleVote = async (newEmotion: EmotionKey) => {
+    if (isVoting || isLoading) return;
+
+    const userId = getUserId();
+    if (!userId) {
+        toast({ title: "Acción no permitida", description: "No se pudo identificar al usuario. Por favor, recarga la página.", variant: "destructive" });
+        return;
+    }
+      
+    setIsVoting(true);
+
+    try {
+      let previousVote: EmotionKey | null = null;
+      if (typeof window !== 'undefined') {
+        const storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem('wikistars5-userEmotions') || '[]');
+        previousVote = storedEmotions.find(e => e.figureId === figureId)?.emotion || null;
+      }
+      
+      const isDeselecting = previousVote === newEmotion;
+
+      await runTransaction(db, async (transaction) => {
+        const figureRef = doc(db, 'figures', figureId);
+        const figureDoc = await transaction.get(figureRef);
+        
+        if (!figureDoc.exists()) {
+          throw new Error("Figura no encontrada.");
+        }
+        
+        const currentCounts = figureDoc.data().perceptionCounts || defaultPerceptionCountsData;
+        const newCounts = { ...currentCounts };
+        
+        if (previousVote) {
+          newCounts[previousVote] = Math.max(0, (newCounts[previousVote] || 0) - 1);
+        }
+        
+        if (!isDeselecting) {
+          newCounts[newEmotion] = (newCounts[newEmotion] || 0) + 1;
+        }
+
+        transaction.update(figureRef, { perceptionCounts: newCounts });
+      });
+
+      if (typeof window !== 'undefined') {
+        let storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem('wikistars5-userEmotions') || '[]');
+        const existingVoteIndex = storedEmotions.findIndex(e => e.figureId === figureId);
+
+        if (isDeselecting) {
+          if (existingVoteIndex > -1) {
+            storedEmotions.splice(existingVoteIndex, 1);
+          }
+          setSelectedEmotion(null);
+        } else {
+          if (existingVoteIndex > -1) {
+            storedEmotions[existingVoteIndex].emotion = newEmotion;
+          } else {
+            storedEmotions.push({ figureId, emotion: newEmotion, addedAt: new Date().toISOString() });
+          }
+          setSelectedEmotion(newEmotion);
+          
+          const achievementResult = await grantEmocionAlDescubiertoAchievement(userId);
+          if (achievementResult.unlocked) {
+            toast({
+              title: "¡Logro Desbloqueado!",
+              description: achievementResult.message,
+            });
+          }
+        }
+        
+        localStorage.setItem('wikistars5-userEmotions', JSON.stringify(storedEmotions));
+      }
+
+    } catch (error: any) {
+      console.error("Error al votar por emoción:", error);
+      toast({
+        title: "Error al votar",
+        description: error.message || "No se pudo registrar tu voto. Inténtalo de nuevo.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsVoting(false);
+    }
+  };
+
   return (
     <Card className="border border-white/20 bg-black">
       <CardHeader>
         <CardTitle>¿Qué emoción te provoca {figureName}?</CardTitle>
         <CardDescription>
-          Votación deshabilitada. Se requiere un sistema de autenticación.
+          Elige la emoción que mejor describe lo que sientes. Tu voto es anónimo.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-2 gap-3">
-          {EMOTIONS_CONFIG.map(({ key, label, imageUrl, colorClass }) => (
-            <Button
-              key={key}
-              variant={"outline"}
-              className={`flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 opacity-50 cursor-not-allowed
-                ${colorClass}
-              `}
-              disabled={true}
-              style={{ minHeight: '120px' }}
-            >
-              <div className="relative w-10 h-10 mb-1" data-ai-hint={`emoji ${label}`}>
-                <Image
-                  src={imageUrl}
-                  alt={label}
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 10vw, 5vw"
-                />
-              </div>
-              <span className="text-xs font-medium text-center block">{label}</span>
-              <span className="text-sm font-bold">
-                {(figurePerceptionCounts[key] || 0).toLocaleString()}
-              </span>
-            </Button>
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-48">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {EMOTIONS_CONFIG.map(({ key, label, imageUrl, colorClass, selectedClass }) => (
+              <Button
+                key={key}
+                variant={"outline"}
+                className={cn(
+                  "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 bg-black",
+                  colorClass,
+                  selectedEmotion === key && selectedClass,
+                  isVoting && selectedEmotion !== key && 'opacity-50 cursor-not-allowed'
+                )}
+                onClick={() => handleVote(key)}
+                disabled={isVoting || isLoading}
+                style={{ minHeight: '120px' }}
+              >
+                {isVoting && selectedEmotion === key && <Loader2 className="absolute h-5 w-5 animate-spin" />}
+                <div className="relative w-10 h-10 mb-1" data-ai-hint={`emoji ${label}`}>
+                  <Image
+                    src={imageUrl}
+                    alt={label}
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 10vw, 5vw"
+                  />
+                </div>
+                <span className="text-xs font-medium text-center block">{label}</span>
+                <span className="text-sm font-bold">
+                  {(figurePerceptionCounts[key] || 0).toLocaleString()}
+                </span>
+              </Button>
+            ))}
+          </div>
+        )}
         <div className="text-center text-muted-foreground">
           <p>Total de respuestas: <span className="font-bold">{totalVotes.toLocaleString()}</span></p>
         </div>
