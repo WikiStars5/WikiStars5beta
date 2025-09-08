@@ -4,12 +4,11 @@
 import React, { useState, useEffect } from 'react';
 import type { Figure, AttitudeKey, Attitude } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
 import { useAuth } from '@/hooks/use-auth';
@@ -46,10 +45,13 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   const [totalVotes, setTotalVotes] = useState(0);
   const { toast } = useToast();
   
+  const getUserId = () => {
+    return firebaseUser?.uid || currentUser?.uid || localStorage.getItem('wikistars5-guestId');
+  };
+  
   useEffect(() => {
     if (!figureId) return;
 
-    // Real-time listener for figure vote counts
     const figureDocRef = doc(db, "figures", figureId);
     const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -62,7 +64,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       console.error("Error listening to figure document for attitudes:", error);
     });
     
-    // Load user's vote from local storage
+    // Load user's vote from local storage on component mount
     if (typeof window !== 'undefined') {
         const storedAttitudes: Attitude[] = JSON.parse(localStorage.getItem('wikistars5-userAttitudes') || '[]');
         const userVote = storedAttitudes.find(a => a.figureId === figureId);
@@ -79,16 +81,24 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   const handleVote = async (newAttitude: AttitudeKey) => {
     if (isVoting || isLoading) return;
 
-    const userId = currentUser?.uid;
-
+    const userId = getUserId();
     if (!userId) {
-        toast({ title: "Acción no permitida", description: "Debes iniciar sesión para votar.", variant: "destructive" });
+        toast({ title: "Acción no permitida", description: "No se pudo identificar al usuario. Por favor, recarga la página.", variant: "destructive" });
         return;
     }
       
     setIsVoting(true);
 
     try {
+      // First, determine the user's previous vote from localStorage
+      let previousVote: AttitudeKey | null = null;
+      if (typeof window !== 'undefined') {
+        const storedAttitudes: Attitude[] = JSON.parse(localStorage.getItem('wikistars5-userAttitudes') || '[]');
+        previousVote = storedAttitudes.find(a => a.figureId === figureId)?.attitude || null;
+      }
+      
+      const isDeselecting = previousVote === newAttitude;
+
       await runTransaction(db, async (transaction) => {
         const figureRef = doc(db, 'figures', figureId);
         const figureDoc = await transaction.get(figureRef);
@@ -99,53 +109,48 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         
         const currentCounts = figureDoc.data().attitudeCounts || defaultAttitudeCountsData;
         const newCounts = { ...currentCounts };
-        const currentlySelected = selectedAttitude;
         
-        // Decrement the old one if changing vote
-        if (currentlySelected && currentlySelected !== newAttitude) {
-          newCounts[currentlySelected] = Math.max(0, (newCounts[currentlySelected] || 0) - 1);
+        // Decrement the old vote if there was one
+        if (previousVote) {
+          newCounts[previousVote] = Math.max(0, (newCounts[previousVote] || 0) - 1);
         }
         
-        // Increment the new one, but only if it's a new vote or a different vote
-        if (currentlySelected !== newAttitude) {
-            newCounts[newAttitude] = (newCounts[newAttitude] || 0) + 1;
+        // Increment the new one, but only if it's not a deselection
+        if (!isDeselecting) {
+          newCounts[newAttitude] = (newCounts[newAttitude] || 0) + 1;
         }
 
         transaction.update(figureRef, { attitudeCounts: newCounts });
       });
 
-      // Update local storage
+      // After the transaction succeeds, update local state and storage
       if (typeof window !== 'undefined') {
         let storedAttitudes: Attitude[] = JSON.parse(localStorage.getItem('wikistars5-userAttitudes') || '[]');
         const existingVoteIndex = storedAttitudes.findIndex(a => a.figureId === figureId);
-        
-        if (existingVoteIndex > -1) {
-          if (storedAttitudes[existingVoteIndex].attitude === newAttitude) {
-             // User is deselecting their vote
-             storedAttitudes.splice(existingVoteIndex, 1);
-             setSelectedAttitude(null);
-          } else {
-             // User is changing their vote
-            storedAttitudes[existingVoteIndex].attitude = newAttitude;
-            setSelectedAttitude(newAttitude);
+
+        if (isDeselecting) {
+          if (existingVoteIndex > -1) {
+            storedAttitudes.splice(existingVoteIndex, 1);
           }
+          setSelectedAttitude(null);
         } else {
-          // New vote
-          storedAttitudes.push({ figureId, attitude: newAttitude, addedAt: new Date().toISOString() });
+          if (existingVoteIndex > -1) {
+            storedAttitudes[existingVoteIndex].attitude = newAttitude;
+          } else {
+            storedAttitudes.push({ figureId, attitude: newAttitude, addedAt: new Date().toISOString() });
+          }
           setSelectedAttitude(newAttitude);
+          
+          const achievementResult = await grantActitudDefinidaAchievement(userId);
+          if (achievementResult.unlocked) {
+            toast({
+              title: "¡Logro Desbloqueado!",
+              description: achievementResult.message,
+            });
+          }
         }
         
         localStorage.setItem('wikistars5-userAttitudes', JSON.stringify(storedAttitudes));
-      }
-
-      if (selectedAttitude !== newAttitude) {
-        const achievementResult = await grantActitudDefinidaAchievement(userId);
-        if (achievementResult.unlocked) {
-          toast({
-            title: "¡Logro Desbloqueado!",
-            description: achievementResult.message,
-          });
-        }
       }
 
     } catch (error: any) {
