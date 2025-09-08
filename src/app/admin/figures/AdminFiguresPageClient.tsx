@@ -11,7 +11,6 @@ import type { Figure } from "@/lib/types";
 import { PlusCircle, Edit3, Star, Search as SearchIcon, ChevronLeft, ChevronRight, Loader2, AlertTriangle, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { AdminFigureImage } from "@/components/admin/AdminFigureImage";
-import { AdminDeleteFigureButton } from "@/components/admin/AdminDeleteFigureButton";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { toggleFigureFeaturedStatus } from "@/app/actions/adminActions";
@@ -205,12 +204,6 @@ function AdminFiguresPageComponent() {
                           <span className="sr-only">Editar</span>
                         </Link>
                       </Button>
-                      <AdminDeleteFigureButton
-                        figure={{
-                          id: figure.id,
-                          name: figure.name
-                        }}
-                      />
                     </TableCell>
                   </TableRow>
                 ))}
