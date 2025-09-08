@@ -157,10 +157,16 @@ export function CommentItem({
     const depth = (parentPath.match(/replies/g) || []).length;
     const canReply = depth < MAX_REPLY_DEPTH;
 
+    const getUserId = () => firebaseUser?.uid || localStorage.getItem('wikistars5-guestId');
+    const userId = getUserId();
+    const isLiked = userId ? comment.likes.includes(userId) : false;
+    const isDisliked = userId ? comment.dislikes.includes(userId) : false;
+
+
     const canDelete = React.useMemo(() => {
         if (isAdmin) return true;
-        const userId = firebaseUser?.uid || localStorage.getItem('wikistars5-guestId');
-        return userId === comment.authorId;
+        const currentUserId = firebaseUser?.uid || localStorage.getItem('wikistars5-guestId');
+        return currentUserId === comment.authorId;
     }, [isAdmin, firebaseUser, comment.authorId]);
 
 
@@ -207,12 +213,10 @@ export function CommentItem({
         return () => unsubscribe && unsubscribe();
     }, [fetchReplies]);
 
-    const getUserId = () => firebaseUser?.uid || localStorage.getItem('wikistars5-guestId');
-
     const handleLike = async (isLike: boolean) => {
         if (isProcessingLike || isAuthLoading) return;
-        const userId = getUserId();
-        if (!userId) {
+        const currentUserId = getUserId();
+        if (!currentUserId) {
             toast({ title: "Error", description: "Debes iniciar sesión o recargar la página como invitado para reaccionar.", variant: "destructive" });
             return;
         }
@@ -220,9 +224,9 @@ export function CommentItem({
         setIsProcessingLike(true);
         try {
             if (isLike) {
-                await toggleLikeComment(currentPath, userId);
+                await toggleLikeComment(currentPath, currentUserId);
             } else {
-                 await toggleDislikeComment(currentPath, userId, comment.authorId, figure.id, figure.name, comment.id);
+                 await toggleDislikeComment(currentPath, currentUserId, comment.authorId, figure.id, figure.name, comment.id);
             }
         } catch (error: any) {
             console.error("Error liking/disliking:", error);
@@ -305,10 +309,10 @@ export function CommentItem({
                 )}
             </div>
             <div className="flex items-center gap-2 mt-1 px-1 ml-10">
-                <Button variant="ghost" size="sm" onClick={() => handleLike(true)} disabled={isProcessingLike || isAuthLoading} className="text-xs h-auto py-1 px-2">
+                <Button variant="ghost" size="sm" onClick={() => handleLike(true)} disabled={isProcessingLike || isAuthLoading} className={cn("text-xs h-auto py-1 px-2", isLiked && "text-blue-500 hover:text-blue-600")}>
                     <ThumbsUp className="mr-1 h-3 w-3" /> {comment.likeCount}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleLike(false)} disabled={isProcessingLike || isAuthLoading} className="text-xs h-auto py-1 px-2">
+                <Button variant="ghost" size="sm" onClick={() => handleLike(false)} disabled={isProcessingLike || isAuthLoading} className={cn("text-xs h-auto py-1 px-2", isDisliked && "text-red-500 hover:text-red-600")}>
                     <ThumbsDown className="mr-1 h-3 w-3" /> {comment.dislikeCount}
                 </Button>
                 {canReply && (
