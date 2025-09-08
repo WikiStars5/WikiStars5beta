@@ -33,13 +33,9 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-interface BatchCreateFiguresProps {
-  isProcessing: boolean;
-  setIsProcessing: (isProcessing: boolean) => void;
-}
-
-export function BatchCreateFigures({ isProcessing, setIsProcessing }: BatchCreateFiguresProps) {
+export function BatchCreateFigures() {
   const [names, setNames] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 

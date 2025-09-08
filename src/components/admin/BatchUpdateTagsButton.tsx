@@ -21,12 +21,8 @@ import { db } from '@/lib/firebase';
 import type { Figure } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
-interface BatchUpdateTagsButtonProps {
-  isProcessing: boolean;
-  setIsProcessing: (isProcessing: boolean) => void;
-}
-
-export function BatchUpdateTagsButton({ isProcessing, setIsProcessing }: BatchUpdateTagsButtonProps) {
+export function BatchUpdateTagsButton() {
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 

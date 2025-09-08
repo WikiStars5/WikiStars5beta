@@ -22,12 +22,8 @@ import { correctMalformedUrl } from '@/lib/utils';
 import type { Figure } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
-interface BatchUpdateImagesButtonProps {
-  isProcessing: boolean;
-  setIsProcessing: (isProcessing: boolean) => void;
-}
-
-export function BatchUpdateImagesButton({ isProcessing, setIsProcessing }: BatchUpdateImagesButtonProps) {
+export function BatchUpdateImagesButton() {
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 

@@ -6,29 +6,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Users, ListOrdered, PlusCircle, AlertTriangle, Loader2 } from "lucide-react";
-import { callFirebaseFunction } from "@/lib/firebase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
 import { BatchUpdateTagsButton } from "@/components/admin/BatchUpdateTagsButton";
 import { BatchCreateFigures } from "@/components/admin/BatchCreateFigures";
+import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 
 export default function AdminDashboardPage() {
   const [totalFigures, setTotalFigures] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const result = await callFirebaseFunction('getDashboardStats');
-        if (result.success) {
-          setTotalFigures(result.stats.totalFigures);
-        } else {
-          throw new Error(result.error || 'Failed to fetch dashboard stats.');
-        }
+        // Revert to getting all figures on the client to count them
+        const figures = await getAllFiguresFromFirestore();
+        setTotalFigures(figures.length);
       } catch (error: any) {
         console.error("Error fetching admin dashboard data:", error);
         setFetchError(error.message || 'Ocurrió un error inesperado al cargar los datos.');
@@ -91,10 +87,7 @@ export default function AdminDashboardPage() {
         </CardContent>
       </Card>
 
-      <BatchCreateFigures 
-        isProcessing={isBatchProcessing}
-        setIsProcessing={setIsBatchProcessing}
-      />
+      <BatchCreateFigures />
 
       <Card>
         <CardHeader>
@@ -102,14 +95,8 @@ export default function AdminDashboardPage() {
           <CardDescription>Ejecuta acciones masivas para corregir datos en la base de datos.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
-           <BatchUpdateImagesButton 
-              isProcessing={isBatchProcessing}
-              setIsProcessing={setIsBatchProcessing}
-           />
-           <BatchUpdateTagsButton 
-              isProcessing={isBatchProcessing}
-              setIsProcessing={setIsBatchProcessing}
-           />
+           <BatchUpdateImagesButton />
+           <BatchUpdateTagsButton />
         </CardContent>
       </Card>
     </div>
