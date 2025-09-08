@@ -16,6 +16,7 @@ export default function AdminDashboardPage() {
   const [totalFigures, setTotalFigures] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -90,7 +91,10 @@ export default function AdminDashboardPage() {
         </CardContent>
       </Card>
 
-      <BatchCreateFigures />
+      <BatchCreateFigures 
+        isProcessing={isBatchProcessing}
+        setIsProcessing={setIsBatchProcessing}
+      />
 
       <Card>
         <CardHeader>
@@ -98,8 +102,14 @@ export default function AdminDashboardPage() {
           <CardDescription>Ejecuta acciones masivas para corregir datos en la base de datos.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
-           <BatchUpdateImagesButton />
-           <BatchUpdateTagsButton />
+           <BatchUpdateImagesButton 
+              isProcessing={isBatchProcessing}
+              setIsProcessing={setIsBatchProcessing}
+           />
+           <BatchUpdateTagsButton 
+              isProcessing={isBatchProcessing}
+              setIsProcessing={setIsBatchProcessing}
+           />
         </CardContent>
       </Card>
     </div>

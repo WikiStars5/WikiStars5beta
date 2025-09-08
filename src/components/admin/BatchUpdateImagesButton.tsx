@@ -22,20 +22,24 @@ import { correctMalformedUrl } from '@/lib/utils';
 import type { Figure } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
-export function BatchUpdateImagesButton() {
-  const [isLoading, setIsLoading] = useState(false);
+interface BatchUpdateImagesButtonProps {
+  isProcessing: boolean;
+  setIsProcessing: (isProcessing: boolean) => void;
+}
+
+export function BatchUpdateImagesButton({ isProcessing, setIsProcessing }: BatchUpdateImagesButtonProps) {
   const { toast } = useToast();
   const router = useRouter();
 
   const handleUpdate = async () => {
-    setIsLoading(true);
+    setIsProcessing(true);
     try {
       const figuresCollectionRef = collection(db, 'figures');
       const querySnapshot = await getDocs(figuresCollectionRef);
       
       if (querySnapshot.empty) {
         toast({ title: "Proceso Exitoso", description: "No se encontraron figuras para procesar." });
-        setIsLoading(false);
+        setIsProcessing(false);
         return;
       }
 
@@ -87,16 +91,20 @@ export function BatchUpdateImagesButton() {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsProcessing(false);
     }
   };
 
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" disabled={isProcessing}>
+          {isProcessing ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
             <ImageUp className="mr-2 h-4 w-4" />
-            Corregir URLs de Imágenes
+          )}
+          {isProcessing ? 'Procesando...' : 'Corregir URLs de Imágenes'}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -109,12 +117,12 @@ export function BatchUpdateImagesButton() {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={handleUpdate} disabled={isLoading}>
-            {isLoading ? (
+          <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={handleUpdate} disabled={isProcessing}>
+            {isProcessing ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : null}
-            {isLoading ? 'Procesando...' : 'Sí, Corregir Todas'}
+            {isProcessing ? 'Procesando...' : 'Sí, Corregir Todas'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

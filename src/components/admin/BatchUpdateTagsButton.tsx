@@ -21,20 +21,24 @@ import { db } from '@/lib/firebase';
 import type { Figure } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
-export function BatchUpdateTagsButton() {
-  const [isLoading, setIsLoading] = useState(false);
+interface BatchUpdateTagsButtonProps {
+  isProcessing: boolean;
+  setIsProcessing: (isProcessing: boolean) => void;
+}
+
+export function BatchUpdateTagsButton({ isProcessing, setIsProcessing }: BatchUpdateTagsButtonProps) {
   const { toast } = useToast();
   const router = useRouter();
 
   const handleUpdate = async () => {
-    setIsLoading(true);
+    setIsProcessing(true);
     try {
       const figuresCollectionRef = collection(db, 'figures');
       const querySnapshot = await getDocs(figuresCollectionRef);
       
       if (querySnapshot.empty) {
         toast({ title: "Proceso Exitoso", description: "No se encontraron figuras para procesar." });
-        setIsLoading(false);
+        setIsProcessing(false);
         return;
       }
 
@@ -82,16 +86,20 @@ export function BatchUpdateTagsButton() {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsProcessing(false);
     }
   };
 
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="outline">
-            <Tags className="mr-2 h-4 w-4" />
-            Sincronizar Etiquetas
+        <Button variant="outline" disabled={isProcessing}>
+            {isProcessing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Tags className="mr-2 h-4 w-4" />
+            )}
+            {isProcessing ? 'Procesando...' : 'Sincronizar Etiquetas'}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -104,12 +112,12 @@ export function BatchUpdateTagsButton() {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={handleUpdate} disabled={isLoading}>
-            {isLoading ? (
+          <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={handleUpdate} disabled={isProcessing}>
+            {isProcessing ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : null}
-            {isLoading ? 'Sincronizando...' : 'Sí, Sincronizar'}
+            {isProcessing ? 'Sincronizando...' : 'Sí, Sincronizar'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

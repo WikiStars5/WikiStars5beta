@@ -33,14 +33,18 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-export function BatchCreateFigures() {
+interface BatchCreateFiguresProps {
+  isProcessing: boolean;
+  setIsProcessing: (isProcessing: boolean) => void;
+}
+
+export function BatchCreateFigures({ isProcessing, setIsProcessing }: BatchCreateFiguresProps) {
   const [names, setNames] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
   const handleCreate = async () => {
-    setIsLoading(true);
+    setIsProcessing(true);
     const namesList = names.split('\n').map(name => name.trim()).filter(name => name.length > 0);
 
     if (namesList.length === 0) {
@@ -49,7 +53,7 @@ export function BatchCreateFigures() {
         description: "Por favor, introduce al menos un nombre en el área de texto.",
         variant: "destructive",
       });
-      setIsLoading(false);
+      setIsProcessing(false);
       return;
     }
 
@@ -100,7 +104,7 @@ export function BatchCreateFigures() {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsProcessing(false);
     }
   };
 
@@ -124,18 +128,18 @@ export function BatchCreateFigures() {
             onChange={(e) => setNames(e.target.value)}
             placeholder="Lionel Messi\nCristiano Ronaldo\nRihanna\n..."
             rows={6}
-            disabled={isLoading}
+            disabled={isProcessing}
           />
         </div>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button disabled={isLoading || names.trim().length === 0}>
-              {isLoading ? (
+            <Button disabled={isProcessing || names.trim().length === 0}>
+              {isProcessing ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Sparkles className="mr-2 h-4 w-4" />
               )}
-              {isLoading ? 'Creando Perfiles...' : 'Crear Perfiles'}
+              {isProcessing ? 'Procesando...' : 'Crear Perfiles'}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -147,12 +151,12 @@ export function BatchCreateFigures() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleCreate} disabled={isLoading}>
-                {isLoading ? (
+              <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleCreate} disabled={isProcessing}>
+                {isProcessing ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                {isLoading ? 'Procesando...' : 'Sí, Crear Perfiles'}
+                {isProcessing ? 'Procesando...' : 'Sí, Crear Perfiles'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
