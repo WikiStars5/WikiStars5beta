@@ -491,54 +491,30 @@ export async function addComment(
     countryCode: string;
     isAnonymous: boolean;
   },
-  text: string,
-  rating?: RatingValue | null
+  text: string
 ): Promise<string> {
-    const figureRef = doc(db, 'figures', figureId);
     const commentsCollectionRef = collection(db, `figures/${figureId}/comments`);
-    
-    // Generate a new document reference for the comment to get an ID.
     const newCommentRef = doc(commentsCollectionRef);
     
-    await runTransaction(db, async (transaction) => {
-        const figureDoc = await transaction.get(figureRef);
-        if (!figureDoc.exists()) {
-            throw new Error("Figure document does not exist.");
-        }
-
-        // 1. Prepare the new comment data
-        const commentData: Omit<Comment, 'id' | 'replies'> & { createdAt: any } = {
-            figureId: figureId,
-            authorId: authorData.id,
-            authorName: authorData.name,
-            authorPhotoUrl: authorData.photoUrl,
-            authorGender: authorData.gender,
-            authorCountry: authorData.country,
-            authorCountryCode: authorData.countryCode,
-            text: text,
-            rating: rating ?? undefined,
-            createdAt: serverTimestamp(),
-            likes: [],
-            likeCount: 0,
-            dislikes: [],
-            dislikeCount: 0,
-            replyCount: 0,
-            isAnonymous: authorData.isAnonymous,
-        };
-        
-        // 2. Set the new comment in the transaction
-        transaction.set(newCommentRef, commentData);
-        
-        // 3. Update the figure's rating counts if a rating was provided
-        if (rating !== undefined && rating !== null) {
-            const figureData = figureDoc.data();
-            const currentRatingCounts = figureData.ratingCounts || { ...defaultRatingCounts };
-            const newCount = (currentRatingCounts[rating] || 0) + 1;
-            const newRatingCounts = { ...currentRatingCounts, [rating]: newCount };
-            
-            transaction.update(figureRef, { ratingCounts: newRatingCounts });
-        }
-    });
+    const commentData: Omit<Comment, 'id' | 'replies'> & { createdAt: any } = {
+        figureId: figureId,
+        authorId: authorData.id,
+        authorName: authorData.name,
+        authorPhotoUrl: authorData.photoUrl,
+        authorGender: authorData.gender,
+        authorCountry: authorData.country,
+        authorCountryCode: authorData.countryCode,
+        text: text,
+        createdAt: serverTimestamp(),
+        likes: [],
+        likeCount: 0,
+        dislikes: [],
+        dislikeCount: 0,
+        replyCount: 0,
+        isAnonymous: authorData.isAnonymous,
+    };
+    
+    await setDoc(newCommentRef, commentData);
 
     return newCommentRef.id;
 }
@@ -972,15 +948,18 @@ export async function submitStarRating(
         const userRatingDoc = await transaction.get(userRatingDocRef);
         const previousRating = userRatingDoc.exists() ? userRatingDoc.data().rating as RatingValue : null;
 
+        // If user had a previous rating, decrement that counter first.
         if (previousRating !== null) {
             newRatingCounts[previousRating] = Math.max(0, (newRatingCounts[previousRating] || 0) - 1);
         }
+        // If a new rating is provided (not just clearing), increment the new counter.
         if (rating !== null) {
             newRatingCounts[rating] = (newRatingCounts[rating] || 0) + 1;
         }
 
         transaction.update(figureDocRef, { ratingCounts: newRatingCounts });
 
+        // Now, update or delete the user's specific rating document.
         if (rating !== null) {
             transaction.set(userRatingDocRef, {
                 userId,
@@ -989,11 +968,12 @@ export async function submitStarRating(
                 addedAt: serverTimestamp()
             });
         } else if (userRatingDoc.exists()) {
+            // This case handles if we ever allow clearing a vote.
             transaction.delete(userRatingDocRef);
         }
     });
 
-    // Update local storage
+    // Update local storage for immediate UI feedback.
     if (typeof window !== 'undefined') {
         try {
             const localKey = 'wikistars5-userRatings';
@@ -1008,7 +988,3 @@ export async function submitStarRating(
         }
     }
 }
-
-    
-
-    

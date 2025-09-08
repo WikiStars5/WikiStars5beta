@@ -27,68 +27,14 @@ interface CommentSectionProps {
   highlightedCommentId?: string | null;
 }
 
+// Validation no longer includes rating, as it's decoupled.
 const commentSchema = z.object({
   text: z.string().min(3, 'Tu opinión debe tener al menos 3 caracteres.').max(2000, 'Tu opinión no puede exceder los 2000 caracteres.'),
-  rating: z.custom<RatingValue>().refine(val => val >= 0 && val <= 5, { message: "Debes seleccionar una calificación." }),
 });
 
 type CommentFormData = z.infer<typeof commentSchema>;
 
 const INITIAL_COMMENTS_TO_SHOW = 5;
-
-const StarRatingInput = ({ value, onChange }: { value: RatingValue | undefined, onChange: (value: RatingValue) => void }) => {
-  const [hoverRating, setHoverRating] = React.useState<number | null>(null);
-
-  return (
-    <div className="flex items-center gap-1">
-      {/* 0 Stars Button */}
-      <button
-        type="button"
-        key={0}
-        onClick={() => onChange(0)}
-        onMouseEnter={() => setHoverRating(0)}
-        onMouseLeave={() => setHoverRating(null)}
-        className="focus:outline-none"
-        aria-label="Calificar con 0 estrellas"
-      >
-        <StarOff
-          className={cn(
-            "h-6 w-6 transition-colors",
-            (hoverRating === 0 || value === 0)
-              ? "text-destructive"
-              : "text-muted-foreground/30"
-          )}
-        />
-      </button>
-
-      {/* 1-5 Stars Buttons */}
-      {[...Array(5)].map((_, i) => {
-        const ratingValue = (i + 1) as RatingValue;
-        return (
-          <button
-            type="button"
-            key={ratingValue}
-            onClick={() => onChange(ratingValue)}
-            onMouseEnter={() => setHoverRating(ratingValue)}
-            onMouseLeave={() => setHoverRating(null)}
-            className="focus:outline-none"
-            aria-label={`Calificar con ${ratingValue} estrellas`}
-          >
-            <Star
-              className={cn(
-                "h-6 w-6 transition-colors",
-                (hoverRating ?? value ?? -1) >= ratingValue
-                  ? "text-primary fill-current"
-                  : "text-muted-foreground/30"
-              )}
-            />
-          </button>
-        );
-      })}
-    </div>
-  );
-};
-
 
 export function CommentSection({ figure, highlightedCommentId }: CommentSectionProps) {
   const [comments, setComments] = React.useState<CommentType[]>([]);
@@ -102,7 +48,6 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
     resolver: zodResolver(commentSchema),
     defaultValues: {
       text: '',
-      rating: undefined,
     },
   });
 
@@ -149,14 +94,15 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
     };
     
     try {
-        await addComment(figure.id, authorData, data.text, data.rating);
+        // Rating is no longer passed from here.
+        await addComment(figure.id, authorData, data.text);
         const newStreak = await updateStreak(figure.id, authorData);
         if (newStreak) {
           setStreakToAnimate(newStreak);
         }
 
         toast({ title: "¡Opinión publicada!", description: "Gracias por tu contribución." });
-        reset({ text: '', rating: undefined });
+        reset({ text: '' });
     } catch (error: any) {
         console.error("Error al publicar comentario:", error);
         toast({ title: "Error", description: "No se pudo publicar tu opinión. " + error.message, variant: "destructive" });
@@ -186,25 +132,12 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
                         </FormItem>
                     )}
                 />
-                <FormField
-                    control={control}
-                    name="rating"
-                    render={({ field }) => (
-                        <FormItem>
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                <div>
-                                    <p className="text-sm font-medium mb-2">Califica este perfil (0-5 estrellas):</p>
-                                    <StarRatingInput value={field.value} onChange={field.onChange} />
-                                </div>
-                                <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                                    Publicar Opinión
-                                </Button>
-                            </div>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                 <div className="flex justify-end">
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Publicar Opinión
+                    </Button>
+                </div>
             </form>
         </Form>
       );
@@ -221,7 +154,7 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
             <MessagesSquare /> Opiniones y Discusión
           </CardTitle>
           <CardDescription>
-            Comparte tu opinión sobre {figure.name}. Sé respetuoso y mantén la conversación constructiva.
+            Comparte tu opinión sobre {figure.name}. Sé respetuoso y mantén la conversación constructiva. Tu calificación se gestiona en el panel superior.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

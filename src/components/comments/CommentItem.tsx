@@ -42,31 +42,6 @@ interface CommentItemProps {
     highlightedCommentId?: string | null;
 }
 
-const RatingDisplay = ({ rating, maxRating = 5 }: { rating: RatingValue, maxRating?: number }) => {
-    if (rating === 0) {
-        return (
-            <div className="flex items-center gap-0.5" title="0 Estrellas">
-                <StarOff className="h-4 w-4 text-destructive" />
-                <span className="text-xs text-muted-foreground ml-1">Sin calificación</span>
-            </div>
-        );
-    }
-    
-    return (
-        <div className="flex items-center gap-0.5">
-            {[...Array(maxRating)].map((_, i) => (
-                <Star 
-                    key={`star-${i}`} 
-                    className={cn(
-                        "h-4 w-4",
-                        rating >= (i + 1) ? "text-primary fill-current" : "text-muted-foreground/30"
-                    )}
-                />
-            ))}
-        </div>
-    );
-};
-
 const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, parentPath: string, onReplySuccess: () => void }) => {
     const [text, setText] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -252,12 +227,6 @@ export function CommentItem({
                     )}
                 </div>
                 
-                {comment.rating !== undefined && comment.rating !== null && (
-                    <div className="mt-2 ml-10">
-                        <RatingDisplay rating={comment.rating} />
-                    </div>
-                )}
-                
                 <p className="text-sm mt-2 whitespace-pre-wrap ml-10">
                   {isLongComment && !isExpanded 
                     ? `${comment.text.substring(0, TRUNCATE_LENGTH)}...` 
@@ -330,4 +299,3 @@ export function CommentItem({
         </div>
     );
 }
-
