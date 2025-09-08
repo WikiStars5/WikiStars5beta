@@ -1,13 +1,14 @@
 
+
 "use client";
 
 import * as React from 'react';
 import type { Figure, Comment as CommentType, RatingValue } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Loader2, Star, StarOff } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Loader2, Star, StarOff, Trash2 } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
-import { mapDocToComment, toggleDislikeComment, toggleLikeComment, addReply } from '@/lib/placeholder-data';
+import { mapDocToComment, toggleDislikeComment, toggleLikeComment, addReply, deleteComment } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
@@ -15,6 +16,17 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '../ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const TRUNCATE_LENGTH = 280; // Characters to show before truncating
 const MAX_REPLY_DEPTH = 4; // Set a maximum nesting level for replies
@@ -126,13 +138,14 @@ export function CommentItem({
     parentPath,
     highlightedCommentId,
 }: CommentItemProps) {
-    const { currentUser, firebaseUser, isLoading: isAuthLoading } = useAuth();
+    const { currentUser, firebaseUser, isAdmin, isLoading: isAuthLoading } = useAuth();
     const { toast } = useToast();
     const [replies, setReplies] = React.useState<CommentType[]>([]);
     const [isLoadingReplies, setIsLoadingReplies] = React.useState(false);
     const [showReplies, setShowReplies] = React.useState(false);
     const [showReplyForm, setShowReplyForm] = React.useState(false);
     const [isProcessingLike, setIsProcessingLike] = React.useState(false);
+    const [isDeleting, setIsDeleting] = React.useState(false);
     const [isHighlighted, setIsHighlighted] = React.useState(false);
     const commentRef = React.useRef<HTMLDivElement>(null);
 
@@ -143,6 +156,13 @@ export function CommentItem({
     const currentPath = `${parentPath}/${comment.id}`;
     const depth = (parentPath.match(/replies/g) || []).length;
     const canReply = depth < MAX_REPLY_DEPTH;
+
+    const canDelete = React.useMemo(() => {
+        if (isAdmin) return true;
+        const userId = firebaseUser?.uid || localStorage.getItem('wikistars5-guestId');
+        return userId === comment.authorId;
+    }, [isAdmin, firebaseUser, comment.authorId]);
+
 
     React.useEffect(() => {
         if (comment.id === highlightedCommentId && commentRef.current) {
@@ -209,6 +229,19 @@ export function CommentItem({
             toast({ title: "Error", description: `No se pudo registrar tu reacción. ${error.message}`, variant: "destructive" });
         } finally {
             setIsProcessingLike(false);
+        }
+    };
+    
+    const handleDelete = async () => {
+        setIsDeleting(true);
+        try {
+            await deleteComment(currentPath);
+            toast({ title: "Comentario eliminado" });
+            // The component will unmount automatically due to the real-time listener in the parent.
+        } catch (error: any) {
+            console.error("Error deleting comment:", error);
+            toast({ title: "Error al eliminar", description: error.message, variant: "destructive" });
+            setIsDeleting(false);
         }
     };
 
@@ -282,6 +315,30 @@ export function CommentItem({
                     <Button variant="ghost" size="sm" onClick={() => setShowReplyForm(!showReplyForm)} disabled={isAuthLoading} className="text-xs h-auto py-1 px-2">
                         <MessageSquareReply className="mr-1 h-3 w-3" /> Responder
                     </Button>
+                )}
+                {canDelete && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" disabled={isDeleting || isAuthLoading} className="text-xs h-auto py-1 px-2 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                {isDeleting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Trash2 className="mr-1 h-3 w-3" />}
+                                Eliminar
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta acción no se puede deshacer. Se eliminará permanentemente el comentario y todas sus respuestas.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+                                    Eliminar
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 )}
             </div>
 

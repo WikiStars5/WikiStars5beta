@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import {
@@ -16,7 +17,7 @@ import {
   type User as FirebaseUser
 } from 'firebase/auth';
 import type { UserProfile } from '@/lib/types';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { ADMIN_UID } from '@/config/admin';
 import { useRouter } from 'next/navigation';
 
@@ -38,27 +39,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setIsLoading(true);
       setFirebaseUser(user);
-      if (user) {
-        // User is signed in, now fetch their Firestore profile
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDocSnap = await getDoc(userDocRef);
+      if (!user) {
+        // User is signed out
+        setCurrentUser(null);
+        setIsLoading(false);
+      }
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+      if (!firebaseUser) {
+        // No need to fetch profile if there's no firebase user
+        return;
+      }
+
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      const unsubscribeProfile = onSnapshot(userDocRef, (userDocSnap) => {
         if (userDocSnap.exists()) {
           setCurrentUser(userDocSnap.data() as UserProfile);
         } else {
-          // This case might happen if a user exists in Auth but not Firestore
           setCurrentUser(null);
         }
-      } else {
-        // User is signed out
+         // Set loading to false only after we have attempted to fetch the profile
+        setIsLoading(false);
+      }, (error) => {
+        console.error("Error listening to user profile:", error);
         setCurrentUser(null);
-      }
-      setIsLoading(false);
-    });
+        setIsLoading(false);
+      });
 
-    return () => unsubscribe();
-  }, []);
+      return () => unsubscribeProfile();
+  }, [firebaseUser]);
 
   const isAdmin = currentUser?.role === 'admin' && currentUser?.uid === ADMIN_UID;
 

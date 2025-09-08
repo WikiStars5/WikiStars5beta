@@ -1,5 +1,6 @@
 
 
+
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -724,18 +725,26 @@ export async function deleteComment(documentPath: string): Promise<void> {
     }
     const commentData = commentDoc.data();
     const rating = commentData.rating;
+    const authorId = commentData.authorId;
+    const figureId = commentData.figureId;
 
-    // If the comment had a rating, decrement the figure's rating count.
+    // If the comment had a rating, it might be the user's only rating.
+    // We need to decrement the figure's rating count.
     if (rating !== undefined && rating !== null) {
-      const figureRef = doc(db, 'figures', commentData.figureId);
-      const figureDoc = await transaction.get(figureRef);
-      if (figureDoc.exists()) {
-        const figureData = figureDoc.data();
-        const currentCounts = figureData.ratingCounts || { ...defaultRatingCounts };
-        const newCount = Math.max(0, (currentCounts[rating] || 0) - 1);
-        const newRatingCounts = { ...currentCounts, [rating]: newCount };
-        transaction.update(figureRef, { ratingCounts: newRatingCounts });
-      }
+        const figureRef = doc(db, 'figures', figureId);
+        const figureDoc = await transaction.get(figureRef);
+
+        if (figureDoc.exists()) {
+            const figureData = figureDoc.data();
+            const currentCounts = figureData.ratingCounts || { ...defaultRatingCounts };
+            const newCount = Math.max(0, (currentCounts[rating] || 0) - 1);
+            const newRatingCounts = { ...currentCounts, [rating]: newCount };
+            transaction.update(figureRef, { ratingCounts: newRatingCounts });
+        }
+        
+        // Also remove the user's specific vote record
+        const userRatingDocRef = doc(db, 'userRatings', `${authorId}_${figureId}`);
+        transaction.delete(userRatingDocRef);
     }
 
     // Now, delete the comment itself.
