@@ -13,18 +13,16 @@ import Link from "next/link";
 import { AdminFigureImage } from "@/components/admin/AdminFigureImage";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { toggleFigureFeaturedStatus } from "@/app/actions/adminActions";
 import { getAdminFiguresList } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { DeleteAllFiguresButton } from "@/components/admin/DeleteAllFiguresButton";
-import { useAuth } from "@/hooks/use-auth";
+import { callFirebaseFunction } from "@/lib/firebase";
 
 
 function AdminFiguresPageComponent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const { currentUser } = useAuth(); // Usamos el hook para obtener el usuario
 
   const [searchTerm, setSearchTerm] = useState("");
   const [localFigures, setLocalFigures] = useState<Figure[]>([]);
@@ -85,21 +83,27 @@ function AdminFiguresPageComponent() {
       );
     setLocalFigures(updateFunc);
 
-    // Pasamos el UID del usuario a la acción del servidor
-    const result = await toggleFigureFeaturedStatus(figureId, currentUser?.uid);
+    try {
+        const result = await callFirebaseFunction('toggleFeaturedStatus', { figureId });
 
-    if (result.success) {
-      toast({
-        title: "Estado Actualizado",
-        description: result.message,
-      });
-    } else {
-      setLocalFigures(originalFigures);
-      toast({
-        title: "Error",
-        description: result.message || "No se pudo actualizar el estado.",
-        variant: "destructive",
-      });
+        if (result.success) {
+            toast({
+                title: "Estado Actualizado",
+                description: result.message,
+            });
+            // The local state is already updated optimistically.
+            // If you wanted to be super-safe, you could re-fetch, but this is usually fine.
+        } else {
+            throw new Error(result.message || "No se pudo actualizar el estado.");
+        }
+    } catch (error: any) {
+        // Si falla, revertimos el cambio en la UI y mostramos un error
+        setLocalFigures(originalFigures);
+        toast({
+            title: "Error",
+            description: error.message || "No se pudo actualizar el estado.",
+            variant: "destructive",
+        });
     }
   };
 

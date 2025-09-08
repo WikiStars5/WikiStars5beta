@@ -8,7 +8,7 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 
-import type { UserProfile } from "./types";
+import type { UserProfile, Figure } from "./types";
 import { COUNTRIES } from "./countries";
 
 // Centralized Admin UID for security checks.
@@ -226,5 +226,53 @@ export const deleteFigure = onCall(async (request) => {
     } catch (error: any) {
         console.error(`Error deleting figure ${figureId}:`, error);
         throw new HttpsError('internal', `An error occurred while trying to delete the figure: ${error.message}`);
+    }
+});
+
+
+/**
+ * Toggles the 'isFeatured' status of a figure.
+ * This is a secure 'onCall' function, callable only by authenticated admins.
+ */
+export const toggleFeaturedStatus = onCall(async (request) => {
+    // 1. Authentication and Authorization
+    const callingUid = request.auth?.uid;
+    if (!callingUid) {
+        throw new HttpsError('unauthenticated', 'You must be logged in to perform this action.');
+    }
+    const userDoc = await db.collection('users').doc(callingUid).get();
+    if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
+        throw new HttpsError('permission-denied', 'Only admins can perform this action.');
+    }
+
+    // 2. Input Validation
+    const { figureId } = request.data;
+    if (!figureId || typeof figureId !== 'string') {
+        throw new HttpsError('invalid-argument', 'A valid figureId must be provided.');
+    }
+
+    const figureRef = db.collection('figures').doc(figureId);
+
+    try {
+        // Use a transaction to safely read and write
+        const newStatus = await db.runTransaction(async (transaction) => {
+            const figureSnap = await transaction.get(figureRef);
+            if (!figureSnap.exists) {
+                throw new HttpsError('not-found', 'Figure not found.');
+            }
+            const currentStatus = figureSnap.data()?.isFeatured || false;
+            const updatedStatus = !currentStatus;
+            transaction.update(figureRef, { isFeatured: updatedStatus });
+            return updatedStatus;
+        });
+
+        return { success: true, newStatus, message: `Figura ${newStatus ? 'marcada como destacada' : 'desmarcada como destacada'}.` };
+    
+    } catch (error: any) {
+        console.error(`Error toggling featured status for figure ${figureId}:`, error);
+        if (error instanceof HttpsError) {
+            throw error; // Re-throw HttpsError directly
+        }
+        throw new HttpsError('internal', `An error occurred while changing the status: ${error.message}`);
     }
 });
