@@ -23,14 +23,13 @@ const defaultRatingCountsData: Record<string, number> = {
 
 const RatingDisplay = ({ rating, maxRating = 5 }: { rating: number, maxRating?: number }) => {
     const fullStars = Math.floor(rating);
-    const halfStar = rating % 1 >= 0.5;
-    const emptyStars = maxRating - fullStars - (halfStar ? 1 : 0);
+    const halfStar = false; // Simplified to not show half stars for now
+    const emptyStars = maxRating - fullStars;
 
     return (
-        <div className="flex items-center">
+        <div className="flex items-center gap-0.5">
             {[...Array(fullStars)].map((_, i) => <Star key={`full-${i}`} className="w-5 h-5 text-primary fill-current" />)}
-            {halfStar && <Star key="half" className="w-5 h-5 text-primary" style={{ clipPath: 'inset(0 50% 0 0)' }} />}
-            {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} className="w-5 h-5 text-primary" />)}
+            {[...Array(emptyStars)].map((_, i) => <Star key={`empty-${i}`} className="w-5 h-5 text-muted-foreground/30" />)}
         </div>
     );
 };
@@ -39,10 +38,21 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
   const [ratingCounts, setRatingCounts] = useState<Record<string, number>>(figure.ratingCounts || defaultRatingCountsData);
   
   const { totalVotes, averageRating } = useMemo(() => {
-    const votes = Object.values(ratingCounts).reduce((sum, count) => sum + count, 0);
-    if (votes === 0) return { totalVotes: 0, averageRating: 0 };
-    const weightedSum = Object.entries(ratingCounts).reduce((sum, [rating, count]) => sum + parseInt(rating) * count, 0);
-    return { totalVotes: votes, averageRating: weightedSum / votes };
+    if (!ratingCounts) return { totalVotes: 0, averageRating: 0 };
+    const votesWithRatings = Object.entries(ratingCounts)
+                                .filter(([key]) => key !== "0")
+                                .reduce((acc, [, count]) => acc + count, 0);
+
+    if (votesWithRatings === 0) return { totalVotes: 0, averageRating: 0 };
+    
+    const weightedSum = Object.entries(ratingCounts)
+                              .filter(([key]) => key !== "0")
+                              .reduce((sum, [rating, count]) => sum + parseInt(rating) * count, 0);
+                              
+    return { 
+        totalVotes: Object.values(ratingCounts).reduce((sum, count) => sum + count, 0),
+        averageRating: weightedSum / votesWithRatings
+    };
   }, [ratingCounts]);
 
   useEffect(() => {
@@ -63,7 +73,7 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
     <Card className="border border-white/20 bg-black">
       <CardHeader>
         <CardTitle>Calificaciones de la Comunidad</CardTitle>
-        <CardDescription>Resumen de las calificaciones para {figure.name}. El sistema de votación está actualmente deshabilitado.</CardDescription>
+        <CardDescription>Resumen de las calificaciones que los usuarios han dado al dejar una opinión sobre {figure.name}.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
          <div className="flex flex-col md:flex-row items-center gap-6 p-4 rounded-lg bg-muted/30">
@@ -74,15 +84,17 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
             </div>
             <div className="w-full flex-grow space-y-1.5">
                 {[5, 4, 3, 2, 1, 0].map(star => {
-                const count = ratingCounts[star] || 0;
-                const percentage = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
-                return (
-                    <div key={star} className="flex items-center gap-2 text-sm">
-                    <span className="flex-shrink-0 w-12 text-right text-muted-foreground">{star} <Star className="inline h-3 w-3 mb-0.5" /></span>
-                    <Progress value={percentage} className="h-2 w-full" />
-                    <span className="flex-shrink-0 w-24 text-right font-mono text-muted-foreground">{count.toLocaleString()}</span>
-                    </div>
-                );
+                    const count = ratingCounts[star] || 0;
+                    const percentage = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
+                    return (
+                        <div key={star} className="flex items-center gap-2 text-sm">
+                            <span className="flex-shrink-0 w-16 text-right text-muted-foreground flex items-center justify-end gap-1">
+                                {star} <Star className="inline h-3 w-3 mb-0.5" />
+                            </span>
+                            <Progress value={percentage} className="h-2 w-full" />
+                            <span className="flex-shrink-0 w-24 text-right font-mono text-muted-foreground">{count.toLocaleString()}</span>
+                        </div>
+                    );
                 })}
             </div>
         </div>
