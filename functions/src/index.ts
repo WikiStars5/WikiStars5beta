@@ -168,22 +168,23 @@ export const deleteFigure = onCall(async (request) => {
     const figureRef = db.collection('figures').doc(figureId);
 
     try {
-        // Use a batch to delete all documents atomically for a cleaner operation.
         const batch = db.batch();
 
-        // 3. Delete all subcollections
-        const subcollections = ['comments', 'streaks'];
+        // 3. Delete all subcollections safely
+        const subcollections = await figureRef.listCollections();
         for (const subcollection of subcollections) {
-            const subcollectionRef = figureRef.collection(subcollection);
-            // It's necessary to delete documents within a subcollection before deleting the subcollection itself.
-            const snapshot = await subcollectionRef.get();
-            snapshot.docs.forEach(doc => batch.delete(doc.ref));
+            const snapshot = await subcollection.get();
+            if (!snapshot.empty) {
+                snapshot.docs.forEach(doc => batch.delete(doc.ref));
+            }
         }
         
-        // Also delete from top-level userRatings collection
+        // Also delete from top-level userRatings collection safely
         const userRatingsQuery = db.collection('userRatings').where('figureId', '==', figureId);
         const userRatingsSnapshot = await userRatingsQuery.get();
-        userRatingsSnapshot.forEach(doc => batch.delete(doc.ref));
+        if (!userRatingsSnapshot.empty) {
+            userRatingsSnapshot.forEach(doc => batch.delete(doc.ref));
+        }
 
         // 4. Delete the main figure document
         batch.delete(figureRef);
