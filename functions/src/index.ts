@@ -146,7 +146,7 @@ export const getAllUsers = onCall(async (request) => {
 
 /**
  * Deletes a figure and all its associated subcollection data recursively.
- * This is a critical and destructive operation.
+ * This is a critical and destructive operation, now made robust.
  */
 export const deleteFigure = onCall(async (request) => {
     // 1. Authentication and Authorization
@@ -167,45 +167,64 @@ export const deleteFigure = onCall(async (request) => {
 
     const figureRef = db.collection('figures').doc(figureId);
     
-    // Helper function to delete subcollections recursively
-    async function deleteSubcollection(collectionRef: admin.firestore.CollectionReference, batch: admin.firestore.WriteBatch) {
-        const snapshot = await collectionRef.limit(500).get();
-        if (snapshot.empty) {
-            return;
-        }
-        for (const doc of snapshot.docs) {
-            // Recursively delete sub-sub-collections if any exist (e.g., replies to comments)
-            const subcollections = await doc.ref.listCollections();
-            for (const subcollection of subcollections) {
-                // We need a new batch for each level of recursion to avoid size limits if necessary,
-                // but for this app's structure, reusing the main batch is likely fine.
-                await deleteSubcollection(subcollection, batch);
-            }
-            batch.delete(doc.ref);
-        }
+    // Helper function to delete collections and their subcollections recursively.
+    async function deleteCollection(collectionPath: string, batchSize: number) {
+        const collectionRef = db.collection(collectionPath);
+        const query = collectionRef.orderBy('__name__').limit(batchSize);
+
+        return new Promise<void>((resolve, reject) => {
+            deleteQueryBatch(query, resolve).catch(reject);
+        });
     }
 
-    try {
-        const batch = db.batch();
+    async function deleteQueryBatch(query: admin.firestore.Query, resolve: () => void) {
+        const snapshot = await query.get();
 
-        // 3. Delete all known subcollections safely
-        const knownSubcollections = ['comments', 'streaks', 'userRatings']; // Add other subcollection names here
-        for (const subcollectionName of knownSubcollections) {
-            const subcollectionRef = figureRef.collection(subcollectionName);
-            await deleteSubcollection(subcollectionRef, batch);
+        if (snapshot.size === 0) {
+            // When there are no documents left, we are done
+            resolve();
+            return;
         }
-        
-        // 4. Delete the main figure document itself
-        batch.delete(figureRef);
 
-        // 5. Commit the batch
+        // Delete documents in a batch
+        const batch = db.batch();
+        snapshot.docs.forEach(async (doc) => {
+             // Recursively delete subcollections
+            const subcollections = await doc.ref.listCollections();
+            for (const subcollection of subcollections) {
+                 await deleteCollection(`${doc.ref.path}/${subcollection.id}`, 500);
+            }
+            batch.delete(doc.ref);
+        });
+
         await batch.commit();
-        
+
+        // Recurse on the next process tick, to avoid hitting stack depth limits
+        process.nextTick(() => {
+            deleteQueryBatch(query, resolve);
+        });
+    }
+    
+    try {
+        console.log(`Starting deletion for figure ${figureId}`);
+
+        // Get all subcollections of the figure document
+        const subcollections = await figureRef.listCollections();
+
+        // Delete each subcollection recursively
+        for (const subcollection of subcollections) {
+            await deleteCollection(`${figureRef.path}/${subcollection.id}`, 500);
+            console.log(`Finished deleting subcollection: ${subcollection.id}`);
+        }
+
+        // After all subcollections are deleted, delete the main figure document
+        await figureRef.delete();
+        console.log(`Successfully deleted figure document ${figureId}`);
+
         return { success: true, message: `Successfully deleted figure ${figureId} and all associated data.` };
 
     } catch (error: any) {
         console.error(`Error deleting figure ${figureId}:`, error);
-        // Provide a more specific error message if available
-        throw new HttpsError('internal', error.message || 'An error occurred while trying to delete the figure.');
+        throw new HttpsError('internal', `An error occurred while trying to delete the figure: ${error.message}`);
     }
 });
