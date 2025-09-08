@@ -491,12 +491,14 @@ export async function addComment(
     countryCode: string;
     isAnonymous: boolean;
   },
-  text: string
+  text: string,
+  rating: RatingValue
 ): Promise<string> {
-    const commentsCollectionRef = collection(db, `figures/${figureId}/comments`);
-    const newCommentRef = doc(commentsCollectionRef);
-    
-    const commentData: Omit<Comment, 'id' | 'replies'> & { createdAt: any } = {
+    const figureDocRef = doc(db, 'figures', figureId);
+    const userRatingDocRef = doc(db, 'userRatings', `${authorData.id}_${figureId}`);
+    const newCommentRef = doc(collection(db, `figures/${figureId}/comments`));
+
+    const newCommentData: Omit<Comment, 'id' | 'replies'> & { createdAt: any } = {
         figureId: figureId,
         authorId: authorData.id,
         authorName: authorData.name,
@@ -505,6 +507,7 @@ export async function addComment(
         authorCountry: authorData.country,
         authorCountryCode: authorData.countryCode,
         text: text,
+        rating: rating,
         createdAt: serverTimestamp(),
         likes: [],
         likeCount: 0,
@@ -513,8 +516,29 @@ export async function addComment(
         replyCount: 0,
         isAnonymous: authorData.isAnonymous,
     };
-    
-    await setDoc(newCommentRef, commentData);
+
+    await runTransaction(db, async (transaction) => {
+        const figureDoc = await transaction.get(figureDocRef);
+        if (!figureDoc.exists()) {
+            throw new Error("Figure document not found.");
+        }
+        const figureData = figureDoc.data();
+        const newRatingCounts = { ...defaultRatingCounts, ...figureData.ratingCounts };
+
+        const userRatingDoc = await transaction.get(userRatingDocRef);
+        const previousRating = userRatingDoc.exists() ? userRatingDoc.data().rating as RatingValue : null;
+
+        if (previousRating !== null) {
+            newRatingCounts[previousRating] = Math.max(0, (newRatingCounts[previousRating] || 0) - 1);
+        }
+        
+        newRatingCounts[rating] = (newRatingCounts[rating] || 0) + 1;
+
+        // Perform all writes
+        transaction.update(figureDocRef, { ratingCounts: newRatingCounts });
+        transaction.set(userRatingDocRef, { userId: authorData.id, figureId, rating, addedAt: serverTimestamp() }, { merge: true });
+        transaction.set(newCommentRef, newCommentData);
+    });
 
     return newCommentRef.id;
 }

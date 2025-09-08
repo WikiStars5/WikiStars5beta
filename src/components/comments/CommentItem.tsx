@@ -42,6 +42,24 @@ interface CommentItemProps {
     highlightedCommentId?: string | null;
 }
 
+const RatingDisplay = ({ rating }: { rating: RatingValue }) => {
+  if (rating === 0) {
+    return (
+      <div className="flex items-center gap-1" title="Calificación: 0 estrellas">
+        <StarOff className="h-4 w-4 text-destructive" />
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center" title={`Calificación: ${rating} estrellas`}>
+      {[...Array(rating)].map((_, i) => (
+        <Star key={i} className="h-4 w-4 text-primary fill-current" />
+      ))}
+    </div>
+  );
+};
+
+
 const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, parentPath: string, onReplySuccess: () => void }) => {
     const [text, setText] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -207,7 +225,7 @@ export function CommentItem({
                             <AvatarImage src={correctMalformedUrl(comment.authorPhotoUrl)} alt={comment.authorName} />
                             <AvatarFallback>{comment.authorName?.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                             <p className="font-semibold text-sm">{comment.authorName}</p>
                             {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={comment.authorGender}>{genderSymbol}</span>}
                             {comment.authorCountryCode && (
@@ -220,12 +238,22 @@ export function CommentItem({
                                     title={comment.authorCountry}
                                 />
                             )}
+                            {comment.rating !== undefined && comment.rating !== null && (
+                                <div className="hidden sm:flex">
+                                    <RatingDisplay rating={comment.rating} />
+                                </div>
+                            )}
                         </div>
                     </div>
                     {comment.createdAt && (
                         <p className="text-xs text-muted-foreground flex-shrink-0">{timeSince(comment.createdAt.toDate())}</p>
                     )}
                 </div>
+                 {comment.rating !== undefined && comment.rating !== null && (
+                    <div className="flex sm:hidden ml-10 mt-1">
+                        <RatingDisplay rating={comment.rating} />
+                    </div>
+                )}
                 
                 <p className="text-sm mt-2 whitespace-pre-wrap ml-10">
                   {isLongComment && !isExpanded 

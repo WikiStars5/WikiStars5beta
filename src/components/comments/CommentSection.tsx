@@ -19,17 +19,38 @@ import { cn } from '@/lib/utils';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormMessage } from '../ui/form';
+import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel } from '../ui/form';
 import { StreakAnimation } from '../shared/StreakAnimation';
+
+
+const StarRatingInput = ({ value, onChange, disabled }: { value: RatingValue | null, onChange: (value: RatingValue) => void, disabled: boolean }) => {
+  const [hoverRating, setHoverRating] = React.useState<number | null>(null);
+  return (
+    <div className="flex items-center gap-2">
+      <button type="button" key={0} onClick={() => onChange(0)} onMouseEnter={() => setHoverRating(0)} onMouseLeave={() => setHoverRating(null)} className="focus:outline-none" disabled={disabled} aria-label="Calificar con 0 estrellas">
+        <StarOff className={cn("h-7 w-7 transition-colors", (hoverRating === 0 || value === 0) ? "text-destructive" : "text-muted-foreground/30")} />
+      </button>
+      {[...Array(5)].map((_, i) => {
+        const ratingValue = (i + 1) as RatingValue;
+        return (
+          <button type="button" key={ratingValue} onClick={() => onChange(ratingValue)} onMouseEnter={() => setHoverRating(ratingValue)} onMouseLeave={() => setHoverRating(null)} className="focus:outline-none" disabled={disabled} aria-label={`Calificar con ${ratingValue} estrellas`}>
+            <Star className={cn("h-7 w-7 transition-colors", (hoverRating ?? value ?? -1) >= ratingValue ? "text-primary fill-current" : "text-muted-foreground/30")} />
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
 
 interface CommentSectionProps {
   figure: Figure;
   highlightedCommentId?: string | null;
 }
 
-// Validation no longer includes rating, as it's decoupled.
 const commentSchema = z.object({
   text: z.string().min(3, 'Tu opinión debe tener al menos 3 caracteres.').max(2000, 'Tu opinión no puede exceder los 2000 caracteres.'),
+  rating: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).nullable(),
 });
 
 type CommentFormData = z.infer<typeof commentSchema>;
@@ -48,6 +69,7 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
     resolver: zodResolver(commentSchema),
     defaultValues: {
       text: '',
+      rating: null,
     },
   });
 
@@ -81,6 +103,11 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
       toast({ title: "Error", description: "No se pudo identificar al usuario.", variant: "destructive" });
       return;
     }
+    
+    if (data.rating === null) {
+      toast({ title: "Calificación Requerida", description: "Por favor, selecciona una calificación de 0 a 5 estrellas para publicar tu opinión.", variant: "destructive" });
+      return;
+    }
 
     const isAnonymous = !firebaseUser;
     const authorData = {
@@ -94,15 +121,14 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
     };
     
     try {
-        // Rating is no longer passed from here.
-        await addComment(figure.id, authorData, data.text);
+        await addComment(figure.id, authorData, data.text, data.rating);
         const newStreak = await updateStreak(figure.id, authorData);
         if (newStreak) {
           setStreakToAnimate(newStreak);
         }
 
         toast({ title: "¡Opinión publicada!", description: "Gracias por tu contribución." });
-        reset({ text: '' });
+        reset({ text: '', rating: null });
     } catch (error: any) {
         console.error("Error al publicar comentario:", error);
         toast({ title: "Error", description: "No se pudo publicar tu opinión. " + error.message, variant: "destructive" });
@@ -132,6 +158,24 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
                         </FormItem>
                     )}
                 />
+                 <FormField
+                    control={control}
+                    name="rating"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col space-y-2">
+                        <FormLabel>Califica este perfil (0-5 estrellas):</FormLabel>
+                        <FormControl>
+                           <StarRatingInput 
+                                value={field.value}
+                                onChange={field.onChange}
+                                disabled={isSubmitting}
+                           />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                  <div className="flex justify-end">
                     <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
