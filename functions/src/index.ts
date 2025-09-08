@@ -145,7 +145,7 @@ export const getAllUsers = onCall(async (request) => {
 
 
 /**
- * Deletes a figure and all its associated subcollection data.
+ * Deletes a figure and all its associated subcollection data recursively.
  * This is a critical and destructive operation.
  */
 export const deleteFigure = onCall(async (request) => {
@@ -166,36 +166,51 @@ export const deleteFigure = onCall(async (request) => {
     }
 
     const figureRef = db.collection('figures').doc(figureId);
+    
+    // Helper function to delete subcollections recursively
+    async function deleteSubcollection(collectionRef: admin.firestore.CollectionReference, batch: admin.firestore.WriteBatch) {
+        const snapshot = await collectionRef.get();
+        if (snapshot.empty) {
+            return;
+        }
+        for (const doc of snapshot.docs) {
+            // Recursively delete sub-sub-collections if any exist (e.g., replies to comments)
+            const subcollections = await doc.ref.listCollections();
+            for (const subcollection of subcollections) {
+                await deleteSubcollection(subcollection, batch);
+            }
+            batch.delete(doc.ref);
+        }
+    }
 
     try {
         const batch = db.batch();
 
-        // 3. Delete all subcollections safely
-        const subcollections = await figureRef.listCollections();
-        for (const subcollection of subcollections) {
-            const snapshot = await subcollection.get();
-            if (!snapshot.empty) {
-                snapshot.docs.forEach(doc => batch.delete(doc.ref));
-            }
+        // 3. Delete all known subcollections safely
+        const knownSubcollections = ['comments', 'streaks']; // Add other subcollection names here
+        for (const subcollectionName of knownSubcollections) {
+            const subcollectionRef = figureRef.collection(subcollectionName);
+            await deleteSubcollection(subcollectionRef, batch);
         }
         
-        // Also delete from top-level userRatings collection safely
+        // 4. Also delete from top-level userRatings collection safely
         const userRatingsQuery = db.collection('userRatings').where('figureId', '==', figureId);
         const userRatingsSnapshot = await userRatingsQuery.get();
         if (!userRatingsSnapshot.empty) {
             userRatingsSnapshot.forEach(doc => batch.delete(doc.ref));
         }
 
-        // 4. Delete the main figure document
+        // 5. Delete the main figure document itself
         batch.delete(figureRef);
 
-        // 5. Commit the batch
+        // 6. Commit the batch
         await batch.commit();
         
         return { success: true, message: `Successfully deleted figure ${figureId} and all associated data.` };
 
-    } catch (error) {
+    } catch (error: any) {
         console.error(`Error deleting figure ${figureId}:`, error);
-        throw new HttpsError('internal', 'An error occurred while trying to delete the figure.');
+        // Provide a more specific error message if available
+        throw new HttpsError('internal', error.message || 'An error occurred while trying to delete the figure.');
     }
 });
