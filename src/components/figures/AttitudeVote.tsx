@@ -78,14 +78,15 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   
   const handleVote = async (newAttitude: AttitudeKey) => {
     if (isVoting || isLoading) return;
-    setIsVoting(true);
 
-    const userId = firebaseUser?.uid;
+    const userId = currentUser?.uid;
+
     if (!userId) {
         toast({ title: "Acción no permitida", description: "Debes iniciar sesión para votar.", variant: "destructive" });
-        setIsVoting(false);
         return;
     }
+      
+    setIsVoting(true);
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -98,14 +99,15 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         
         const currentCounts = figureDoc.data().attitudeCounts || defaultAttitudeCountsData;
         const newCounts = { ...currentCounts };
+        const currentlySelected = selectedAttitude;
         
-        // If user is changing vote, decrement the old one
-        if (selectedAttitude && selectedAttitude !== newAttitude) {
-          newCounts[selectedAttitude] = Math.max(0, (newCounts[selectedAttitude] || 0) - 1);
+        // Decrement the old one if changing vote
+        if (currentlySelected && currentlySelected !== newAttitude) {
+          newCounts[currentlySelected] = Math.max(0, (newCounts[currentlySelected] || 0) - 1);
         }
         
-        // Increment the new one
-        if (selectedAttitude !== newAttitude) {
+        // Increment the new one, but only if it's a new vote or a different vote
+        if (currentlySelected !== newAttitude) {
             newCounts[newAttitude] = (newCounts[newAttitude] || 0) + 1;
         }
 
@@ -118,22 +120,32 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         const existingVoteIndex = storedAttitudes.findIndex(a => a.figureId === figureId);
         
         if (existingVoteIndex > -1) {
-          storedAttitudes[existingVoteIndex].attitude = newAttitude;
+          if (storedAttitudes[existingVoteIndex].attitude === newAttitude) {
+             // User is deselecting their vote
+             storedAttitudes.splice(existingVoteIndex, 1);
+             setSelectedAttitude(null);
+          } else {
+             // User is changing their vote
+            storedAttitudes[existingVoteIndex].attitude = newAttitude;
+            setSelectedAttitude(newAttitude);
+          }
         } else {
+          // New vote
           storedAttitudes.push({ figureId, attitude: newAttitude, addedAt: new Date().toISOString() });
+          setSelectedAttitude(newAttitude);
         }
         
         localStorage.setItem('wikistars5-userAttitudes', JSON.stringify(storedAttitudes));
       }
-      
-      setSelectedAttitude(newAttitude);
 
-      const achievementResult = await grantActitudDefinidaAchievement(userId);
-      if (achievementResult.unlocked) {
-        toast({
-          title: "¡Logro Desbloqueado!",
-          description: achievementResult.message,
-        });
+      if (selectedAttitude !== newAttitude) {
+        const achievementResult = await grantActitudDefinidaAchievement(userId);
+        if (achievementResult.unlocked) {
+          toast({
+            title: "¡Logro Desbloqueado!",
+            description: achievementResult.message,
+          });
+        }
       }
 
     } catch (error: any) {
@@ -154,7 +166,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       <CardHeader>
         <CardTitle>¿Qué te consideras?</CardTitle>
         <CardDescription>
-          Tu actitud hacia {figureName}. Tu voto es anónimo.
+           Define tu actitud hacia {figureName}. Tu voto es anónimo.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -175,7 +187,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                   isVoting && selectedAttitude !== key && 'opacity-50 cursor-not-allowed'
                 )}
                 onClick={() => handleVote(key)}
-                disabled={isVoting}
+                disabled={isVoting || isLoading}
                 style={{ minHeight: '100px' }}
               >
                 {isVoting && selectedAttitude === key && <Loader2 className="absolute h-5 w-5 animate-spin" />}
