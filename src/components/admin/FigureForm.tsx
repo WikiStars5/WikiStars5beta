@@ -209,10 +209,18 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       const age = birthDate ? differenceInYears(new Date(), birthDate) : undefined;
       const heightCm = height ? parseInt(height.replace(/\D/g, ''), 10) || undefined : undefined;
       const tagsLower = tags.map(tag => tag.toLowerCase());
+      
+      // Generate search keywords from the name
+      const searchKeywords = name
+        .trim()
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean); // Remove empty strings
 
       const figureData: Partial<Figure> & { createdAt?: any } = { 
         name: name.trim(),
         nameLower: name.trim().toLowerCase(),
+        searchKeywords: searchKeywords, // Add the new search field
         description: description.trim() || initialData?.description || "", 
         photoUrl: finalPhotoUrlToSave,
         nationality: countryCodeToNameMap.get(nationalityCode) || '',

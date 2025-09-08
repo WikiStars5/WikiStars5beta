@@ -42,6 +42,7 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     id: docSnap.id,
     name: data.name || "",
     nameLower: data.nameLower || (data.name ? data.name.toLowerCase() : ""),
+    searchKeywords: data.searchKeywords || [],
     photoUrl: data.photoUrl || "",
     description: data.description || "",
     nationality: data.nationality || "",
@@ -215,7 +216,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
 
       // Destructure all known fields to separate them from the rest
       const { 
-          id, createdAt, nameLower: nameLowerInput, perceptionCounts, attitudeCounts, ratingCounts,
+          id, createdAt, nameLower: nameLowerInput, searchKeywords: searchKeywordsInput, perceptionCounts, attitudeCounts, ratingCounts,
           name, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, age, birthPlace, statusLiveOrDead, maritalStatus,
           height, heightCm, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
@@ -227,6 +228,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       if (name !== undefined) {
         updatePayload.name = name;
         updatePayload.nameLower = name.toLowerCase();
+        updatePayload.searchKeywords = name.trim().toLowerCase().split(/\s+/).filter(Boolean);
       }
       if (photoUrl !== undefined) updatePayload.photoUrl = photoUrl;
       if (description !== undefined) updatePayload.description = description;

@@ -61,10 +61,12 @@ export function BatchCreateFigures() {
       namesList.forEach(name => {
         const figureId = slugify(name, { lower: true, strict: true });
         if (figureId) {
+          const searchKeywords = name.trim().toLowerCase().split(/\s+/).filter(Boolean);
           const figureRef = doc(figuresCollectionRef, figureId);
           const figureData: Partial<Figure> & { createdAt: any } = {
             name: name,
             nameLower: name.toLowerCase(),
+            searchKeywords: searchKeywords,
             photoUrl: `https://placehold.co/400x600.png?text=${encodeURIComponent(name)}`,
             description: '',
             isFeatured: false,

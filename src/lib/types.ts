@@ -10,6 +10,7 @@ export interface Figure {
   id: string;
   name: string;
   nameLower: string;
+  searchKeywords: string[]; // For full text search capabilities
   photoUrl: string;
   description?: string;
   
