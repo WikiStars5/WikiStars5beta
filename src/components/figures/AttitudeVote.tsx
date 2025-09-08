@@ -12,6 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { ShareButton } from '../shared/ShareButton';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
+import { useAuth } from '@/hooks/use-auth';
 
 
 interface AttitudeVoteProps {
@@ -38,7 +39,9 @@ const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
 };
 
 export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, initialAttitudeCounts }) => {
+  const { currentUser, firebaseUser, isLoading } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
+  const [isVoting, setIsVoting] = useState(false);
   const [figureAttitudeCounts, setFigureAttitudeCounts] = useState<Record<AttitudeKey, number>>(initialAttitudeCounts || defaultAttitudeCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
   const { toast } = useToast();
@@ -46,6 +49,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   useEffect(() => {
     if (!figureId) return;
 
+    // Real-time listener for figure vote counts
     const figureDocRef = doc(db, "figures", figureId);
     const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -58,41 +62,132 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       console.error("Error listening to figure document for attitudes:", error);
     });
     
+    // Load user's vote from local storage
+    if (typeof window !== 'undefined') {
+        const storedAttitudes: Attitude[] = JSON.parse(localStorage.getItem('wikistars5-userAttitudes') || '[]');
+        const userVote = storedAttitudes.find(a => a.figureId === figureId);
+        if (userVote) {
+            setSelectedAttitude(userVote.attitude);
+        }
+    }
+
     return () => {
       unsubscribeFigure();
     };
   }, [figureId]);
   
+  const handleVote = async (newAttitude: AttitudeKey) => {
+    if (isVoting || isLoading) return;
+    setIsVoting(true);
+
+    const userId = firebaseUser?.uid;
+    if (!userId) {
+        toast({ title: "Acción no permitida", description: "Debes iniciar sesión para votar.", variant: "destructive" });
+        setIsVoting(false);
+        return;
+    }
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const figureRef = doc(db, 'figures', figureId);
+        const figureDoc = await transaction.get(figureRef);
+        
+        if (!figureDoc.exists()) {
+          throw new Error("Figura no encontrada.");
+        }
+        
+        const currentCounts = figureDoc.data().attitudeCounts || defaultAttitudeCountsData;
+        const newCounts = { ...currentCounts };
+        
+        // If user is changing vote, decrement the old one
+        if (selectedAttitude && selectedAttitude !== newAttitude) {
+          newCounts[selectedAttitude] = Math.max(0, (newCounts[selectedAttitude] || 0) - 1);
+        }
+        
+        // Increment the new one
+        if (selectedAttitude !== newAttitude) {
+            newCounts[newAttitude] = (newCounts[newAttitude] || 0) + 1;
+        }
+
+        transaction.update(figureRef, { attitudeCounts: newCounts });
+      });
+
+      // Update local storage
+      if (typeof window !== 'undefined') {
+        let storedAttitudes: Attitude[] = JSON.parse(localStorage.getItem('wikistars5-userAttitudes') || '[]');
+        const existingVoteIndex = storedAttitudes.findIndex(a => a.figureId === figureId);
+        
+        if (existingVoteIndex > -1) {
+          storedAttitudes[existingVoteIndex].attitude = newAttitude;
+        } else {
+          storedAttitudes.push({ figureId, attitude: newAttitude, addedAt: new Date().toISOString() });
+        }
+        
+        localStorage.setItem('wikistars5-userAttitudes', JSON.stringify(storedAttitudes));
+      }
+      
+      setSelectedAttitude(newAttitude);
+
+      const achievementResult = await grantActitudDefinidaAchievement(userId);
+      if (achievementResult.unlocked) {
+        toast({
+          title: "¡Logro Desbloqueado!",
+          description: achievementResult.message,
+        });
+      }
+
+    } catch (error: any) {
+      console.error("Error al votar:", error);
+      toast({
+        title: "Error al votar",
+        description: error.message || "No se pudo registrar tu voto. Inténtalo de nuevo.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsVoting(false);
+    }
+  };
+
+
   return (
     <Card className="border border-white/20 bg-black">
       <CardHeader>
         <CardTitle>¿Qué te consideras?</CardTitle>
         <CardDescription>
-          Votación deshabilitada. Se requiere un sistema de autenticación.
+          Tu actitud hacia {figureName}. Tu voto es anónimo.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, colorClass, selectedClass }) => (
-            <Button
-              key={key}
-              variant="ghost"
-              className={cn(
-                "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 border bg-black",
-                colorClass,
-                'opacity-50 cursor-not-allowed'
-              )}
-              disabled={true}
-              style={{ minHeight: '100px' }}
-            >
-              <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
-              <span className="text-xs font-medium">{label}</span>
-              <span className="text-sm font-bold">
-                {(figureAttitudeCounts[key] || 0).toLocaleString()}
-              </span>
-            </Button>
-          ))}
-        </div>
+        {isLoading ? (
+            <div className="flex justify-center items-center h-24">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, colorClass, selectedClass }) => (
+              <Button
+                key={key}
+                variant="ghost"
+                className={cn(
+                  "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 border bg-black",
+                  colorClass,
+                  selectedAttitude === key && selectedClass,
+                  isVoting && selectedAttitude !== key && 'opacity-50 cursor-not-allowed'
+                )}
+                onClick={() => handleVote(key)}
+                disabled={isVoting}
+                style={{ minHeight: '100px' }}
+              >
+                {isVoting && selectedAttitude === key && <Loader2 className="absolute h-5 w-5 animate-spin" />}
+                <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
+                <span className="text-xs font-medium">{label}</span>
+                <span className="text-sm font-bold">
+                  {(figureAttitudeCounts[key] || 0).toLocaleString()}
+                </span>
+              </Button>
+            ))}
+          </div>
+        )}
         <div className="text-center text-muted-foreground">
           <p>Total de respuestas: <span className="font-bold">{totalVotes.toLocaleString()}</span></p>
         </div>
