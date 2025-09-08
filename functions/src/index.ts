@@ -169,7 +169,7 @@ export const deleteFigure = onCall(async (request) => {
     
     // Helper function to delete subcollections recursively
     async function deleteSubcollection(collectionRef: admin.firestore.CollectionReference, batch: admin.firestore.WriteBatch) {
-        const snapshot = await collectionRef.get();
+        const snapshot = await collectionRef.limit(500).get();
         if (snapshot.empty) {
             return;
         }
@@ -177,6 +177,8 @@ export const deleteFigure = onCall(async (request) => {
             // Recursively delete sub-sub-collections if any exist (e.g., replies to comments)
             const subcollections = await doc.ref.listCollections();
             for (const subcollection of subcollections) {
+                // We need a new batch for each level of recursion to avoid size limits if necessary,
+                // but for this app's structure, reusing the main batch is likely fine.
                 await deleteSubcollection(subcollection, batch);
             }
             batch.delete(doc.ref);
@@ -187,23 +189,16 @@ export const deleteFigure = onCall(async (request) => {
         const batch = db.batch();
 
         // 3. Delete all known subcollections safely
-        const knownSubcollections = ['comments', 'streaks']; // Add other subcollection names here
+        const knownSubcollections = ['comments', 'streaks', 'userRatings']; // Add other subcollection names here
         for (const subcollectionName of knownSubcollections) {
             const subcollectionRef = figureRef.collection(subcollectionName);
             await deleteSubcollection(subcollectionRef, batch);
         }
         
-        // 4. Also delete from top-level userRatings collection safely
-        const userRatingsQuery = db.collection('userRatings').where('figureId', '==', figureId);
-        const userRatingsSnapshot = await userRatingsQuery.get();
-        if (!userRatingsSnapshot.empty) {
-            userRatingsSnapshot.forEach(doc => batch.delete(doc.ref));
-        }
-
-        // 5. Delete the main figure document itself
+        // 4. Delete the main figure document itself
         batch.delete(figureRef);
 
-        // 6. Commit the batch
+        // 5. Commit the batch
         await batch.commit();
         
         return { success: true, message: `Successfully deleted figure ${figureId} and all associated data.` };
