@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { Figure } from "@/lib/types";
-import { PlusCircle, Edit3, Star, Search as SearchIcon, ChevronLeft, ChevronRight, Loader2, AlertTriangle, Trash2 } from "lucide-react";
+import { PlusCircle, Star, Search as SearchIcon, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { AdminFigureImage } from "@/components/admin/AdminFigureImage";
 import { useSearchParams } from "next/navigation";
@@ -18,11 +18,13 @@ import { getAdminFiguresList } from "@/lib/placeholder-data";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { DeleteAllFiguresButton } from "@/components/admin/DeleteAllFiguresButton";
+import { useAuth } from "@/hooks/use-auth";
 
 
 function AdminFiguresPageComponent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const { currentUser } = useAuth(); // Usamos el hook para obtener el usuario
 
   const [searchTerm, setSearchTerm] = useState("");
   const [localFigures, setLocalFigures] = useState<Figure[]>([]);
@@ -83,7 +85,8 @@ function AdminFiguresPageComponent() {
       );
     setLocalFigures(updateFunc);
 
-    const result = await toggleFigureFeaturedStatus(figureId);
+    // Pasamos el UID del usuario a la acción del servidor
+    const result = await toggleFigureFeaturedStatus(figureId, currentUser?.uid);
 
     if (result.success) {
       toast({
@@ -200,7 +203,7 @@ function AdminFiguresPageComponent() {
                     <TableCell className="text-right p-3">
                       <Button variant="ghost" size="icon" asChild className="mr-1">
                         <Link href={`/admin/figures/${figure.id}/edit`}>
-                          <Edit3 className="h-4 w-4" />
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-file-pen-line h-4 w-4"><path d="m18 5-3-3H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2"/><path d="M8 18h1"/><path d="M18.4 9.6a2 2 0 1 1 3 3L17 17l-4 1 1-4Z"/></svg>
                           <span className="sr-only">Editar</span>
                         </Link>
                       </Button>

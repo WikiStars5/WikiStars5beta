@@ -5,15 +5,28 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Figure } from '@/lib/types';
-import { ADMIN_UID } from '@/config/admin';
+import { auth } from '@/lib/firebase'; // Usamos la auth del cliente
 
-const ADMIN_UID_FOR_MESSAGE = ADMIN_UID; 
+// No se debe usar firebase-admin aquí
 
 export async function toggleFigureFeaturedStatus(
-  figureId: string
+  figureId: string,
+  callingUid: string | undefined // El UID del usuario que llama a la función
 ): Promise<{ success: boolean; newStatus?: boolean; message?: string }> {
   if (!figureId) {
     return { success: false, message: 'ID de figura no proporcionado.' };
+  }
+
+  if (!callingUid) {
+    return { success: false, message: 'Error de autenticación. Debes estar conectado.' };
+  }
+  
+  // Verificar si el usuario que llama es un administrador
+  const userDocRef = doc(db, 'users', callingUid);
+  const userDoc = await getDoc(userDocRef);
+
+  if (!userDoc.exists() || userDoc.data()?.role !== 'admin') {
+      return { success: false, message: 'Error de permisos. Solo los administradores pueden realizar esta acción.' };
   }
 
   const figureRef = doc(db, 'figures', figureId);
@@ -25,15 +38,15 @@ export async function toggleFigureFeaturedStatus(
     }
 
     const currentFigureData = figureSnap.data() as Figure;
-    const newStatus = !(currentFigureData.isFeatured || false); // Ensure current is boolean
+    const newStatus = !(currentFigureData.isFeatured || false);
 
     await updateDoc(figureRef, {
       isFeatured: newStatus,
     });
 
-    // Revalidate all relevant paths where featured figures might be displayed or listed
+    // Revalidar rutas importantes donde se muestran las figuras destacadas
     revalidatePath('/admin/figures', 'page');
-    revalidatePath('/home', 'page');
+    revalidatePath('/', 'page');
     revalidatePath('/figures', 'page');
 
 
@@ -41,9 +54,6 @@ export async function toggleFigureFeaturedStatus(
   } catch (error: any) {
     console.error('Error toggling figure featured status:', error);
     let errorMessage = `Error al cambiar estado: ${error.message}`;
-    if (error.code === 'permission-denied' || (error.message && String(error.message).toLowerCase().includes("permission"))) {
-        errorMessage = `Error al cambiar estado: Permisos insuficientes. Verifica las Reglas de Seguridad de Firestore. Asegúrate de que el administrador (UID: ${ADMIN_UID_FOR_MESSAGE}) tenga permiso de 'write'.`;
-    }
     return { success: false, message: errorMessage };
   }
 }
