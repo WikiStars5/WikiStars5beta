@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, MessagesSquare, Send, Star, User, UserPlus } from 'lucide-react';
+import { Loader2, MessagesSquare, Send, Star, User, UserPlus, StarOff } from 'lucide-react';
 import type { Figure, Comment as CommentType, RatingValue } from '@/lib/types';
 import { addComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +41,27 @@ const StarRatingInput = ({ value, onChange }: { value: RatingValue | undefined, 
 
   return (
     <div className="flex items-center gap-1">
+      {/* 0 Stars Button */}
+      <button
+        type="button"
+        key={0}
+        onClick={() => onChange(0)}
+        onMouseEnter={() => setHoverRating(0)}
+        onMouseLeave={() => setHoverRating(null)}
+        className="focus:outline-none"
+        aria-label="Calificar con 0 estrellas"
+      >
+        <StarOff
+          className={cn(
+            "h-6 w-6 transition-colors",
+            (hoverRating === 0 || value === 0)
+              ? "text-destructive"
+              : "text-muted-foreground/30"
+          )}
+        />
+      </button>
+
+      {/* 1-5 Stars Buttons */}
       {[...Array(5)].map((_, i) => {
         const ratingValue = (i + 1) as RatingValue;
         return (
@@ -51,11 +72,12 @@ const StarRatingInput = ({ value, onChange }: { value: RatingValue | undefined, 
             onMouseEnter={() => setHoverRating(ratingValue)}
             onMouseLeave={() => setHoverRating(null)}
             className="focus:outline-none"
+            aria-label={`Calificar con ${ratingValue} estrellas`}
           >
             <Star
               className={cn(
                 "h-6 w-6 transition-colors",
-                (hoverRating ?? value ?? 0) >= ratingValue
+                (hoverRating ?? value ?? -1) >= ratingValue
                   ? "text-primary fill-current"
                   : "text-muted-foreground/30"
               )}
@@ -63,16 +85,6 @@ const StarRatingInput = ({ value, onChange }: { value: RatingValue | undefined, 
           </button>
         );
       })}
-       <button
-            type="button"
-            key={0}
-            onClick={() => onChange(0)}
-            onMouseEnter={() => setHoverRating(0)}
-            onMouseLeave={() => setHoverRating(null)}
-            className="ml-2 focus:outline-none px-2 py-1 text-xs border rounded-md hover:bg-muted"
-        >
-           { (hoverRating ?? value) === 0 ? <span className="text-destructive">Quitar</span> : "N/A" }
-        </button>
     </div>
   );
 };
