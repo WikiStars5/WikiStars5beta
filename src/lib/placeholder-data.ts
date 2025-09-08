@@ -494,29 +494,53 @@ export async function addComment(
   text: string,
   rating?: RatingValue | null
 ): Promise<string> {
+    const figureRef = doc(db, 'figures', figureId);
     const commentsCollectionRef = collection(db, `figures/${figureId}/comments`);
     
-    const commentData: Omit<Comment, 'id' | 'createdAt' | 'replies'> & { createdAt: any } = {
-        figureId: figureId,
-        authorId: authorData.id,
-        authorName: authorData.name,
-        authorPhotoUrl: authorData.photoUrl,
-        authorGender: authorData.gender,
-        authorCountry: authorData.country,
-        authorCountryCode: authorData.countryCode,
-        text: text,
-        rating: rating ?? undefined,
-        createdAt: serverTimestamp(),
-        likes: [],
-        likeCount: 0,
-        dislikes: [],
-        dislikeCount: 0,
-        replyCount: 0,
-        isAnonymous: authorData.isAnonymous,
-    };
+    // Generate a new document reference for the comment to get an ID.
+    const newCommentRef = doc(commentsCollectionRef);
+    
+    await runTransaction(db, async (transaction) => {
+        const figureDoc = await transaction.get(figureRef);
+        if (!figureDoc.exists()) {
+            throw new Error("Figure document does not exist.");
+        }
 
-    const docRef = await addDoc(commentsCollectionRef, commentData);
-    return docRef.id;
+        // 1. Prepare the new comment data
+        const commentData: Omit<Comment, 'id' | 'replies'> & { createdAt: any } = {
+            figureId: figureId,
+            authorId: authorData.id,
+            authorName: authorData.name,
+            authorPhotoUrl: authorData.photoUrl,
+            authorGender: authorData.gender,
+            authorCountry: authorData.country,
+            authorCountryCode: authorData.countryCode,
+            text: text,
+            rating: rating ?? undefined,
+            createdAt: serverTimestamp(),
+            likes: [],
+            likeCount: 0,
+            dislikes: [],
+            dislikeCount: 0,
+            replyCount: 0,
+            isAnonymous: authorData.isAnonymous,
+        };
+        
+        // 2. Set the new comment in the transaction
+        transaction.set(newCommentRef, commentData);
+        
+        // 3. Update the figure's rating counts if a rating was provided
+        if (rating !== undefined && rating !== null) {
+            const figureData = figureDoc.data();
+            const currentRatingCounts = figureData.ratingCounts || { ...defaultRatingCounts };
+            const newCount = (currentRatingCounts[rating] || 0) + 1;
+            const newRatingCounts = { ...currentRatingCounts, [rating]: newCount };
+            
+            transaction.update(figureRef, { ratingCounts: newRatingCounts });
+        }
+    });
+
+    return newCommentRef.id;
 }
 
 
