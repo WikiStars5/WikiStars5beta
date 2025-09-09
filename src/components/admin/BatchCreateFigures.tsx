@@ -23,7 +23,21 @@ import {
 import { writeBatch, doc, serverTimestamp, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import slugify from 'slugify';
-import type { Figure, AttitudeKey, EmotionKey, ProfileType } from '@/lib/types';
+import type { Figure, AttitudeKey, EmotionKey, ProfileType, MediaSubcategory } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+
+const MEDIA_SUBCATEGORIES: { value: MediaSubcategory, label: string }[] = [
+    { value: 'video_game', label: 'Videojuego' },
+    { value: 'movie', label: 'Película' },
+    { value: 'series', label: 'Serie' },
+    { value: 'anime', label: 'Anime' },
+    { value: 'manga_comic', label: 'Manga/Cómic' },
+    { value: 'book', label: 'Libro/Novela' },
+    { value: 'company', label: 'Empresa' },
+    { value: 'website', label: 'Página Web' },
+    { value: 'social_media_platform', label: 'Red Social' },
+];
+
 
 const defaultPerceptionCounts: Record<EmotionKey, number> = {
   alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
@@ -39,11 +53,21 @@ interface BatchCreateFiguresProps {
 
 export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
   const [names, setNames] = useState('');
+  const [mediaSubcategory, setMediaSubcategory] = useState<MediaSubcategory | undefined>();
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
   const handleCreate = async () => {
+    if (profileType === 'media' && !mediaSubcategory) {
+      toast({
+        title: "Subcategoría Requerida",
+        description: "Por favor, selecciona una subcategoría para los perfiles de medios.",
+        variant: "destructive",
+      });
+      return;
+    }
+      
     setIsProcessing(true);
     const namesList = names.split('\n').map(name => name.trim()).filter(name => name.length > 0);
 
@@ -76,6 +100,7 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
             name: name,
             nameLower: name.toLowerCase(),
             profileType: profileType,
+            mediaSubcategory: profileType === 'media' ? mediaSubcategory : undefined,
             searchKeywords: searchKeywords,
             photoUrl: `https://placehold.co/400x600.png?text=${encodeURIComponent(name)}`,
             description: '',
@@ -122,7 +147,7 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
     },
     media: {
       title: "Creación Masiva de Medios",
-      description: "Pega una lista de títulos (uno por línea) para crear perfiles de medios (películas, animes, juegos, etc.).",
+      description: "Elige una subcategoría y pega una lista de títulos (uno por línea) para crear perfiles de medios.",
       icon: Film
     }
   }
@@ -141,6 +166,21 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {profileType === 'media' && (
+          <div>
+            <Label htmlFor="media-subcategory-batch">Subcategoría *</Label>
+            <Select onValueChange={(v) => setMediaSubcategory(v as MediaSubcategory)} value={mediaSubcategory}>
+              <SelectTrigger id="media-subcategory-batch">
+                <SelectValue placeholder="Selecciona una subcategoría..." />
+              </SelectTrigger>
+              <SelectContent>
+                {MEDIA_SUBCATEGORIES.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div>
           <Label htmlFor={`batch-names-${profileType}`} className="sr-only">Nombres de los perfiles</Label>
           <Textarea
@@ -154,7 +194,7 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
         </div>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button disabled={isProcessing || names.trim().length === 0}>
+            <Button disabled={isProcessing || names.trim().length === 0 || (profileType === 'media' && !mediaSubcategory)}>
               {isProcessing ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
