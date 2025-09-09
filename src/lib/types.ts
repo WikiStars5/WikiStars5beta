@@ -17,18 +17,28 @@ export interface Figure {
   photoUrl: string;
   description?: string;
   
-  nationality?: string;
-  nationalityCode?: string; // Added to store country code
-  occupation?: string;
-  gender?: string;
+  // Shared fields
   category?: string;
-  sportSubcategory?: string; 
   tags?: string[];
   tagsLower?: string[]; // For case-insensitive search
-
+  socialLinks?: {
+    instagram?: string;
+    twitter?: string;
+    youtube?: string;
+    facebook?: string;
+    linkedin?: string;
+    discord?: string;
+    tiktok?: string;
+  };
+  relatedFigureIds?: string[];
+  
+  // Character-specific fields
+  nationality?: string;
+  nationalityCode?: string; 
+  occupation?: string;
+  gender?: string;
   alias?: string;
   species?: string; 
-  firstAppearance?: string; 
   birthDateOrAge?: string; 
   age?: number; // Numeric age for querying
   birthPlace?: string;
@@ -41,17 +51,11 @@ export interface Figure {
   eyeColor?: string; 
   distinctiveFeatures?: string; 
 
-  socialLinks?: {
-    instagram?: string;
-    twitter?: string;
-    youtube?: string;
-    facebook?: string;
-    linkedin?: string;
-    discord?: string;
-    tiktok?: string;
-  };
-
-  relatedFigureIds?: string[];
+  // Media-specific fields
+  mediaGenre?: string; // e.g., RPG, Shooter, Movie, Album
+  releaseDate?: string;
+  developer?: string; // or Director, Artist, etc.
+  platforms?: string[]; // e.g., PC, PS5, Netflix
 
   perceptionCounts: Record<EmotionKey, number>;
   attitudeCounts: Record<AttitudeKey, number>;

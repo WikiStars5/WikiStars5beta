@@ -49,57 +49,54 @@ const MARITAL_STATUS_OPTIONS = [
 
 const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
-  const [name, setName] = useState(initialData?.name || '');
-  const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl || '');
-  const [description, setDescription] = useState(initialData?.description || '');
-  const [profileType, setProfileType] = useState<ProfileType>(initialData?.profileType || 'character');
+  const [name, setName] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [description, setDescription] = useState('');
+  const [profileType, setProfileType] = useState<ProfileType>('character');
+  const [category, setCategory] = useState('');
   
-  // Basic info
-  const [occupation, setOccupation] = useState(initialData?.occupation || '');
-  const [gender, setGender] = useState(initialData?.gender || '');
-  const [nationalityCode, setNationalityCode] = useState(initialData?.nationalityCode || '');
-  const [category, setCategory] = useState(initialData?.category || '');
-  const [sportSubcategory, setSportSubcategory] = useState(initialData?.sportSubcategory || '');
-
-  // New detailed fields
-  const [alias, setAlias] = useState(initialData?.alias || '');
-  const [species, setSpecies] = useState(initialData?.species || '');
-  const [firstAppearance, setFirstAppearance] = useState(initialData?.firstAppearance || '');
-  const [birthDate, setBirthDate] = useState<Date | undefined>(
-    initialData?.birthDateOrAge && !isNaN(new Date(initialData.birthDateOrAge).getTime())
-      ? new Date(initialData.birthDateOrAge)
-      : undefined
-  );
-  const [birthPlace, setBirthPlace] = useState(initialData?.birthPlace || '');
-  const [statusLiveOrDead, setStatusLiveOrDead] = useState(initialData?.statusLiveOrDead || '');
-  const [maritalStatus, setMaritalStatus] = useState(initialData?.maritalStatus || '');
-  const [height, setHeight] = useState(initialData?.height || '');
-  const [weight, setWeight] = useState(initialData?.weight || '');
-  const [hairColor, setHairColor] = useState(initialData?.hairColor || '');
-  const [eyeColor, setEyeColor] = useState(initialData?.eyeColor || '');
-  const [distinctiveFeatures, setDistinctiveFeatures] = useState(initialData?.distinctiveFeatures || '');
-  const [isFeatured, setIsFeatured] = useState(initialData?.isFeatured || false);
-
-  const [socialLinks, setSocialLinks] = useState(initialData?.socialLinks || {
-    instagram: '',
-    twitter: '',
-    youtube: '',
-    facebook: '',
-    linkedin: '',
-    discord: '',
-    tiktok: '',
-  });
-
+  // Shared
+  const [socialLinks, setSocialLinks] = useState(initialData?.socialLinks || {});
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [isFeatured, setIsFeatured] = useState(false);
 
-  const [perceptionCounts, setPerceptionCounts] = useState(initialData?.perceptionCounts || { ...defaultPerceptionCounts });
-  const [attitudeCounts, setAttitudeCounts] = useState(initialData?.attitudeCounts || { ...defaultAttitudeCounts });
+  // Character specific
+  const [occupation, setOccupation] = useState('');
+  const [gender, setGender] = useState('');
+  const [nationalityCode, setNationalityCode] = useState('');
+  const [alias, setAlias] = useState('');
+  const [species, setSpecies] = useState('');
+  const [birthDate, setBirthDate] = useState<Date | undefined>();
+  const [birthPlace, setBirthPlace] = useState('');
+  const [statusLiveOrDead, setStatusLiveOrDead] = useState('');
+  const [maritalStatus, setMaritalStatus] = useState('');
+  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
+  const [hairColor, setHairColor] = useState('');
+  const [eyeColor, setEyeColor] = useState('');
+  const [distinctiveFeatures, setDistinctiveFeatures] = useState('');
+  
+  // Media specific
+  const [mediaGenre, setMediaGenre] = useState('');
+  const [releaseDate, setReleaseDate] = useState<Date | undefined>();
+  const [developer, setDeveloper] = useState('');
+  const [platformsInput, setPlatformsInput] = useState('');
   
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const clearCharacterFields = () => {
+    setOccupation(''); setGender(''); setNationalityCode(''); setAlias('');
+    setSpecies(''); setBirthDate(undefined); setBirthPlace('');
+    setStatusLiveOrDead(''); setMaritalStatus(''); setHeight(''); setWeight('');
+    setHairColor(''); setEyeColor(''); setDistinctiveFeatures('');
+  };
+
+  const clearMediaFields = () => {
+    setMediaGenre(''); setReleaseDate(undefined); setDeveloper(''); setPlatformsInput('');
+  };
 
   useEffect(() => {
     if (initialData) {
@@ -107,72 +104,51 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setProfileType(initialData.profileType || 'character');
       setDescription(initialData.description || ''); 
       setPhotoUrl(initialData.photoUrl || '');
-      setOccupation(initialData.occupation || '');
-      setGender(initialData.gender || '');
-      setNationalityCode(initialData.nationalityCode || '');
       setCategory(initialData.category || '');
-      setSportSubcategory(initialData.sportSubcategory || '');
-      
-      setAlias(initialData.alias || '');
-      setSpecies(initialData.species || '');
-      setFirstAppearance(initialData.firstAppearance || '');
-      setBirthDate(
-        initialData.birthDateOrAge && !isNaN(new Date(initialData.birthDateOrAge).getTime())
-          ? new Date(initialData.birthDateOrAge)
-          : undefined
-      );
-      setBirthPlace(initialData.birthPlace || '');
-      setStatusLiveOrDead(initialData.statusLiveOrDead || '');
-      setMaritalStatus(initialData.maritalStatus || '');
-      setHeight(initialData.height || '');
-      setWeight(initialData.weight || '');
-      setHairColor(initialData.hairColor || '');
-      setEyeColor(initialData.eyeColor || '');
-      setDistinctiveFeatures(initialData.distinctiveFeatures || '');
       setIsFeatured(initialData.isFeatured || false);
       setSocialLinks(initialData.socialLinks || {});
       setTags(initialData.tags || []);
 
-      setPerceptionCounts(initialData.perceptionCounts || { ...defaultPerceptionCounts });
-      setAttitudeCounts(initialData.attitudeCounts || { ...defaultAttitudeCounts });
-      
+      if (initialData.profileType === 'character') {
+        setOccupation(initialData.occupation || '');
+        setGender(initialData.gender || '');
+        setNationalityCode(initialData.nationalityCode || '');
+        setAlias(initialData.alias || '');
+        setSpecies(initialData.species || '');
+        setBirthDate(initialData.birthDateOrAge && !isNaN(new Date(initialData.birthDateOrAge).getTime()) ? new Date(initialData.birthDateOrAge) : undefined);
+        setBirthPlace(initialData.birthPlace || '');
+        setStatusLiveOrDead(initialData.statusLiveOrDead || '');
+        setMaritalStatus(initialData.maritalStatus || '');
+        setHeight(initialData.height || '');
+        setWeight(initialData.weight || '');
+        setHairColor(initialData.hairColor || '');
+        setEyeColor(initialData.eyeColor || '');
+        setDistinctiveFeatures(initialData.distinctiveFeatures || '');
+        clearMediaFields();
+      } else {
+        setMediaGenre(initialData.mediaGenre || '');
+        setDeveloper(initialData.developer || '');
+        setReleaseDate(initialData.releaseDate && !isNaN(new Date(initialData.releaseDate).getTime()) ? new Date(initialData.releaseDate) : undefined);
+        setPlatformsInput((initialData.platforms || []).join(', '));
+        clearCharacterFields();
+      }
     } else {
-      // Reset all fields for new figure form
-      setName('');
-      setProfileType('character');
-      setDescription('');
-      setPhotoUrl('');
-      setOccupation('');
-      setGender('');
-      setNationalityCode('');
-      setCategory('');
-      setSportSubcategory('');
-      setAlias('');
-      setSpecies('');
-      setFirstAppearance('');
-      setBirthDate(undefined);
-      setBirthPlace('');
-      setStatusLiveOrDead('');
-      setMaritalStatus('');
-      setHeight('');
-      setWeight('');
-      setHairColor('');
-      setEyeColor('');
-      setDistinctiveFeatures('');
-      setIsFeatured(false);
-      setSocialLinks({});
-      setTags([]);
-      setPerceptionCounts({ ...defaultPerceptionCounts });
-      setAttitudeCounts({ ...defaultAttitudeCounts });
+      // Reset all fields for a new form
+      setName(''); setProfileType('character'); setDescription(''); setPhotoUrl('');
+      setCategory(''); setIsFeatured(false); setSocialLinks({}); setTags([]);
+      clearCharacterFields();
+      clearMediaFields();
     }
   }, [initialData]);
 
-  useEffect(() => {
-    // If category is not 'Deportista', clear the sport subcategory
-    if (category !== 'Deportista') {
-      setSportSubcategory('');
+  const handleProfileTypeChange = (value: ProfileType) => {
+    setProfileType(value);
+    if (value === 'character') {
+      clearMediaFields();
+    } else {
+      clearCharacterFields();
     }
-  }, [category]);
+  };
   
   const handleAddTag = () => {
     if (selectedTag && !tags.includes(selectedTag)) {
@@ -205,64 +181,67 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
     try {
       if (!name.trim()) {
-        throw new Error('El nombre de la figura es obligatorio.');
+        throw new Error('El nombre del perfil es obligatorio.');
       }
       
       const finalPhotoUrlToSave = photoUrl.trim() || 'https://placehold.co/400x600.png';
+      const searchKeywords = name.trim().toLowerCase().split(/\s+/).filter(Boolean);
       
-      const age = birthDate ? differenceInYears(new Date(), birthDate) : undefined;
-      const heightCm = height ? parseInt(height.replace(/\D/g, ''), 10) || undefined : undefined;
-      const tagsLower = tags.map(tag => tag.toLowerCase());
-      
-      // Generate search keywords from the name
-      const searchKeywords = name
-        .trim()
-        .toLowerCase()
-        .split(/\s+/)
-        .filter(Boolean); // Remove empty strings
-
-      const figureData: Partial<Figure> & { createdAt?: any } = { 
+      const baseData = {
         name: name.trim(),
         nameLower: name.trim().toLowerCase(),
         profileType: profileType,
-        searchKeywords: searchKeywords, // Add the new search field
-        description: description.trim() || initialData?.description || "", 
+        searchKeywords: searchKeywords,
+        description: description.trim() || "", 
         photoUrl: finalPhotoUrlToSave,
-        nationality: countryCodeToNameMap.get(nationalityCode) || '',
-        nationalityCode: nationalityCode,
-        occupation: occupation.trim(),
-        gender: gender.trim(),
         category: category.trim(),
-        sportSubcategory: category === 'Deportista' ? sportSubcategory.trim() : '',
         tags: tags,
-        tagsLower: tagsLower,
-        alias: alias.trim(),
-        species: species.trim(),
-        firstAppearance: firstAppearance.trim(),
-        birthDateOrAge: birthDate ? birthDate.toISOString() : '',
-        birthPlace: birthPlace.trim(),
-        statusLiveOrDead: statusLiveOrDead.trim(),
-        maritalStatus: maritalStatus.trim(),
-        height: height.trim(),
-        weight: weight.trim(),
-        hairColor: hairColor.trim(),
-        eyeColor: eyeColor.trim(),
-        distinctiveFeatures: distinctiveFeatures.trim(),
+        tagsLower: tags.map(tag => tag.toLowerCase()),
         socialLinks: socialLinks,
-        relatedFigureIds: initialData?.relatedFigureIds || [],
         isFeatured: isFeatured,
-        perceptionCounts: perceptionCounts || { ...defaultPerceptionCounts },
-        attitudeCounts: attitudeCounts || { ...defaultAttitudeCounts },
         status: initialData?.status || 'approved',
       };
       
-      // Conditionally add fields only if they have a value
-      if (age !== undefined) figureData.age = age;
-      if (heightCm !== undefined) figureData.heightCm = heightCm;
+      let profileSpecificData = {};
 
-      if (!initialData?.id) { 
-        figureData.createdAt = serverTimestamp();
+      if (profileType === 'character') {
+        profileSpecificData = {
+          occupation: occupation.trim(),
+          gender: gender.trim(),
+          nationality: countryCodeToNameMap.get(nationalityCode) || '',
+          nationalityCode: nationalityCode,
+          alias: alias.trim(),
+          species: species.trim(),
+          birthDateOrAge: birthDate ? birthDate.toISOString() : '',
+          age: birthDate ? differenceInYears(new Date(), birthDate) : undefined,
+          birthPlace: birthPlace.trim(),
+          statusLiveOrDead: statusLiveOrDead.trim(),
+          maritalStatus: maritalStatus.trim(),
+          height: height.trim(),
+          heightCm: height ? parseInt(height.replace(/\D/g, ''), 10) || undefined : undefined,
+          weight: weight.trim(),
+          hairColor: hairColor.trim(),
+          eyeColor: eyeColor.trim(),
+          distinctiveFeatures: distinctiveFeatures.trim(),
+        };
+      } else { // media
+        profileSpecificData = {
+          mediaGenre: mediaGenre.trim(),
+          releaseDate: releaseDate ? releaseDate.toISOString() : '',
+          developer: developer.trim(),
+          platforms: platformsInput.split(',').map(p => p.trim()).filter(Boolean),
+        };
       }
+      
+      const figureData: Partial<Figure> & { createdAt?: any } = {
+        ...baseData,
+        ...profileSpecificData,
+        ...(initialData ? {} : {
+            perceptionCounts: { ...defaultPerceptionCounts },
+            attitudeCounts: { ...defaultAttitudeCounts },
+            createdAt: serverTimestamp(),
+        }),
+      };
 
       // Remove undefined values to prevent Firestore errors
       Object.keys(figureData).forEach(key => {
@@ -274,11 +253,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       const figureRef = doc(db, 'figures', figureDocId);
       await setDoc(figureRef, figureData, { merge: true });
 
-      setSuccess(`Figura "${name}" guardada exitosamente.`);
+      setSuccess(`Perfil "${name}" guardado exitosamente.`);
       
       setTimeout(() => {
         if (!initialData?.id) { 
-          router.push(`/figures/${figureDocId}`); 
+          router.push(`/admin/figures`); 
         } else { 
           router.push('/admin/figures');
         }
@@ -287,7 +266,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
     } catch (err: any) {
       console.error("[FigureForm handleSubmit] ERROR en handleSubmit:", err);
-      setError(err.message || 'Error al guardar la figura. Revisa la consola del navegador para más detalles.');
+      setError(err.message || 'Error al guardar el perfil. Revisa la consola para más detalles.');
     } finally {
       setIsSaving(false);
     }
@@ -314,220 +293,95 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <Label>Tipo de Perfil</Label>
         <RadioGroup
           value={profileType}
-          onValueChange={(value) => setProfileType(value as ProfileType)}
+          onValueChange={(value) => handleProfileTypeChange(value as ProfileType)}
           className="flex gap-4 mt-2"
         >
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="character" id="type-character" />
-            <Label htmlFor="type-character">Personaje (Humano, Ficticio, etc.)</Label>
+            <Label htmlFor="type-character">Personaje</Label>
           </div>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="media" id="type-media" />
-            <Label htmlFor="type-media">Medio (Película, Juego, Anime, etc.)</Label>
+            <Label htmlFor="type-media">Medio (Película, Juego, etc.)</Label>
           </div>
         </RadioGroup>
-        <p className="text-xs text-muted-foreground mt-1">
-          La opción 'Personaje' habilita el voto "Simp". 'Medio' lo deshabilita.
-        </p>
       </div>
 
-      <div>
-        <Label htmlFor="name">Nombre del Perfil</Label>
-        <Input
-          id="name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Ej: Albert Einstein o The Witcher 3"
-          required
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="photoUrl">URL de la Imagen de Perfil</Label>
-        <Input
-          id="photoUrl"
-          type="url"
-          value={photoUrl}
-          onChange={(e) => setPhotoUrl(e.target.value)}
-          placeholder="https://ejemplo.com/imagen.png"
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          Si se deja en blanco, se usará una imagen de marcador de posición.
-        </p>
-      </div>
-
-      <div>
-        <Label htmlFor="description">Descripción</Label>
-        <Textarea
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Escribe una breve descripción."
-          rows={4}
-        />
+      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Información Básica</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><Label htmlFor="name">Nombre del Perfil*</Label><Input id="name" value={name} onChange={(e) => setName(e.target.value)} required /></div>
+        <div><Label htmlFor="photoUrl">URL de la Imagen de Perfil</Label><Input id="photoUrl" type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://..." /></div>
+        <div className="md:col-span-2"><Label htmlFor="description">Descripción</Label><Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} /></div>
+        <div>
+            <Label htmlFor="category">Categoría General</Label>
+            <Select onValueChange={setCategory} value={category}>
+                <SelectTrigger id="category"><SelectValue placeholder="Selecciona una categoría" /></SelectTrigger>
+                <SelectContent>{CATEGORY_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
+            </Select>
+        </div>
       </div>
       
-      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Información Detallada</h3>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="category">Categoría</Label>
-          <Select onValueChange={setCategory} value={category}>
-            <SelectTrigger id="category">
-              <SelectValue placeholder="Selecciona una categoría" />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORY_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {profileType === 'character' ? (
+        <div className="space-y-6 animate-in fade-in-50">
+           <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Detalles del Personaje</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><Label htmlFor="occupation">Ocupación/Profesión</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
+              <div><Label htmlFor="nationalityCode">País de Origen</Label><CountryCombobox value={nationalityCode} onChange={(v) => setNationalityCode(v || '')}/></div>
+              <div><Label htmlFor="gender">Género</Label><Select onValueChange={setGender} value={gender}><SelectTrigger id="gender"><SelectValue placeholder="Selecciona un género" /></SelectTrigger><SelectContent>{GENDER_OPTIONS.map((o) => ((o.value === 'male' || o.value === 'female') && (<SelectItem key={o.value} value={o.label}>{o.label}</SelectItem>)))}</SelectContent></Select></div>
+              <div><Label htmlFor="alias">Alias / Apodos</Label><Input id="alias" value={alias} onChange={(e) => setAlias(e.target.value)} /></div>
+              <div><Label htmlFor="species">Especie / Raza</Label><Input id="species" value={species} onChange={(e) => setSpecies(e.target.value)} /></div>
+              <div><Label htmlFor="birthDate">Fecha de Nacimiento</Label><DatePicker date={birthDate} onDateChange={setBirthDate}/></div>
+              <div><Label htmlFor="birthPlace">Lugar de Origen</Label><Input id="birthPlace" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} /></div>
+              <div><Label htmlFor="statusLiveOrDead">Estado (Vivo/Muerto)</Label><Input id="statusLiveOrDead" value={statusLiveOrDead} onChange={(e) => setStatusLiveOrDead(e.target.value)} /></div>
+              <div><Label htmlFor="maritalStatus">Estado Civil</Label><Select onValueChange={setMaritalStatus} value={maritalStatus}><SelectTrigger id="maritalStatus"><SelectValue placeholder="Selecciona un estado civil" /></SelectTrigger><SelectContent>{MARITAL_STATUS_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent></Select></div>
+              <div><Label htmlFor="height">Altura (ej. 168 cm)</Label><Input id="height" value={height} onChange={(e) => setHeight(e.target.value)} /></div>
+              <div><Label htmlFor="weight">Peso</Label><Input id="weight" value={weight} onChange={(e) => setWeight(e.target.value)} /></div>
+              <div><Label htmlFor="hairColor">Color de Cabello</Label><Input id="hairColor" value={hairColor} onChange={(e) => setHairColor(e.target.value)} /></div>
+              <div><Label htmlFor="eyeColor">Color de Ojos</Label><Input id="eyeColor" value={eyeColor} onChange={(e) => setEyeColor(e.target.value)} /></div>
+              <div className="md:col-span-2"><Label htmlFor="distinctiveFeatures">Rasgos Distintivos</Label><Textarea id="distinctiveFeatures" value={distinctiveFeatures} onChange={(e) => setDistinctiveFeatures(e.target.value)} rows={2}/></div>
+            </div>
         </div>
-        
-        {category === 'Deportista' && (
-          <div>
-            <Label htmlFor="sportSubcategory">Subcategoría de Deporte</Label>
-            <Input
-              id="sportSubcategory"
-              value={sportSubcategory}
-              onChange={(e) => setSportSubcategory(e.target.value)}
-              placeholder="Ej: Fútbol, Tenis, Baloncesto"
-            />
-          </div>
-        )}
-        
-        <div><Label htmlFor="occupation">Ocupación/Profesión</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
-        
-        <div>
-          <Label htmlFor="nationalityCode">País de Origen</Label>
-          <CountryCombobox 
-            value={nationalityCode}
-            onChange={(value) => setNationalityCode(value || '')}
-          />
+      ) : (
+        <div className="space-y-6 animate-in fade-in-50">
+            <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Detalles del Medio</h3>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><Label htmlFor="mediaGenre">Género del Medio</Label><Input id="mediaGenre" value={mediaGenre} onChange={(e) => setMediaGenre(e.target.value)} placeholder="Ej: RPG, Película de Acción"/></div>
+                <div><Label htmlFor="releaseDate">Fecha de Lanzamiento</Label><DatePicker date={releaseDate} onDateChange={setReleaseDate} /></div>
+                <div><Label htmlFor="developer">Desarrollador / Director / Autor</Label><Input id="developer" value={developer} onChange={(e) => setDeveloper(e.target.value)} placeholder="Ej: CD Projekt Red, Christopher Nolan" /></div>
+                <div><Label htmlFor="platforms">Plataformas</Label><Input id="platforms" value={platformsInput} onChange={(e) => setPlatformsInput(e.target.value)} placeholder="Ej: PC, PlayStation 5, Netflix" /><p className="text-xs text-muted-foreground mt-1">Separar con comas.</p></div>
+            </div>
         </div>
+      )}
 
-        <div>
-          <Label htmlFor="gender">Género</Label>
-          <Select onValueChange={setGender} value={gender}>
-            <SelectTrigger id="gender">
-              <SelectValue placeholder="Selecciona un género" />
-            </SelectTrigger>
-            <SelectContent>
-              {GENDER_OPTIONS.map((option) => (
-                (option.value === 'male' || option.value === 'female') && (
-                  <SelectItem key={option.value} value={option.label}>
-                    {option.label}
-                  </SelectItem>
-                )
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div><Label htmlFor="alias">Alias / Apodos</Label><Input id="alias" value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Ej: El Sabio, Princesa de Fuego" /></div>
-        <div><Label htmlFor="species">Especie / Raza</Label><Input id="species" value={species} onChange={(e) => setSpecies(e.target.value)} placeholder="Ej: Demonio, Humano" /></div>
-        <div><Label htmlFor="firstAppearance">Primera Aparición</Label><Input id="firstAppearance" value={firstAppearance} onChange={(e) => setFirstAppearance(e.target.value)} placeholder="Ej: High School DxD, Novela Ligera, 2008" /></div>
-        <div>
-            <Label htmlFor="birthDate">Fecha de Creación / Nacimiento</Label>
-            <DatePicker
-              date={birthDate}
-              onDateChange={setBirthDate}
-            />
-        </div>
-        <div><Label htmlFor="birthPlace">Lugar de Origen / Nacimiento</Label><Input id="birthPlace" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} placeholder="Ej: Inframundo, Japón" /></div>
-        <div><Label htmlFor="statusLiveOrDead">Estado (Vivo/Muerto)</Label><Input id="statusLiveOrDead" value={statusLiveOrDead} onChange={(e) => setStatusLiveOrDead(e.target.value)} placeholder="Ej: Vivo, Fallecido, Inmortal" /></div>
-        <div>
-          <Label htmlFor="maritalStatus">Estado Civil</Label>
-          <Select onValueChange={setMaritalStatus} value={maritalStatus}>
-            <SelectTrigger id="maritalStatus">
-              <SelectValue placeholder="Selecciona un estado civil" />
-            </SelectTrigger>
-            <SelectContent>
-              {MARITAL_STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Apariencia y Rasgos Físicos</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><Label htmlFor="height">Altura (ej. 168 cm)</Label><Input id="height" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Ej: 168 cm" /></div>
-        <div><Label htmlFor="weight">Peso</Label><Input id="weight" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="Ej: 56 kg (Opcional)" /></div>
-        <div><Label htmlFor="hairColor">Color de Cabello</Label><Input id="hairColor" value={hairColor} onChange={(e) => setHairColor(e.target.value)} placeholder="Ej: Negro" /></div>
-        <div><Label htmlFor="eyeColor">Color de Ojos</Label><Input id="eyeColor" value={eyeColor} onChange={(e) => setEyeColor(e.target.value)} placeholder="Ej: Violeta, Azules" /></div>
-        <div className="md:col-span-2"><Label htmlFor="distinctiveFeatures">Rasgos Distintivos</Label><Textarea id="distinctiveFeatures" value={distinctiveFeatures} onChange={(e) => setDistinctiveFeatures(e.target.value)} placeholder="Ej: Cicatriz en el ojo, Alas de demonio" rows={2}/></div>
-      </div>
-
-      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales</h3>
+      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales (Opcional)</h3>
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={(socialLinks as Record<string,string>)['instagram'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, instagram: e.target.value}))} placeholder="URL de Instagram" /></div>
-        <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={(socialLinks as Record<string,string>)['twitter'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, twitter: e.target.value}))} placeholder="URL de X/Twitter" /></div>
-        <div><Label htmlFor="youtube">YouTube</Label><Input id="youtube" value={(socialLinks as Record<string,string>)['youtube'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, youtube: e.target.value}))} placeholder="URL de YouTube" /></div>
-        <div><Label htmlFor="facebook">Facebook</Label><Input id="facebook" value={(socialLinks as Record<string,string>)['facebook'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, facebook: e.target.value}))} placeholder="URL de Facebook" /></div>
-        <div><Label htmlFor="tiktok">TikTok</Label><Input id="tiktok" value={(socialLinks as Record<string,string>)['tiktok'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, tiktok: e.target.value}))} placeholder="URL de TikTok" /></div>
-        <div><Label htmlFor="linkedin">LinkedIn</Label><Input id="linkedin" value={(socialLinks as Record<string,string>)['linkedin'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, linkedin: e.target.value}))} placeholder="URL de LinkedIn" /></div>
-        <div><Label htmlFor="discord">Discord</Label><Input id="discord" value={(socialLinks as Record<string,string>)['discord'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, discord: e.target.value}))} placeholder="Enlace de invitación de Discord" /></div>
+        <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={(socialLinks as Record<string,string>)['instagram'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, instagram: e.target.value}))} /></div>
+        <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={(socialLinks as Record<string,string>)['twitter'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, twitter: e.target.value}))} /></div>
+        <div><Label htmlFor="youtube">YouTube</Label><Input id="youtube" value={(socialLinks as Record<string,string>)['youtube'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, youtube: e.target.value}))} /></div>
+        <div><Label htmlFor="facebook">Facebook</Label><Input id="facebook" value={(socialLinks as Record<string,string>)['facebook'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, facebook: e.target.value}))} /></div>
+        <div><Label htmlFor="tiktok">TikTok</Label><Input id="tiktok" value={(socialLinks as Record<string,string>)['tiktok'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, tiktok: e.target.value}))} /></div>
+        <div><Label htmlFor="linkedin">LinkedIn</Label><Input id="linkedin" value={(socialLinks as Record<string,string>)['linkedin'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, linkedin: e.target.value}))} /></div>
+        <div><Label htmlFor="discord">Discord</Label><Input id="discord" value={(socialLinks as Record<string,string>)['discord'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, discord: e.target.value}))} /></div>
       </div>
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Etiquetas (Tags)</h3>
       <div>
-        <Label htmlFor="tags-combobox">Añadir Etiquetas</Label>
         <div className="flex gap-2">
-          <Combobox
-            options={TAG_OPTIONS.map(tag => ({ value: tag, label: tag }))}
-            value={selectedTag || ''}
-            onChange={(value) => setSelectedTag(value)}
-            placeholder="Selecciona una etiqueta..."
-          />
-          <Button type="button" onClick={handleAddTag} disabled={!selectedTag}>
-            Añadir
-          </Button>
+          <Combobox options={TAG_OPTIONS.map(tag => ({ value: tag, label: tag }))} value={selectedTag || ''} onChange={(value) => setSelectedTag(value)} placeholder="Selecciona una etiqueta..." />
+          <Button type="button" onClick={handleAddTag} disabled={!selectedTag}>Añadir</Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          Las etiquetas se usan para agrupar y descubrir perfiles similares.
-        </p>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {tags.map(tag => (
-            <Badge key={tag} variant="secondary" className="text-sm">
-              {tag}
-              <button
-                type="button"
-                onClick={() => handleRemoveTag(tag)}
-                className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive"
-                aria-label={`Eliminar etiqueta ${tag}`}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
+        <div className="flex flex-wrap gap-2 mt-2">{tags.map(tag => (<Badge key={tag} variant="secondary" className="text-sm">{tag}<button type="button" onClick={() => handleRemoveTag(tag)} className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" aria-label={`Eliminar ${tag}`}><X className="h-3 w-3" /></button></Badge>))}</div>
       </div>
       
       <div className="mt-6 border-t pt-4 border-border">
         <div className="flex items-center space-x-2">
-          <Checkbox
-            id="isFeatured"
-            checked={isFeatured}
-            onCheckedChange={(checked) => setIsFeatured(checked as boolean)}
-            disabled={isSaving}
-          />
-          <Label htmlFor="isFeatured" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-            Marcar como Perfil Destacado
-          </Label>
+          <Checkbox id="isFeatured" checked={isFeatured} onCheckedChange={(checked) => setIsFeatured(checked as boolean)} disabled={isSaving} />
+          <Label htmlFor="isFeatured">Marcar como Perfil Destacado</Label>
         </div>
-        <p className="text-xs text-muted-foreground mt-1 ml-6">
-          Los perfiles destacados aparecerán en la sección principal de la página de inicio.
-        </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2 mt-6">
-        <Button type="submit" className="flex-grow" disabled={isSaving}>
+      <div className="flex justify-end gap-2 mt-6">
+        <Button type="submit" disabled={isSaving}>
           {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           {isSaving ? 'Guardando...' : initialData ? 'Actualizar Perfil' : 'Crear Perfil'}
         </Button>
