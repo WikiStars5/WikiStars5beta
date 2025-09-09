@@ -1,16 +1,19 @@
 
+
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 export type RatingValue = 0 | 1 | 2 | 3 | 4 | 5;
+export type ProfileType = 'character' | 'media'; // New type to differentiate profiles
 
 export interface Figure {
   id: string;
   name: string;
   nameLower: string;
   searchKeywords: string[]; // For full text search capabilities
+  profileType: ProfileType; // Added profile type
   photoUrl: string;
   description?: string;
   

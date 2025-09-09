@@ -60,7 +60,7 @@ export default function AdminDashboardPage() {
             <div className="grid md:grid-cols-1 gap-6">
               <Card className="hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de Figuras</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total de Perfiles</CardTitle>
                   <ListOrdered className="h-5 w-5 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -79,16 +79,19 @@ export default function AdminDashboardPage() {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
           <Button asChild>
-            <Link href="/admin/figures/new"><span className="flex items-center"><PlusCircle /> Añadir Nueva Figura</span></Link>
+            <Link href="/admin/figures/new"><span className="flex items-center"><PlusCircle /> Añadir Nuevo Perfil</span></Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/admin/figures"><span className="flex items-center"><ListOrdered /> Gestionar Figuras</span></Link>
+            <Link href="/admin/figures"><span className="flex items-center"><ListOrdered /> Gestionar Perfiles</span></Link>
           </Button>
         </CardContent>
       </Card>
 
-      <BatchCreateFigures />
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <BatchCreateFigures profileType="character" />
+        <BatchCreateFigures profileType="media" />
+      </div>
+      
       <Card>
         <CardHeader>
           <CardTitle className="text-xl font-headline">Herramientas de Mantenimiento</CardTitle>

@@ -1,6 +1,5 @@
 
 
-
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -44,6 +43,7 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     name: data.name || "",
     nameLower: data.nameLower || (data.name ? data.name.toLowerCase() : ""),
     searchKeywords: data.searchKeywords || [],
+    profileType: data.profileType || 'character', // Default to character for older data
     photoUrl: data.photoUrl || "",
     description: data.description || "",
     nationality: data.nationality || "",
@@ -218,7 +218,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       // Destructure all known fields to separate them from the rest
       const { 
           id, createdAt, nameLower: nameLowerInput, searchKeywords: searchKeywordsInput, perceptionCounts, attitudeCounts, ratingCounts,
-          name, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
+          name, profileType, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, age, birthPlace, statusLiveOrDead, maritalStatus,
           height, heightCm, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
           category, sportSubcategory, relatedFigureIds, socialLinks, tags, tagsLower, ...rest
@@ -231,6 +231,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
         updatePayload.nameLower = name.toLowerCase();
         updatePayload.searchKeywords = name.trim().toLowerCase().split(/\s+/).filter(Boolean);
       }
+      if (profileType !== undefined) updatePayload.profileType = profileType;
       if (photoUrl !== undefined) updatePayload.photoUrl = photoUrl;
       if (description !== undefined) updatePayload.description = description;
       if (nationality !== undefined) updatePayload.nationality = nationality;

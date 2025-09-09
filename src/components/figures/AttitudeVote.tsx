@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import type { Figure, AttitudeKey, Attitude } from '@/lib/types';
+import type { Figure, AttitudeKey, Attitude, ProfileType } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -13,10 +13,10 @@ import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
 import { useAuth } from '@/hooks/use-auth';
 
-
 interface AttitudeVoteProps {
   figureId: string;
   figureName: string;
+  profileType: ProfileType;
   initialAttitudeCounts?: Record<AttitudeKey, number>;
 }
 
@@ -26,18 +26,19 @@ const ATTITUDE_OPTIONS_CONFIG: {
   emoji: string;
   colorClass: string;
   selectedClass: string;
+  profileType: 'all' | 'character';
 }[] = [
-  { key: 'neutral', label: 'Neutral', emoji: '😐', colorClass: 'border-muted-foreground/50 text-muted-foreground hover:bg-muted-foreground/10 hover:border-muted-foreground', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-muted-foreground border-muted-foreground' },
-  { key: 'fan', label: 'Fan', emoji: '😍', colorClass: 'border-primary/50 text-primary hover:bg-primary/10 hover:border-primary', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-primary border-primary' },
-  { key: 'simp', label: 'Simp', emoji: '🥰', colorClass: 'border-[#FF4081]/50 text-[#FF4081] hover:bg-[#FF4081]/10 hover:border-[#FF4081]', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-[#FF4081] border-[#FF4081]' },
-  { key: 'hater', label: 'Hater', emoji: '😡', colorClass: 'border-destructive/50 text-destructive hover:bg-destructive/10 hover:border-destructive', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-destructive border-destructive' },
+  { key: 'neutral', label: 'Neutral', emoji: '😐', colorClass: 'border-muted-foreground/50 text-muted-foreground hover:bg-muted-foreground/10 hover:border-muted-foreground', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-muted-foreground border-muted-foreground', profileType: 'all' },
+  { key: 'fan', label: 'Fan', emoji: '😍', colorClass: 'border-primary/50 text-primary hover:bg-primary/10 hover:border-primary', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-primary border-primary', profileType: 'all' },
+  { key: 'simp', label: 'Simp', emoji: '🥰', colorClass: 'border-[#FF4081]/50 text-[#FF4081] hover:bg-[#FF4081]/10 hover:border-[#FF4081]', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-[#FF4081] border-[#FF4081]', profileType: 'character' },
+  { key: 'hater', label: 'Hater', emoji: '😡', colorClass: 'border-destructive/50 text-destructive hover:bg-destructive/10 hover:border-destructive', selectedClass: 'ring-2 ring-offset-2 ring-offset-black ring-destructive border-destructive', profileType: 'all' },
 ];
 
 const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, initialAttitudeCounts }) => {
+export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, profileType, initialAttitudeCounts }) => {
   const { currentUser, firebaseUser, isLoading } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [isVoting, setIsVoting] = useState(false);
@@ -46,7 +47,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   const { toast } = useToast();
   
   const getUserId = () => {
-    return firebaseUser?.uid || currentUser?.uid || localStorage.getItem('wikistars5-guestId');
+    return firebaseUser?.uid || localStorage.getItem('wikistars5-guestId');
   };
   
   useEffect(() => {
@@ -165,6 +166,9 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     }
   };
 
+  const availableOptions = ATTITUDE_OPTIONS_CONFIG.filter(opt => 
+    opt.profileType === 'all' || (opt.profileType === 'character' && profileType === 'character')
+  );
 
   return (
     <Card className="border border-white/20 bg-black">
@@ -181,7 +185,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
             </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {ATTITUDE_OPTIONS_CONFIG.map(({ key, label, emoji, colorClass, selectedClass }) => (
+            {availableOptions.map(({ key, label, emoji, colorClass, selectedClass }) => (
               <Button
                 key={key}
                 variant="ghost"

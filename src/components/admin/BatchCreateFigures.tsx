@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Loader2, Sparkles, Users } from 'lucide-react';
+import { Loader2, Sparkles, Film, User } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +23,7 @@ import {
 import { writeBatch, doc, serverTimestamp, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import slugify from 'slugify';
-import type { Figure, AttitudeKey, EmotionKey } from '@/lib/types';
+import type { Figure, AttitudeKey, EmotionKey, ProfileType } from '@/lib/types';
 
 const defaultPerceptionCounts: Record<EmotionKey, number> = {
   alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
@@ -33,7 +33,11 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-export function BatchCreateFigures() {
+interface BatchCreateFiguresProps {
+  profileType: ProfileType;
+}
+
+export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
   const [names, setNames] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -63,16 +67,22 @@ export function BatchCreateFigures() {
         if (figureId) {
           const searchKeywords = name.trim().toLowerCase().split(/\s+/).filter(Boolean);
           const figureRef = doc(figuresCollectionRef, figureId);
+          const attitudeCounts = { ...defaultAttitudeCounts };
+          if (profileType === 'media') {
+            delete (attitudeCounts as Partial<typeof attitudeCounts>).simp;
+          }
+
           const figureData: Partial<Figure> & { createdAt: any } = {
             name: name,
             nameLower: name.toLowerCase(),
+            profileType: profileType,
             searchKeywords: searchKeywords,
             photoUrl: `https://placehold.co/400x600.png?text=${encodeURIComponent(name)}`,
             description: '',
             isFeatured: false,
             status: 'approved',
             perceptionCounts: defaultPerceptionCounts,
-            attitudeCounts: defaultAttitudeCounts,
+            attitudeCounts: attitudeCounts,
             createdAt: serverTimestamp(),
             tags: [],
             tagsLower: [],
@@ -86,7 +96,7 @@ export function BatchCreateFigures() {
 
       toast({
         title: "¡Creación Masiva Completa!",
-        description: `Se han creado ${createdCount} nuevos perfiles.`,
+        description: `Se han creado ${createdCount} nuevos perfiles de ${profileType === 'character' ? 'personajes' : 'medios'}.`,
       });
 
       setNames('');
@@ -103,23 +113,38 @@ export function BatchCreateFigures() {
       setIsProcessing(false);
     }
   };
+  
+  const cardInfo = {
+    character: {
+      title: "Creación Masiva de Personajes",
+      description: "Pega una lista de nombres (uno por línea) para crear perfiles de personajes (humanos, ficticios, etc.).",
+      icon: User
+    },
+    media: {
+      title: "Creación Masiva de Medios",
+      description: "Pega una lista de títulos (uno por línea) para crear perfiles de medios (películas, animes, juegos, etc.).",
+      icon: Film
+    }
+  }
+
+  const { title, description, icon: Icon } = cardInfo[profileType];
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-xl font-headline flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Creación Masiva de Perfiles
+            <Icon className="h-5 w-5" />
+            {title}
         </CardTitle>
         <CardDescription>
-          Pega una lista de nombres (uno por línea) para crear múltiples perfiles de figuras a la vez.
+          {description}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <Label htmlFor="batch-names" className="sr-only">Nombres de las figuras</Label>
+          <Label htmlFor={`batch-names-${profileType}`} className="sr-only">Nombres de los perfiles</Label>
           <Textarea
-            id="batch-names"
+            id={`batch-names-${profileType}`}
             value={names}
             onChange={(e) => setNames(e.target.value)}
             placeholder="Lionel Messi\nCristiano Ronaldo\nRihanna\n..."

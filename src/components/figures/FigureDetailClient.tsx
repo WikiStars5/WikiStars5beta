@@ -129,7 +129,8 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
             <TabsContent value="attitude">
                 <AttitudeVote 
                   figureId={figure.id} 
-                  figureName={figure.name} 
+                  figureName={figure.name}
+                  profileType={figure.profileType} 
                   initialAttitudeCounts={figure.attitudeCounts} 
                 />
             </TabsContent>

@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Sparkles, Loader2, CalendarIcon, X } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Figure, EmotionKey, AttitudeKey } from '@/lib/types';
+import type { Figure, EmotionKey, AttitudeKey, ProfileType } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -24,6 +24,7 @@ import { Badge } from '../ui/badge';
 import { TAG_OPTIONS } from '@/config/tags';
 import { Combobox } from '../shared/Combobox';
 import { differenceInYears } from 'date-fns';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -51,6 +52,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [name, setName] = useState(initialData?.name || '');
   const [photoUrl, setPhotoUrl] = useState(initialData?.photoUrl || '');
   const [description, setDescription] = useState(initialData?.description || '');
+  const [profileType, setProfileType] = useState<ProfileType>(initialData?.profileType || 'character');
   
   // Basic info
   const [occupation, setOccupation] = useState(initialData?.occupation || '');
@@ -102,6 +104,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   useEffect(() => {
     if (initialData) {
       setName(initialData.name);
+      setProfileType(initialData.profileType || 'character');
       setDescription(initialData.description || ''); 
       setPhotoUrl(initialData.photoUrl || '');
       setOccupation(initialData.occupation || '');
@@ -136,6 +139,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     } else {
       // Reset all fields for new figure form
       setName('');
+      setProfileType('character');
       setDescription('');
       setPhotoUrl('');
       setOccupation('');
@@ -220,6 +224,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       const figureData: Partial<Figure> & { createdAt?: any } = { 
         name: name.trim(),
         nameLower: name.trim().toLowerCase(),
+        profileType: profileType,
         searchKeywords: searchKeywords, // Add the new search field
         description: description.trim() || initialData?.description || "", 
         photoUrl: finalPhotoUrlToSave,
@@ -306,13 +311,34 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       )}
 
       <div>
-        <Label htmlFor="name">Nombre de la Figura</Label>
+        <Label>Tipo de Perfil</Label>
+        <RadioGroup
+          value={profileType}
+          onValueChange={(value) => setProfileType(value as ProfileType)}
+          className="flex gap-4 mt-2"
+        >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="character" id="type-character" />
+            <Label htmlFor="type-character">Personaje (Humano, Ficticio, etc.)</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="media" id="type-media" />
+            <Label htmlFor="type-media">Medio (Película, Juego, Anime, etc.)</Label>
+          </div>
+        </RadioGroup>
+        <p className="text-xs text-muted-foreground mt-1">
+          La opción 'Personaje' habilita el voto "Simp". 'Medio' lo deshabilita.
+        </p>
+      </div>
+
+      <div>
+        <Label htmlFor="name">Nombre del Perfil</Label>
         <Input
           id="name"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Ej: Albert Einstein"
+          placeholder="Ej: Albert Einstein o The Witcher 3"
           required
         />
       </div>
@@ -376,7 +402,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div><Label htmlFor="occupation">Ocupación/Profesión</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
         
         <div>
-          <Label htmlFor="nationalityCode">Nacionalidad</Label>
+          <Label htmlFor="nationalityCode">País de Origen</Label>
           <CountryCombobox 
             value={nationalityCode}
             onChange={(value) => setNationalityCode(value || '')}
@@ -404,13 +430,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div><Label htmlFor="species">Especie / Raza</Label><Input id="species" value={species} onChange={(e) => setSpecies(e.target.value)} placeholder="Ej: Demonio, Humano" /></div>
         <div><Label htmlFor="firstAppearance">Primera Aparición</Label><Input id="firstAppearance" value={firstAppearance} onChange={(e) => setFirstAppearance(e.target.value)} placeholder="Ej: High School DxD, Novela Ligera, 2008" /></div>
         <div>
-            <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
+            <Label htmlFor="birthDate">Fecha de Creación / Nacimiento</Label>
             <DatePicker
               date={birthDate}
               onDateChange={setBirthDate}
             />
         </div>
-        <div><Label htmlFor="birthPlace">Lugar de Nacimiento</Label><Input id="birthPlace" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} placeholder="Ej: Inframundo, Japón" /></div>
+        <div><Label htmlFor="birthPlace">Lugar de Origen / Nacimiento</Label><Input id="birthPlace" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} placeholder="Ej: Inframundo, Japón" /></div>
         <div><Label htmlFor="statusLiveOrDead">Estado (Vivo/Muerto)</Label><Input id="statusLiveOrDead" value={statusLiveOrDead} onChange={(e) => setStatusLiveOrDead(e.target.value)} placeholder="Ej: Vivo, Fallecido, Inmortal" /></div>
         <div>
           <Label htmlFor="maritalStatus">Estado Civil</Label>
@@ -492,18 +518,18 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
             disabled={isSaving}
           />
           <Label htmlFor="isFeatured" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-            Marcar como Figura Destacada
+            Marcar como Perfil Destacado
           </Label>
         </div>
         <p className="text-xs text-muted-foreground mt-1 ml-6">
-          Las figuras destacadas aparecerán en la sección principal de la página de inicio.
+          Los perfiles destacados aparecerán en la sección principal de la página de inicio.
         </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 mt-6">
         <Button type="submit" className="flex-grow" disabled={isSaving}>
           {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {isSaving ? 'Guardando...' : initialData ? 'Actualizar Figura' : 'Crear Figura'}
+          {isSaving ? 'Guardando...' : initialData ? 'Actualizar Perfil' : 'Crear Perfil'}
         </Button>
       </div>
     </form>
