@@ -18,7 +18,9 @@ export type MediaSubcategory =
   | 'manga_comic' // For manga, comic, historieta
   | 'company' 
   | 'website' 
-  | 'social_media_platform';
+  | 'social_media_platform'
+  | 'board_game' // Juegos de mesa
+  | 'animal'; // Animales
 
 export interface Figure {
   id: string;

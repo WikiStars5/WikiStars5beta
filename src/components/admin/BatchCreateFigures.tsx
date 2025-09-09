@@ -33,6 +33,8 @@ const MEDIA_SUBCATEGORIES: { value: MediaSubcategory, label: string }[] = [
     { value: 'anime', label: 'Anime' },
     { value: 'manga_comic', label: 'Manga/Cómic' },
     { value: 'book', label: 'Libro/Novela' },
+    { value: 'board_game', label: 'Juegos de mesa' },
+    { value: 'animal', label: 'Animales' },
     { value: 'company', label: 'Empresa' },
     { value: 'website', label: 'Página Web' },
     { value: 'social_media_platform', label: 'Red Social' },

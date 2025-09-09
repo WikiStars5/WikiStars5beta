@@ -38,6 +38,8 @@ const MEDIA_SUBCATEGORIES: { value: MediaSubcategory, label: string }[] = [
     { value: 'anime', label: 'Anime' },
     { value: 'manga_comic', label: 'Manga/Cómic' },
     { value: 'book', label: 'Libro/Novela' },
+    { value: 'board_game', label: 'Juegos de mesa' },
+    { value: 'animal', label: 'Animales' },
     { value: 'company', label: 'Empresa' },
     { value: 'website', label: 'Página Web' },
     { value: 'social_media_platform', label: 'Red Social' },
@@ -326,10 +328,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
                     <SelectContent>{MEDIA_SUBCATEGORIES.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
                 </Select>
             </div>
-            {(mediaSubcategory === 'video_game' || mediaSubcategory === 'movie' || mediaSubcategory === 'series' || mediaSubcategory === 'anime' || mediaSubcategory === 'manga_comic' || mediaSubcategory === 'book') && (
+            {(mediaSubcategory === 'video_game' || mediaSubcategory === 'movie' || mediaSubcategory === 'series' || mediaSubcategory === 'anime' || mediaSubcategory === 'manga_comic' || mediaSubcategory === 'book' || mediaSubcategory === 'board_game') && (
               <div><Label htmlFor="mediaGenre">Género</Label><Input id="mediaGenre" value={mediaGenre} onChange={(e) => setMediaGenre(e.target.value)} placeholder="Ej: RPG, Acción, Terror"/></div>
             )}
-            {(mediaSubcategory === 'movie' || mediaSubcategory === 'series' || mediaSubcategory === 'anime' || mediaSubcategory === 'book' || mediaSubcategory === 'video_game') && (
+            {(mediaSubcategory === 'movie' || mediaSubcategory === 'series' || mediaSubcategory === 'anime' || mediaSubcategory === 'book' || mediaSubcategory === 'video_game' || mediaSubcategory === 'board_game') && (
               <div><Label htmlFor="releaseDate">Fecha de Lanzamiento</Label><DatePicker date={releaseDate} onDateChange={setReleaseDate} /></div>
             )}
             {(mediaSubcategory === 'movie' || mediaSubcategory === 'series' || mediaSubcategory === 'anime') && (
@@ -344,7 +346,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
              {mediaSubcategory === 'video_game' && (
               <div><Label htmlFor="platforms">Plataformas</Label><Input id="platforms" value={platformsInput} onChange={(e) => setPlatformsInput(e.target.value)} placeholder="Ej: PC, PS5, Netflix" /><p className="text-xs text-muted-foreground mt-1">Separar con comas.</p></div>
             )}
-            {(mediaSubcategory === 'book' || mediaSubcategory === 'manga_comic') && (
+            {(mediaSubcategory === 'book' || mediaSubcategory === 'manga_comic' || mediaSubcategory === 'board_game') && (
                <div><Label htmlFor="author">Autor/Escritor</Label><Input id="author" value={author} onChange={(e) => setAuthor(e.target.value)} /></div>
             )}
             {mediaSubcategory === 'manga_comic' && (
@@ -358,6 +360,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
             )}
              {(mediaSubcategory === 'website' || mediaSubcategory === 'social_media_platform') && (
                <div><Label htmlFor="websiteUrl">URL del Sitio</Label><Input id="websiteUrl" type="url" value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} /></div>
+            )}
+             {mediaSubcategory === 'animal' && (
+              <div><Label htmlFor="species">Especie</Label><Input id="species" value={species} onChange={(e) => setSpecies(e.target.value)} placeholder="Ej: Perro, Gato, Caballo" /></div>
             )}
         </div>
     </div>

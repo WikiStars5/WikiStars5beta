@@ -12,7 +12,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Link as LinkIcon, Gamepad2, Tv, Film, Music, Building, Book, Clapperboard, MonitorPlay, Users2, Code, Tag
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Link as LinkIcon, Gamepad2, Tv, Film, Music, Building, Book, Clapperboard, MonitorPlay, Users2, Code, Tag, PawPrint
 } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -193,7 +193,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   }
   
   const renderMediaInfo = () => {
-    const hasAnyMediaInfo = figure.mediaGenre || releaseDateFormatted || figure.director || figure.studio || figure.developer || figure.platforms?.length || figure.author || figure.artist || figure.founder || figure.industry || figure.websiteUrl;
+    const hasAnyMediaInfo = figure.mediaGenre || releaseDateFormatted || figure.director || figure.studio || figure.developer || figure.platforms?.length || figure.author || figure.artist || figure.founder || figure.industry || figure.websiteUrl || figure.species;
     if (!hasAnyMediaInfo) return null;
 
     const MEDIA_SUBCATEGORY_LABELS: Record<string, string> = {
@@ -203,6 +203,8 @@ export function FigureInfo({ figure }: FigureInfoProps) {
         anime: 'Anime',
         manga_comic: 'Manga/Cómic',
         book: 'Libro/Novela',
+        board_game: 'Juego de Mesa',
+        animal: 'Animal',
         company: 'Empresa',
         website: 'Página Web',
         social_media_platform: 'Red Social',
@@ -236,8 +238,8 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 </div>
             )}
 
-            {/* Book/Manga/Comic Info */}
-            {(figure.mediaSubcategory === 'book' || figure.mediaSubcategory === 'manga_comic') && (
+            {/* Book/Manga/Comic/Board Game Info */}
+            {(figure.mediaSubcategory === 'book' || figure.mediaSubcategory === 'manga_comic' || figure.mediaSubcategory === 'board_game') && (
                  <div className="space-y-4">
                     <h3 className="font-headline text-lg">Autoría</h3>
                     <InfoItem icon={UserCircle} label="Autor/Escritor" value={figure.author} />
@@ -252,6 +254,14 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                     <InfoItem icon={UserCircle} label="Fundador" value={figure.founder} />
                     <InfoItem icon={Briefcase} label="Industria" value={figure.industry} />
                     <InfoItem icon={LinkIcon} label="Sitio Web" value={figure.websiteUrl} href={figure.websiteUrl} />
+                </div>
+            )}
+
+            {/* Animal Info */}
+            {figure.mediaSubcategory === 'animal' && (
+                 <div className="space-y-4">
+                    <h3 className="font-headline text-lg">Biología</h3>
+                    <InfoItem icon={PawPrint} label="Especie" value={figure.species} />
                 </div>
             )}
         </div>
