@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -11,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Sparkles, Loader2, CalendarIcon, X } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Figure, EmotionKey, AttitudeKey, ProfileType } from '@/lib/types';
+import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,6 +30,18 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 interface FigureFormProps {
   initialData?: Figure;
 }
+
+const MEDIA_SUBCATEGORIES: { value: MediaSubcategory, label: string }[] = [
+    { value: 'video_game', label: 'Videojuego' },
+    { value: 'movie', label: 'Película' },
+    { value: 'series', label: 'Serie' },
+    { value: 'anime', label: 'Anime' },
+    { value: 'manga_comic', label: 'Manga/Cómic' },
+    { value: 'book', label: 'Libro/Novela' },
+    { value: 'company', label: 'Empresa' },
+    { value: 'website', label: 'Página Web' },
+    { value: 'social_media_platform', label: 'Red Social' },
+];
 
 const defaultPerceptionCounts: Record<EmotionKey, number> = {
   alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
@@ -55,7 +68,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [profileType, setProfileType] = useState<ProfileType>('character');
   const [category, setCategory] = useState('');
   
-  // Shared
   const [socialLinks, setSocialLinks] = useState(initialData?.socialLinks || {});
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -78,10 +90,18 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [distinctiveFeatures, setDistinctiveFeatures] = useState('');
   
   // Media specific
+  const [mediaSubcategory, setMediaSubcategory] = useState<MediaSubcategory | undefined>();
   const [mediaGenre, setMediaGenre] = useState('');
   const [releaseDate, setReleaseDate] = useState<Date | undefined>();
   const [developer, setDeveloper] = useState('');
   const [platformsInput, setPlatformsInput] = useState('');
+  const [director, setDirector] = useState('');
+  const [studio, setStudio] = useState('');
+  const [author, setAuthor] = useState('');
+  const [artist, setArtist] = useState('');
+  const [founder, setFounder] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
   
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +115,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   };
 
   const clearMediaFields = () => {
-    setMediaGenre(''); setReleaseDate(undefined); setDeveloper(''); setPlatformsInput('');
+    setMediaSubcategory(undefined); setMediaGenre(''); setReleaseDate(undefined); 
+    setDeveloper(''); setPlatformsInput(''); setDirector(''); setStudio('');
+    setAuthor(''); setArtist(''); setFounder(''); setIndustry(''); setWebsiteUrl('');
   };
 
   useEffect(() => {
@@ -126,10 +148,18 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         setDistinctiveFeatures(initialData.distinctiveFeatures || '');
         clearMediaFields();
       } else {
+        setMediaSubcategory(initialData.mediaSubcategory);
         setMediaGenre(initialData.mediaGenre || '');
-        setDeveloper(initialData.developer || '');
         setReleaseDate(initialData.releaseDate && !isNaN(new Date(initialData.releaseDate).getTime()) ? new Date(initialData.releaseDate) : undefined);
+        setDeveloper(initialData.developer || '');
         setPlatformsInput((initialData.platforms || []).join(', '));
+        setDirector(initialData.director || '');
+        setStudio(initialData.studio || '');
+        setAuthor(initialData.author || '');
+        setArtist(initialData.artist || '');
+        setFounder(initialData.founder || '');
+        setIndustry(initialData.industry || '');
+        setWebsiteUrl(initialData.websiteUrl || '');
         clearCharacterFields();
       }
     } else {
@@ -194,7 +224,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         searchKeywords: searchKeywords,
         description: description.trim() || "", 
         photoUrl: finalPhotoUrlToSave,
-        category: category.trim(),
         tags: tags,
         tagsLower: tags.map(tag => tag.toLowerCase()),
         socialLinks: socialLinks,
@@ -202,10 +231,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         status: initialData?.status || 'approved',
       };
       
-      let profileSpecificData = {};
+      let profileSpecificData: Partial<Figure> = {};
 
       if (profileType === 'character') {
         profileSpecificData = {
+          category: category.trim(),
           occupation: occupation.trim(),
           gender: gender.trim(),
           nationality: countryCodeToNameMap.get(nationalityCode) || '',
@@ -226,19 +256,32 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         };
       } else { // media
         profileSpecificData = {
+          mediaSubcategory,
           mediaGenre: mediaGenre.trim(),
           releaseDate: releaseDate ? releaseDate.toISOString() : '',
           developer: developer.trim(),
           platforms: platformsInput.split(',').map(p => p.trim()).filter(Boolean),
+          director: director.trim(),
+          studio: studio.trim(),
+          author: author.trim(),
+          artist: artist.trim(),
+          founder: founder.trim(),
+          industry: industry.trim(),
+          websiteUrl: websiteUrl.trim(),
         };
       }
       
+      const attitudeCounts = { ...defaultAttitudeCounts };
+      if(profileType === 'media') {
+        delete (attitudeCounts as Partial<typeof attitudeCounts>).simp;
+      }
+
       const figureData: Partial<Figure> & { createdAt?: any } = {
         ...baseData,
         ...profileSpecificData,
         ...(initialData ? {} : {
             perceptionCounts: { ...defaultPerceptionCounts },
-            attitudeCounts: { ...defaultAttitudeCounts },
+            attitudeCounts: attitudeCounts,
             createdAt: serverTimestamp(),
         }),
       };
@@ -271,6 +314,54 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setIsSaving(false);
     }
   };
+
+  const renderMediaFields = () => (
+    <div className="space-y-6 animate-in fade-in-50">
+        <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Detalles del Medio</h3>
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <Label htmlFor="mediaSubcategory">Subcategoría del Medio</Label>
+                <Select onValueChange={(v) => setMediaSubcategory(v as MediaSubcategory)} value={mediaSubcategory}>
+                    <SelectTrigger id="mediaSubcategory"><SelectValue placeholder="Selecciona una subcategoría" /></SelectTrigger>
+                    <SelectContent>{MEDIA_SUBCATEGORIES.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
+                </Select>
+            </div>
+            {(mediaSubcategory === 'video_game' || mediaSubcategory === 'movie' || mediaSubcategory === 'series' || mediaSubcategory === 'anime' || mediaSubcategory === 'manga_comic' || mediaSubcategory === 'book') && (
+              <div><Label htmlFor="mediaGenre">Género</Label><Input id="mediaGenre" value={mediaGenre} onChange={(e) => setMediaGenre(e.target.value)} placeholder="Ej: RPG, Acción, Terror"/></div>
+            )}
+            {(mediaSubcategory === 'movie' || mediaSubcategory === 'series' || mediaSubcategory === 'anime' || mediaSubcategory === 'book' || mediaSubcategory === 'video_game') && (
+              <div><Label htmlFor="releaseDate">Fecha de Lanzamiento</Label><DatePicker date={releaseDate} onDateChange={setReleaseDate} /></div>
+            )}
+            {(mediaSubcategory === 'movie' || mediaSubcategory === 'series' || mediaSubcategory === 'anime') && (
+              <div><Label htmlFor="director">Director</Label><Input id="director" value={director} onChange={(e) => setDirector(e.target.value)} /></div>
+            )}
+             {(mediaSubcategory === 'series' || mediaSubcategory === 'anime') && (
+              <div><Label htmlFor="studio">Estudio</Label><Input id="studio" value={studio} onChange={(e) => setStudio(e.target.value)} /></div>
+            )}
+            {mediaSubcategory === 'video_game' && (
+              <div><Label htmlFor="developer">Desarrollador</Label><Input id="developer" value={developer} onChange={(e) => setDeveloper(e.target.value)} /></div>
+            )}
+             {mediaSubcategory === 'video_game' && (
+              <div><Label htmlFor="platforms">Plataformas</Label><Input id="platforms" value={platformsInput} onChange={(e) => setPlatformsInput(e.target.value)} placeholder="Ej: PC, PS5, Netflix" /><p className="text-xs text-muted-foreground mt-1">Separar con comas.</p></div>
+            )}
+            {(mediaSubcategory === 'book' || mediaSubcategory === 'manga_comic') && (
+               <div><Label htmlFor="author">Autor/Escritor</Label><Input id="author" value={author} onChange={(e) => setAuthor(e.target.value)} /></div>
+            )}
+            {mediaSubcategory === 'manga_comic' && (
+                <div><Label htmlFor="artist">Artista/Dibujante</Label><Input id="artist" value={artist} onChange={(e) => setArtist(e.target.value)} /></div>
+            )}
+            {(mediaSubcategory === 'company' || mediaSubcategory === 'website' || mediaSubcategory === 'social_media_platform') && (
+              <div><Label htmlFor="founder">Fundador</Label><Input id="founder" value={founder} onChange={(e) => setFounder(e.target.value)} /></div>
+            )}
+            {mediaSubcategory === 'company' && (
+               <div><Label htmlFor="industry">Industria</Label><Input id="industry" value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="Ej: Tecnología, Automotriz" /></div>
+            )}
+             {(mediaSubcategory === 'website' || mediaSubcategory === 'social_media_platform') && (
+               <div><Label htmlFor="websiteUrl">URL del Sitio</Label><Input id="websiteUrl" type="url" value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} /></div>
+            )}
+        </div>
+    </div>
+  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-card rounded-lg shadow-md">
@@ -312,13 +403,15 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div><Label htmlFor="name">Nombre del Perfil*</Label><Input id="name" value={name} onChange={(e) => setName(e.target.value)} required /></div>
         <div><Label htmlFor="photoUrl">URL de la Imagen de Perfil</Label><Input id="photoUrl" type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://..." /></div>
         <div className="md:col-span-2"><Label htmlFor="description">Descripción</Label><Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} /></div>
-        <div>
-            <Label htmlFor="category">Categoría General</Label>
-            <Select onValueChange={setCategory} value={category}>
-                <SelectTrigger id="category"><SelectValue placeholder="Selecciona una categoría" /></SelectTrigger>
-                <SelectContent>{CATEGORY_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
-            </Select>
-        </div>
+        {profileType === 'character' && (
+            <div>
+                <Label htmlFor="category">Categoría General</Label>
+                <Select onValueChange={setCategory} value={category}>
+                    <SelectTrigger id="category"><SelectValue placeholder="Selecciona una categoría" /></SelectTrigger>
+                    <SelectContent>{CATEGORY_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
+                </Select>
+            </div>
+        )}
       </div>
       
       {profileType === 'character' ? (
@@ -342,15 +435,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
             </div>
         </div>
       ) : (
-        <div className="space-y-6 animate-in fade-in-50">
-            <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Detalles del Medio</h3>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><Label htmlFor="mediaGenre">Género del Medio</Label><Input id="mediaGenre" value={mediaGenre} onChange={(e) => setMediaGenre(e.target.value)} placeholder="Ej: RPG, Película de Acción"/></div>
-                <div><Label htmlFor="releaseDate">Fecha de Lanzamiento</Label><DatePicker date={releaseDate} onDateChange={setReleaseDate} /></div>
-                <div><Label htmlFor="developer">Desarrollador / Director / Autor</Label><Input id="developer" value={developer} onChange={(e) => setDeveloper(e.target.value)} placeholder="Ej: CD Projekt Red, Christopher Nolan" /></div>
-                <div><Label htmlFor="platforms">Plataformas</Label><Input id="platforms" value={platformsInput} onChange={(e) => setPlatformsInput(e.target.value)} placeholder="Ej: PC, PlayStation 5, Netflix" /><p className="text-xs text-muted-foreground mt-1">Separar con comas.</p></div>
-            </div>
-        </div>
+        renderMediaFields()
       )}
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales (Opcional)</h3>

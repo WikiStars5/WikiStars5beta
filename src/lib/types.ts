@@ -6,21 +6,32 @@ import type { Timestamp } from 'firebase/firestore';
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 export type RatingValue = 0 | 1 | 2 | 3 | 4 | 5;
-export type ProfileType = 'character' | 'media'; // New type to differentiate profiles
+export type ProfileType = 'character' | 'media';
+
+// Define specific media sub-categories
+export type MediaSubcategory = 
+  | 'video_game' 
+  | 'movie' 
+  | 'series' 
+  | 'book' // For novelas, libros
+  | 'anime' 
+  | 'manga_comic' // For manga, comic, historieta
+  | 'company' 
+  | 'website' 
+  | 'social_media_platform';
 
 export interface Figure {
   id: string;
   name: string;
   nameLower: string;
-  searchKeywords: string[]; // For full text search capabilities
-  profileType: ProfileType; // Added profile type
+  searchKeywords: string[]; 
+  profileType: ProfileType; 
   photoUrl: string;
   description?: string;
   
-  // Shared fields
-  category?: string;
+  // --- Shared fields ---
   tags?: string[];
-  tagsLower?: string[]; // For case-insensitive search
+  tagsLower?: string[]; 
   socialLinks?: {
     instagram?: string;
     twitter?: string;
@@ -32,7 +43,8 @@ export interface Figure {
   };
   relatedFigureIds?: string[];
   
-  // Character-specific fields
+  // --- Character-specific fields ---
+  category?: string;
   nationality?: string;
   nationalityCode?: string; 
   occupation?: string;
@@ -40,23 +52,43 @@ export interface Figure {
   alias?: string;
   species?: string; 
   birthDateOrAge?: string; 
-  age?: number; // Numeric age for querying
+  age?: number; 
   birthPlace?: string;
   statusLiveOrDead?: string; 
   maritalStatus?: string; 
   height?: string;
-  heightCm?: number; // Numeric height in cm for querying
+  heightCm?: number; 
   weight?: string; 
   hairColor?: string;
   eyeColor?: string; 
   distinctiveFeatures?: string; 
 
-  // Media-specific fields
-  mediaGenre?: string; // e.g., RPG, Shooter, Movie, Album
+  // --- Media-specific fields ---
+  mediaSubcategory?: MediaSubcategory;
+  mediaGenre?: string; 
   releaseDate?: string;
-  developer?: string; // or Director, Artist, etc.
-  platforms?: string[]; // e.g., PC, PS5, Netflix
+  // Movie / Series / Anime
+  director?: string;
+  studio?: string; 
+  duration?: string; // e.g. "1h 50m"
+  seasons?: number;
+  episodes?: number;
+  // Video Game
+  developer?: string; 
+  publisher?: string;
+  platforms?: string[];
+  // Book / Manga / Comic
+  author?: string; // For books, novels
+  artist?: string; // For manga, comics
+  volumes?: number;
+  pages?: number;
+  // Company / Website / Social Media
+  founder?: string;
+  industry?: string;
+  headquarters?: string;
+  websiteUrl?: string;
 
+  // --- Core app data ---
   perceptionCounts: Record<EmotionKey, number>;
   attitudeCounts: Record<AttitudeKey, number>;
   ratingCounts?: Record<string, number>;
@@ -65,6 +97,7 @@ export interface Figure {
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
 }
+
 
 export interface Attitude {
   figureId: string;

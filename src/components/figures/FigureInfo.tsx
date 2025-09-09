@@ -12,7 +12,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Link as LinkIcon, Gamepad2, Tv, Film, Music
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Link as LinkIcon, Gamepad2, Tv, Film, Music, Building, Book, Clapperboard, MonitorPlay, Users2, Code, Tag
 } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -163,7 +163,8 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 <h3 className="font-headline text-lg">Básica</h3>
                 <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
                 <InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} />
-                <InfoItem icon={Users} label="Género" value={genderInfo} />
+                <InfoItem icon={Users2} label="Género" value={genderInfo} />
+                 <InfoItem icon={Tag} label="Categoría" value={figure.category} />
             </div>
           )}
           {hasDetailedInfo && (
@@ -192,24 +193,74 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   }
   
   const renderMediaInfo = () => {
-    const hasMediaInfo = figure.mediaGenre || releaseDateFormatted || figure.developer || (figure.platforms && figure.platforms.length > 0);
-    if (!hasMediaInfo) return null;
-    
+    const hasAnyMediaInfo = figure.mediaGenre || releaseDateFormatted || figure.director || figure.studio || figure.developer || figure.platforms?.length || figure.author || figure.artist || figure.founder || figure.industry || figure.websiteUrl;
+    if (!hasAnyMediaInfo) return null;
+
+    const MEDIA_SUBCATEGORY_LABELS: Record<string, string> = {
+        video_game: 'Videojuego',
+        movie: 'Película',
+        series: 'Serie',
+        anime: 'Anime',
+        manga_comic: 'Manga/Cómic',
+        book: 'Libro/Novela',
+        company: 'Empresa',
+        website: 'Página Web',
+        social_media_platform: 'Red Social',
+    };
+
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
-        <div className="space-y-4">
-          <h3 className="font-headline text-lg">Detalles del Medio</h3>
-          <InfoItem icon={Gamepad2} label="Género" value={figure.mediaGenre} />
-          <InfoItem icon={Cake} label="Fecha de Lanzamiento" value={releaseDateFormatted} />
-          <InfoItem icon={UserCircle} label="Desarrollador / Director" value={figure.developer} />
-          <InfoItem icon={Tv} label="Plataformas" value={figure.platforms?.join(', ')} />
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+            {/* Common Media Info */}
+            <div className="space-y-4">
+                <h3 className="font-headline text-lg">{figure.mediaSubcategory ? MEDIA_SUBCATEGORY_LABELS[figure.mediaSubcategory] : 'Detalles del Medio'}</h3>
+                <InfoItem icon={Clapperboard} label="Género" value={figure.mediaGenre} />
+                <InfoItem icon={Cake} label="Fecha de Lanzamiento" value={releaseDateFormatted} />
+            </div>
+            
+            {/* Movie/Series/Anime Info */}
+            {(figure.mediaSubcategory === 'movie' || figure.mediaSubcategory === 'series' || figure.mediaSubcategory === 'anime') && (
+                <div className="space-y-4">
+                    <h3 className="font-headline text-lg">Producción</h3>
+                    <InfoItem icon={UserCircle} label="Director" value={figure.director} />
+                    <InfoItem icon={Building} label="Estudio" value={figure.studio} />
+                </div>
+            )}
+            
+            {/* Video Game Info */}
+            {figure.mediaSubcategory === 'video_game' && (
+                <div className="space-y-4">
+                    <h3 className="font-headline text-lg">Desarrollo</h3>
+                    <InfoItem icon={UserCircle} label="Desarrollador" value={figure.developer} />
+                    <InfoItem icon={Gamepad2} label="Plataformas" value={figure.platforms?.join(', ')} />
+                </div>
+            )}
+
+            {/* Book/Manga/Comic Info */}
+            {(figure.mediaSubcategory === 'book' || figure.mediaSubcategory === 'manga_comic') && (
+                 <div className="space-y-4">
+                    <h3 className="font-headline text-lg">Autoría</h3>
+                    <InfoItem icon={UserCircle} label="Autor/Escritor" value={figure.author} />
+                    <InfoItem icon={Palette} label="Artista/Dibujante" value={figure.artist} />
+                </div>
+            )}
+
+             {/* Company/Website/Social Media Info */}
+            {(figure.mediaSubcategory === 'company' || figure.mediaSubcategory === 'website' || figure.mediaSubcategory === 'social_media_platform') && (
+                <div className="space-y-4">
+                    <h3 className="font-headline text-lg">Corporativo</h3>
+                    <InfoItem icon={UserCircle} label="Fundador" value={figure.founder} />
+                    <InfoItem icon={Briefcase} label="Industria" value={figure.industry} />
+                    <InfoItem icon={LinkIcon} label="Sitio Web" value={figure.websiteUrl} href={figure.websiteUrl} />
+                </div>
+            )}
         </div>
       </div>
     );
   }
 
   const hasAnyInfo = figure.profileType === 'character' ? 
-      (figure.occupation || figure.nationality || figure.gender || figure.category || figure.alias || figure.species || figure.birthDateOrAge || figure.birthPlace || figure.statusLiveOrDead || figure.maritalStatus || figure.height || figure.weight || figure.hairColor || figure.eyeColor || figure.distinctiveFeatures) :
+      (figure.occupation || figure.nationality || figure.gender || figure.category) :
       (figure.mediaGenre || figure.releaseDate || figure.developer || (figure.platforms && figure.platforms.length > 0));
 
 
@@ -226,10 +277,6 @@ export function FigureInfo({ figure }: FigureInfoProps) {
            <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">No hay información detallada disponible para este perfil.</p>
         ) : (
           <div className="space-y-6">
-            <div className="space-y-4">
-              <h3 className="font-headline text-lg">Categoría General</h3>
-              <InfoItem icon={BookOpen} label="Categoría" value={figure.category} />
-            </div>
             
             {figure.profileType === 'character' ? renderCharacterInfo() : renderMediaInfo()}
 
