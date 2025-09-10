@@ -386,10 +386,6 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                             <Label>Altura (cm)</Label>
                             <Input value={formData.height || ''} onChange={e => handleInputChange('height', e.target.value)} placeholder="Ej: 175 cm"/>
                         </div>
-                        <div>
-                            <Label>Página Web</Label>
-                            <Input value={formData.socialLinks?.website || ''} onChange={e => handleSocialLinkChange('website', e.target.value)} placeholder="https://..."/>
-                        </div>
                     </>
                 ) : (
                      <>
@@ -398,10 +394,22 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                      </>
                  )}
             </div>
+            <Separator/>
+            <h3 className="text-lg font-semibold">Editar Redes Sociales</h3>
+            <div className="space-y-4">
+                <div><Label htmlFor="website">Página Web</Label><Input id="website" value={formData.socialLinks?.website || ''} onChange={e => handleSocialLinkChange('website', e.target.value)} placeholder="https://..."/></div>
+                <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={formData.socialLinks?.instagram || ''} onChange={e => handleSocialLinkChange('instagram', e.target.value)} placeholder="https://instagram.com/..."/></div>
+                <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={formData.socialLinks?.twitter || ''} onChange={e => handleSocialLinkChange('twitter', e.target.value)} placeholder="https://x.com/..."/></div>
+                <div><Label htmlFor="youtube">YouTube</Label><Input id="youtube" value={formData.socialLinks?.youtube || ''} onChange={e => handleSocialLinkChange('youtube', e.target.value)} placeholder="https://youtube.com/..."/></div>
+                <div><Label htmlFor="facebook">Facebook</Label><Input id="facebook" value={formData.socialLinks?.facebook || ''} onChange={e => handleSocialLinkChange('facebook', e.target.value)} placeholder="https://facebook.com/..."/></div>
+                <div><Label htmlFor="tiktok">TikTok</Label><Input id="tiktok" value={formData.socialLinks?.tiktok || ''} onChange={e => handleSocialLinkChange('tiktok', e.target.value)} placeholder="https://tiktok.com/@..."/></div>
+                <div><Label htmlFor="linkedin">LinkedIn</Label><Input id="linkedin" value={formData.socialLinks?.linkedin || ''} onChange={e => handleSocialLinkChange('linkedin', e.target.value)} placeholder="https://linkedin.com/..."/></div>
+                <div><Label htmlFor="discord">Discord</Label><Input id="discord" value={formData.socialLinks?.discord || ''} onChange={e => handleSocialLinkChange('discord', e.target.value)} placeholder="https://discord.gg/..."/></div>
+            </div>
           </div>
         ) : (
           <>
-            {!hasInfo ? (
+            {!hasInfo && !figure.tags?.length && Object.values(figure.socialLinks || {}).every(v => !v) ? (
               <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">No hay información detallada disponible para este perfil.</p>
             ) : (
                 figure.profileType === 'character' ? <CharacterInfoTemplate figure={figure} /> : <MediaInfoTemplate figure={figure} />
