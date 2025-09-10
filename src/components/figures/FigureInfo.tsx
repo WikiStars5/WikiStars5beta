@@ -38,6 +38,7 @@ import { OCCUPATION_OPTIONS } from '@/config/occupations';
 import { Slider } from '../ui/slider';
 import { Badge } from '../ui/badge';
 import { TAG_OPTIONS } from '@/config/tags';
+import { VIDEO_GAME_GENRES } from '@/config/genres';
 
 interface FigureInfoProps {
   figure: Figure;
@@ -145,10 +146,10 @@ const InfoItem: React.FC<{
 };
 
 
-const SocialLink: React.FC<{ href?: string; label: string }> = ({ href, label }) => {
+const SocialLink: React.FC<{ href?: string; label: string; icon?: React.ElementType }> = ({ href, label, icon: Icon }) => {
   if (!href) return null;
   
-  const getFaviconUrl = (link: string) => {
+   const getFaviconUrl = (link: string) => {
     try {
         const url = new URL(link);
         return `https://www.google.com/s2/favicons?sz=64&domain_url=${url.hostname}`;
@@ -157,12 +158,14 @@ const SocialLink: React.FC<{ href?: string; label: string }> = ({ href, label })
     }
   };
   
-  const faviconUrl = getFaviconUrl(href);
+  const faviconUrl = !Icon ? getFaviconUrl(href) : null;
 
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
       <div className="w-12 h-12 rounded-full border flex items-center justify-center bg-muted/50 hover:border-primary p-2">
-          {faviconUrl ? (
+           {Icon ? (
+            <Icon className="h-6 w-6" />
+           ) : faviconUrl ? (
             <Image src={faviconUrl} alt={label} width={32} height={32} className="object-contain" />
           ) : (
             <LinkIcon className="h-6 w-6" />
@@ -462,7 +465,14 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                         </div>
                          <div>
                             <Label>Género</Label>
-                            <Input value={formData.mediaGenre || ''} onChange={(e) => handleInputChange('mediaGenre', e.target.value)} placeholder="Ej: RPG, Acción, Terror"/>
+                             {formData.mediaSubcategory === 'video_game' ? (
+                                <Select onValueChange={(value) => handleInputChange('mediaGenre', value)} value={formData.mediaGenre}>
+                                    <SelectTrigger><SelectValue placeholder="Selecciona un género" /></SelectTrigger>
+                                    <SelectContent>{VIDEO_GAME_GENRES.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
+                                </Select>
+                            ) : (
+                                <Input value={formData.mediaGenre || ''} onChange={(e) => handleInputChange('mediaGenre', e.target.value)} placeholder="Ej: Terror, Comedia..."/>
+                            )}
                         </div>
                         <div>
                            <Label>Nacionalidad</Label>
