@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
-import type { Figure } from "@/lib/types";
+import type { Figure, ProfileType, MediaSubcategory } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -24,7 +24,12 @@ import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
-
+import { useToast } from '@/hooks/use-toast';
+import { updateFigureInFirestore } from '@/lib/placeholder-data';
+import { Input } from '../ui/input';
+import { CountryCombobox } from '../shared/CountryCombobox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { DatePicker } from '../shared/DatePicker';
 
 interface FigureInfoProps {
   figure: Figure;
@@ -48,6 +53,14 @@ const SOCIAL_MEDIA_CONFIG = {
   discord: { label: 'Discord', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Fdiscord.png?alt=media&token=dbb8b8d1-c5d8-4673-b91f-25b1d796195c' },
 };
 
+const MARITAL_STATUS_OPTIONS = [
+    { value: 'Soltero/a', label: 'Soltero/a' },
+    { value: 'Casado/a', label: 'Casado/a' },
+    { value: 'Viudo/a', label: 'Viudo/a' },
+    { value: 'Divorciado/a', label: 'Divorciado/a' },
+    { value: 'Separado/a legalmente', label: 'Separado/a legalmente' },
+    { value: 'Conviviente / En unión de hecho', label: 'Conviviente / En unión de hecho' },
+];
 
 const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value, imageUrl, href }) => {
   if (!value && !imageUrl) return null;
@@ -105,6 +118,42 @@ const SocialLink: React.FC<{ href?: string; imageUrl: string; label: string }> =
 
 export function FigureInfo({ figure }: FigureInfoProps) {
   const { isAdmin } = useAuth();
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState<Partial<Figure>>(figure);
+
+  useEffect(() => {
+    // When the figure prop updates (due to real-time listener),
+    // update the form data only if not in editing mode.
+    if (!isEditing) {
+      setFormData(figure);
+    }
+  }, [figure, isEditing]);
+
+  const handleInputChange = (field: keyof Figure, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateFigureInFirestore({ ...formData, id: figure.id });
+      toast({ title: "Perfil Actualizado", description: "Los cambios han sido guardados." });
+      setIsEditing(false);
+    } catch (error: any) {
+      console.error("Error updating figure:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setFormData(figure); // Reset changes
+    setIsEditing(false);
+  };
+  
   const hasSocialLinks = Object.values(figure.socialLinks || {}).some(link => !!link);
   const hasTags = figure.tags && figure.tags.length > 0;
 
@@ -152,130 +201,10 @@ export function FigureInfo({ figure }: FigureInfoProps) {
         </div>
     );
   }, [figure.gender]);
-  
-  const renderCharacterInfo = () => {
-     const hasBasicInfo = figure.occupation || figure.nationality || figure.gender || figure.category;
-     const hasDetailedInfo = figure.alias || figure.species || figure.birthDateOrAge || figure.birthPlace || figure.statusLiveOrDead || figure.maritalStatus;
-     const hasPhysicalInfo = figure.height || figure.weight || figure.hairColor || figure.eyeColor || figure.distinctiveFeatures;
-     if (!hasBasicInfo && !hasDetailedInfo && !hasPhysicalInfo) return null;
-
-    return (
-       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
-          {hasBasicInfo && (
-            <div className="space-y-4">
-                <h3 className="font-headline text-lg">Básica</h3>
-                <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
-                <InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} />
-                <InfoItem icon={Users2} label="Género" value={genderInfo} />
-                 <InfoItem icon={Tag} label="Categoría" value={figure.category} />
-            </div>
-          )}
-          {hasDetailedInfo && (
-            <div className="space-y-4">
-                <h3 className="font-headline text-lg">General</h3>
-                <InfoItem icon={NotepadText} label="Alias" value={figure.alias} />
-                <InfoItem icon={Zap} label="Especie" value={figure.species} />
-                <InfoItem icon={Cake} label="Nacimiento" value={birthDateAndAge} />
-                <InfoItem icon={MapPin} label="Lugar de Nacimiento" value={figure.birthPlace} />
-                <InfoItem icon={Activity} label="Estado" value={figure.statusLiveOrDead} />
-                <InfoItem icon={HeartHandshake} label="Estado Civil" value={figure.maritalStatus} />
-            </div>
-          )}
-          {hasPhysicalInfo && (
-              <div className="space-y-4">
-                <h3 className="font-headline text-lg">Físico</h3>
-                <InfoItem icon={StretchVertical} label="Altura" value={figure.height} />
-                <InfoItem icon={Scale} label="Peso" value={figure.weight} />
-                <InfoItem icon={Palette} label="Color de Cabello" value={figure.hairColor} />
-                <InfoItem icon={Eye} label="Color de Ojos" value={figure.eyeColor} />
-                <InfoItem icon={Scan} label="Rasgos Distintivos" value={figure.distinctiveFeatures} />
-            </div>
-          )}
-      </div>
-    )
-  }
-  
-  const renderMediaInfo = () => {
-    const hasAnyMediaInfo = figure.mediaGenre || releaseDateFormatted || figure.director || figure.studio || figure.developer || figure.platforms?.length || figure.author || figure.artist || figure.founder || figure.industry || figure.websiteUrl || figure.species;
-    if (!hasAnyMediaInfo) return null;
-
-    const MEDIA_SUBCATEGORY_LABELS: Record<string, string> = {
-        video_game: 'Videojuego',
-        movie: 'Película',
-        series: 'Serie',
-        anime: 'Anime',
-        manga_comic: 'Manga/Cómic',
-        book: 'Libro/Novela',
-        board_game: 'Juego de Mesa',
-        animal: 'Animal',
-        company: 'Empresa',
-        website: 'Página Web',
-        social_media_platform: 'Red Social',
-    };
-
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
-            {/* Common Media Info */}
-            <div className="space-y-4">
-                <h3 className="font-headline text-lg">{figure.mediaSubcategory ? MEDIA_SUBCATEGORY_LABELS[figure.mediaSubcategory] : 'Detalles del Medio'}</h3>
-                <InfoItem icon={Clapperboard} label="Género" value={figure.mediaGenre} />
-                <InfoItem icon={Cake} label="Fecha de Lanzamiento" value={releaseDateFormatted} />
-            </div>
-            
-            {/* Movie/Series/Anime Info */}
-            {(figure.mediaSubcategory === 'movie' || figure.mediaSubcategory === 'series' || figure.mediaSubcategory === 'anime') && (
-                <div className="space-y-4">
-                    <h3 className="font-headline text-lg">Producción</h3>
-                    <InfoItem icon={UserCircle} label="Director" value={figure.director} />
-                    <InfoItem icon={Building} label="Estudio" value={figure.studio} />
-                </div>
-            )}
-            
-            {/* Video Game Info */}
-            {figure.mediaSubcategory === 'video_game' && (
-                <div className="space-y-4">
-                    <h3 className="font-headline text-lg">Desarrollo</h3>
-                    <InfoItem icon={UserCircle} label="Desarrollador" value={figure.developer} />
-                    <InfoItem icon={Gamepad2} label="Plataformas" value={figure.platforms?.join(', ')} />
-                </div>
-            )}
-
-            {/* Book/Manga/Comic/Board Game Info */}
-            {(figure.mediaSubcategory === 'book' || figure.mediaSubcategory === 'manga_comic' || figure.mediaSubcategory === 'board_game') && (
-                 <div className="space-y-4">
-                    <h3 className="font-headline text-lg">Autoría</h3>
-                    <InfoItem icon={UserCircle} label="Autor/Escritor" value={figure.author} />
-                    <InfoItem icon={Palette} label="Artista/Dibujante" value={figure.artist} />
-                </div>
-            )}
-
-             {/* Company/Website/Social Media Info */}
-            {(figure.mediaSubcategory === 'company' || figure.mediaSubcategory === 'website' || figure.mediaSubcategory === 'social_media_platform') && (
-                <div className="space-y-4">
-                    <h3 className="font-headline text-lg">Corporativo</h3>
-                    <InfoItem icon={UserCircle} label="Fundador" value={figure.founder} />
-                    <InfoItem icon={Briefcase} label="Industria" value={figure.industry} />
-                    <InfoItem icon={LinkIcon} label="Sitio Web" value={figure.websiteUrl} href={figure.websiteUrl} />
-                </div>
-            )}
-
-            {/* Animal Info */}
-            {figure.mediaSubcategory === 'animal' && (
-                 <div className="space-y-4">
-                    <h3 className="font-headline text-lg">Biología</h3>
-                    <InfoItem icon={PawPrint} label="Especie" value={figure.species} />
-                </div>
-            )}
-        </div>
-      </div>
-    );
-  }
 
   const hasAnyInfo = figure.profileType === 'character' ? 
       (figure.occupation || figure.nationality || figure.gender || figure.category) :
       (figure.mediaGenre || figure.releaseDate || figure.developer || (figure.platforms && figure.platforms.length > 0));
-
 
   return (
     <Card className="border border-white/20 bg-black">
@@ -286,44 +215,109 @@ export function FigureInfo({ figure }: FigureInfoProps) {
               Datos biográficos y descriptivos de {figure.name}.
           </CardDescription>
         </div>
-        {isAdmin && (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/admin/figures/${figure.id}/edit`}>
-              <FilePenLine className="mr-2 h-4 w-4" />
-              Editar
-            </Link>
+        {isAdmin && !isEditing && (
+          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+            <FilePenLine className="mr-2 h-4 w-4" />
+            Editar
           </Button>
+        )}
+         {isAdmin && isEditing && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
+              <X className="mr-2 h-4 w-4" />
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={isSaving}>
+              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Guardar
+            </Button>
+          </div>
         )}
       </CardHeader>
       <CardContent className="space-y-6">
-        {!hasAnyInfo && !hasSocialLinks && !hasTags ? (
-           <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">No hay información detallada disponible para este perfil.</p>
-        ) : (
-          <div className="space-y-6">
-            
-            {figure.profileType === 'character' ? renderCharacterInfo() : renderMediaInfo()}
-
-            {hasSocialLinks && <Separator/>}
-            {hasSocialLinks && (
-               <div>
-                   <h3 className="font-headline text-lg mb-4">Redes Sociales</h3>
-                   <div className="flex items-center gap-6 flex-wrap">
-                      {Object.entries(SOCIAL_MEDIA_CONFIG).map(([key, { label, imageUrl }]) => {
-                        const link = (figure.socialLinks as Record<string, string> | undefined)?.[key];
-                        return link ? <SocialLink key={key} href={link} imageUrl={imageUrl} label={label} /> : null;
-                      })}
-                   </div>
-               </div>
-            )}
-
-            {hasTags && <Separator />}
-            {hasTags && (
-               <div>
-                   <h3 className="font-headline text-lg mb-4">Etiquetas</h3>
-                   <FigureTags tags={figure.tags!} />
-               </div>
-            )}
+        {isEditing ? (
+          // EDITING MODE
+          <div className="space-y-4 animate-in fade-in-50">
+            <div>
+              <p className="font-semibold mb-1">Nombre Completo</p>
+              <Input value={formData.name || ''} onChange={e => handleInputChange('name', e.target.value)} />
+            </div>
+            <div>
+              <p className="font-semibold mb-1">Nacionalidad</p>
+              <CountryCombobox value={formData.nationalityCode || ''} onChange={code => handleInputChange('nationalityCode', code)} />
+            </div>
+             <div>
+              <p className="font-semibold mb-1">Género</p>
+               <Select onValueChange={value => handleInputChange('gender', value)} value={formData.gender}>
+                 <SelectTrigger><SelectValue placeholder="Selecciona un género" /></SelectTrigger>
+                 <SelectContent>{GENDER_OPTIONS.map((o) => ((o.value === 'male' || o.value === 'female') && (<SelectItem key={o.value} value={o.label}>{o.label}</SelectItem>)))}</SelectContent>
+               </Select>
+            </div>
+            <div>
+              <p className="font-semibold mb-1">Fecha de Nacimiento</p>
+              <DatePicker 
+                date={formData.birthDateOrAge ? new Date(formData.birthDateOrAge) : undefined} 
+                onDateChange={date => handleInputChange('birthDateOrAge', date?.toISOString())} 
+              />
+            </div>
+            <div>
+              <p className="font-semibold mb-1">Estado Civil</p>
+              <Select onValueChange={value => handleInputChange('maritalStatus', value)} value={formData.maritalStatus}>
+                <SelectTrigger><SelectValue placeholder="Selecciona un estado civil" /></SelectTrigger>
+                <SelectContent>{MARITAL_STATUS_OPTIONS.map(o => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
+              </Select>
+            </div>
+             <div>
+              <p className="font-semibold mb-1">Altura</p>
+              <Input value={formData.height || ''} onChange={e => handleInputChange('height', e.target.value)} placeholder="Ej: 175 cm"/>
+            </div>
           </div>
+        ) : (
+          // DISPLAY MODE
+          <>
+            {!hasAnyInfo && !hasSocialLinks && !hasTags ? (
+              <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">No hay información detallada disponible para este perfil.</p>
+            ) : (
+              <div className="space-y-6">
+                 {figure.profileType === 'character' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+                     <div className="space-y-4"><h3 className="font-headline text-lg">Básica</h3><InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} /><InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} /><InfoItem icon={Users2} label="Género" value={genderInfo} /><InfoItem icon={Tag} label="Categoría" value={figure.category} /></div>
+                     <div className="space-y-4"><h3 className="font-headline text-lg">General</h3><InfoItem icon={NotepadText} label="Alias" value={figure.alias} /><InfoItem icon={Zap} label="Especie" value={figure.species} /><InfoItem icon={Cake} label="Nacimiento" value={birthDateAndAge} /><InfoItem icon={MapPin} label="Lugar de Nacimiento" value={figure.birthPlace} /><InfoItem icon={Activity} label="Estado" value={figure.statusLiveOrDead} /><InfoItem icon={HeartHandshake} label="Estado Civil" value={figure.maritalStatus} /></div>
+                     <div className="space-y-4"><h3 className="font-headline text-lg">Físico</h3><InfoItem icon={StretchVertical} label="Altura" value={figure.height} /><InfoItem icon={Scale} label="Peso" value={figure.weight} /><InfoItem icon={Palette} label="Color de Cabello" value={figure.hairColor} /><InfoItem icon={Eye} label="Color de Ojos" value={figure.eyeColor} /><InfoItem icon={Scan} label="Rasgos Distintivos" value={figure.distinctiveFeatures} /></div>
+                  </div>
+                 )}
+                 {figure.profileType === 'media' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+                    <div className="space-y-4"><InfoItem icon={Clapperboard} label="Género" value={figure.mediaGenre} /><InfoItem icon={Cake} label="Fecha de Lanzamiento" value={releaseDateFormatted} /></div>
+                    {(figure.mediaSubcategory === 'movie' || figure.mediaSubcategory === 'series' || figure.mediaSubcategory === 'anime') && (<div className="space-y-4"><InfoItem icon={UserCircle} label="Director" value={figure.director} /><InfoItem icon={Building} label="Estudio" value={figure.studio} /></div>)}
+                    {figure.mediaSubcategory === 'video_game' && (<div className="space-y-4"><InfoItem icon={UserCircle} label="Desarrollador" value={figure.developer} /><InfoItem icon={Gamepad2} label="Plataformas" value={figure.platforms?.join(', ')} /></div>)}
+                    {(figure.mediaSubcategory === 'book' || figure.mediaSubcategory === 'manga_comic' || figure.mediaSubcategory === 'board_game') && (<div className="space-y-4"><InfoItem icon={UserCircle} label="Autor/Escritor" value={figure.author} /><InfoItem icon={Palette} label="Artista/Dibujante" value={figure.artist} /></div>)}
+                    {(figure.mediaSubcategory === 'company' || figure.mediaSubcategory === 'website' || figure.mediaSubcategory === 'social_media_platform') && (<div className="space-y-4"><InfoItem icon={UserCircle} label="Fundador" value={figure.founder} /><InfoItem icon={Briefcase} label="Industria" value={figure.industry} /><InfoItem icon={LinkIcon} label="Sitio Web" value={figure.websiteUrl} href={figure.websiteUrl} /></div>)}
+                    {figure.mediaSubcategory === 'animal' && (<div className="space-y-4"><InfoItem icon={PawPrint} label="Especie" value={figure.species} /></div>)}
+                  </div>
+                 )}
+                {hasSocialLinks && <Separator/>}
+                {hasSocialLinks && (
+                   <div>
+                       <h3 className="font-headline text-lg mb-4">Redes Sociales</h3>
+                       <div className="flex items-center gap-6 flex-wrap">
+                          {Object.entries(SOCIAL_MEDIA_CONFIG).map(([key, { label, imageUrl }]) => {
+                            const link = (figure.socialLinks as Record<string, string> | undefined)?.[key];
+                            return link ? <SocialLink key={key} href={link} imageUrl={imageUrl} label={label} /> : null;
+                          })}
+                       </div>
+                   </div>
+                )}
+                {hasTags && <Separator />}
+                {hasTags && (
+                   <div>
+                       <h3 className="font-headline text-lg mb-4">Etiquetas</h3>
+                       <FigureTags tags={figure.tags!} />
+                   </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
