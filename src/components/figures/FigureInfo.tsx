@@ -33,12 +33,14 @@ import { CountryCombobox } from '../shared/CountryCombobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DatePicker } from '../shared/DatePicker';
 import { MediaInfoTemplate } from './infobox-templates/MediaInfoTemplate';
+import { Combobox } from '../shared/Combobox';
+import { OCCUPATION_OPTIONS } from '@/config/occupations';
 
 interface FigureInfoProps {
   figure: Figure;
 }
 
-const SOCIAL_MEDIA_CONFIG: Record<keyof Figure['socialLinks'], { label: string }> = {
+const SOCIAL_MEDIA_CONFIG: Record<string, { label: string }> = {
   website: { label: 'Página Web' },
   instagram: { label: 'Instagram' },
   twitter: { label: 'X (Twitter)' },
@@ -200,18 +202,20 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
     const hasTags = figure.tags && figure.tags.length > 0;
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
-            <InfoItem icon={Users} label="Sexo" value={genderInfo} />
-            <InfoItem icon={Cake} label="Nacimiento" value={birthDate} />
-            <InfoItem icon={Skull} label="Fallecimiento" value={deathDate} />
-            <InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} />
-            <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
-            <InfoItem icon={HeartHandshake} label="Estado civil" value={figure.maritalStatus} />
-            <InfoItem icon={StretchVertical} label="Altura" value={figure.height} />
-            <InfoItem icon={LinkIcon} label="Página Web" value={figure.socialLinks?.website} href={figure.socialLinks?.website} />
-            
+        <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+                <InfoItem icon={Users} label="Sexo" value={genderInfo} />
+                <InfoItem icon={Cake} label="Nacimiento" value={birthDate} />
+                <InfoItem icon={Skull} label="Fallecimiento" value={deathDate} />
+                <InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} />
+                <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
+                <InfoItem icon={HeartHandshake} label="Estado civil" value={figure.maritalStatus} />
+                <InfoItem icon={StretchVertical} label="Altura" value={figure.height} />
+                <InfoItem icon={LinkIcon} label="Página Web" value={figure.socialLinks?.website} href={figure.socialLinks?.website} />
+            </div>
+
              {hasSocialLinks && (
-                 <div className="md:col-span-2 lg:col-span-3">
+                 <div>
                    <Separator className="my-4"/>
                    <h3 className="font-headline text-base mb-4">Redes Sociales</h3>
                    <div className="flex items-center gap-6 flex-wrap">
@@ -224,7 +228,7 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
              )}
 
              {hasTags && (
-                <div className="md:col-span-2 lg:col-span-3">
+                <div>
                    <Separator className="my-4"/>
                    <h3 className="font-headline text-base mb-4">Etiquetas</h3>
                    <FigureTags tags={figure.tags!} />
@@ -281,8 +285,8 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   };
   
   const hasInfo = figure.profileType === 'character' ? 
-      (figure.occupation || figure.nationality || figure.gender || figure.birthDateOrAge || figure.deathDate || figure.maritalStatus || figure.height) :
-      (figure.mediaGenre || figure.releaseDate || figure.developer || (figure.platforms && figure.platforms.length > 0));
+      (figure.occupation || figure.nationality || figure.gender || figure.birthDateOrAge || figure.deathDate || figure.maritalStatus || figure.height || Object.values(figure.socialLinks || {}).some(v => v)) :
+      (figure.mediaGenre || figure.releaseDate || figure.developer || (figure.platforms && figure.platforms.length > 0) || Object.values(figure.socialLinks || {}).some(v => v));
 
   const previewImageUrl = useMemo(() => correctMalformedUrl(formData.photoUrl), [formData.photoUrl]);
 
@@ -373,7 +377,12 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                         </div>
                          <div>
                             <Label>Ocupación</Label>
-                            <Input value={formData.occupation || ''} onChange={e => handleInputChange('occupation', e.target.value)}/>
+                            <Combobox
+                                options={OCCUPATION_OPTIONS}
+                                value={formData.occupation || ''}
+                                onChange={(value) => handleInputChange('occupation', value)}
+                                placeholder="Selecciona una ocupación..."
+                            />
                         </div>
                         <div>
                             <Label>Estado Civil</Label>
@@ -396,7 +405,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
             </div>
             <Separator/>
             <h3 className="text-lg font-semibold">Editar Redes Sociales</h3>
-            <div className="space-y-4">
+            <div className="space-y-2">
                 <div><Label htmlFor="website">Página Web</Label><Input id="website" value={formData.socialLinks?.website || ''} onChange={e => handleSocialLinkChange('website', e.target.value)} placeholder="https://..."/></div>
                 <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={formData.socialLinks?.instagram || ''} onChange={e => handleSocialLinkChange('instagram', e.target.value)} placeholder="https://instagram.com/..."/></div>
                 <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={formData.socialLinks?.twitter || ''} onChange={e => handleSocialLinkChange('twitter', e.target.value)} placeholder="https://x.com/..."/></div>
