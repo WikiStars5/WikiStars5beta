@@ -200,7 +200,7 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
         );
     }, [figure.gender]);
 
-    const socialLinksArray = Object.values(figure.socialLinks || {}).filter(link => !!link);
+    const socialLinksArray = Object.entries(figure.socialLinks || {}).filter(([,link]) => !!link);
     const hasSocialLinks = socialLinksArray.length > 0;
     const hasTags = figure.tags && figure.tags.length > 0;
 
@@ -218,13 +218,12 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
                 <InfoItem icon={LinkIcon} label="Página Web" value={figure.socialLinks?.website} href={figure.socialLinks?.website} />
             </div>
              {hasSocialLinks && (
-                 <div>
+                 <div className="md:col-span-2 lg:col-span-3">
                    <Separator className="my-4"/>
                    <h3 className="font-headline text-base mb-4">Redes Sociales</h3>
                    <div className="flex items-center gap-6 flex-wrap">
                       {Object.entries(figure.socialLinks || {}).map(([key, link]) => {
                          const config = SOCIAL_MEDIA_CONFIG[key as keyof typeof SOCIAL_MEDIA_CONFIG];
-                         // Exclude 'website' from this section as it is displayed above
                          if (key === 'website') return null;
                          return link && config ? <SocialLink key={key} href={link} label={config.label} /> : null;
                       })}
@@ -233,7 +232,7 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
              )}
 
              {hasTags && (
-                <div>
+                <div className="md:col-span-2 lg:col-span-3">
                    <Separator className="my-4"/>
                    <h3 className="font-headline text-base mb-4">Etiquetas</h3>
                    <FigureTags tags={figure.tags!} />
@@ -293,7 +292,6 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     try {
       const updatePayload = { ...formData };
 
-      // Ensure height is saved as a string like "XXX cm"
       if (updatePayload.heightCm !== undefined) {
         updatePayload.height = `${updatePayload.heightCm} cm`;
       } else {
