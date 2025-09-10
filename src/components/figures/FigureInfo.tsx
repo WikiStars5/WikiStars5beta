@@ -12,7 +12,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Link as LinkIcon, Gamepad2, Tv, Film, Music, Building, Book, Clapperboard, MonitorPlay, Users2, Code, Tag, PawPrint
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Link as LinkIcon, Gamepad2, Tv, Film, Music, Building, Book, Clapperboard, MonitorPlay, Users2, Code, Tag, PawPrint, FilePenLine
 } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -22,6 +22,8 @@ import { FigureTags } from './FigureTags';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
+import { useAuth } from '@/hooks/use-auth';
+import { Button } from '../ui/button';
 
 
 interface FigureInfoProps {
@@ -102,6 +104,7 @@ const SocialLink: React.FC<{ href?: string; imageUrl: string; label: string }> =
 
 
 export function FigureInfo({ figure }: FigureInfoProps) {
+  const { isAdmin } = useAuth();
   const hasSocialLinks = Object.values(figure.socialLinks || {}).some(link => !!link);
   const hasTags = figure.tags && figure.tags.length > 0;
 
@@ -276,11 +279,21 @@ export function FigureInfo({ figure }: FigureInfoProps) {
 
   return (
     <Card className="border border-white/20 bg-black">
-      <CardHeader>
-        <CardTitle>Información Detallada</CardTitle>
-        <CardDescription>
-            Datos biográficos y descriptivos de {figure.name}.
-        </CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between">
+        <div>
+          <CardTitle>Información Detallada</CardTitle>
+          <CardDescription>
+              Datos biográficos y descriptivos de {figure.name}.
+          </CardDescription>
+        </div>
+        {isAdmin && (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/admin/figures/${figure.id}/edit`}>
+              <FilePenLine className="mr-2 h-4 w-4" />
+              Editar
+            </Link>
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         {!hasAnyInfo && !hasSocialLinks && !hasTags ? (

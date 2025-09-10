@@ -41,31 +41,6 @@ interface FigureDetailClientProps {
   initialFigure: Figure;
 }
 
-const AdminEditButton = ({ figureId }: { figureId: string }) => {
-  const { isAdmin } = useAuth();
-
-  if (!isAdmin) return null;
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button asChild size="icon" className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50">
-            <Link href={`/admin/figures/${figureId}/edit`}>
-              <FilePenLine className="h-6 w-6" />
-              <span className="sr-only">Editar Figura</span>
-            </Link>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="left">
-          <p>Editar Figura</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-
 export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const routeParams = useParams<{ id:string }>();
   const searchParams = useSearchParams();
@@ -139,7 +114,6 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
   return (
     <>
-      <AdminEditButton figureId={figure.id} />
       <div className="space-y-8 lg:space-y-12">
         <ProfileHeader 
           figure={figure}
