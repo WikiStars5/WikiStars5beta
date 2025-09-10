@@ -500,18 +500,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 <div><Label>LinkedIn</Label><Input value={formData.socialLinks?.linkedin || ''} onChange={e => handleSocialLinkChange('linkedin', e.target.value)} placeholder="https://linkedin.com/..."/></div>
                 <div><Label>Discord</Label><Input value={formData.socialLinks?.discord || ''} onChange={e => handleSocialLinkChange('discord', e.target.value)} placeholder="https://discord.gg/..."/></div>
             </div>
-            <Separator/>
-             <div className="space-y-2">
-                <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Etiquetas</h3>
-                 <div className="flex gap-2">
-                    <Combobox options={TAG_OPTIONS.map(tag => ({ value: tag, label: tag }))} value={selectedTag || ''} onChange={(value) => setSelectedTag(value)} placeholder="Selecciona una etiqueta..." />
-                    <Button type="button" onClick={handleAddTag} disabled={!selectedTag}>Añadir</Button>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-dashed">
-                    {(formData.tags || []).map(tag => (<Badge key={tag} variant="secondary" className="text-sm">{tag}<button type="button" onClick={() => handleRemoveTag(tag)} className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" aria-label={`Eliminar ${tag}`}><X className="h-3 w-3" /></button></Badge>))}
-                </div>
-            </div>
-
+            
           </div>
         ) : (
           <>
