@@ -13,7 +13,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-    Cake, MapPin, Activity, HeartHandshake, StretchVertical, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, FilePenLine, Skull, Image as ImageIcon, Weight, Tags
+    Cake, MapPin, Activity, HeartHandshake, StretchVertical, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, FilePenLine, Skull, Image as ImageIcon, Weight, Tags, Gamepad2, Building
 } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -456,26 +456,6 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                     </>
                 ) : (
                      <>
-                        {figure.mediaSubcategory === 'video_game' && (
-                            <div>
-                                <Label>Género</Label>
-                                <Select onValueChange={(value) => handleInputChange('mediaGenre', value)} value={formData.mediaGenre}>
-                                    <SelectTrigger><SelectValue placeholder="Selecciona un género" /></SelectTrigger>
-                                    <SelectContent>{VIDEO_GAME_GENRES.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
-                                </Select>
-                            </div>
-                        )}
-                        <div>
-                           <Label>Nacionalidad</Label>
-                           <CountryCombobox value={formData.nationalityCode || ''} onChange={code => handleInputChange('nationalityCode', code)} />
-                       </div>
-                        <div>
-                            <Label>Fecha de Lanzamiento</Label>
-                            <DatePicker 
-                                date={formData.releaseDate ? new Date(formData.releaseDate) : undefined} 
-                                onDateChange={date => handleInputChange('releaseDate', date?.toISOString())} 
-                            />
-                        </div>
                         {formData.mediaSubcategory === 'video_game' && (
                             <>
                                 <div>
@@ -491,8 +471,26 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                                     <Input value={(formData.platforms || []).join(', ')} onChange={e => handleInputChange('platforms', e.target.value.split(',').map(p => p.trim()))} placeholder="Ej: PC, PS5, Netflix" />
                                      <p className="text-xs text-muted-foreground mt-1">Separar con comas.</p>
                                 </div>
+                                <div>
+                                    <Label>Género</Label>
+                                    <Select onValueChange={(value) => handleInputChange('mediaGenre', value)} value={formData.mediaGenre}>
+                                        <SelectTrigger><SelectValue placeholder="Selecciona un género" /></SelectTrigger>
+                                        <SelectContent>{VIDEO_GAME_GENRES.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
+                                    </Select>
+                                </div>
                             </>
                         )}
+                        <div>
+                           <Label>Nacionalidad</Label>
+                           <CountryCombobox value={formData.nationalityCode || ''} onChange={code => handleInputChange('nationalityCode', code)} />
+                       </div>
+                        <div>
+                            <Label>Fecha de Lanzamiento</Label>
+                            <DatePicker 
+                                date={formData.releaseDate ? new Date(formData.releaseDate) : undefined} 
+                                onDateChange={date => handleInputChange('releaseDate', date?.toISOString())} 
+                            />
+                        </div>
                      </>
                  )}
             </div>
