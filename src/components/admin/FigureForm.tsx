@@ -82,6 +82,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [alias, setAlias] = useState('');
   const [species, setSpecies] = useState('');
   const [birthDate, setBirthDate] = useState<Date | undefined>();
+  const [deathDate, setDeathDate] = useState<Date | undefined>();
   const [birthPlace, setBirthPlace] = useState('');
   const [statusLiveOrDead, setStatusLiveOrDead] = useState('');
   const [maritalStatus, setMaritalStatus] = useState('');
@@ -111,7 +112,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
   const clearCharacterFields = () => {
     setOccupation(''); setGender(''); setNationalityCode(''); setAlias('');
-    setSpecies(''); setBirthDate(undefined); setBirthPlace('');
+    setSpecies(''); setBirthDate(undefined); setDeathDate(undefined); setBirthPlace('');
     setStatusLiveOrDead(''); setMaritalStatus(''); setHeight(''); setWeight('');
     setHairColor(''); setEyeColor(''); setDistinctiveFeatures('');
   };
@@ -140,6 +141,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         setAlias(initialData.alias || '');
         setSpecies(initialData.species || '');
         setBirthDate(initialData.birthDateOrAge && !isNaN(new Date(initialData.birthDateOrAge).getTime()) ? new Date(initialData.birthDateOrAge) : undefined);
+        setDeathDate(initialData.deathDate && !isNaN(new Date(initialData.deathDate).getTime()) ? new Date(initialData.deathDate) : undefined);
         setBirthPlace(initialData.birthPlace || '');
         setStatusLiveOrDead(initialData.statusLiveOrDead || '');
         setMaritalStatus(initialData.maritalStatus || '');
@@ -245,6 +247,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           alias: alias.trim(),
           species: species.trim(),
           birthDateOrAge: birthDate ? birthDate.toISOString() : '',
+          deathDate: deathDate ? deathDate.toISOString() : '',
           age: birthDate ? differenceInYears(new Date(), birthDate) : undefined,
           birthPlace: birthPlace.trim(),
           statusLiveOrDead: statusLiveOrDead.trim(),
@@ -423,28 +426,22 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div className="space-y-6 animate-in fade-in-50">
            <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Detalles del Personaje</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><Label htmlFor="occupation">Ocupación/Profesión</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
-              <div><Label htmlFor="nationalityCode">País de Origen</Label><CountryCombobox value={nationalityCode} onChange={(v) => setNationalityCode(v || '')}/></div>
-              <div><Label htmlFor="gender">Género</Label><Select onValueChange={setGender} value={gender}><SelectTrigger id="gender"><SelectValue placeholder="Selecciona un género" /></SelectTrigger><SelectContent>{GENDER_OPTIONS.map((o) => ((o.value === 'male' || o.value === 'female') && (<SelectItem key={o.value} value={o.label}>{o.label}</SelectItem>)))}</SelectContent></Select></div>
-              <div><Label htmlFor="alias">Alias / Apodos</Label><Input id="alias" value={alias} onChange={(e) => setAlias(e.target.value)} /></div>
-              <div><Label htmlFor="species">Especie / Raza</Label><Input id="species" value={species} onChange={(e) => setSpecies(e.target.value)} /></div>
+              <div><Label htmlFor="gender">Sexo</Label><Select onValueChange={setGender} value={gender}><SelectTrigger id="gender"><SelectValue placeholder="Selecciona un sexo" /></SelectTrigger><SelectContent>{GENDER_OPTIONS.map((o) => ((o.value === 'male' || o.value === 'female') && (<SelectItem key={o.value} value={o.label}>{o.label}</SelectItem>)))}</SelectContent></Select></div>
               <div><Label htmlFor="birthDate">Fecha de Nacimiento</Label><DatePicker date={birthDate} onDateChange={setBirthDate}/></div>
-              <div><Label htmlFor="birthPlace">Lugar de Origen</Label><Input id="birthPlace" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} /></div>
-              <div><Label htmlFor="statusLiveOrDead">Estado (Vivo/Muerto)</Label><Input id="statusLiveOrDead" value={statusLiveOrDead} onChange={(e) => setStatusLiveOrDead(e.target.value)} /></div>
+              <div><Label htmlFor="deathDate">Fallecimiento</Label><DatePicker date={deathDate} onDateChange={setDeathDate}/></div>
+              <div><Label htmlFor="nationalityCode">Nacionalidad</Label><CountryCombobox value={nationalityCode} onChange={(v) => setNationalityCode(v || '')}/></div>
+              <div><Label htmlFor="occupation">Ocupación</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
               <div><Label htmlFor="maritalStatus">Estado Civil</Label><Select onValueChange={setMaritalStatus} value={maritalStatus}><SelectTrigger id="maritalStatus"><SelectValue placeholder="Selecciona un estado civil" /></SelectTrigger><SelectContent>{MARITAL_STATUS_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent></Select></div>
               <div><Label htmlFor="height">Altura (ej. 168 cm)</Label><Input id="height" value={height} onChange={(e) => setHeight(e.target.value)} /></div>
-              <div><Label htmlFor="weight">Peso</Label><Input id="weight" value={weight} onChange={(e) => setWeight(e.target.value)} /></div>
-              <div><Label htmlFor="hairColor">Color de Cabello</Label><Input id="hairColor" value={hairColor} onChange={(e) => setHairColor(e.target.value)} /></div>
-              <div><Label htmlFor="eyeColor">Color de Ojos</Label><Input id="eyeColor" value={eyeColor} onChange={(e) => setEyeColor(e.target.value)} /></div>
-              <div className="md:col-span-2"><Label htmlFor="distinctiveFeatures">Rasgos Distintivos</Label><Textarea id="distinctiveFeatures" value={distinctiveFeatures} onChange={(e) => setDistinctiveFeatures(e.target.value)} rows={2}/></div>
             </div>
         </div>
       ) : (
         renderMediaFields()
       )}
 
-      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales (Opcional)</h3>
+      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales y Web (Opcional)</h3>
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><Label htmlFor="website">Página Web</Label><Input id="website" value={(socialLinks as Record<string,string>)['website'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, website: e.target.value}))} /></div>
         <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={(socialLinks as Record<string,string>)['instagram'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, instagram: e.target.value}))} /></div>
         <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={(socialLinks as Record<string,string>)['twitter'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, twitter: e.target.value}))} /></div>
         <div><Label htmlFor="youtube">YouTube</Label><Input id="youtube" value={(socialLinks as Record<string,string>)['youtube'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, youtube: e.target.value}))} /></div>

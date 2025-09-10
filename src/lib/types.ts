@@ -42,6 +42,7 @@ export interface Figure {
     linkedin?: string;
     discord?: string;
     tiktok?: string;
+    website?: string;
   };
   relatedFigureIds?: string[];
   
@@ -54,6 +55,7 @@ export interface Figure {
   alias?: string;
   species?: string; 
   birthDateOrAge?: string; 
+  deathDate?: string; // New field for date of death
   age?: number; 
   birthPlace?: string;
   statusLiveOrDead?: string; 
