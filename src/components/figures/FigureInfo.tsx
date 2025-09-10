@@ -207,6 +207,7 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
     return (
         <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+                <InfoItem icon={UserCircle} label="Nombre Completo" value={figure.name} />
                 <InfoItem icon={Users} label="Sexo" value={genderInfo} />
                 <InfoItem icon={Cake} label="Nacimiento" value={birthDate} />
                 <InfoItem icon={Skull} label="Fallecimiento" value={deathDate} />
