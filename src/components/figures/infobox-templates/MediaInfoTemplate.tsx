@@ -4,7 +4,7 @@
 import * as React from 'react';
 import type { Figure } from "@/lib/types";
 import {
-  Cake, Link as LinkIcon, Gamepad2, Clapperboard, MonitorPlay, Building, Book, Tag, PawPrint, UserCircle, Briefcase
+  Cake, Link as LinkIcon, Gamepad2, Clapperboard, MonitorPlay, Building, Book, Tag, PawPrint, UserCircle, Briefcase, Globe, Bot, Download, AppWindow
 } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -13,7 +13,7 @@ import { es } from 'date-fns/locale';
 import { FigureTags } from '../FigureTags';
 import { Separator } from '@/components/ui/separator';
 
-const SOCIAL_MEDIA_CONFIG: Record<keyof Figure['socialLinks'], { label: string }> = {
+const SOCIAL_MEDIA_CONFIG: Record<keyof Figure['socialLinks'], { label: string, icon?: React.ElementType }> = {
   website: { label: 'Página Web' },
   instagram: { label: 'Instagram' },
   twitter: { label: 'X (Twitter)' },
@@ -22,6 +22,9 @@ const SOCIAL_MEDIA_CONFIG: Record<keyof Figure['socialLinks'], { label: string }
   tiktok: { label: 'TikTok' },
   linkedin: { label: 'LinkedIn' },
   discord: { label: 'Discord' },
+  playStoreUrl: { label: 'Play Store', icon: Bot },
+  appStoreUrl: { label: 'App Store', icon: AppWindow },
+  steamUrl: { label: 'Steam', icon: Gamepad2 },
 };
 
 
@@ -71,7 +74,7 @@ const InfoItem: React.FC<{
   );
 };
 
-const SocialLink: React.FC<{ href?: string; label: string }> = ({ href, label }) => {
+const SocialLink: React.FC<{ href?: string; label: string; icon?: React.ElementType }> = ({ href, label, icon: Icon }) => {
   if (!href) return null;
   
    const getFaviconUrl = (link: string) => {
@@ -83,12 +86,14 @@ const SocialLink: React.FC<{ href?: string; label: string }> = ({ href, label })
     }
   };
   
-  const faviconUrl = getFaviconUrl(href);
+  const faviconUrl = !Icon ? getFaviconUrl(href) : null;
 
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
       <div className="w-12 h-12 rounded-full border flex items-center justify-center bg-muted/50 hover:border-primary p-2">
-           {faviconUrl ? (
+           {Icon ? (
+            <Icon className="h-6 w-6" />
+           ) : faviconUrl ? (
             <Image src={faviconUrl} alt={label} width={32} height={32} className="object-contain" />
           ) : (
             <LinkIcon className="h-6 w-6" />
@@ -112,14 +117,27 @@ export const MediaInfoTemplate = ({ figure }: { figure: Figure }) => {
         return undefined;
     }, [figure.releaseDate]);
 
+    const nationalityFlagUrl = React.useMemo(() => {
+      if (!figure.nationalityCode) return null;
+      return `https://flagcdn.com/w40/${figure.nationalityCode.toLowerCase()}.png`;
+    }, [figure.nationalityCode]);
+
     const socialLinksArray = Object.entries(figure.socialLinks || {}).filter(([, link]) => !!link);
     const hasSocialLinks = socialLinksArray.length > 0;
     const hasTags = figure.tags && figure.tags.length > 0;
 
     return (
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+            {figure.mediaSubcategory === 'video_game' && (
+                <>
+                    <InfoItem icon={UserCircle} label="Desarrollador" value={figure.developer} />
+                    <InfoItem icon={Building} label="Editor" value={figure.publisher} />
+                </>
+            )}
+
             <InfoItem icon={Clapperboard} label="Género" value={figure.mediaGenre} />
             <InfoItem icon={Cake} label="Fecha de Lanzamiento" value={releaseDateFormatted} />
+            <InfoItem icon={Globe} label="País de Origen" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} />
             
             {(figure.mediaSubcategory === 'movie' || figure.mediaSubcategory === 'series' || figure.mediaSubcategory === 'anime') && (
                 <>
@@ -127,12 +145,11 @@ export const MediaInfoTemplate = ({ figure }: { figure: Figure }) => {
                     <InfoItem icon={Building} label="Estudio" value={figure.studio} />
                 </>
             )}
+
             {figure.mediaSubcategory === 'video_game' && (
-                <>
-                    <InfoItem icon={UserCircle} label="Desarrollador" value={figure.developer} />
-                    <InfoItem icon={Gamepad2} label="Plataformas" value={figure.platforms?.join(', ')} />
-                </>
+                 <InfoItem icon={Gamepad2} label="Plataformas" value={figure.platforms?.join(', ')} />
             )}
+            
             {(figure.mediaSubcategory === 'book' || figure.mediaSubcategory === 'manga_comic' || figure.mediaSubcategory === 'board_game') && (
                 <>
                     <InfoItem icon={UserCircle} label="Autor/Escritor" value={figure.author} />
@@ -153,11 +170,11 @@ export const MediaInfoTemplate = ({ figure }: { figure: Figure }) => {
             {hasSocialLinks && (
                  <div className="md:col-span-2 lg:col-span-3">
                    <Separator className="my-4"/>
-                   <h3 className="font-headline text-base mb-4">Redes Sociales</h3>
+                   <h3 className="font-headline text-base mb-4">Redes y Enlaces de Compra</h3>
                    <div className="flex items-center gap-6 flex-wrap">
                        {Object.entries(figure.socialLinks || {}).map(([key, link]) => {
                          const config = SOCIAL_MEDIA_CONFIG[key as keyof typeof SOCIAL_MEDIA_CONFIG];
-                         return link && config ? <SocialLink key={key} href={link} label={config.label} /> : null;
+                         return link && config ? <SocialLink key={key} href={link} label={config.label} icon={config.icon} /> : null;
                       })}
                    </div>
                 </div>

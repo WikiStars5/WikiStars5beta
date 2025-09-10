@@ -72,17 +72,17 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [photoUrl, setPhotoUrl] = useState('');
   const [description, setDescription] = useState('');
   const [profileType, setProfileType] = useState<ProfileType>('character');
-  const [category, setCategory] = useState('');
   
   const [socialLinks, setSocialLinks] = useState(initialData?.socialLinks || {});
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [nationalityCode, setNationalityCode] = useState('');
 
   // Character specific
+  const [category, setCategory] = useState('');
   const [occupation, setOccupation] = useState('');
   const [gender, setGender] = useState('');
-  const [nationalityCode, setNationalityCode] = useState('');
   const [alias, setAlias] = useState('');
   const [species, setSpecies] = useState('');
   const [birthDate, setBirthDate] = useState<Date | undefined>();
@@ -101,6 +101,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [mediaGenre, setMediaGenre] = useState('');
   const [releaseDate, setReleaseDate] = useState<Date | undefined>();
   const [developer, setDeveloper] = useState('');
+  const [publisher, setPublisher] = useState('');
   const [platformsInput, setPlatformsInput] = useState('');
   const [director, setDirector] = useState('');
   const [studio, setStudio] = useState('');
@@ -118,7 +119,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
 
   const clearCharacterFields = () => {
-    setOccupation(''); setGender(''); setNationalityCode(''); setAlias('');
+    setCategory(''); setOccupation(''); setGender(''); setAlias('');
     setSpecies(''); setBirthDate(undefined); setDeathDate(undefined); setBirthPlace('');
     setStatusLiveOrDead(''); setMaritalStatus(''); setHeightCm(undefined); setWeight('');
     setHairColor(''); setEyeColor(''); setDistinctiveFeatures('');
@@ -126,7 +127,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
   const clearMediaFields = () => {
     setMediaSubcategory(undefined); setMediaGenre(''); setReleaseDate(undefined); 
-    setDeveloper(''); setPlatformsInput(''); setDirector(''); setStudio('');
+    setDeveloper(''); setPublisher(''); setPlatformsInput(''); setDirector(''); setStudio('');
     setAuthor(''); setArtist(''); setFounder(''); setIndustry(''); setWebsiteUrl('');
   };
 
@@ -136,15 +137,15 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setProfileType(initialData.profileType || 'character');
       setDescription(initialData.description || ''); 
       setPhotoUrl(initialData.photoUrl || '');
-      setCategory(initialData.category || '');
+      setNationalityCode(initialData.nationalityCode || '');
       setIsFeatured(initialData.isFeatured || false);
       setSocialLinks(initialData.socialLinks || {});
       setTags(initialData.tags || []);
 
       if (initialData.profileType === 'character') {
+        setCategory(initialData.category || '');
         setOccupation(initialData.occupation || '');
         setGender(initialData.gender || '');
-        setNationalityCode(initialData.nationalityCode || '');
         setAlias(initialData.alias || '');
         setSpecies(initialData.species || '');
         setBirthDate(initialData.birthDateOrAge && !isNaN(new Date(initialData.birthDateOrAge).getTime()) ? new Date(initialData.birthDateOrAge) : undefined);
@@ -163,6 +164,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         setMediaGenre(initialData.mediaGenre || '');
         setReleaseDate(initialData.releaseDate && !isNaN(new Date(initialData.releaseDate).getTime()) ? new Date(initialData.releaseDate) : undefined);
         setDeveloper(initialData.developer || '');
+        setPublisher(initialData.publisher || '');
         setPlatformsInput((initialData.platforms || []).join(', '));
         setDirector(initialData.director || '');
         setStudio(initialData.studio || '');
@@ -176,7 +178,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     } else {
       // Reset all fields for a new form
       setName(''); setProfileType('character'); setDescription(''); setPhotoUrl('');
-      setCategory(''); setIsFeatured(false); setSocialLinks({}); setTags([]);
+      setNationalityCode(''); setIsFeatured(false); setSocialLinks({}); setTags([]);
       clearCharacterFields();
       clearMediaFields();
     }
@@ -239,6 +241,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         tagsLower: tags.map(tag => tag.toLowerCase()),
         socialLinks: socialLinks,
         isFeatured: isFeatured,
+        nationality: countryCodeToNameMap.get(nationalityCode) || '',
+        nationalityCode: nationalityCode,
         status: initialData?.status || 'approved',
       };
       
@@ -249,8 +253,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           category: category.trim(),
           occupation: occupation.trim(),
           gender: gender.trim(),
-          nationality: countryCodeToNameMap.get(nationalityCode) || '',
-          nationalityCode: nationalityCode,
           alias: alias.trim(),
           species: species.trim(),
           birthDateOrAge: birthDate ? birthDate.toISOString() : '',
@@ -272,6 +274,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           mediaGenre: mediaGenre.trim(),
           releaseDate: releaseDate ? releaseDate.toISOString() : '',
           developer: developer.trim(),
+          publisher: publisher.trim(),
           platforms: platformsInput.split(',').map(p => p.trim()).filter(Boolean),
           director: director.trim(),
           studio: studio.trim(),
@@ -341,6 +344,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
             {(mediaSubcategory === 'video_game' || mediaSubcategory === 'movie' || mediaSubcategory === 'series' || mediaSubcategory === 'anime' || mediaSubcategory === 'manga_comic' || mediaSubcategory === 'book' || mediaSubcategory === 'board_game') && (
               <div><Label htmlFor="mediaGenre">Género</Label><Input id="mediaGenre" value={mediaGenre} onChange={(e) => setMediaGenre(e.target.value)} placeholder="Ej: RPG, Acción, Terror"/></div>
             )}
+            <div><Label htmlFor="nationalityCode">País de Origen</Label><CountryCombobox value={nationalityCode} onChange={(v) => setNationalityCode(v || '')}/></div>
             {(mediaSubcategory === 'movie' || mediaSubcategory === 'series' || mediaSubcategory === 'anime' || mediaSubcategory === 'book' || mediaSubcategory === 'video_game' || mediaSubcategory === 'board_game') && (
               <div><Label htmlFor="releaseDate">Fecha de Lanzamiento</Label><DatePicker date={releaseDate} onDateChange={setReleaseDate} /></div>
             )}
@@ -351,7 +355,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
               <div><Label htmlFor="studio">Estudio</Label><Input id="studio" value={studio} onChange={(e) => setStudio(e.target.value)} /></div>
             )}
             {mediaSubcategory === 'video_game' && (
-              <div><Label htmlFor="developer">Desarrollador</Label><Input id="developer" value={developer} onChange={(e) => setDeveloper(e.target.value)} /></div>
+              <>
+                <div><Label htmlFor="developer">Desarrollador</Label><Input id="developer" value={developer} onChange={(e) => setDeveloper(e.target.value)} /></div>
+                <div><Label htmlFor="publisher">Editor</Label><Input id="publisher" value={publisher} onChange={(e) => setPublisher(e.target.value)} /></div>
+              </>
             )}
              {mediaSubcategory === 'video_game' && (
               <div><Label htmlFor="platforms">Plataformas</Label><Input id="platforms" value={platformsInput} onChange={(e) => setPlatformsInput(e.target.value)} placeholder="Ej: PC, PS5, Netflix" /><p className="text-xs text-muted-foreground mt-1">Separar con comas.</p></div>
@@ -510,7 +517,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         renderMediaFields()
       )}
 
-      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales</h3>
+      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales y Enlaces</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div><Label htmlFor="website">Página Web</Label><Input id="website" value={(socialLinks as Record<string,string>)['website'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, website: e.target.value}))} placeholder="https://..."/></div>
         <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={(socialLinks as Record<string,string>)['instagram'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, instagram: e.target.value}))} placeholder="https://instagram.com/..."/></div>
@@ -520,6 +527,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div><Label htmlFor="tiktok">TikTok</Label><Input id="tiktok" value={(socialLinks as Record<string,string>)['tiktok'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, tiktok: e.target.value}))} placeholder="https://tiktok.com/@..."/></div>
         <div><Label htmlFor="linkedin">LinkedIn</Label><Input id="linkedin" value={(socialLinks as Record<string,string>)['linkedin'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, linkedin: e.target.value}))} placeholder="https://linkedin.com/..."/></div>
         <div><Label htmlFor="discord">Discord</Label><Input id="discord" value={(socialLinks as Record<string,string>)['discord'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, discord: e.target.value}))} placeholder="https://discord.gg/..."/></div>
+        {profileType === 'media' && mediaSubcategory === 'video_game' && (
+          <>
+            <div><Label htmlFor="playStoreUrl">Google Play Store</Label><Input id="playStoreUrl" value={(socialLinks as Record<string,string>)['playStoreUrl'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, playStoreUrl: e.target.value}))} placeholder="https://play.google.com/store/..."/></div>
+            <div><Label htmlFor="appStoreUrl">Apple App Store</Label><Input id="appStoreUrl" value={(socialLinks as Record<string,string>)['appStoreUrl'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, appStoreUrl: e.target.value}))} placeholder="https://apps.apple.com/..."/></div>
+            <div><Label htmlFor="steamUrl">Steam</Label><Input id="steamUrl" value={(socialLinks as Record<string,string>)['steamUrl'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, steamUrl: e.target.value}))} placeholder="https://store.steampowered.com/..."/></div>
+          </>
+        )}
       </div>
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Etiquetas (Tags)</h3>

@@ -43,13 +43,16 @@ export interface Figure {
     discord?: string;
     tiktok?: string;
     website?: string;
+    playStoreUrl?: string;
+    appStoreUrl?: string;
+    steamUrl?: string;
   };
   relatedFigureIds?: string[];
+  nationality?: string; // Moved to shared
+  nationalityCode?: string; // Moved to shared
   
   // --- Character-specific fields ---
   category?: string;
-  nationality?: string;
-  nationalityCode?: string; 
   occupation?: string;
   gender?: string;
   alias?: string;
