@@ -7,7 +7,7 @@ import {
   ImageOff, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
   MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight,
-  Archive, Bike, UserPlus, Flame, BarChart3, CheckSquare
+  Archive, Bike, UserPlus, Flame, BarChart3, CheckSquare, FilePenLine
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
@@ -21,7 +21,6 @@ import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type { Figure, LocalUserStreak, UserProfile, Comment as CommentType } from "@/lib/types";
-import { StreakAnimation } from "@/components/shared/StreakAnimation";
 import { FigureInfo } from '@/components/figures/FigureInfo';
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -30,10 +29,42 @@ import { RelatedProfiles } from "@/components/figures/RelatedProfiles";
 import { CommentSection } from "@/components/comments/CommentSection";
 import { TopStreaks } from "@/components/figures/TopStreaks";
 import { StarRatingVote } from "@/components/figures/StarRatingVote";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
 }
+
+const AdminEditButton = ({ figureId }: { figureId: string }) => {
+  const { isAdmin } = useAuth();
+
+  if (!isAdmin) return null;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button asChild size="icon" className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50">
+            <Link href={`/admin/figures/${figureId}/edit`}>
+              <FilePenLine className="h-6 w-6" />
+              <span className="sr-only">Editar Figura</span>
+            </Link>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="left">
+          <p>Editar Figura</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 
 export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const routeParams = useParams<{ id:string }>();
@@ -107,66 +138,70 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   if (!figure) return <div>Figura no encontrada.</div>;
 
   return (
-    <div className="space-y-8 lg:space-y-12">
-      <ProfileHeader 
-        figure={figure}
-        onImageClick={handleOpenProfileImage}
-      />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-        <div className="lg:col-span-3 space-y-8">
-           <Tabs defaultValue="attitude" className="w-full">
-            <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20"> 
-              <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
-              <TabsTrigger value="attitude" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><CheckSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
-              <TabsTrigger value="emotion" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
-              <TabsTrigger value="top-streaks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Flame className="h-4 sm:h-5 w-4 sm:w-5" />Top Rachas</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="personal-info">
-                <FigureInfo figure={figure} />
-            </TabsContent>
-            
-            <TabsContent value="attitude">
-                <AttitudeVote 
-                  figureId={figure.id} 
-                  figureName={figure.name} 
-                  initialAttitudeCounts={figure.attitudeCounts} 
-                />
-            </TabsContent>
-            
-            <TabsContent value="emotion">
-                <PerceptionEmotions 
-                  figureId={figure.id} 
-                  figureName={figure.name} 
-                  initialPerceptionCounts={figure.perceptionCounts}
-                />
-            </TabsContent>
-
-            <TabsContent value="top-streaks">
-                <TopStreaks figureId={figure.id} />
-            </TabsContent>
-            
-          </Tabs>
-        </div> 
-      </div>
-      
-      <StarRatingVote figure={figure} />
-      
-      <CommentSection 
-        figure={figure} 
-        highlightedCommentId={highlightedCommentId} 
-      />
-      
-      <RelatedProfiles figure={figure} />
-      
-      {viewerImageUrl && (
-        <ImageGalleryViewer
-            imageUrl={viewerImageUrl}
-            isOpen={!!viewerImageUrl}
-            onClose={() => setViewerImageUrl(null)}
+    <>
+      <AdminEditButton figureId={figure.id} />
+      <div className="space-y-8 lg:space-y-12">
+        <ProfileHeader 
+          figure={figure}
+          onImageClick={handleOpenProfileImage}
         />
-      )}
-    </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+          <div className="lg:col-span-3 space-y-8">
+             <Tabs defaultValue="attitude" className="w-full">
+              <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20"> 
+                <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
+                <TabsTrigger value="attitude" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><CheckSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
+                <TabsTrigger value="emotion" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
+                <TabsTrigger value="top-streaks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Flame className="h-4 sm:h-5 w-4 sm:w-5" />Top Rachas</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="personal-info">
+                  <FigureInfo figure={figure} />
+              </TabsContent>
+              
+              <TabsContent value="attitude">
+                  <AttitudeVote 
+                    figureId={figure.id} 
+                    figureName={figure.name}
+                    profileType={figure.profileType} 
+                    initialAttitudeCounts={figure.attitudeCounts} 
+                  />
+              </TabsContent>
+              
+              <TabsContent value="emotion">
+                  <PerceptionEmotions 
+                    figureId={figure.id} 
+                    figureName={figure.name} 
+                    initialPerceptionCounts={figure.perceptionCounts}
+                  />
+              </TabsContent>
+
+              <TabsContent value="top-streaks">
+                  <TopStreaks figureId={figure.id} />
+              </TabsContent>
+              
+            </Tabs>
+          </div> 
+        </div>
+        
+        <StarRatingVote figure={figure} />
+        
+        <CommentSection 
+          figure={figure} 
+          highlightedCommentId={highlightedCommentId} 
+        />
+        
+        <RelatedProfiles figure={figure} />
+        
+        {viewerImageUrl && (
+          <ImageGalleryViewer
+              imageUrl={viewerImageUrl}
+              isOpen={!!viewerImageUrl}
+              onClose={() => setViewerImageUrl(null)}
+          />
+        )}
+      </div>
+    </>
   );
 }
