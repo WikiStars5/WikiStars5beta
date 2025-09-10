@@ -13,7 +13,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-    Cake, MapPin, Activity, HeartHandshake, StretchVertical, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, FilePenLine, Skull
+    Cake, MapPin, Activity, HeartHandshake, StretchVertical, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, FilePenLine, Skull, Image as ImageIcon
 } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -21,7 +21,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { FigureTags } from './FigureTags';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
-import { cn } from '@/lib/utils';
+import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
@@ -247,6 +247,8 @@ export function FigureInfo({ figure }: FigureInfoProps) {
       (figure.occupation || figure.nationality || figure.gender || figure.birthDateOrAge || figure.deathDate || figure.maritalStatus || figure.height) :
       (figure.mediaGenre || figure.releaseDate || figure.developer || (figure.platforms && figure.platforms.length > 0));
 
+  const previewImageUrl = useMemo(() => correctMalformedUrl(formData.photoUrl), [formData.photoUrl]);
+
   return (
     <Card className="border border-white/20 bg-black">
       <CardHeader className="flex flex-row items-start justify-between">
@@ -277,10 +279,36 @@ export function FigureInfo({ figure }: FigureInfoProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         {isEditing ? (
-          <div className="space-y-4 animate-in fade-in-50">
+          <div className="space-y-6 animate-in fade-in-50">
+            {/* Section to edit the image */}
+            <div className="space-y-2">
+                <h3 className="font-semibold text-lg flex items-center gap-2"><ImageIcon /> Editar Imagen de Perfil</h3>
+                <Label htmlFor="photoUrl">URL de la Imagen de Perfil</Label>
+                <Input 
+                    id="photoUrl" 
+                    type="url" 
+                    value={formData.photoUrl || ''} 
+                    onChange={e => handleInputChange('photoUrl', e.target.value)} 
+                    placeholder="Pega un enlace de Wikimedia, Pinterest, etc."
+                />
+                {previewImageUrl && (
+                    <div>
+                        <Label>Vista Previa</Label>
+                        <div className="mt-2 relative w-32 h-40 rounded-md overflow-hidden bg-muted">
+                            <Image src={previewImageUrl} alt="Vista previa" fill className="object-cover" sizes="128px" />
+                        </div>
+                    </div>
+                )}
+            </div>
+            <Separator/>
+
             <p className="font-semibold text-lg">Editando Información de {figure.name}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {figure.profileType === 'character' && (
+                <div>
+                    <Label htmlFor="name-input">Nombre Completo</Label>
+                    <Input id="name-input" value={formData.name || ''} onChange={e => handleInputChange('name', e.target.value)} />
+                </div>
+                {figure.profileType === 'character' ? (
                     <>
                          <div>
                             <Label>Sexo</Label>
@@ -327,11 +355,10 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                             <Input value={formData.socialLinks?.website || ''} onChange={e => handleSocialLinkChange('website', e.target.value)} placeholder="https://..."/>
                         </div>
                     </>
-                )}
-                 {figure.profileType === 'media' && (
+                ) : (
                      <>
                         {/* Add media editing fields here if needed */}
-                        <p className="text-sm text-muted-foreground">La edición en línea para perfiles de medios aún no está implementada.</p>
+                        <p className="text-sm text-muted-foreground md:col-span-2">La edición en línea para perfiles de medios aún no está implementada.</p>
                      </>
                  )}
             </div>
