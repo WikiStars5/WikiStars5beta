@@ -102,7 +102,6 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
             name: name,
             nameLower: name.toLowerCase(),
             profileType: profileType,
-            mediaSubcategory: profileType === 'media' ? mediaSubcategory : undefined,
             searchKeywords: searchKeywords,
             photoUrl: `https://placehold.co/400x600.png?text=${encodeURIComponent(name)}`,
             description: '',
@@ -114,6 +113,11 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
             tags: [],
             tagsLower: [],
           };
+          
+          if (profileType === 'media') {
+            figureData.mediaSubcategory = mediaSubcategory;
+          }
+
           batch.set(figureRef, figureData);
           createdCount++;
         }
