@@ -26,6 +26,8 @@ import { TAG_OPTIONS } from '@/config/tags';
 import { Combobox } from '../shared/Combobox';
 import { differenceInYears } from 'date-fns';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import Image from 'next/image';
+import { correctMalformedUrl } from '@/lib/utils';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -109,6 +111,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  const previewImageUrl = correctMalformedUrl(photoUrl);
+
 
   const clearCharacterFields = () => {
     setOccupation(''); setGender(''); setNationalityCode(''); setAlias('');
@@ -407,10 +412,31 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       </div>
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Información Básica</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><Label htmlFor="name">Nombre del Perfil*</Label><Input id="name" value={name} onChange={(e) => setName(e.target.value)} required /></div>
-        <div><Label htmlFor="photoUrl">URL de la Imagen de Perfil</Label><Input id="photoUrl" type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://..." /></div>
-        <div className="md:col-span-2"><Label htmlFor="description">Descripción</Label><Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} /></div>
+      <div className="space-y-4">
+        <div>
+            <Label htmlFor="name">Nombre del Perfil*</Label>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+        </div>
+        <div>
+            <Label htmlFor="photoUrl">URL de la Imagen de Perfil</Label>
+            <Input id="photoUrl" type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://..." />
+            {previewImageUrl && (
+              <div className="mt-2">
+                <Label>Vista Previa</Label>
+                <Image
+                  src={previewImageUrl}
+                  alt="Vista previa"
+                  width={80}
+                  height={100}
+                  className="rounded object-cover aspect-[4/5] mt-1 bg-muted"
+                />
+              </div>
+            )}
+        </div>
+        <div>
+            <Label htmlFor="description">Descripción</Label>
+            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+        </div>
         {profileType === 'character' && (
             <div>
                 <Label htmlFor="category">Categoría General</Label>
@@ -426,29 +452,56 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div className="space-y-6 animate-in fade-in-50">
            <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Detalles del Personaje</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><Label htmlFor="gender">Sexo</Label><Select onValueChange={setGender} value={gender}><SelectTrigger id="gender"><SelectValue placeholder="Selecciona un sexo" /></SelectTrigger><SelectContent>{GENDER_OPTIONS.map((o) => ((o.value === 'male' || o.value === 'female') && (<SelectItem key={o.value} value={o.label}>{o.label}</SelectItem>)))}</SelectContent></Select></div>
-              <div><Label htmlFor="birthDate">Fecha de Nacimiento</Label><DatePicker date={birthDate} onDateChange={setBirthDate}/></div>
-              <div><Label htmlFor="deathDate">Fallecimiento</Label><DatePicker date={deathDate} onDateChange={setDeathDate}/></div>
-              <div><Label htmlFor="nationalityCode">Nacionalidad</Label><CountryCombobox value={nationalityCode} onChange={(v) => setNationalityCode(v || '')}/></div>
-              <div><Label htmlFor="occupation">Ocupación</Label><Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" /></div>
-              <div><Label htmlFor="maritalStatus">Estado Civil</Label><Select onValueChange={setMaritalStatus} value={maritalStatus}><SelectTrigger id="maritalStatus"><SelectValue placeholder="Selecciona un estado civil" /></SelectTrigger><SelectContent>{MARITAL_STATUS_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent></Select></div>
-              <div><Label htmlFor="height">Altura (ej. 168 cm)</Label><Input id="height" value={height} onChange={(e) => setHeight(e.target.value)} /></div>
+              <div>
+                <Label htmlFor="gender">Sexo</Label>
+                <Select onValueChange={setGender} value={gender}>
+                    <SelectTrigger id="gender"><SelectValue placeholder="Selecciona un sexo" /></SelectTrigger>
+                    <SelectContent>{GENDER_OPTIONS.map((o) => ((o.value === 'male' || o.value === 'female') && (<SelectItem key={o.value} value={o.label}>{o.label}</SelectItem>)))}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
+                <DatePicker date={birthDate} onDateChange={setBirthDate}/>
+              </div>
+              <div>
+                <Label htmlFor="deathDate">Fallecimiento</Label>
+                <DatePicker date={deathDate} onDateChange={setDeathDate}/>
+              </div>
+              <div>
+                <Label htmlFor="nationalityCode">Nacionalidad</Label>
+                <CountryCombobox value={nationalityCode} onChange={(v) => setNationalityCode(v || '')}/>
+              </div>
+              <div>
+                <Label htmlFor="occupation">Ocupación</Label>
+                <Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" />
+              </div>
+              <div>
+                <Label htmlFor="maritalStatus">Estado Civil</Label>
+                <Select onValueChange={setMaritalStatus} value={maritalStatus}>
+                    <SelectTrigger id="maritalStatus"><SelectValue placeholder="Selecciona un estado civil" /></SelectTrigger>
+                    <SelectContent>{MARITAL_STATUS_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="height">Altura (ej. 168 cm)</Label>
+                <Input id="height" value={height} onChange={(e) => setHeight(e.target.value)} />
+              </div>
             </div>
         </div>
       ) : (
         renderMediaFields()
       )}
 
-      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales y Web (Opcional)</h3>
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><Label htmlFor="website">Página Web</Label><Input id="website" value={(socialLinks as Record<string,string>)['website'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, website: e.target.value}))} /></div>
-        <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={(socialLinks as Record<string,string>)['instagram'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, instagram: e.target.value}))} /></div>
-        <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={(socialLinks as Record<string,string>)['twitter'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, twitter: e.target.value}))} /></div>
-        <div><Label htmlFor="youtube">YouTube</Label><Input id="youtube" value={(socialLinks as Record<string,string>)['youtube'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, youtube: e.target.value}))} /></div>
-        <div><Label htmlFor="facebook">Facebook</Label><Input id="facebook" value={(socialLinks as Record<string,string>)['facebook'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, facebook: e.target.value}))} /></div>
-        <div><Label htmlFor="tiktok">TikTok</Label><Input id="tiktok" value={(socialLinks as Record<string,string>)['tiktok'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, tiktok: e.target.value}))} /></div>
-        <div><Label htmlFor="linkedin">LinkedIn</Label><Input id="linkedin" value={(socialLinks as Record<string,string>)['linkedin'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, linkedin: e.target.value}))} /></div>
-        <div><Label htmlFor="discord">Discord</Label><Input id="discord" value={(socialLinks as Record<string,string>)['discord'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, discord: e.target.value}))} /></div>
+      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Editar Redes Sociales</h3>
+       <div className="space-y-4">
+        <div><Label htmlFor="website">Página Web</Label><Input id="website" value={(socialLinks as Record<string,string>)['website'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, website: e.target.value}))} placeholder="https://..."/></div>
+        <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={(socialLinks as Record<string,string>)['instagram'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, instagram: e.target.value}))} placeholder="https://instagram.com/..."/></div>
+        <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={(socialLinks as Record<string,string>)['twitter'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, twitter: e.target.value}))} placeholder="https://x.com/..."/></div>
+        <div><Label htmlFor="youtube">YouTube</Label><Input id="youtube" value={(socialLinks as Record<string,string>)['youtube'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, youtube: e.target.value}))} placeholder="https://youtube.com/..."/></div>
+        <div><Label htmlFor="facebook">Facebook</Label><Input id="facebook" value={(socialLinks as Record<string,string>)['facebook'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, facebook: e.target.value}))} placeholder="https://facebook.com/..."/></div>
+        <div><Label htmlFor="tiktok">TikTok</Label><Input id="tiktok" value={(socialLinks as Record<string,string>)['tiktok'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, tiktok: e.target.value}))} placeholder="https://tiktok.com/@..."/></div>
+        <div><Label htmlFor="linkedin">LinkedIn</Label><Input id="linkedin" value={(socialLinks as Record<string,string>)['linkedin'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, linkedin: e.target.value}))} placeholder="https://linkedin.com/..."/></div>
+        <div><Label htmlFor="discord">Discord</Label><Input id="discord" value={(socialLinks as Record<string,string>)['discord'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, discord: e.target.value}))} placeholder="https://discord.gg/..."/></div>
       </div>
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Etiquetas (Tags)</h3>
