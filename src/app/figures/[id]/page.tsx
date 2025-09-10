@@ -52,7 +52,7 @@ export async function generateMetadata(
   };
 }
 
-export default async function FigurePage({ params }: FigurePageProps) {
+export default async function FigurePage({ params }: { params: { id: string }}) {
   const figure = await getFigureFromFirestore(params.id);
 
   if (!figure) {
