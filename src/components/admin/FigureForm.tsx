@@ -28,6 +28,7 @@ import { differenceInYears } from 'date-fns';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import Image from 'next/image';
 import { correctMalformedUrl } from '@/lib/utils';
+import { OCCUPATION_OPTIONS } from '@/config/occupations';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -473,7 +474,12 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
               </div>
               <div>
                 <Label htmlFor="occupation">Ocupación</Label>
-                <Input id="occupation" value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Ej: Científico, Futbolista" />
+                 <Combobox
+                    options={OCCUPATION_OPTIONS}
+                    value={occupation}
+                    onChange={(value) => setOccupation(value || '')}
+                    placeholder="Selecciona una ocupación..."
+                />
               </div>
               <div>
                 <Label htmlFor="maritalStatus">Estado Civil</Label>
@@ -492,7 +498,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         renderMediaFields()
       )}
 
-      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Editar Redes Sociales</h3>
+       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Editar Redes Sociales</h3>
        <div className="space-y-4">
         <div><Label htmlFor="website">Página Web</Label><Input id="website" value={(socialLinks as Record<string,string>)['website'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, website: e.target.value}))} placeholder="https://..."/></div>
         <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={(socialLinks as Record<string,string>)['instagram'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, instagram: e.target.value}))} placeholder="https://instagram.com/..."/></div>
