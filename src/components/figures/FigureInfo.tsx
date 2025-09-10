@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
-import type { Figure } from "@/lib/types";
+import type { Figure, MediaSubcategory } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -62,6 +62,20 @@ const MARITAL_STATUS_OPTIONS = [
     { value: 'Divorciado/a', label: 'Divorciado/a' },
     { value: 'Separado/a legalmente', label: 'Separado/a legalmente' },
     { value: 'Conviviente / En unión de hecho', label: 'Conviviente / En unión de hecho' },
+];
+
+const MEDIA_SUBCATEGORIES: { value: MediaSubcategory, label: string }[] = [
+    { value: 'video_game', label: 'Videojuego' },
+    { value: 'movie', label: 'Película' },
+    { value: 'series', label: 'Serie' },
+    { value: 'anime', label: 'Anime' },
+    { value: 'manga_comic', label: 'Manga/Cómic' },
+    { value: 'book', label: 'Libro/Novela' },
+    { value: 'board_game', label: 'Juegos de mesa' },
+    { value: 'animal', label: 'Animales' },
+    { value: 'company', label: 'Empresa' },
+    { value: 'website', label: 'Página Web' },
+    { value: 'social_media_platform', label: 'Red Social' },
 ];
 
 const InfoItem: React.FC<{
@@ -439,22 +453,66 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                     </>
                 ) : (
                      <>
-                        {/* Add media editing fields here if needed */}
-                        <p className="text-sm text-muted-foreground md:col-span-2">La edición en línea para perfiles de medios aún no está implementada.</p>
+                        <div>
+                            <Label>Subcategoría del Medio</Label>
+                            <Select onValueChange={(v) => handleInputChange('mediaSubcategory', v as MediaSubcategory)} value={formData.mediaSubcategory}>
+                                <SelectTrigger><SelectValue placeholder="Selecciona una subcategoría" /></SelectTrigger>
+                                <SelectContent>{MEDIA_SUBCATEGORIES.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
+                            </Select>
+                        </div>
+                         <div>
+                            <Label>Género</Label>
+                            <Input value={formData.mediaGenre || ''} onChange={(e) => handleInputChange('mediaGenre', e.target.value)} placeholder="Ej: RPG, Acción, Terror"/>
+                        </div>
+                        <div>
+                           <Label>Nacionalidad</Label>
+                           <CountryCombobox value={formData.nationalityCode || ''} onChange={code => handleInputChange('nationalityCode', code)} />
+                       </div>
+                        <div>
+                            <Label>Fecha de Lanzamiento</Label>
+                            <DatePicker 
+                                date={formData.releaseDate ? new Date(formData.releaseDate) : undefined} 
+                                onDateChange={date => handleInputChange('releaseDate', date?.toISOString())} 
+                            />
+                        </div>
+                        {formData.mediaSubcategory === 'video_game' && (
+                            <>
+                                <div>
+                                    <Label>Desarrollador</Label>
+                                    <Input value={formData.developer || ''} onChange={e => handleInputChange('developer', e.target.value)} />
+                                </div>
+                                <div>
+                                    <Label>Editor</Label>
+                                    <Input value={formData.publisher || ''} onChange={e => handleInputChange('publisher', e.target.value)} />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <Label>Plataformas</Label>
+                                    <Input value={(formData.platforms || []).join(', ')} onChange={e => handleInputChange('platforms', e.target.value.split(',').map(p => p.trim()))} placeholder="Ej: PC, PS5, Netflix" />
+                                     <p className="text-xs text-muted-foreground mt-1">Separar con comas.</p>
+                                </div>
+                            </>
+                        )}
                      </>
                  )}
             </div>
             <Separator/>
-            <h3 className="text-lg font-semibold">Editar Redes Sociales</h3>
-            <div className="space-y-2">
-                <div><Label htmlFor="website">Página Web</Label><Input id="website" value={formData.socialLinks?.website || ''} onChange={e => handleSocialLinkChange('website', e.target.value)} placeholder="https://..."/></div>
-                <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={formData.socialLinks?.instagram || ''} onChange={e => handleSocialLinkChange('instagram', e.target.value)} placeholder="https://instagram.com/..."/></div>
-                <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={formData.socialLinks?.twitter || ''} onChange={e => handleSocialLinkChange('twitter', e.target.value)} placeholder="https://x.com/..."/></div>
-                <div><Label htmlFor="youtube">YouTube</Label><Input id="youtube" value={formData.socialLinks?.youtube || ''} onChange={e => handleSocialLinkChange('youtube', e.target.value)} placeholder="https://youtube.com/..."/></div>
-                <div><Label htmlFor="facebook">Facebook</Label><Input id="facebook" value={formData.socialLinks?.facebook || ''} onChange={e => handleSocialLinkChange('facebook', e.target.value)} placeholder="https://facebook.com/..."/></div>
-                <div><Label htmlFor="tiktok">TikTok</Label><Input id="tiktok" value={formData.socialLinks?.tiktok || ''} onChange={e => handleSocialLinkChange('tiktok', e.target.value)} placeholder="https://tiktok.com/@..."/></div>
-                <div><Label htmlFor="linkedin">LinkedIn</Label><Input id="linkedin" value={formData.socialLinks?.linkedin || ''} onChange={e => handleSocialLinkChange('linkedin', e.target.value)} placeholder="https://linkedin.com/..."/></div>
-                <div><Label htmlFor="discord">Discord</Label><Input id="discord" value={formData.socialLinks?.discord || ''} onChange={e => handleSocialLinkChange('discord', e.target.value)} placeholder="https://discord.gg/..."/></div>
+             <div className="space-y-4">
+                 <h3 className="text-lg font-semibold">Editar Redes Sociales y Enlaces</h3>
+                <div><Label>Página Web</Label><Input value={formData.socialLinks?.website || ''} onChange={e => handleSocialLinkChange('website', e.target.value)} placeholder="https://..."/></div>
+                {formData.mediaSubcategory === 'video_game' && (
+                    <>
+                        <div><Label>Google Play Store</Label><Input value={formData.socialLinks?.playStoreUrl || ''} onChange={e => handleSocialLinkChange('playStoreUrl', e.target.value)} placeholder="https://play.google.com/..."/></div>
+                        <div><Label>Apple App Store</Label><Input value={formData.socialLinks?.appStoreUrl || ''} onChange={e => handleSocialLinkChange('appStoreUrl', e.target.value)} placeholder="https://apps.apple.com/..."/></div>
+                        <div><Label>Steam</Label><Input value={formData.socialLinks?.steamUrl || ''} onChange={e => handleSocialLinkChange('steamUrl', e.target.value)} placeholder="https://store.steampowered.com/..."/></div>
+                    </>
+                )}
+                <div><Label>Instagram</Label><Input value={formData.socialLinks?.instagram || ''} onChange={e => handleSocialLinkChange('instagram', e.target.value)} placeholder="https://instagram.com/..."/></div>
+                <div><Label>X (Twitter)</Label><Input value={formData.socialLinks?.twitter || ''} onChange={e => handleSocialLinkChange('twitter', e.target.value)} placeholder="https://x.com/..."/></div>
+                <div><Label>YouTube</Label><Input value={formData.socialLinks?.youtube || ''} onChange={e => handleSocialLinkChange('youtube', e.target.value)} placeholder="https://youtube.com/..."/></div>
+                <div><Label>Facebook</Label><Input value={formData.socialLinks?.facebook || ''} onChange={e => handleSocialLinkChange('facebook', e.target.value)} placeholder="https://facebook.com/..."/></div>
+                <div><Label>TikTok</Label><Input value={formData.socialLinks?.tiktok || ''} onChange={e => handleSocialLinkChange('tiktok', e.target.value)} placeholder="https://tiktok.com/@..."/></div>
+                <div><Label>LinkedIn</Label><Input value={formData.socialLinks?.linkedin || ''} onChange={e => handleSocialLinkChange('linkedin', e.target.value)} placeholder="https://linkedin.com/..."/></div>
+                <div><Label>Discord</Label><Input value={formData.socialLinks?.discord || ''} onChange={e => handleSocialLinkChange('discord', e.target.value)} placeholder="https://discord.gg/..."/></div>
             </div>
             <Separator/>
              <div className="space-y-2">
