@@ -333,7 +333,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   };
   
   const hasInfo = figure.profileType === 'character' ? 
-      (figure.occupation || figure.nationality || figure.gender || figure.birthDateOrAge || figure.deathDate || figure.maritalStatus || figure.height || Object.values(figure.socialLinks || {}).some(v => v)) :
+      (figure.name || figure.occupation || figure.nationality || figure.gender || figure.birthDateOrAge || figure.deathDate || figure.maritalStatus || figure.height || Object.values(figure.socialLinks || {}).some(v => v)) :
       (figure.mediaGenre || figure.releaseDate || figure.developer || (figure.platforms && figure.platforms.length > 0) || Object.values(figure.socialLinks || {}).some(v => v));
 
   const previewImageUrl = useMemo(() => correctMalformedUrl(formData.photoUrl), [formData.photoUrl]);
@@ -456,24 +456,15 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                     </>
                 ) : (
                      <>
-                        <div>
-                            <Label>Subcategoría del Medio</Label>
-                            <Select onValueChange={(v) => handleInputChange('mediaSubcategory', v as MediaSubcategory)} value={formData.mediaSubcategory}>
-                                <SelectTrigger><SelectValue placeholder="Selecciona una subcategoría" /></SelectTrigger>
-                                <SelectContent>{MEDIA_SUBCATEGORIES.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
-                            </Select>
-                        </div>
-                         <div>
-                            <Label>Género</Label>
-                             {formData.mediaSubcategory === 'video_game' ? (
+                        {figure.mediaSubcategory === 'video_game' && (
+                            <div>
+                                <Label>Género</Label>
                                 <Select onValueChange={(value) => handleInputChange('mediaGenre', value)} value={formData.mediaGenre}>
                                     <SelectTrigger><SelectValue placeholder="Selecciona un género" /></SelectTrigger>
                                     <SelectContent>{VIDEO_GAME_GENRES.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
                                 </Select>
-                            ) : (
-                                <Input value={formData.mediaGenre || ''} onChange={(e) => handleInputChange('mediaGenre', e.target.value)} placeholder="Ej: Terror, Comedia..."/>
-                            )}
-                        </div>
+                            </div>
+                        )}
                         <div>
                            <Label>Nacionalidad</Label>
                            <CountryCombobox value={formData.nationalityCode || ''} onChange={code => handleInputChange('nationalityCode', code)} />
