@@ -38,16 +38,17 @@ interface FigureInfoProps {
   figure: Figure;
 }
 
-const SOCIAL_MEDIA_CONFIG = {
-  website: { label: 'Página Web', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Fwebsite.png?alt=media&token=c1a3b1a5-7a0c-4734-9430-675e2f75fdc2' },
-  instagram: { label: 'Instagram', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Finstagram.png?alt=media&token=91707034-56b6-411f-9504-9273dd0f8b64' },
-  twitter: { label: 'X (Twitter)', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Ftwitter.webp?alt=media&token=492950d1-1987-48f0-a149-02290cfa1ffc' },
-  youtube: { label: 'YouTube', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Fyoutube.png?alt=media&token=8952da33-736f-4718-b6d9-fcc99dd93111' },
-  facebook: { label: 'Facebook', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Ffacebook.png?alt=media&token=100d82e3-e8fe-4f84-96a2-79a23fed43b4' },
-  tiktok: { label: 'TikTok', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Ftiktok.png?alt=media&token=87f84943-a74c-4916-9a2c-c4a2b3451cbc' },
-  linkedin: { label: 'LinkedIn', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flinkedin.png?alt=media&token=cdc7c2b8-e71a-47de-b261-b44b96f5bf0a' },
-  discord: { label: 'Discord', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Fdiscord.png?alt=media&token=dbb8b8d1-c5d8-4673-b91f-25b1d796195c' },
+const SOCIAL_MEDIA_CONFIG: Record<keyof Figure['socialLinks'], { label: string }> = {
+  website: { label: 'Página Web' },
+  instagram: { label: 'Instagram' },
+  twitter: { label: 'X (Twitter)' },
+  youtube: { label: 'YouTube' },
+  facebook: { label: 'Facebook' },
+  tiktok: { label: 'TikTok' },
+  linkedin: { label: 'LinkedIn' },
+  discord: { label: 'Discord' },
 };
+
 
 const MARITAL_STATUS_OPTIONS = [
     { value: 'Soltero/a', label: 'Soltero/a' },
@@ -66,18 +67,38 @@ const InfoItem: React.FC<{
   href?: string;
 }> = ({ icon: Icon, label, value, imageUrl, href }) => {
   if (!value && !imageUrl && !href) return null;
+  
+  const getFaviconUrl = (link: string) => {
+    try {
+      const url = new URL(link);
+      return `https://www.google.com/s2/favicons?sz=64&domain_url=${url.hostname}`;
+    } catch (e) {
+      return null;
+    }
+  };
+  
+  const faviconUrl = href ? getFaviconUrl(href) : null;
 
   const content = (
     <>
-        {imageUrl && (
+        {faviconUrl ? (
             <Image
-            src={imageUrl}
-            alt={typeof value === 'string' ? value : label}
-            width={20}
-            height={15}
-            className="w-5 h-auto flex-shrink-0"
+                src={faviconUrl}
+                alt={label}
+                width={16}
+                height={16}
+                className="w-4 h-4 flex-shrink-0"
             />
-        )}
+        ) : imageUrl ? (
+            <Image
+                src={imageUrl}
+                alt={typeof value === 'string' ? value : label}
+                width={20}
+                height={15}
+                className="w-5 h-auto flex-shrink-0"
+            />
+        ) : null}
+
         {typeof value === 'string' ? (
             <p className="text-muted-foreground text-sm">{value}</p>
         ) : (
@@ -93,7 +114,7 @@ const InfoItem: React.FC<{
         <p className="font-semibold text-sm">{label}</p>
         <div className="flex items-center gap-2 mt-0.5">
           {href ? (
-             <Link href={href} className="flex items-center gap-2 text-primary hover:underline transition-colors">
+             <Link href={href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline transition-colors">
                 {content}
                 <LinkIcon className="h-3 w-3" />
             </Link>
@@ -105,12 +126,28 @@ const InfoItem: React.FC<{
 };
 
 
-const SocialLink: React.FC<{ href?: string; imageUrl: string; label: string }> = ({ href, imageUrl, label }) => {
+const SocialLink: React.FC<{ href?: string; label: string }> = ({ href, label }) => {
   if (!href) return null;
+  
+  const getFaviconUrl = (link: string) => {
+    try {
+        const url = new URL(link);
+        return `https://www.google.com/s2/favicons?sz=64&domain_url=${url.hostname}`;
+    } catch (e) {
+        return null;
+    }
+  };
+  
+  const faviconUrl = getFaviconUrl(href);
+
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
       <div className="w-12 h-12 rounded-full border flex items-center justify-center bg-muted/50 hover:border-primary p-2">
-          <Image src={imageUrl} alt={label} width={32} height={32} className="object-contain" />
+          {faviconUrl ? (
+            <Image src={faviconUrl} alt={label} width={32} height={32} className="object-contain" />
+          ) : (
+            <LinkIcon className="h-6 w-6" />
+          )}
       </div>
       <span className="text-xs">{label}</span>
     </a>
@@ -178,9 +215,9 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
                    <Separator className="my-4"/>
                    <h3 className="font-headline text-base mb-4">Redes Sociales</h3>
                    <div className="flex items-center gap-6 flex-wrap">
-                      {Object.entries(SOCIAL_MEDIA_CONFIG).map(([key, { label, imageUrl }]) => {
-                        const link = (figure.socialLinks as Record<string, string> | undefined)?.[key];
-                        return link ? <SocialLink key={key} href={link} imageUrl={imageUrl} label={label} /> : null;
+                      {Object.entries(figure.socialLinks || {}).map(([key, link]) => {
+                         const config = SOCIAL_MEDIA_CONFIG[key as keyof typeof SOCIAL_MEDIA_CONFIG];
+                         return link && config ? <SocialLink key={key} href={link} label={config.label} /> : null;
                       })}
                    </div>
                 </div>
@@ -280,8 +317,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
       <CardContent className="space-y-6">
         {isEditing ? (
           <div className="space-y-6 animate-in fade-in-50">
-            {/* Section to edit the image */}
-            <div className="space-y-2">
+             <div className="space-y-2">
                 <h3 className="font-semibold text-lg flex items-center gap-2"><ImageIcon /> Editar Imagen de Perfil</h3>
                 <Label htmlFor="photoUrl">URL de la Imagen de Perfil</Label>
                 <Input 
@@ -304,9 +340,9 @@ export function FigureInfo({ figure }: FigureInfoProps) {
 
             <p className="font-semibold text-lg">Editando Información de {figure.name}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <Label htmlFor="name-input">Nombre Completo</Label>
-                    <Input id="name-input" value={formData.name || ''} onChange={e => handleInputChange('name', e.target.value)} />
+                 <div>
+                    <Label>Nombre Completo</Label>
+                    <Input value={formData.name || ''} onChange={e => handleInputChange('name', e.target.value)} />
                 </div>
                 {figure.profileType === 'character' ? (
                     <>
