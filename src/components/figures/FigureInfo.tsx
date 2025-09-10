@@ -27,6 +27,7 @@ import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateFigureInFirestore } from '@/lib/placeholder-data';
 import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 import { CountryCombobox } from '../shared/CountryCombobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DatePicker } from '../shared/DatePicker';
@@ -387,5 +388,3 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     </Card>
   );
 }
-
-    
