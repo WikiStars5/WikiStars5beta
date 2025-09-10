@@ -13,7 +13,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-    Cake, MapPin, Activity, HeartHandshake, StretchVertical, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, FilePenLine, Skull, Image as ImageIcon
+    Cake, MapPin, Activity, HeartHandshake, StretchVertical, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, FilePenLine, Skull, Image as ImageIcon, Weight
 } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -35,6 +35,7 @@ import { DatePicker } from '../shared/DatePicker';
 import { MediaInfoTemplate } from './infobox-templates/MediaInfoTemplate';
 import { Combobox } from '../shared/Combobox';
 import { OCCUPATION_OPTIONS } from '@/config/occupations';
+import { Slider } from '../ui/slider';
 
 interface FigureInfoProps {
   figure: Figure;
@@ -197,7 +198,7 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
         );
     }, [figure.gender]);
 
-    const socialLinksArray = Object.entries(figure.socialLinks || {}).filter(([, link]) => !!link);
+    const socialLinksArray = Object.values(figure.socialLinks || {}).filter(link => !!link);
     const hasSocialLinks = socialLinksArray.length > 0;
     const hasTags = figure.tags && figure.tags.length > 0;
 
@@ -211,9 +212,9 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
                 <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
                 <InfoItem icon={HeartHandshake} label="Estado civil" value={figure.maritalStatus} />
                 <InfoItem icon={StretchVertical} label="Altura" value={figure.height} />
+                <InfoItem icon={Weight} label="Peso" value={figure.weight} />
                 <InfoItem icon={LinkIcon} label="Página Web" value={figure.socialLinks?.website} href={figure.socialLinks?.website} />
             </div>
-
              {hasSocialLinks && (
                  <div>
                    <Separator className="my-4"/>
@@ -221,6 +222,8 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
                    <div className="flex items-center gap-6 flex-wrap">
                       {Object.entries(figure.socialLinks || {}).map(([key, link]) => {
                          const config = SOCIAL_MEDIA_CONFIG[key as keyof typeof SOCIAL_MEDIA_CONFIG];
+                         // Exclude 'website' from this section as it is displayed above
+                         if (key === 'website') return null;
                          return link && config ? <SocialLink key={key} href={link} label={config.label} /> : null;
                       })}
                    </div>
@@ -268,7 +271,16 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await updateFigureInFirestore({ ...formData, id: figure.id });
+      const updatePayload = { ...formData };
+
+      // Ensure height is saved as a string like "XXX cm"
+      if (updatePayload.heightCm !== undefined) {
+        updatePayload.height = `${updatePayload.heightCm} cm`;
+      } else {
+        updatePayload.height = '';
+      }
+
+      await updateFigureInFirestore({ ...updatePayload, id: figure.id });
       toast({ title: "Perfil Actualizado", description: "Los cambios han sido guardados." });
       setIsEditing(false);
     } catch (error: any) {
@@ -391,9 +403,19 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                                 <SelectContent>{MARITAL_STATUS_OPTIONS.map(o => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
                             </Select>
                         </div>
-                        <div>
-                            <Label>Altura (cm)</Label>
-                            <Input value={formData.height || ''} onChange={e => handleInputChange('height', e.target.value)} placeholder="Ej: 175 cm"/>
+                        <div className="md:col-span-2">
+                           <Label>{`Altura: ${formData.heightCm ? `${formData.heightCm} cm` : 'No especificada'}`}</Label>
+                            <Slider
+                                min={40}
+                                max={250}
+                                step={1}
+                                value={formData.heightCm ? [formData.heightCm] : [150]}
+                                onValueChange={(value) => handleInputChange('heightCm', value[0])}
+                            />
+                        </div>
+                         <div className="md:col-span-2">
+                           <Label>Peso (ej. 75 kg)</Label>
+                            <Input value={formData.weight || ''} onChange={e => handleInputChange('weight', e.target.value)} />
                         </div>
                     </>
                 ) : (

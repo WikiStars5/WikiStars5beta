@@ -29,6 +29,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import Image from 'next/image';
 import { correctMalformedUrl } from '@/lib/utils';
 import { OCCUPATION_OPTIONS } from '@/config/occupations';
+import { Slider } from '../ui/slider';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -89,7 +90,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [birthPlace, setBirthPlace] = useState('');
   const [statusLiveOrDead, setStatusLiveOrDead] = useState('');
   const [maritalStatus, setMaritalStatus] = useState('');
-  const [height, setHeight] = useState('');
+  const [heightCm, setHeightCm] = useState<number | undefined>();
   const [weight, setWeight] = useState('');
   const [hairColor, setHairColor] = useState('');
   const [eyeColor, setEyeColor] = useState('');
@@ -119,7 +120,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const clearCharacterFields = () => {
     setOccupation(''); setGender(''); setNationalityCode(''); setAlias('');
     setSpecies(''); setBirthDate(undefined); setDeathDate(undefined); setBirthPlace('');
-    setStatusLiveOrDead(''); setMaritalStatus(''); setHeight(''); setWeight('');
+    setStatusLiveOrDead(''); setMaritalStatus(''); setHeightCm(undefined); setWeight('');
     setHairColor(''); setEyeColor(''); setDistinctiveFeatures('');
   };
 
@@ -151,7 +152,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         setBirthPlace(initialData.birthPlace || '');
         setStatusLiveOrDead(initialData.statusLiveOrDead || '');
         setMaritalStatus(initialData.maritalStatus || '');
-        setHeight(initialData.height || '');
+        setHeightCm(initialData.heightCm);
         setWeight(initialData.weight || '');
         setHairColor(initialData.hairColor || '');
         setEyeColor(initialData.eyeColor || '');
@@ -258,8 +259,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           birthPlace: birthPlace.trim(),
           statusLiveOrDead: statusLiveOrDead.trim(),
           maritalStatus: maritalStatus.trim(),
-          height: height.trim(),
-          heightCm: height ? parseInt(height.replace(/\D/g, ''), 10) || undefined : undefined,
+          height: heightCm ? `${heightCm} cm` : '',
+          heightCm: heightCm,
           weight: weight.trim(),
           hairColor: hairColor.trim(),
           eyeColor: eyeColor.trim(),
@@ -489,8 +490,19 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="height">Altura (ej. 168 cm)</Label>
-                <Input id="height" value={height} onChange={(e) => setHeight(e.target.value)} />
+                <Label htmlFor="height">{`Altura: ${heightCm ? `${heightCm} cm` : 'No especificada'}`}</Label>
+                <Slider
+                    id="height"
+                    min={40}
+                    max={250}
+                    step={1}
+                    value={heightCm ? [heightCm] : [150]}
+                    onValueChange={(value) => setHeightCm(value[0])}
+                />
+              </div>
+              <div>
+                <Label htmlFor="weight">Peso (ej. 75 kg)</Label>
+                <Input id="weight" value={weight} onChange={(e) => setWeight(e.target.value)} />
               </div>
             </div>
         </div>
@@ -498,8 +510,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         renderMediaFields()
       )}
 
-       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales y Web</h3>
-       <div className="space-y-4">
+      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales</h3>
+      <div className="space-y-4">
         <div><Label htmlFor="website">Página Web</Label><Input id="website" value={(socialLinks as Record<string,string>)['website'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, website: e.target.value}))} placeholder="https://..."/></div>
         <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={(socialLinks as Record<string,string>)['instagram'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, instagram: e.target.value}))} placeholder="https://instagram.com/..."/></div>
         <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={(socialLinks as Record<string,string>)['twitter'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, twitter: e.target.value}))} placeholder="https://x.com/..."/></div>
