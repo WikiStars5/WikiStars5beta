@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
-import type { Figure, ProfileType, MediaSubcategory } from "@/lib/types";
+import type { Figure } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -12,7 +12,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, ImageOff, Link as LinkIcon, Gamepad2, Tv, Film, Music, Building, Book, Clapperboard, MonitorPlay, Users2, Code, Tag, PawPrint, FilePenLine
+  BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, Gamepad2, Clapperboard, MonitorPlay, Building, Book, Tag, PawPrint, FilePenLine
 } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -41,6 +41,10 @@ interface InfoItemProps {
   value?: React.ReactNode;
   imageUrl?: string | null;
   href?: string;
+  isEditable?: boolean;
+  field?: keyof Figure;
+  formData?: Partial<Figure>;
+  onFormChange?: (field: keyof Figure, value: any) => void;
 }
 
 const SOCIAL_MEDIA_CONFIG = {
@@ -102,6 +106,7 @@ const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value, imageUrl,
   );
 };
 
+
 const SocialLink: React.FC<{ href?: string; imageUrl: string; label: string }> = ({ href, imageUrl, label }) => {
   if (!href) return null;
 
@@ -115,6 +120,101 @@ const SocialLink: React.FC<{ href?: string; imageUrl: string; label: string }> =
   );
 };
 
+const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
+    const nationalityFlagUrl = useMemo(() => {
+      if (!figure.nationalityCode) return null;
+      return `https://flagcdn.com/w40/${figure.nationalityCode.toLowerCase()}.png`;
+    }, [figure.nationalityCode]);
+
+    const birthDateAndAge = useMemo(() => {
+        if (figure.birthDateOrAge) {
+        try {
+            const date = new Date(figure.birthDateOrAge);
+            if (!isNaN(date.getTime())) {
+            const age = differenceInYears(new Date(), date);
+            const formattedDate = format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
+            return `${formattedDate} (${age} años)`;
+            }
+        } catch (error) { return figure.birthDateOrAge; }
+        }
+        return undefined;
+    }, [figure.birthDateOrAge]);
+
+    const genderInfo = useMemo(() => {
+        if (!figure.gender) return null;
+        const genderOption = GENDER_OPTIONS.find(g => g.label === figure.gender);
+        if (!genderOption) return <p className="text-muted-foreground text-sm">{figure.gender}</p>;
+        const colorClass = genderOption.value === 'male' ? 'text-blue-400' : 'text-pink-400';
+        return (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>{figure.gender}</span>
+                {genderOption.symbol && <span className={cn(colorClass, "font-bold")}>{genderOption.symbol}</span>}
+            </div>
+        );
+    }, [figure.gender]);
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+            <div className="space-y-4"><h3 className="font-headline text-lg">Básica</h3><InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} /><InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} /><InfoItem icon={Users} label="Género" value={genderInfo} /><InfoItem icon={Tag} label="Categoría" value={figure.category} /></div>
+            <div className="space-y-4"><h3 className="font-headline text-lg">General</h3><InfoItem icon={NotepadText} label="Alias" value={figure.alias} /><InfoItem icon={Zap} label="Especie" value={figure.species} /><InfoItem icon={Cake} label="Nacimiento" value={birthDateAndAge} /><InfoItem icon={MapPin} label="Lugar de Nacimiento" value={figure.birthPlace} /><InfoItem icon={Activity} label="Estado" value={figure.statusLiveOrDead} /><InfoItem icon={HeartHandshake} label="Estado Civil" value={figure.maritalStatus} /></div>
+            <div className="space-y-4"><h3 className="font-headline text-lg">Físico</h3><InfoItem icon={StretchVertical} label="Altura" value={figure.height} /><InfoItem icon={Scale} label="Peso" value={figure.weight} /><InfoItem icon={Palette} label="Color de Cabello" value={figure.hairColor} /><InfoItem icon={Eye} label="Color de Ojos" value={figure.eyeColor} /><InfoItem icon={Scan} label="Rasgos Distintivos" value={figure.distinctiveFeatures} /></div>
+        </div>
+    );
+};
+
+const MediaInfoTemplate = ({ figure }: { figure: Figure }) => {
+    const releaseDateFormatted = useMemo(() => {
+        if (figure.releaseDate) {
+        try {
+            const date = new Date(figure.releaseDate);
+            if (!isNaN(date.getTime())) {
+            return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
+            }
+        } catch (error) { return figure.releaseDate; }
+        }
+        return undefined;
+    }, [figure.releaseDate]);
+
+    return (
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+            <div className="space-y-4">
+                <InfoItem icon={Clapperboard} label="Género" value={figure.mediaGenre} />
+                <InfoItem icon={Cake} label="Fecha de Lanzamiento" value={releaseDateFormatted} />
+            </div>
+            {(figure.mediaSubcategory === 'movie' || figure.mediaSubcategory === 'series' || figure.mediaSubcategory === 'anime') && (
+                <div className="space-y-4">
+                    <InfoItem icon={UserCircle} label="Director" value={figure.director} />
+                    <InfoItem icon={Building} label="Estudio" value={figure.studio} />
+                </div>
+            )}
+            {figure.mediaSubcategory === 'video_game' && (
+                <div className="space-y-4">
+                    <InfoItem icon={UserCircle} label="Desarrollador" value={figure.developer} />
+                    <InfoItem icon={Gamepad2} label="Plataformas" value={figure.platforms?.join(', ')} />
+                </div>
+            )}
+            {(figure.mediaSubcategory === 'book' || figure.mediaSubcategory === 'manga_comic' || figure.mediaSubcategory === 'board_game') && (
+                <div className="space-y-4">
+                    <InfoItem icon={UserCircle} label="Autor/Escritor" value={figure.author} />
+                    <InfoItem icon={Palette} label="Artista/Dibujante" value={figure.artist} />
+                </div>
+            )}
+            {(figure.mediaSubcategory === 'company' || figure.mediaSubcategory === 'website' || figure.mediaSubcategory === 'social_media_platform') && (
+                <div className="space-y-4">
+                    <InfoItem icon={UserCircle} label="Fundador" value={figure.founder} />
+                    <InfoItem icon={Briefcase} label="Industria" value={figure.industry} />
+                    <InfoItem icon={LinkIcon} label="Sitio Web" value={figure.websiteUrl} href={figure.websiteUrl} />
+                </div>
+            )}
+            {figure.mediaSubcategory === 'animal' && (
+                <div className="space-y-4">
+                    <InfoItem icon={PawPrint} label="Especie" value={figure.species} />
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 export function FigureInfo({ figure }: FigureInfoProps) {
   const { isAdmin } = useAuth();
@@ -124,8 +224,6 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   const [formData, setFormData] = useState<Partial<Figure>>(figure);
 
   useEffect(() => {
-    // When the figure prop updates (due to real-time listener),
-    // update the form data only if not in editing mode.
     if (!isEditing) {
       setFormData(figure);
     }
@@ -156,51 +254,6 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   
   const hasSocialLinks = Object.values(figure.socialLinks || {}).some(link => !!link);
   const hasTags = figure.tags && figure.tags.length > 0;
-
-  const birthDateAndAge = useMemo(() => {
-    if (figure.birthDateOrAge) {
-      try {
-        const date = new Date(figure.birthDateOrAge);
-        if (!isNaN(date.getTime())) {
-          const age = differenceInYears(new Date(), date);
-          const formattedDate = format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
-          return `${formattedDate} (${age} años)`;
-        }
-      } catch (error) { return figure.birthDateOrAge; }
-    }
-    return undefined;
-  }, [figure.birthDateOrAge]);
-  
-  const releaseDateFormatted = useMemo(() => {
-    if (figure.releaseDate) {
-      try {
-        const date = new Date(figure.releaseDate);
-        if (!isNaN(date.getTime())) {
-          return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
-        }
-      } catch (error) { return figure.releaseDate; }
-    }
-    return undefined;
-  }, [figure.releaseDate]);
-
-
-  const nationalityFlagUrl = useMemo(() => {
-      if (!figure.nationalityCode) return null;
-      return `https://flagcdn.com/w40/${figure.nationalityCode.toLowerCase()}.png`;
-  }, [figure.nationalityCode]);
-
-  const genderInfo = useMemo(() => {
-    if (!figure.gender) return null;
-    const genderOption = GENDER_OPTIONS.find(g => g.label === figure.gender);
-    if (!genderOption) return <p className="text-muted-foreground text-sm">{figure.gender}</p>;
-    const colorClass = genderOption.value === 'male' ? 'text-blue-400' : 'text-pink-400';
-    return (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>{figure.gender}</span>
-            {genderOption.symbol && <span className={cn(colorClass, "font-bold")}>{genderOption.symbol}</span>}
-        </div>
-    );
-  }, [figure.gender]);
 
   const hasAnyInfo = figure.profileType === 'character' ? 
       (figure.occupation || figure.nationality || figure.gender || figure.category) :
@@ -238,38 +291,60 @@ export function FigureInfo({ figure }: FigureInfoProps) {
         {isEditing ? (
           // EDITING MODE
           <div className="space-y-4 animate-in fade-in-50">
-            <div>
-              <p className="font-semibold mb-1">Nombre Completo</p>
-              <Input value={formData.name || ''} onChange={e => handleInputChange('name', e.target.value)} />
-            </div>
-            <div>
-              <p className="font-semibold mb-1">Nacionalidad</p>
-              <CountryCombobox value={formData.nationalityCode || ''} onChange={code => handleInputChange('nationalityCode', code)} />
-            </div>
-             <div>
-              <p className="font-semibold mb-1">Género</p>
-               <Select onValueChange={value => handleInputChange('gender', value)} value={formData.gender}>
-                 <SelectTrigger><SelectValue placeholder="Selecciona un género" /></SelectTrigger>
-                 <SelectContent>{GENDER_OPTIONS.map((o) => ((o.value === 'male' || o.value === 'female') && (<SelectItem key={o.value} value={o.label}>{o.label}</SelectItem>)))}</SelectContent>
-               </Select>
-            </div>
-            <div>
-              <p className="font-semibold mb-1">Fecha de Nacimiento</p>
-              <DatePicker 
-                date={formData.birthDateOrAge ? new Date(formData.birthDateOrAge) : undefined} 
-                onDateChange={date => handleInputChange('birthDateOrAge', date?.toISOString())} 
-              />
-            </div>
-            <div>
-              <p className="font-semibold mb-1">Estado Civil</p>
-              <Select onValueChange={value => handleInputChange('maritalStatus', value)} value={formData.maritalStatus}>
-                <SelectTrigger><SelectValue placeholder="Selecciona un estado civil" /></SelectTrigger>
-                <SelectContent>{MARITAL_STATUS_OPTIONS.map(o => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
-              </Select>
-            </div>
-             <div>
-              <p className="font-semibold mb-1">Altura</p>
-              <Input value={formData.height || ''} onChange={e => handleInputChange('height', e.target.value)} placeholder="Ej: 175 cm"/>
+            <p className="font-semibold text-lg">Editando Información de {figure.name}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                    <Label>Nombre Completo</Label>
+                    <Input value={formData.name || ''} onChange={e => handleInputChange('name', e.target.value)} />
+                </div>
+                {figure.profileType === 'character' && (
+                    <>
+                        <div>
+                            <Label>Nacionalidad</Label>
+                            <CountryCombobox value={formData.nationalityCode || ''} onChange={code => handleInputChange('nationalityCode', code)} />
+                        </div>
+                        <div>
+                            <Label>Género</Label>
+                            <Select onValueChange={value => handleInputChange('gender', value)} value={formData.gender}>
+                                <SelectTrigger><SelectValue placeholder="Selecciona un género" /></SelectTrigger>
+                                <SelectContent>{GENDER_OPTIONS.map((o) => ((o.value === 'male' || o.value === 'female') && (<SelectItem key={o.value} value={o.label}>{o.label}</SelectItem>)))}</SelectContent>
+                            </Select>
+                        </div>
+                         <div>
+                            <Label>Fecha de Nacimiento</Label>
+                            <DatePicker 
+                                date={formData.birthDateOrAge ? new Date(formData.birthDateOrAge) : undefined} 
+                                onDateChange={date => handleInputChange('birthDateOrAge', date?.toISOString())} 
+                            />
+                        </div>
+                        <div>
+                            <Label>Estado Civil</Label>
+                            <Select onValueChange={value => handleInputChange('maritalStatus', value)} value={formData.maritalStatus}>
+                                <SelectTrigger><SelectValue placeholder="Selecciona un estado civil" /></SelectTrigger>
+                                <SelectContent>{MARITAL_STATUS_OPTIONS.map(o => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label>Altura (cm)</Label>
+                            <Input value={formData.height || ''} onChange={e => handleInputChange('height', e.target.value)} placeholder="Ej: 175 cm"/>
+                        </div>
+                    </>
+                )}
+                 {figure.profileType === 'media' && (
+                     <>
+                        <div>
+                            <Label>Género del Medio</Label>
+                            <Input value={formData.mediaGenre || ''} onChange={e => handleInputChange('mediaGenre', e.target.value)} placeholder="Ej: Acción, RPG"/>
+                        </div>
+                        <div>
+                            <Label>Fecha de Lanzamiento</Label>
+                             <DatePicker 
+                                date={formData.releaseDate ? new Date(formData.releaseDate) : undefined} 
+                                onDateChange={date => handleInputChange('releaseDate', date?.toISOString())} 
+                            />
+                        </div>
+                     </>
+                 )}
             </div>
           </div>
         ) : (
@@ -279,23 +354,12 @@ export function FigureInfo({ figure }: FigureInfoProps) {
               <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">No hay información detallada disponible para este perfil.</p>
             ) : (
               <div className="space-y-6">
-                 {figure.profileType === 'character' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
-                     <div className="space-y-4"><h3 className="font-headline text-lg">Básica</h3><InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} /><InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} /><InfoItem icon={Users2} label="Género" value={genderInfo} /><InfoItem icon={Tag} label="Categoría" value={figure.category} /></div>
-                     <div className="space-y-4"><h3 className="font-headline text-lg">General</h3><InfoItem icon={NotepadText} label="Alias" value={figure.alias} /><InfoItem icon={Zap} label="Especie" value={figure.species} /><InfoItem icon={Cake} label="Nacimiento" value={birthDateAndAge} /><InfoItem icon={MapPin} label="Lugar de Nacimiento" value={figure.birthPlace} /><InfoItem icon={Activity} label="Estado" value={figure.statusLiveOrDead} /><InfoItem icon={HeartHandshake} label="Estado Civil" value={figure.maritalStatus} /></div>
-                     <div className="space-y-4"><h3 className="font-headline text-lg">Físico</h3><InfoItem icon={StretchVertical} label="Altura" value={figure.height} /><InfoItem icon={Scale} label="Peso" value={figure.weight} /><InfoItem icon={Palette} label="Color de Cabello" value={figure.hairColor} /><InfoItem icon={Eye} label="Color de Ojos" value={figure.eyeColor} /><InfoItem icon={Scan} label="Rasgos Distintivos" value={figure.distinctiveFeatures} /></div>
-                  </div>
-                 )}
-                 {figure.profileType === 'media' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
-                    <div className="space-y-4"><InfoItem icon={Clapperboard} label="Género" value={figure.mediaGenre} /><InfoItem icon={Cake} label="Fecha de Lanzamiento" value={releaseDateFormatted} /></div>
-                    {(figure.mediaSubcategory === 'movie' || figure.mediaSubcategory === 'series' || figure.mediaSubcategory === 'anime') && (<div className="space-y-4"><InfoItem icon={UserCircle} label="Director" value={figure.director} /><InfoItem icon={Building} label="Estudio" value={figure.studio} /></div>)}
-                    {figure.mediaSubcategory === 'video_game' && (<div className="space-y-4"><InfoItem icon={UserCircle} label="Desarrollador" value={figure.developer} /><InfoItem icon={Gamepad2} label="Plataformas" value={figure.platforms?.join(', ')} /></div>)}
-                    {(figure.mediaSubcategory === 'book' || figure.mediaSubcategory === 'manga_comic' || figure.mediaSubcategory === 'board_game') && (<div className="space-y-4"><InfoItem icon={UserCircle} label="Autor/Escritor" value={figure.author} /><InfoItem icon={Palette} label="Artista/Dibujante" value={figure.artist} /></div>)}
-                    {(figure.mediaSubcategory === 'company' || figure.mediaSubcategory === 'website' || figure.mediaSubcategory === 'social_media_platform') && (<div className="space-y-4"><InfoItem icon={UserCircle} label="Fundador" value={figure.founder} /><InfoItem icon={Briefcase} label="Industria" value={figure.industry} /><InfoItem icon={LinkIcon} label="Sitio Web" value={figure.websiteUrl} href={figure.websiteUrl} /></div>)}
-                    {figure.mediaSubcategory === 'animal' && (<div className="space-y-4"><InfoItem icon={PawPrint} label="Especie" value={figure.species} /></div>)}
-                  </div>
-                 )}
+                {figure.profileType === 'character' ? (
+                  <CharacterInfoTemplate figure={figure} />
+                ) : (
+                  <MediaInfoTemplate figure={figure} />
+                )}
+                
                 {hasSocialLinks && <Separator/>}
                 {hasSocialLinks && (
                    <div>
@@ -323,3 +387,5 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     </Card>
   );
 }
+
+    
