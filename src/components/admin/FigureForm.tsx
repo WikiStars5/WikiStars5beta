@@ -511,7 +511,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       )}
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales</h3>
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div><Label htmlFor="website">Página Web</Label><Input id="website" value={(socialLinks as Record<string,string>)['website'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, website: e.target.value}))} placeholder="https://..."/></div>
         <div><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={(socialLinks as Record<string,string>)['instagram'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, instagram: e.target.value}))} placeholder="https://instagram.com/..."/></div>
         <div><Label htmlFor="twitter">X (Twitter)</Label><Input id="twitter" value={(socialLinks as Record<string,string>)['twitter'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, twitter: e.target.value}))} placeholder="https://x.com/..."/></div>

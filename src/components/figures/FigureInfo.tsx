@@ -13,7 +13,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-    Cake, MapPin, Activity, HeartHandshake, StretchVertical, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, FilePenLine, Skull, Image as ImageIcon, Weight
+    Cake, MapPin, Activity, HeartHandshake, StretchVertical, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, FilePenLine, Skull, Image as ImageIcon, Weight, Tags
 } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -36,6 +36,8 @@ import { MediaInfoTemplate } from './infobox-templates/MediaInfoTemplate';
 import { Combobox } from '../shared/Combobox';
 import { OCCUPATION_OPTIONS } from '@/config/occupations';
 import { Slider } from '../ui/slider';
+import { Badge } from '../ui/badge';
+import { TAG_OPTIONS } from '@/config/tags';
 
 interface FigureInfoProps {
   figure: Figure;
@@ -247,6 +249,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Figure>>(figure);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isEditing) {
@@ -265,6 +268,23 @@ export function FigureInfo({ figure }: FigureInfoProps) {
             ...prev.socialLinks,
             [field]: value
         }
+    }));
+  };
+  
+  const handleAddTag = () => {
+    if (selectedTag && !formData.tags?.includes(selectedTag)) {
+        setFormData(prev => ({
+            ...prev,
+            tags: [...(prev.tags || []), selectedTag]
+        }));
+        setSelectedTag(null); 
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData(prev => ({
+        ...prev,
+        tags: (prev.tags || []).filter(tag => tag !== tagToRemove)
     }));
   };
 
@@ -437,6 +457,18 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 <div><Label htmlFor="linkedin">LinkedIn</Label><Input id="linkedin" value={formData.socialLinks?.linkedin || ''} onChange={e => handleSocialLinkChange('linkedin', e.target.value)} placeholder="https://linkedin.com/..."/></div>
                 <div><Label htmlFor="discord">Discord</Label><Input id="discord" value={formData.socialLinks?.discord || ''} onChange={e => handleSocialLinkChange('discord', e.target.value)} placeholder="https://discord.gg/..."/></div>
             </div>
+            <Separator/>
+             <div className="space-y-2">
+                <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Etiquetas</h3>
+                 <div className="flex gap-2">
+                    <Combobox options={TAG_OPTIONS.map(tag => ({ value: tag, label: tag }))} value={selectedTag || ''} onChange={(value) => setSelectedTag(value)} placeholder="Selecciona una etiqueta..." />
+                    <Button type="button" onClick={handleAddTag} disabled={!selectedTag}>Añadir</Button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-dashed">
+                    {(formData.tags || []).map(tag => (<Badge key={tag} variant="secondary" className="text-sm">{tag}<button type="button" onClick={() => handleRemoveTag(tag)} className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" aria-label={`Eliminar ${tag}`}><X className="h-3 w-3" /></button></Badge>))}
+                </div>
+            </div>
+
           </div>
         ) : (
           <>
