@@ -342,16 +342,27 @@ export function FigureInfo({ figure }: FigureInfoProps) {
         deathDate: figure.deathDate,
         maritalStatus: figure.maritalStatus,
         height: figure.height,
+        weight: figure.weight,
+        alias: figure.alias,
       }).some(Boolean);
     }
-    // Corrected check for media profiles
-    return [
-      figure.mediaGenre,
-      figure.releaseDate,
-      figure.developer,
-      figure.publisher,
-      figure.nationality,
-    ].some(val => val && val.length > 0) || (figure.platforms && figure.platforms.length > 0);
+    // Corrected, robust check for media profiles
+    return Object.values({
+      mediaGenre: figure.mediaGenre,
+      releaseDate: figure.releaseDate,
+      developer: figure.developer,
+      publisher: figure.publisher,
+      nationality: figure.nationality,
+      platforms: (figure.platforms ?? []).length > 0 ? true : false,
+      director: figure.director,
+      studio: figure.studio,
+      author: figure.author,
+      artist: figure.artist,
+      founder: figure.founder,
+      industry: figure.industry,
+      websiteUrl: figure.websiteUrl,
+      species: figure.species,
+    }).some(Boolean);
   }, [figure]);
 
   const previewImageUrl = useMemo(() => correctMalformedUrl(formData.photoUrl), [formData.photoUrl]);
