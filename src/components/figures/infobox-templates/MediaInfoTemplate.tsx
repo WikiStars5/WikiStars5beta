@@ -132,15 +132,16 @@ export const MediaInfoTemplate = ({ figure }: { figure: Figure }) => {
                 <>
                     <InfoItem icon={UserCircle} label="Desarrollador" value={figure.developer} />
                     <InfoItem icon={Building} label="Editor" value={figure.publisher} />
+                    <InfoItem icon={Clapperboard} label="Género" value={figure.mediaGenre} />
                 </>
             )}
 
-            <InfoItem icon={Clapperboard} label="Género" value={figure.mediaGenre} />
             <InfoItem icon={Cake} label="Fecha de Lanzamiento" value={releaseDateFormatted} />
             <InfoItem icon={Globe} label="País de Origen" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} />
             
             {(figure.mediaSubcategory === 'movie' || figure.mediaSubcategory === 'series' || figure.mediaSubcategory === 'anime') && (
                 <>
+                    <InfoItem icon={Clapperboard} label="Género" value={figure.mediaGenre} />
                     <InfoItem icon={UserCircle} label="Director" value={figure.director} />
                     <InfoItem icon={Building} label="Estudio" value={figure.studio} />
                 </>
