@@ -332,9 +332,28 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     setIsEditing(false);
   };
   
-  const hasInfo = figure.profileType === 'character' ? 
-      (figure.name || figure.occupation || figure.nationality || figure.gender || figure.birthDateOrAge || figure.deathDate || figure.maritalStatus || figure.height || Object.values(figure.socialLinks || {}).some(v => v)) :
-      (figure.mediaGenre || figure.releaseDate || figure.developer || (figure.platforms && figure.platforms.length > 0) || Object.values(figure.socialLinks || {}).some(v => v));
+  const hasInfo = useMemo(() => {
+    if (figure.profileType === 'character') {
+      return Object.values({
+        occupation: figure.occupation,
+        nationality: figure.nationality,
+        gender: figure.gender,
+        birthDateOrAge: figure.birthDateOrAge,
+        deathDate: figure.deathDate,
+        maritalStatus: figure.maritalStatus,
+        height: figure.height,
+      }).some(Boolean);
+    }
+    // For media profiles
+    return Object.values({
+      mediaGenre: figure.mediaGenre,
+      releaseDate: figure.releaseDate,
+      developer: figure.developer,
+      publisher: figure.publisher,
+      platforms: figure.platforms,
+      nationality: figure.nationality
+    }).some(Boolean);
+  }, [figure]);
 
   const previewImageUrl = useMemo(() => correctMalformedUrl(formData.photoUrl), [formData.photoUrl]);
 
@@ -420,7 +439,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                             />
                         </div>
                          <div>
-                            <Label>Nacionalidad</Label>
+                            <Label>País de origen</Label>
                             <CountryCombobox value={formData.nationalityCode || ''} onChange={code => handleInputChange('nationalityCode', code)} />
                         </div>
                          <div>
@@ -456,7 +475,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                     </>
                 ) : (
                      <>
-                        {formData.mediaSubcategory === 'video_game' && (
+                        {figure.mediaSubcategory === 'video_game' && (
                           <>
                             <div>
                                 <Label>Género</Label>
