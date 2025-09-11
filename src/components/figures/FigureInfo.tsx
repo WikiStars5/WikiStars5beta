@@ -344,15 +344,14 @@ export function FigureInfo({ figure }: FigureInfoProps) {
         height: figure.height,
       }).some(Boolean);
     }
-    // For media profiles
-    return Object.values({
-      mediaGenre: figure.mediaGenre,
-      releaseDate: figure.releaseDate,
-      developer: figure.developer,
-      publisher: figure.publisher,
-      platforms: figure.platforms,
-      nationality: figure.nationality
-    }).some(Boolean);
+    // Corrected check for media profiles
+    return [
+      figure.mediaGenre,
+      figure.releaseDate,
+      figure.developer,
+      figure.publisher,
+      figure.nationality,
+    ].some(val => val && val.length > 0) || (figure.platforms && figure.platforms.length > 0);
   }, [figure]);
 
   const previewImageUrl = useMemo(() => correctMalformedUrl(formData.photoUrl), [formData.photoUrl]);
@@ -477,16 +476,16 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                      <>
                         {figure.mediaSubcategory === 'video_game' && (
                           <>
+                             <div>
+                                <Label>Desarrollador</Label>
+                                <Input value={formData.developer || ''} onChange={e => handleInputChange('developer', e.target.value)} />
+                            </div>
                             <div>
                                 <Label>Género</Label>
                                 <Select onValueChange={(value) => handleInputChange('mediaGenre', value)} value={formData.mediaGenre}>
                                     <SelectTrigger><SelectValue placeholder="Selecciona un género" /></SelectTrigger>
                                     <SelectContent>{VIDEO_GAME_GENRES.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
                                 </Select>
-                            </div>
-                            <div>
-                                <Label>Desarrollador</Label>
-                                <Input value={formData.developer || ''} onChange={e => handleInputChange('developer', e.target.value)} />
                             </div>
                           </>
                         )}
