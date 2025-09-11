@@ -13,7 +13,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-    Cake, MapPin, Activity, HeartHandshake, StretchVertical, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, FilePenLine, Skull, Image as ImageIcon, Weight, Tags, Gamepad2, Building
+    Cake, MapPin, Activity, HeartHandshake, StretchVertical, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, FilePenLine, Skull, Image as ImageIcon, Weight, Tags, Gamepad2, Building, Clapperboard, MonitorPlay, Book, PawPrint
 } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -228,7 +228,7 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
                 <InfoItem icon={Users} label="Sexo" value={genderInfo} />
                 <InfoItem icon={Cake} label="Nacimiento" value={birthDate} />
                 <InfoItem icon={Skull} label="Fallecimiento" value={deathDate} />
-                <InfoItem icon={Globe} label="Nacionalidad" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} />
+                <InfoItem icon={Globe} label="País de origen" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} />
                 <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
                 <InfoItem icon={HeartHandshake} label="Estado civil" value={figure.maritalStatus} />
                 <InfoItem icon={StretchVertical} label="Altura" value={figure.height} />
@@ -348,20 +348,20 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     }
     // Corrected, robust check for media profiles
     return Object.values({
-      mediaGenre: figure.mediaGenre,
-      releaseDate: figure.releaseDate,
-      developer: figure.developer,
-      publisher: figure.publisher,
-      nationality: figure.nationality,
-      platforms: (figure.platforms ?? []).length > 0 ? true : false,
-      director: figure.director,
-      studio: figure.studio,
-      author: figure.author,
-      artist: figure.artist,
-      founder: figure.founder,
-      industry: figure.industry,
-      websiteUrl: figure.websiteUrl,
-      species: figure.species,
+        mediaGenre: figure.mediaGenre,
+        releaseDate: figure.releaseDate,
+        developer: figure.developer,
+        publisher: figure.publisher,
+        nationality: figure.nationality,
+        platforms: (figure.platforms ?? []).length > 0,
+        director: figure.director,
+        studio: figure.studio,
+        author: figure.author,
+        artist: figure.artist,
+        founder: figure.founder,
+        industry: figure.industry,
+        websiteUrl: figure.websiteUrl,
+        species: figure.species,
     }).some(Boolean);
   }, [figure]);
 
@@ -485,25 +485,10 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                     </>
                 ) : (
                      <>
-                        {figure.mediaSubcategory === 'video_game' && (
-                          <>
-                             <div>
-                                <Label>Desarrollador</Label>
-                                <Input value={formData.developer || ''} onChange={e => handleInputChange('developer', e.target.value)} />
-                            </div>
-                            <div>
-                                <Label>Género</Label>
-                                <Select onValueChange={(value) => handleInputChange('mediaGenre', value)} value={formData.mediaGenre}>
-                                    <SelectTrigger><SelectValue placeholder="Selecciona un género" /></SelectTrigger>
-                                    <SelectContent>{VIDEO_GAME_GENRES.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
-                                </Select>
-                            </div>
-                          </>
-                        )}
                         <div>
-                           <Label>País de origen</Label>
-                           <CountryCombobox value={formData.nationalityCode || ''} onChange={code => handleInputChange('nationalityCode', code)} />
-                       </div>
+                            <Label>País de origen</Label>
+                            <CountryCombobox value={formData.nationalityCode || ''} onChange={code => handleInputChange('nationalityCode', code)} />
+                        </div>
                         <div>
                             <Label>Fecha de Lanzamiento</Label>
                             <DatePicker 
@@ -511,6 +496,21 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                                 onDateChange={date => handleInputChange('releaseDate', date?.toISOString())} 
                             />
                         </div>
+                        {figure.mediaSubcategory === 'video_game' && (
+                          <>
+                             <div>
+                                <Label>Género</Label>
+                                <Select onValueChange={(value) => handleInputChange('mediaGenre', value)} value={formData.mediaGenre}>
+                                    <SelectTrigger><SelectValue placeholder="Selecciona un género" /></SelectTrigger>
+                                    <SelectContent>{VIDEO_GAME_GENRES.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
+                                </Select>
+                            </div>
+                             <div>
+                                <Label>Desarrollador</Label>
+                                <Input value={formData.developer || ''} onChange={e => handleInputChange('developer', e.target.value)} />
+                            </div>
+                          </>
+                        )}
                      </>
                  )}
             </div>
@@ -533,11 +533,38 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 <div><Label>LinkedIn</Label><Input value={formData.socialLinks?.linkedin || ''} onChange={e => handleSocialLinkChange('linkedin', e.target.value)} placeholder="https://linkedin.com/..."/></div>
                 <div><Label>Discord</Label><Input value={formData.socialLinks?.discord || ''} onChange={e => handleSocialLinkChange('discord', e.target.value)} placeholder="https://discord.gg/..."/></div>
             </div>
-            
+            <Separator/>
+            <div className="space-y-4">
+                <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Etiquetas</h3>
+                <div className="flex gap-2">
+                    <Combobox 
+                        options={TAG_OPTIONS.map(tag => ({ value: tag, label: tag }))} 
+                        value={selectedTag || ''} 
+                        onChange={(value) => setSelectedTag(value)} 
+                        placeholder="Selecciona una etiqueta..." 
+                    />
+                    <Button type="button" onClick={handleAddTag} disabled={!selectedTag}>Añadir</Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {(formData.tags || []).map(tag => (
+                        <Badge key={tag} variant="secondary" className="text-sm">
+                            {tag}
+                            <button 
+                                type="button" 
+                                onClick={() => handleRemoveTag(tag)} 
+                                className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" 
+                                aria-label={`Eliminar ${tag}`}
+                            >
+                                <X className="h-3 w-3" />
+                            </button>
+                        </Badge>
+                    ))}
+                </div>
+            </div>
           </div>
         ) : (
           <>
-            {!hasInfo && !figure.tags?.length && Object.values(figure.socialLinks || {}).every(v => !v) ? (
+            {(!hasInfo && !figure.tags?.length && Object.values(figure.socialLinks || {}).every(v => !v)) ? (
               <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">No hay información detallada disponible para este perfil.</p>
             ) : (
                 figure.profileType === 'character' ? <CharacterInfoTemplate figure={figure} /> : <MediaInfoTemplate figure={figure} />
