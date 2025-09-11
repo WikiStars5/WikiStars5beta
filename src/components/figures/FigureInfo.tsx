@@ -459,15 +459,15 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                         {formData.mediaSubcategory === 'video_game' && (
                           <>
                             <div>
-                                <Label>Desarrollador</Label>
-                                <Input value={formData.developer || ''} onChange={e => handleInputChange('developer', e.target.value)} />
-                            </div>
-                            <div>
                                 <Label>Género</Label>
                                 <Select onValueChange={(value) => handleInputChange('mediaGenre', value)} value={formData.mediaGenre}>
                                     <SelectTrigger><SelectValue placeholder="Selecciona un género" /></SelectTrigger>
                                     <SelectContent>{VIDEO_GAME_GENRES.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
                                 </Select>
+                            </div>
+                            <div>
+                                <Label>Desarrollador</Label>
+                                <Input value={formData.developer || ''} onChange={e => handleInputChange('developer', e.target.value)} />
                             </div>
                           </>
                         )}
