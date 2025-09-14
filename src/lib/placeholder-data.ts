@@ -16,11 +16,13 @@ export const PERCEPTION_OPTIONS: PerceptionOption[] = [
 
 const defaultPerceptionCounts: Record<EmotionKey, number> = {
   alegria: 0,
-  envidia: 0,
+  inspiracion: 0,
+  admiracion: 0,
+  diversion: 0,
   tristeza: 0,
+  decepcion: 0,
   miedo: 0,
   desagrado: 0,
-  furia: 0,
 };
 
 const defaultAttitudeCounts: Record<AttitudeKey, number> = {
@@ -942,9 +944,9 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
   }
 }
 
-export async function getStreaksForUser(userId: string): Promise<Streak[]> {
+export async function getStreaksForUser(userId: string): Promise<StreakWithProfile[]> {
     const figuresRef = collection(db, "figures");
-    const userStreaks: Streak[] = [];
+    const userStreaks: StreakWithProfile[] = [];
     
     try {
         const figuresSnapshot = await getDocs(figuresRef);
@@ -968,7 +970,8 @@ export async function getStreaksForUser(userId: string): Promise<Streak[]> {
                         countryCode: data.countryCode,
                         attitude: data.attitude,
                         emotion: data.emotion,
-                    } as Streak);
+                        userProfile: null // This is populated later if needed, not here
+                    });
                 }
             }
         }

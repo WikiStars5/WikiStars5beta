@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -42,14 +43,14 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedRatings: RatingVote[] = JSON.parse(localStorage.getItem('wikistars5-userRatings') || '[]');
+    if (typeof window !== 'undefined' && firebaseUser) {
+      const storedRatings: RatingVote[] = JSON.parse(localStorage.getItem(`wikistars5-ratings-${firebaseUser.uid}`) || '[]');
       const vote = storedRatings.find(r => r.figureId === figure.id);
       if (vote) {
         setUserRating(vote.rating);
       }
     }
-  }, [figure.id]);
+  }, [figure.id, firebaseUser]);
   
   const { totalVotes, averageRating } = useMemo(() => {
     if (!ratingCounts) return { totalVotes: 0, averageRating: 0 };
@@ -105,6 +106,12 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
                 })}
             </div>
         </div>
+         {userRating !== null && (
+            <div className="text-center p-3 rounded-md bg-primary/10 border border-primary/30">
+                <p className="text-sm text-primary-foreground">Tu calificación:</p>
+                <RatingDisplay rating={userRating} />
+            </div>
+        )}
       </CardContent>
     </Card>
   );

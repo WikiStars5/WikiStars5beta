@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
-export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
+export type EmotionKey = 'alegria' | 'decepcion' | 'tristeza' | 'miedo' | 'desagrado' | 'inspiracion' | 'admiracion' | 'diversion';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 export type RatingValue = 0 | 1 | 2 | 3 | 4 | 5;
 export type ProfileType = 'character' | 'media';
@@ -220,5 +220,6 @@ export interface Streak {
 }
 
 export interface StreakWithProfile extends Streak {
+    figureId?: string;
     userProfile: UserProfile | null;
 }

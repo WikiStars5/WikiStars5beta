@@ -54,24 +54,6 @@ interface CommentItemProps {
     highlightedCommentId?: string | null;
 }
 
-const RatingDisplay = ({ rating }: { rating: RatingValue }) => {
-  if (rating === 0) {
-    return (
-      <div className="flex items-center gap-1" title="Calificación: 0 estrellas">
-        <StarOff className="h-4 w-4 text-destructive" />
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-center" title={`Calificación: ${rating} estrellas`}>
-      {[...Array(rating)].map((_, i) => (
-        <Star key={i} className="h-4 w-4 text-primary fill-current" />
-      ))}
-    </div>
-  );
-};
-
-
 const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, parentPath: string, onReplySuccess: () => void }) => {
     const [text, setText] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -291,11 +273,6 @@ export function CommentItem({
                                     />
                                 )}
                             </div>
-                            {comment.rating !== undefined && comment.rating !== null && (
-                                <div className="mt-0.5">
-                                    <RatingDisplay rating={comment.rating} />
-                                </div>
-                            )}
                         </div>
                     </div>
                      <div className="text-xs text-muted-foreground flex-shrink-0 flex items-center gap-1">
