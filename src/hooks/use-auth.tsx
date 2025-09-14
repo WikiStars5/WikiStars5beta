@@ -9,11 +9,12 @@ import {
   useEffect,
   type ReactNode,
 } from 'react';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, callFirebaseFunction } from '@/lib/firebase';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword,
   signOut,
+  updateProfile,
   type User as FirebaseUser
 } from 'firebase/auth';
 import type { UserProfile } from '@/lib/types';
@@ -28,6 +29,7 @@ interface AuthContextType {
   isLoading: boolean;
   signIn: (email: string, pass: string) => Promise<any>;
   logout: () => Promise<void>;
+  updateUserProfile: (username: string, countryCode: string, gender: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -54,7 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
       if (!firebaseUser) {
-        // No need to fetch profile if there's no firebase user
         return;
       }
 
@@ -65,7 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setCurrentUser(null);
         }
-         // Set loading to false only after we have attempted to fetch the profile
         setIsLoading(false);
       }, (error) => {
         console.error("Error listening to user profile:", error);
@@ -87,6 +87,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/');
   };
 
+  const updateUserProfile = async (username: string, countryCode: string, gender: string) => {
+    if (!auth.currentUser) {
+      throw new Error("No authenticated user found.");
+    }
+    
+    // Step 1: Update Firebase Auth display name (client-side)
+    await updateProfile(auth.currentUser, { displayName: username });
+    
+    // Step 2: Call the Cloud Function to update Firestore
+    await callFirebaseFunction('updateUserProfile', {
+      username,
+      countryCode,
+      gender
+    });
+
+    // The onSnapshot listener will automatically update the `currentUser` state.
+  };
+
   const value = {
     firebaseUser,
     currentUser,
@@ -94,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     signIn,
     logout,
+    updateUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

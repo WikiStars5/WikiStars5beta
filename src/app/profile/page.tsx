@@ -16,7 +16,6 @@ import { useToast } from '@/hooks/use-toast';
 import { CountryCombobox } from '@/components/shared/CountryCombobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
-import { callFirebaseFunction } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 
 const profileSchema = z.object({
@@ -28,7 +27,7 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
-  const { currentUser, firebaseUser, isLoading, isAdmin } = useAuth();
+  const { currentUser, firebaseUser, isLoading, updateUserProfile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -45,52 +44,28 @@ export default function ProfilePage() {
 
   // Effect to populate form when user data is available
   useEffect(() => {
-    if (!isLoading && (currentUser || firebaseUser?.isAnonymous)) {
-      if (firebaseUser?.isAnonymous) {
-        // Handle guest user from localStorage
-        const guestUsername = localStorage.getItem('wikistars5-guestUsername') || 'Invitado';
-        const guestCountryCode = localStorage.getItem('wikistars5-guestCountryCode') || '';
-        const guestGender = localStorage.getItem('wikistars5-guestGender') || '';
-        reset({
-          username: guestUsername,
-          countryCode: guestCountryCode,
-          gender: guestGender,
-        });
-      } else if (currentUser) {
-        // Handle registered user
-        reset({
-          username: currentUser.username || '',
-          countryCode: currentUser.countryCode || '',
-          gender: currentUser.gender || '',
-        });
-      }
+    if (currentUser) {
+      reset({
+        username: currentUser.username || '',
+        countryCode: currentUser.countryCode || '',
+        gender: currentUser.gender || '',
+      });
     }
-  }, [currentUser, firebaseUser, isLoading, reset]);
+  }, [currentUser, reset]);
 
 
   const onSubmit: SubmitHandler<ProfileFormValues> = async (data) => {
+    if (!firebaseUser) {
+        toast({ title: "Error", description: "Debes iniciar sesión para actualizar tu perfil.", variant: "destructive" });
+        return;
+    }
+    
     try {
-      if (firebaseUser?.isAnonymous) {
-        // Save guest data to localStorage
-        localStorage.setItem('wikistars5-guestUsername', data.username);
-        localStorage.setItem('wikistars5-guestCountryCode', data.countryCode || '');
-        localStorage.setItem('wikistars5-guestGender', data.gender || '');
-        toast({
-          title: "Perfil de Invitado Actualizado",
-          description: "Tus cambios han sido guardados en este navegador.",
-        });
-      } else if (firebaseUser) {
-        // Save registered user data to Firestore via Cloud Function
-        await callFirebaseFunction('updateUserProfile', {
-          username: data.username,
-          countryCode: data.countryCode || '',
-          gender: data.gender || '',
-        });
+        await updateUserProfile(data.username, data.countryCode || '', data.gender || '');
         toast({
           title: "Perfil Actualizado",
           description: "Tus cambios han sido guardados.",
         });
-      }
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({
@@ -111,7 +86,6 @@ export default function ProfilePage() {
   }
 
   if (!firebaseUser) {
-    // Should not happen if page is protected, but as a fallback
     router.push('/login');
     return null;
   }
@@ -125,10 +99,7 @@ export default function ProfilePage() {
             Mi Perfil
           </CardTitle>
           <CardDescription>
-            {firebaseUser.isAnonymous 
-              ? "Edita tu información de invitado. Estos datos se guardan solo en tu navegador."
-              : "Edita la información de tu perfil público."
-            }
+            Edita la información de tu perfil público.
           </CardDescription>
         </CardHeader>
         <CardContent>

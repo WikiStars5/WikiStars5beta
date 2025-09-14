@@ -22,7 +22,7 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-const auth = admin.auth();
+
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
@@ -35,21 +35,20 @@ setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 export const createProfileOnRegister = onUserCreate(async (event) => {
   const user = event.data; // The user record created in Firebase Auth
   const { uid, email, displayName, photoURL } = user;
-  const isAnonymous = !email; // A simple check for anonymous users
 
   const userProfile: UserProfile = {
     uid: uid,
     email: email || null,
-    username: isAnonymous ? "Invitado" : (displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`),
+    username: displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`,
     country: '',
     countryCode: '',
     gender: '',
-    photoURL: photoURL || null, // Ensure photoURL is always defined as string or null
-    role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
+    photoURL: photoURL || null,
+    role: uid === ADMIN_UID ? 'admin' : 'user',
     createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(), // Set initial login time
+    lastLoginAt: new Date().toISOString(),
     achievements: [],
-    isAnonymous: isAnonymous,
+    isAnonymous: false, // This function only triggers for non-anonymous users
   };
 
   try {
@@ -82,20 +81,16 @@ export const updateUserProfile = onCall(async (request) => {
         country: countryName,
         countryCode: safeCountryCode,
         gender: gender || '',
-        lastLoginAt: new Date().toISOString(),
     };
 
     try {
-        await auth.updateUser(uid, { displayName: username });
         await userRef.set(updateData, { merge: true });
-        
-        return { success: true, message: 'Profile updated successfully.' };
+        return { success: true, message: 'Profile updated successfully in Firestore.' };
     } catch (error) {
-        console.error("Error updating user profile:", error);
-        throw new HttpsError('internal', 'Could not update profile.');
+        console.error("Error updating user profile in Firestore:", error);
+        throw new HttpsError('internal', 'Could not update profile in Firestore.');
     }
 });
-
 // All user-related functions have been removed as the authentication system
 // has been disabled per user request.
 
