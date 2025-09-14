@@ -5,12 +5,13 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Users, ListOrdered, PlusCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { Users, ListOrdered, PlusCircle, AlertTriangle, Loader2, Wrench } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
 import { BatchUpdateTagsButton } from "@/components/admin/BatchUpdateTagsButton";
 import { BatchCreateFigures } from "@/components/admin/BatchCreateFigures";
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
+import { BatchUpdateSearchButton } from "@/components/admin/BatchUpdateSearchButton";
 
 export default function AdminDashboardPage() {
   const [totalFigures, setTotalFigures] = useState(0);
@@ -22,7 +23,6 @@ export default function AdminDashboardPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        // Revert to getting all figures on the client to count them
         const figures = await getAllFiguresFromFirestore();
         setTotalFigures(figures.length);
       } catch (error: any) {
@@ -94,12 +94,16 @@ export default function AdminDashboardPage() {
       
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-headline">Herramientas de Mantenimiento</CardTitle>
-          <CardDescription>Ejecuta acciones masivas para corregir datos en la base de datos.</CardDescription>
+          <CardTitle className="text-xl font-headline flex items-center gap-2">
+            <Wrench />
+            Herramientas de Mantenimiento
+          </CardTitle>
+          <CardDescription>Ejecuta acciones masivas para corregir o sincronizar datos en toda la base de datos. Úsalo si encuentras inconsistencias.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
-           <BatchUpdateImagesButton />
+           <BatchUpdateSearchButton />
            <BatchUpdateTagsButton />
+           <BatchUpdateImagesButton />
         </CardContent>
       </Card>
     </div>
