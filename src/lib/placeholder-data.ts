@@ -448,7 +448,7 @@ export const getFiguresByHashtag = async (hashtag: string): Promise<Figure[]> =>
   const figures: Figure[] = [];
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef, where('hashtagsLower', 'array-contains', hashtag.toLowerCase()), limit(50));
+    const q = query(figuresCollectionRef, where('hashtagKeywords', 'array-contains', hashtag), limit(50));
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach((docSnap) => {
       figures.push(mapDocToFigure(docSnap));
@@ -541,7 +541,23 @@ export async function addComment(
         isAnonymous: authorData.isAnonymous,
     };
 
-    await setDoc(newCommentRef, newCommentData);
+    // Use a transaction to ensure both writes succeed or fail together.
+    await runTransaction(db, async (transaction) => {
+        const figureDoc = await transaction.get(figureDocRef);
+        if (!figureDoc.exists()) {
+            throw new Error("Figure document not found.");
+        }
+
+        // 1. Update the figure's rating counts
+        const figureData = figureDoc.data();
+        const newRatingCounts = { ...defaultRatingCounts, ...figureData.ratingCounts };
+        newRatingCounts[rating] = (newRatingCounts[rating] || 0) + 1;
+        transaction.update(figureDocRef, { ratingCounts: newRatingCounts });
+        
+        // 2. Set the new comment document
+        transaction.set(newCommentRef, newCommentData);
+    });
+
     return newCommentRef.id;
 }
 
@@ -654,12 +670,12 @@ export async function toggleDislikeComment(
   const commentRef = doc(db, documentPath);
   let isDisliked = false;
   let actorName = "Alguien";
-  let actorPhotoUrl = "";
+  let actorPhotoUrl: string | null = null;
 
   const userProfileDoc = await getDoc(doc(db, 'users', userId));
   if (userProfileDoc.exists()) {
     actorName = userProfileDoc.data().username || "Alguien";
-    actorPhotoUrl = userProfileDoc.data().photoURL || "";
+    actorPhotoUrl = userProfileDoc.data().photoURL || null;
   }
 
   await runTransaction(db, async (transaction) => {
