@@ -13,7 +13,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-    Cake, MapPin, Activity, HeartHandshake, StretchVertical, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, FilePenLine, Skull, Image as ImageIcon, Weight, Tags, Gamepad2, Building, Clapperboard, MonitorPlay, Book, PawPrint
+    Cake, MapPin, Activity, HeartHandshake, StretchVertical, UserCircle, Briefcase, Globe, Users, Edit, Save, X, Loader2, Link as LinkIcon, FilePenLine, Skull, Image as ImageIcon, Weight, Tags, Gamepad2, Building, Clapperboard, MonitorPlay, Book, PawPrint, Plus
 } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
@@ -306,7 +306,7 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Figure>>(initialFigure);
   const [hashtagOptions, setHashtagOptions] = useState<{ value: string; label: string }[]>([]);
-  const [hashtagSearch, setHashtagSearch] = useState<string | null>(null);
+  const [newHashtag, setNewHashtag] = useState('');
 
   // When the initialFigure prop changes (due to real-time updates),
   // update our form data *if not in editing mode*.
@@ -356,6 +356,13 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
         ...prev,
         hashtags: (prev.hashtags || []).filter(tag => tag !== hashtagToRemove)
     }));
+  };
+
+  const handleCreateNewHashtag = () => {
+    if (newHashtag) {
+      handleAddHashtag(newHashtag);
+      setNewHashtag(''); // Clear the input after adding
+    }
   };
 
   const handleSave = async () => {
@@ -550,33 +557,32 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
                 <div><Label>Discord</Label><Input value={formData.socialLinks?.discord || ''} onChange={e => handleSocialLinkChange('discord', e.target.value)} placeholder="https://discord.gg/..."/></div>
             </div>
             <Separator/>
-            <div className="space-y-2">
+            <div className="space-y-4">
               <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Hashtags</h3>
-              <Combobox
-                options={hashtagOptions}
-                value={hashtagSearch}
-                onChange={(value) => {
-                    if (!value) {
-                        setHashtagSearch(null);
-                        return;
-                    }
-
-                    const isCreating = !hashtagOptions.some(opt => opt.label.toLowerCase() === value.toLowerCase());
-                    if (isCreating) {
-                        handleAddHashtag(value);
-                        setHashtagSearch(null); // Reset after adding
-                    } else {
-                        // It's a selection from the list
-                        const selectedHashtag = hashtagOptions.find(opt => opt.label.toLowerCase() === value.toLowerCase())?.value;
-                        if (selectedHashtag) {
-                            handleAddHashtag(selectedHashtag);
-                        }
-                        setHashtagSearch(null); // Reset after adding
-                    }
-                }}
-                placeholder="Busca o crea un hashtag..."
-                creatable
-              />
+              <div>
+                  <Label>Añadir hashtag existente</Label>
+                  <Combobox
+                      options={hashtagOptions}
+                      value={null}
+                      onChange={(value) => {
+                          if (value) handleAddHashtag(value);
+                      }}
+                      placeholder="Busca un hashtag para añadir..."
+                  />
+              </div>
+              <div>
+                  <Label>Crear y añadir nuevo hashtag</Label>
+                  <div className="flex gap-2">
+                      <Input
+                          value={newHashtag}
+                          onChange={(e) => setNewHashtag(e.target.value.replace(/#/g, ''))}
+                          placeholder="Ej: goat, leyenda, etc."
+                      />
+                      <Button type="button" onClick={handleCreateNewHashtag}>
+                          <Plus className="h-4 w-4 mr-2" /> Añadir
+                      </Button>
+                  </div>
+              </div>
               <div className="flex flex-wrap gap-2 pt-2">
                 {(formData.hashtags || []).map((tag) => (
                   <Badge key={tag} variant="secondary" className="text-sm">

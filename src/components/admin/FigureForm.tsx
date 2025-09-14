@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Sparkles, Loader2, CalendarIcon, X } from 'lucide-react';
+import { Terminal, Sparkles, Loader2, CalendarIcon, X, Plus } from 'lucide-react';
 import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag } from '@/lib/types';
@@ -80,7 +80,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [nationalityCode, setNationalityCode] = useState('');
 
   const [hashtagOptions, setHashtagOptions] = useState<{ value: string; label: string }[]>([]);
-  const [hashtagSearch, setHashtagSearch] = useState('');
+  const [newHashtag, setNewHashtag] = useState('');
 
 
   // Character specific
@@ -215,6 +215,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
   const handleRemoveHashtag = (hashtagToRemove: string) => {
     setHashtags(hashtags.filter(tag => tag !== hashtagToRemove));
+  };
+
+  const handleCreateNewHashtag = () => {
+    if (newHashtag) {
+      handleAddHashtag(newHashtag);
+      setNewHashtag(''); // Clear the input after adding
+    }
   };
 
 
@@ -571,28 +578,42 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       </div>
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Hashtags</h3>
-        <div className="space-y-2">
-            <Combobox
-                options={hashtagOptions}
-                value={hashtagSearch}
-                onChange={(value) => {
-                    if (value) handleAddHashtag(value);
-                    setHashtagSearch(''); // Reset search
-                }}
-                placeholder="Busca o crea un hashtag..."
-                creatable
-            />
-            <div className="flex flex-wrap gap-2 mt-2">
-                {hashtags.map(tag => (
-                    <Badge key={tag} variant="secondary" className="text-sm">
-                        {tag}
-                        <button type="button" onClick={() => handleRemoveHashtag(tag)} className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" aria-label={`Eliminar ${tag}`}>
-                            <X className="h-3 w-3" />
-                        </button>
-                    </Badge>
-                ))}
-            </div>
-        </div>
+      <div className="space-y-4">
+          <div>
+              <Label>Añadir hashtag existente</Label>
+              <Combobox
+                  options={hashtagOptions}
+                  value={null} // Always reset after selection
+                  onChange={(value) => {
+                      if (value) handleAddHashtag(value);
+                  }}
+                  placeholder="Busca un hashtag para añadir..."
+              />
+          </div>
+          <div>
+              <Label>Crear y añadir nuevo hashtag</Label>
+              <div className="flex gap-2">
+                  <Input
+                      value={newHashtag}
+                      onChange={(e) => setNewHashtag(e.target.value.replace(/#/g, ''))}
+                      placeholder="Ej: goat, leyenda, etc."
+                  />
+                  <Button type="button" onClick={handleCreateNewHashtag}>
+                      <Plus className="h-4 w-4 mr-2" /> Añadir
+                  </Button>
+              </div>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-2">
+              {hashtags.map(tag => (
+                  <Badge key={tag} variant="secondary" className="text-sm">
+                      #{tag}
+                      <button type="button" onClick={() => handleRemoveHashtag(tag)} className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" aria-label={`Eliminar ${tag}`}>
+                          <X className="h-3 w-3" />
+                      </button>
+                  </Badge>
+              ))}
+          </div>
+      </div>
       
       <div className="mt-6 border-t pt-4 border-border">
         <div className="flex items-center space-x-2">

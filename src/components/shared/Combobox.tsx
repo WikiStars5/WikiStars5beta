@@ -30,29 +30,19 @@ interface ComboboxProps {
   onChange: (value: string | null) => void;
   placeholder?: string;
   disabled?: boolean;
-  creatable?: boolean; // New prop
 }
 
-export function Combobox({ options, value, onChange, placeholder = "Select an option...", disabled, creatable = false }: ComboboxProps) {
-  const [open, setOpen] = React.useState(false);
-  const [inputValue, setInputValue] = React.useState("");
+export function Combobox({ options, value, onChange, placeholder = "Select an option...", disabled }: ComboboxProps) {
+  const [open, setOpen] = React.useState(false)
 
   const selectedOption = value ? options.find(
     (option) => option.value.toLowerCase() === value.toLowerCase()
   ) : null;
 
   const handleSelect = (currentValue: string) => {
-    onChange(currentValue);
-    setOpen(false);
-  };
-  
-  // When popover is closed, reset the input value
-  React.useEffect(() => {
-    if (!open) {
-      setInputValue("");
-    }
-  }, [open]);
-
+    onChange(currentValue === value ? null : currentValue);
+    setOpen(false)
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -70,22 +60,9 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
-          <CommandInput
-            placeholder="Buscar..."
-            onValueChange={setInputValue}
-          />
+          <CommandInput placeholder="Buscar..." />
           <CommandList>
-            <CommandEmpty>
-                {creatable && inputValue.trim().length > 0 ? (
-                    <CommandItem
-                        onSelect={() => handleSelect(inputValue)}
-                        value={inputValue}
-                        className="cursor-pointer"
-                    >
-                    Crear "{inputValue}"
-                    </CommandItem>
-                ) : "No se encontraron opciones."}
-            </CommandEmpty>
+            <CommandEmpty>No se encontraron opciones.</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
