@@ -19,7 +19,7 @@ import { LogOut, User, ShieldCheck, Loader2 } from 'lucide-react';
 import { correctMalformedUrl } from "@/lib/utils";
 
 export function UserNav() {
-  const { currentUser, firebaseUser, isAdmin, isLoading, logout, localProfile } = useAuth();
+  const { currentUser, firebaseUser, isAdmin, isLoading, logout, localProfile, isAnonymous } = useAuth();
   
   if (isLoading) {
     return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
@@ -86,11 +86,15 @@ export function UserNav() {
             </DropdownMenuItem>
           )}
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Cerrar sesión</span>
-        </DropdownMenuItem>
+        {!isAnonymous && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={logout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Cerrar sesión</span>
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
