@@ -92,97 +92,108 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8">
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
-            <UserCircle className="h-7 w-7" />
+        <CardHeader className="px-0">
+          <CardTitle className="flex items-center gap-2 text-3xl font-headline">
+            <UserCircle className="h-8 w-8" />
             Mi Perfil
           </CardTitle>
           <CardDescription>
-            {isAnonymous ? "Edita tu perfil de invitado. Tus datos se guardan localmente." : "Edita la información de tu perfil público."}
+            {isAnonymous ? "Gestiona tu perfil de invitado y tu actividad en la plataforma." : "Gestiona tu perfil público y tu actividad en la plataforma."}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {isAnonymous && (
-            <Alert className="mb-6 bg-blue-900/20 border-blue-500/50">
-                <ShieldAlert className="h-4 w-4 text-blue-400" />
-                <AlertTitle className="text-blue-300">Estás navegando como invitado</AlertTitle>
-                <AlertDescription className="text-blue-400/80">
-                   Tu progreso (votos, rachas) se guardará. Para mantenerlo permanentemente, crea una cuenta de Google para vincular tus datos.
-                </AlertDescription>
-            </Alert>
-          )}
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-xl">Mi Información</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {isAnonymous && (
+                        <Alert className="mb-6 bg-blue-900/20 border-blue-500/50">
+                            <ShieldAlert className="h-4 w-4 text-blue-400" />
+                            <AlertTitle className="text-blue-300">Estás navegando como invitado</AlertTitle>
+                            <AlertDescription className="text-blue-400/80">
+                               Tu progreso (votos, rachas) se guardará. Para mantenerlo permanentemente, crea una cuenta de Google para vincular tus datos.
+                            </AlertDescription>
+                        </Alert>
+                      )}
 
-          <Form {...form}>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre de Usuario</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Tu nombre público" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={control}
-                name="countryCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>País</FormLabel>
-                    <CountryCombobox
-                      value={field.value || ''}
-                      onChange={field.onChange}
-                    />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={control}
-                name="gender"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sexo</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                       <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona tu sexo..." />
-                          </SelectTrigger>
-                       </FormControl>
-                      <SelectContent>
-                        {GENDER_OPTIONS.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-
-      <ProfileActivity />
-
+                      <Form {...form}>
+                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                          <FormField
+                            control={control}
+                            name="username"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Nombre de Usuario</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Tu nombre público" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={control}
+                            name="countryCode"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>País</FormLabel>
+                                <CountryCombobox
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
+                                />
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={control}
+                            name="gender"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Sexo</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                                   <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona tu sexo..." />
+                                      </SelectTrigger>
+                                   </FormControl>
+                                  <SelectContent>
+                                    {GENDER_OPTIONS.map(option => (
+                                      <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <div className="flex justify-end">
+                            <Button type="submit" disabled={isSubmitting}>
+                              {isSubmitting ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Save className="mr-2 h-4 w-4" />
+                              )}
+                              {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </CardContent>
+                </Card>
+            </div>
+            
+            <div className="lg:col-span-2">
+                <ProfileActivity />
+            </div>
+        </div>
     </div>
   );
 }
+
+    

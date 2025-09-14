@@ -89,21 +89,33 @@ export function ProfileActivity() {
     
     if (isLoading || isAuthLoading) {
         return (
-            <div className="flex items-center justify-center h-40">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-4 text-muted-foreground">Cargando tu actividad...</p>
-            </div>
+            <Card className="h-full">
+                <CardContent className="flex items-center justify-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="ml-4 text-muted-foreground">Cargando tu actividad...</p>
+                </CardContent>
+            </Card>
         );
     }
     
     const hasActivity = attitudes.length > 0 || emotionVotes.length > 0 || streaks.length > 0;
 
     if (!hasActivity) {
-        return null; // Don't show anything if there's no activity
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Tu Actividad</CardTitle>
+                    <CardDescription>Un resumen de tus interacciones en la plataforma.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-center text-muted-foreground py-8">Aún no tienes actividad. ¡Empieza a interactuar para ver tu historial aquí!</p>
+                </CardContent>
+            </Card>
+        );
     }
 
     return (
-        <Card className="w-full max-w-2xl mx-auto">
+        <Card>
             <CardHeader>
                 <CardTitle>Tu Actividad</CardTitle>
                 <CardDescription>Un resumen de tus interacciones en la plataforma.</CardDescription>
@@ -117,7 +129,7 @@ export function ProfileActivity() {
                     </TabsList>
                     <TabsContent value="attitude" className="mt-4">
                         {attitudes.length > 0 ? (
-                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                 {attitudes.map(vote => vote.figure && (
                                     <Link key={vote.figureId} href={`/figures/${vote.figureId}`} className="group relative text-center">
                                         <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-primary transition-all">
@@ -137,7 +149,7 @@ export function ProfileActivity() {
                     </TabsContent>
                     <TabsContent value="emotion" className="mt-4">
                          {emotionVotes.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                 {emotionVotes.map(vote => vote.figure && (
                                     <Link key={vote.figureId} href={`/figures/${vote.figureId}`} className="group relative text-center">
                                         <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-primary transition-all">
@@ -157,7 +169,7 @@ export function ProfileActivity() {
                     </TabsContent>
                     <TabsContent value="streak" className="mt-4">
                         {streaks.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                 {streaks.map(streak => streak.figure && (
                                     <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="group relative text-center">
                                         <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-orange-400 transition-all">
@@ -181,3 +193,5 @@ export function ProfileActivity() {
         </Card>
     );
 }
+
+    
