@@ -3,7 +3,7 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Figure, MediaSubcategory, Hashtag } from "@/lib/types";
 import {
   Card,
@@ -305,7 +305,9 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Figure>>(initialFigure);
+  const [hashtagSearch, setHashtagSearch] = useState('');
   const [hashtagOptions, setHashtagOptions] = useState<{ value: string; label: string }[]>([]);
+  const [isLoadingHashtags, setIsLoadingHashtags] = useState(false);
   const [newHashtag, setNewHashtag] = useState('');
 
   // When the initialFigure prop changes (due to real-time updates),
@@ -315,17 +317,21 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
       setFormData(initialFigure);
     }
   }, [initialFigure, isEditing]);
+  
+  const debouncedSearchHashtags = useCallback(debounce(async (searchTerm: string) => {
+    setIsLoadingHashtags(true);
+    const results = await searchHashtags(searchTerm);
+    const options = results.map(h => ({ value: h.id, label: `#${h.id}`}));
+    setHashtagOptions(options);
+    setIsLoadingHashtags(false);
+  }, 300), []);
 
   useEffect(() => {
     if (isEditing) {
-      const loadHashtags = async () => {
-        const existingHashtags = await searchHashtags('');
-        const options = existingHashtags.map(h => ({ value: h.id, label: `#${h.id}`}));
-        setHashtagOptions(options);
-      };
-      loadHashtags();
+      debouncedSearchHashtags(hashtagSearch);
     }
-  }, [isEditing]);
+  }, [hashtagSearch, isEditing, debouncedSearchHashtags]);
+
   
   const handleInputChange = (field: keyof Figure, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -559,18 +565,20 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
             <Separator/>
             <div className="space-y-4">
               <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Hashtags</h3>
-              <div>
+              <div className="space-y-2">
                   <Label>Añadir hashtag existente</Label>
                   <Combobox
                       options={hashtagOptions}
-                      value={null}
+                      value={null} // Always reset after selection
                       onChange={(value) => {
                           if (value) handleAddHashtag(value);
                       }}
+                      onSearchChange={setHashtagSearch}
+                      isLoading={isLoadingHashtags}
                       placeholder="Busca un hashtag para añadir..."
                   />
               </div>
-              <div>
+              <div className="space-y-2">
                   <Label>Crear y añadir nuevo hashtag</Label>
                   <div className="flex gap-2">
                       <Input

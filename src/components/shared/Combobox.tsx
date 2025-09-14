@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -28,11 +29,21 @@ interface ComboboxProps {
   options: ComboboxOption[];
   value: string | null;
   onChange: (value: string | null) => void;
+  onSearchChange?: (search: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  isLoading?: boolean;
 }
 
-export function Combobox({ options, value, onChange, placeholder = "Select an option...", disabled }: ComboboxProps) {
+export function Combobox({ 
+  options, 
+  value, 
+  onChange,
+  onSearchChange,
+  placeholder = "Select an option...", 
+  disabled,
+  isLoading
+}: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
   const selectedOption = value ? options.find(
@@ -60,26 +71,36 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Buscar..." />
+          <CommandInput 
+            placeholder="Buscar..." 
+            onValueChange={onSearchChange}
+            disabled={isLoading}
+          />
           <CommandList>
-            <CommandEmpty>No se encontraron opciones.</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.label}
-                  onSelect={() => handleSelect(option.value)}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value?.toLowerCase() === option.value.toLowerCase() ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {option.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {isLoading ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">Cargando...</div>
+            ) : (
+              <>
+                <CommandEmpty>No se encontraron opciones.</CommandEmpty>
+                <CommandGroup>
+                  {options.map((option) => (
+                    <CommandItem
+                      key={option.value}
+                      value={option.label}
+                      onSelect={() => handleSelect(option.value)}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value?.toLowerCase() === option.value.toLowerCase() ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {option.label}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

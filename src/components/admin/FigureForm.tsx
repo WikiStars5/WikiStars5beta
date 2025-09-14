@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,16 @@ import { Slider } from '../ui/slider';
 import { VIDEO_GAME_GENRES } from '@/config/genres';
 import { Combobox } from '../shared/Combobox';
 import { searchHashtags } from '@/app/actions/searchHashtagsAction';
+
+// Debounce function
+function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<F>): Promise<ReturnType<F>> =>
+    new Promise(resolve => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => resolve(func(...args)), waitFor);
+    });
+}
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -79,7 +89,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [isFeatured, setIsFeatured] = useState(false);
   const [nationalityCode, setNationalityCode] = useState('');
 
+  const [hashtagSearch, setHashtagSearch] = useState('');
   const [hashtagOptions, setHashtagOptions] = useState<{ value: string; label: string }[]>([]);
+  const [isLoadingHashtags, setIsLoadingHashtags] = useState(false);
   const [newHashtag, setNewHashtag] = useState('');
 
 
@@ -188,14 +200,17 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     }
   }, [initialData]);
 
+  const debouncedSearchHashtags = useCallback(debounce(async (searchTerm: string) => {
+    setIsLoadingHashtags(true);
+    const results = await searchHashtags(searchTerm);
+    const options = results.map(h => ({ value: h.id, label: `#${h.id}`}));
+    setHashtagOptions(options);
+    setIsLoadingHashtags(false);
+  }, 300), []);
+
   useEffect(() => {
-    const loadHashtags = async () => {
-      const existingHashtags = await searchHashtags('');
-      const options = existingHashtags.map(h => ({ value: h.id, label: `#${h.id}` }));
-      setHashtagOptions(options);
-    };
-    loadHashtags();
-  }, []);
+    debouncedSearchHashtags(hashtagSearch);
+  }, [hashtagSearch, debouncedSearchHashtags]);
 
   const handleProfileTypeChange = (value: ProfileType) => {
     setProfileType(value);
@@ -579,18 +594,20 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Hashtags</h3>
       <div className="space-y-4">
-          <div>
+          <div className="space-y-2">
               <Label>Añadir hashtag existente</Label>
               <Combobox
                   options={hashtagOptions}
-                  value={null} // Always reset after selection
+                  value={null}
                   onChange={(value) => {
                       if (value) handleAddHashtag(value);
                   }}
+                  onSearchChange={setHashtagSearch}
+                  isLoading={isLoadingHashtags}
                   placeholder="Busca un hashtag para añadir..."
               />
           </div>
-          <div>
+          <div className="space-y-2">
               <Label>Crear y añadir nuevo hashtag</Label>
               <div className="flex gap-2">
                   <Input
