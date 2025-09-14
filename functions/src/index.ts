@@ -276,3 +276,5 @@ export const toggleFeaturedStatus = onCall(async (request) => {
         throw new HttpsError('internal', `An error occurred while changing the status: ${error.message}`);
     }
 });
+
+    

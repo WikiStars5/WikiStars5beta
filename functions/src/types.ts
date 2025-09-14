@@ -1,5 +1,4 @@
 
-
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 
@@ -70,3 +69,5 @@ export interface Country {
   code: string;
   emoji: string;
 }
+
+    
