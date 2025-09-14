@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import {
@@ -13,9 +12,13 @@ import { auth, db, callFirebaseFunction } from '@/lib/firebase';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword,
+  signInAnonymously,
   signOut,
   updateProfile,
-  type User as FirebaseUser
+  linkWithCredential,
+  GoogleAuthProvider,
+  type User as FirebaseUser,
+  type AuthCredential
 } from 'firebase/auth';
 import type { UserProfile } from '@/lib/types';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
@@ -27,9 +30,11 @@ interface AuthContextType {
   currentUser: UserProfile | null;
   isAdmin: boolean;
   isLoading: boolean;
+  isAnonymous: boolean;
   signIn: (email: string, pass: string) => Promise<any>;
   logout: () => Promise<void>;
   updateUserProfile: (username: string, countryCode: string, gender: string) => Promise<void>;
+  linkAccount: (credential: AuthCredential) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,13 +46,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setIsLoading(true);
-      setFirebaseUser(user);
-      if (!user) {
-        // User is signed out
-        setCurrentUser(null);
-        setIsLoading(false);
+      if (user) {
+        setFirebaseUser(user);
+      } else {
+        // If no user, sign in anonymously to get a UID for guest actions.
+        try {
+          const userCredential = await signInAnonymously(auth);
+          setFirebaseUser(userCredential.user);
+        } catch (error) {
+          console.error("Error signing in anonymously:", error);
+          setFirebaseUser(null);
+          setCurrentUser(null);
+          setIsLoading(false);
+        }
       }
     });
 
@@ -64,6 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (userDocSnap.exists()) {
           setCurrentUser(userDocSnap.data() as UserProfile);
         } else {
+          // Profile might not be created yet for a new anonymous user. This is fine.
+          // The createProfileOnRegister function will handle it.
           setCurrentUser(null);
         }
         setIsLoading(false);
@@ -77,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [firebaseUser]);
 
   const isAdmin = currentUser?.role === 'admin' && currentUser?.uid === ADMIN_UID;
+  const isAnonymous = firebaseUser ? firebaseUser.isAnonymous : true;
 
   const signIn = (email: string, pass: string) => {
     return signInWithEmailAndPassword(auth, email, pass);
@@ -84,7 +100,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const logout = async () => {
     await signOut(auth);
+    // After signing out, onAuthStateChanged will trigger and sign in a new anonymous user.
     router.push('/');
+  };
+  
+  const linkAccount = async (credential: AuthCredential) => {
+    if (!auth.currentUser) throw new Error("No user to link.");
+    await linkWithCredential(auth.currentUser, credential);
+    // After linking, the onAuthStateChanged listener will automatically receive the updated user state.
+    // Firestore profile will be updated by the onUserCreate function (it also triggers on link).
   };
 
   const updateUserProfile = async (username: string, countryCode: string, gender: string) => {
@@ -92,17 +116,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("No authenticated user found.");
     }
     
-    // Step 1: Update Firebase Auth display name (client-side)
     await updateProfile(auth.currentUser, { displayName: username });
     
-    // Step 2: Call the Cloud Function to update Firestore
     await callFirebaseFunction('updateUserProfile', {
       username,
       countryCode,
       gender
     });
-
-    // The onSnapshot listener will automatically update the `currentUser` state.
   };
 
   const value = {
@@ -110,9 +130,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     currentUser,
     isAdmin,
     isLoading,
+    isAnonymous,
     signIn,
     logout,
     updateUserProfile,
+    linkAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

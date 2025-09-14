@@ -80,24 +80,20 @@ const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, par
     
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!text.trim() || isSubmitting) return;
-
-        const userId = firebaseUser?.uid || localStorage.getItem('wikistars5-guestId');
-        if (!userId) {
-          toast({ title: "Error", description: "No se pudo identificar al usuario.", variant: "destructive" });
-          return;
+        if (!text.trim() || isSubmitting || !firebaseUser) {
+            if (!firebaseUser) toast({ title: "Error", description: "Debes iniciar sesión para responder.", variant: "destructive" });
+            return;
         }
 
         setIsSubmitting(true);
-        const isAnonymous = !firebaseUser;
         const authorData = {
-            id: userId,
-            name: isAnonymous ? (localStorage.getItem('wikistars5-guestUsername') || 'Invitado') : (currentUser?.username || 'Usuario'),
-            photoUrl: isAnonymous ? null : (currentUser?.photoURL || null),
-            gender: isAnonymous ? (localStorage.getItem('wikistars5-guestGender') || '') : (currentUser?.gender || ''),
-            country: isAnonymous ? (localStorage.getItem('wikistars5-guestCountryName') || '') : (currentUser?.country || ''),
-            countryCode: isAnonymous ? (localStorage.getItem('wikistars5-guestCountryCode') || '') : (currentUser?.countryCode || ''),
-            isAnonymous: isAnonymous,
+            id: firebaseUser.uid,
+            name: currentUser?.username || firebaseUser.displayName || 'Usuario',
+            photoUrl: currentUser?.photoURL || firebaseUser.photoURL || null,
+            gender: currentUser?.gender || '',
+            country: currentUser?.country || '',
+            countryCode: currentUser?.countryCode || '',
+            isAnonymous: firebaseUser.isAnonymous,
         };
 
         try {
@@ -157,17 +153,15 @@ export function CommentItem({
     const depth = (parentPath.match(/replies/g) || []).length;
     const canReply = depth < MAX_REPLY_DEPTH;
 
-    const getUserId = () => firebaseUser?.uid || localStorage.getItem('wikistars5-guestId');
-    const userId = getUserId();
+    const userId = firebaseUser?.uid;
     const isLiked = userId ? comment.likes.includes(userId) : false;
     const isDisliked = userId ? comment.dislikes.includes(userId) : false;
 
 
     const canDelete = React.useMemo(() => {
         if (isAdmin) return true;
-        const currentUserId = firebaseUser?.uid || localStorage.getItem('wikistars5-guestId');
-        return currentUserId === comment.authorId;
-    }, [isAdmin, firebaseUser, comment.authorId]);
+        return userId === comment.authorId;
+    }, [isAdmin, userId, comment.authorId]);
 
 
     React.useEffect(() => {
@@ -214,19 +208,17 @@ export function CommentItem({
     }, [fetchReplies]);
 
     const handleLike = async (isLike: boolean) => {
-        if (isProcessingLike || isAuthLoading) return;
-        const currentUserId = getUserId();
-        if (!currentUserId) {
-            toast({ title: "Error", description: "Debes iniciar sesión o recargar la página como invitado para reaccionar.", variant: "destructive" });
+        if (isProcessingLike || isAuthLoading || !userId) {
+            toast({ title: "Error", description: "Debes iniciar sesión para reaccionar.", variant: "destructive" });
             return;
         }
 
         setIsProcessingLike(true);
         try {
             if (isLike) {
-                await toggleLikeComment(currentPath, currentUserId);
+                await toggleLikeComment(currentPath, userId);
             } else {
-                 await toggleDislikeComment(currentPath, currentUserId, comment.authorId, figure.id, figure.name, comment.id);
+                 await toggleDislikeComment(currentPath, userId, comment.authorId, figure.id, figure.name, comment.id);
             }
         } catch (error: any) {
             console.error("Error liking/disliking:", error);
@@ -241,7 +233,6 @@ export function CommentItem({
         try {
             await deleteComment(currentPath);
             toast({ title: "Comentario eliminado" });
-            // The component will unmount automatically due to the real-time listener in the parent.
         } catch (error: any) {
             console.error("Error deleting comment:", error);
             toast({ title: "Error al eliminar", description: error.message, variant: "destructive" });

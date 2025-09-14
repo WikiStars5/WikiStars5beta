@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -63,7 +64,7 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
   const [showAllComments, setShowAllComments] = React.useState(false);
   const [streakToAnimate, setStreakToAnimate] = React.useState<number | null>(null);
   const { toast } = useToast();
-  const { currentUser, firebaseUser, isLoading: isAuthLoading } = useAuth();
+  const { currentUser, firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
 
   const form = useForm<CommentFormData>({
     resolver: zodResolver(commentSchema),
@@ -98,8 +99,7 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
   }, [figure.id, toast]);
 
   const onCommentSubmit = async (data: CommentFormData) => {
-    const userId = firebaseUser?.uid || localStorage.getItem('wikistars5-guestId');
-    if (!userId) {
+    if (!firebaseUser) {
       toast({ title: "Error", description: "No se pudo identificar al usuario.", variant: "destructive" });
       return;
     }
@@ -109,22 +109,24 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
       return;
     }
 
-    const isAnonymous = !firebaseUser;
     const authorData = {
-        id: userId,
-        name: isAnonymous ? (localStorage.getItem('wikistars5-guestUsername') || 'Invitado') : (currentUser?.username || 'Usuario'),
-        photoUrl: isAnonymous ? null : (currentUser?.photoURL || null),
-        gender: isAnonymous ? (localStorage.getItem('wikistars5-guestGender') || '') : (currentUser?.gender || ''),
-        country: isAnonymous ? (localStorage.getItem('wikistars5-guestCountryName') || '') : (currentUser?.country || ''),
-        countryCode: isAnonymous ? (localStorage.getItem('wikistars5-guestCountryCode') || '') : (currentUser?.countryCode || ''),
-        isAnonymous: isAnonymous,
+        id: firebaseUser.uid,
+        name: currentUser?.username || firebaseUser.displayName || 'Invitado',
+        photoUrl: currentUser?.photoURL || firebaseUser.photoURL || null,
+        gender: currentUser?.gender || '',
+        country: currentUser?.country || '',
+        countryCode: currentUser?.countryCode || '',
+        isAnonymous: firebaseUser.isAnonymous,
     };
     
     try {
         await addComment(figure.id, authorData, data.text, data.rating);
-        const newStreak = await updateStreak(figure.id, authorData);
-        if (newStreak) {
-          setStreakToAnimate(newStreak);
+        
+        if (!isAnonymous) {
+          const newStreak = await updateStreak(figure.id, authorData);
+          if (newStreak) {
+            setStreakToAnimate(newStreak);
+          }
         }
 
         toast({ title: "¡Opinión publicada!", description: "Gracias por tu contribución." });
@@ -138,6 +140,20 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
   const renderCommentInput = () => {
       if (isAuthLoading) {
           return <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+      }
+
+      if (isAnonymous) {
+          return (
+            <div className="text-center p-6 border-2 border-dashed rounded-lg">
+                <p className="mb-4 text-muted-foreground">Debes tener una cuenta para dejar una opinión o calificación.</p>
+                <Button asChild>
+                    <Link href="/signup">
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Crear Cuenta para Participar
+                    </Link>
+                </Button>
+            </div>
+          )
       }
       
       return (

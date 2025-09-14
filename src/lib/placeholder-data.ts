@@ -644,14 +644,14 @@ export async function toggleDislikeComment(
 ): Promise<boolean> {
   const commentRef = doc(db, documentPath);
   let isDisliked = false;
-  let actorName = "Alguien"; // Default name
+  let actorName = "Alguien";
   let actorPhotoUrl = "";
 
-  if (typeof window !== 'undefined') {
-      const guestUsername = localStorage.getItem('wikistars5-guestUsername');
-      actorName = guestUsername || "Alguien";
+  const userProfileDoc = await getDoc(doc(db, 'users', userId));
+  if (userProfileDoc.exists()) {
+    actorName = userProfileDoc.data().username || "Alguien";
+    actorPhotoUrl = userProfileDoc.data().photoURL || "";
   }
-
 
   await runTransaction(db, async (transaction) => {
     const commentDoc = await transaction.get(commentRef);
@@ -678,11 +678,7 @@ export async function toggleDislikeComment(
       // Add notification only when disliking, not when removing dislike
       if (authorId !== userId) {
         const notificationsCollectionRef = collection(db, 'notifications');
-        // We cannot use await inside a transaction for non-transactional operations
-        // so we will have to create the notification outside if needed,
-        // but for simplicity, we add it here assuming it's acceptable for this use case.
-        // For a stricter approach, this would be done after the transaction succeeds.
-         addDoc(notificationsCollectionRef, {
+        addDoc(notificationsCollectionRef, {
             type: 'dislike',
             userId: authorId,
             actorId: userId,
@@ -721,7 +717,6 @@ export async function deleteComment(documentPath: string): Promise<void> {
   await runTransaction(db, async (transaction) => {
     const commentDoc = await transaction.get(commentRef);
     if (!commentDoc.exists()) {
-      // If the comment is already gone, there's nothing to do.
       return;
     }
     const commentData = commentDoc.data();
@@ -729,8 +724,6 @@ export async function deleteComment(documentPath: string): Promise<void> {
     const authorId = commentData.authorId;
     const figureId = commentData.figureId;
 
-    // If the comment had a rating, it might be the user's only rating.
-    // We need to decrement the figure's rating count.
     if (rating !== undefined && rating !== null) {
         const figureRef = doc(db, 'figures', figureId);
         const figureDoc = await transaction.get(figureRef);
@@ -743,15 +736,12 @@ export async function deleteComment(documentPath: string): Promise<void> {
             transaction.update(figureRef, { ratingCounts: newRatingCounts });
         }
         
-        // Also remove the user's specific vote record
         const userRatingDocRef = doc(db, 'userRatings', `${authorId}_${figureId}`);
         transaction.delete(userRatingDocRef);
     }
 
-    // Now, delete the comment itself.
     transaction.delete(commentRef);
 
-    // After deleting the comment, update the parent's reply count if applicable.
     const pathParts = documentPath.split('/');
     if (pathParts.length > 4 && pathParts[pathParts.length - 2] === 'replies') {
       const parentRef = doc(db, pathParts.slice(0, -2).join('/'));
@@ -763,8 +753,6 @@ export async function deleteComment(documentPath: string): Promise<void> {
     }
   });
 
-  // Since replies are subcollections, they need to be deleted separately.
-  // This is a "best-effort" background deletion and is not part of the main transaction.
   const batch = writeBatch(db);
   await deleteRepliesRecursive(`${documentPath}/replies`, batch);
   await batch.commit();
@@ -799,20 +787,16 @@ export async function updateStreak(
         const lastCommentDate = (data.lastCommentDate as Timestamp).toDate();
         
         if (isYesterday(lastCommentDate)) {
-          // Continued streak
           currentStreak = (data.currentStreak || 0) + 1;
           shouldAnimate = true;
         } else if (isSameDay(now, lastCommentDate)) {
-          // Commented again on the same day, streak maintained
           currentStreak = data.currentStreak || 1;
-          shouldAnimate = false; // Don't animate if just maintaining
+          shouldAnimate = false;
         } else {
-          // Streak broken, reset
           currentStreak = 1;
-          shouldAnimate = true; // Animate for the new start
+          shouldAnimate = true;
         }
       } else {
-        // First time commenting, new streak
         shouldAnimate = true;
       }
       
@@ -820,7 +804,6 @@ export async function updateStreak(
         streakToAnimate = currentStreak;
       }
 
-      // Get user's current attitude and emotion for this figure from localStorage
       let attitude: AttitudeKey | null = null;
       let emotion: EmotionKey | null = null;
       if (typeof window !== 'undefined') {
@@ -838,11 +821,9 @@ export async function updateStreak(
         isAnonymous: authorData.isAnonymous,
         attitude,
         emotion,
-        ...(authorData.isAnonymous && {
-          username: authorData.name,
-          gender: authorData.gender,
-          countryCode: authorData.countryCode,
-        })
+        username: authorData.isAnonymous ? authorData.name : undefined,
+        gender: authorData.isAnonymous ? authorData.gender : undefined,
+        countryCode: authorData.isAnonymous ? authorData.countryCode : undefined,
       };
 
       transaction.set(streakRef, dataToSet, { merge: true });
@@ -850,31 +831,6 @@ export async function updateStreak(
   } catch (error) {
     console.error("Firestore streak update transaction failed: ", error);
     return null;
-  }
-
-  // Also update local storage for instant UI on the profile page
-  if (typeof window !== 'undefined' && streakToAnimate !== null) {
-      try {
-          const storageKey = 'wikistars5-userStreaks';
-          let localStreaks: LocalUserStreak[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-          
-          const existingStreakIndex = localStreaks.findIndex(s => s.figureId === figureId);
-          
-          if (existingStreakIndex !== -1) {
-              localStreaks[existingStreakIndex].currentStreak = streakToAnimate;
-              localStreaks[existingStreakIndex].lastCommentDate = now.toISOString();
-          } else {
-              localStreaks.push({
-                  figureId,
-                  currentStreak: streakToAnimate,
-                  lastCommentDate: now.toISOString(),
-              });
-          }
-          
-          localStorage.setItem(storageKey, JSON.stringify(localStreaks));
-      } catch (e) {
-          console.error("Failed to update streaks in localStorage", e);
-      }
   }
 
   return streakToAnimate;
@@ -982,18 +938,15 @@ export async function submitStarRating(
         const userRatingDoc = await transaction.get(userRatingDocRef);
         const previousRating = userRatingDoc.exists() ? userRatingDoc.data().rating as RatingValue : null;
 
-        // If user had a previous rating, decrement that counter first.
         if (previousRating !== null) {
             newRatingCounts[previousRating] = Math.max(0, (newRatingCounts[previousRating] || 0) - 1);
         }
-        // If a new rating is provided (not just clearing), increment the new counter.
         if (rating !== null) {
             newRatingCounts[rating] = (newRatingCounts[rating] || 0) + 1;
         }
 
         transaction.update(figureDocRef, { ratingCounts: newRatingCounts });
 
-        // Now, update or delete the user's specific rating document.
         if (rating !== null) {
             transaction.set(userRatingDocRef, {
                 userId,
@@ -1002,23 +955,7 @@ export async function submitStarRating(
                 addedAt: serverTimestamp()
             });
         } else if (userRatingDoc.exists()) {
-            // This case handles if we ever allow clearing a vote.
             transaction.delete(userRatingDocRef);
         }
     });
-
-    // Update local storage for immediate UI feedback.
-    if (typeof window !== 'undefined') {
-        try {
-            const localKey = 'wikistars5-userRatings';
-            let ratings: RatingVote[] = JSON.parse(localStorage.getItem(localKey) || '[]');
-            ratings = ratings.filter(r => r.figureId !== figureId);
-            if (rating !== null) {
-                ratings.push({ figureId, rating, addedAt: new Date().toISOString() });
-            }
-            localStorage.setItem(localKey, JSON.stringify(ratings));
-        } catch (e) {
-            console.error("Failed to update ratings in localStorage", e);
-        }
-    }
 }

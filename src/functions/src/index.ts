@@ -33,29 +33,33 @@ setGlobalOptions({ maxInstances: 10, region: "us-central1" });
  * Its purpose is to create a corresponding user profile document in Firestore.
  */
 export const createProfileOnRegister = onUserCreate(async (event) => {
-  const user = event.data; // The user record created in Firebase Auth
+  const user = event.data;
   const { uid, email, displayName, photoURL } = user;
-  const isAnonymous = !email; // A simple check for anonymous users
+  
+  // A more reliable way to check for anonymity
+  const isAnonymous = user.providerData.length === 0;
+
+  // Prioritize displayName (from Google), then email, then a generic one.
+  const initialUsername = displayName || (email ? email.split('@')[0] : `invitado_${uid.substring(0, 5)}`);
 
   const userProfile: UserProfile = {
     uid: uid,
     email: email || null,
-    username: isAnonymous ? "Invitado" : (displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`),
+    username: initialUsername,
     country: '',
     countryCode: '',
     gender: '',
-    photoURL: photoURL || null, // Ensure photoURL is always defined as string or null
-    role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
+    photoURL: photoURL || null,
+    role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role only if UID matches
     createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(), // Set initial login time
+    lastLoginAt: new Date().toISOString(),
     achievements: [],
     isAnonymous: isAnonymous,
   };
 
   try {
-    // Set the document in the 'users' collection with the user's UID as the document ID.
     await db.collection('users').doc(uid).set(userProfile);
-    console.log(`Successfully created profile for user: ${uid}`);
+    console.log(`Successfully created profile for user: ${uid} (Anonymous: ${isAnonymous})`);
   } catch (error) {
     console.error(`Error creating user profile for ${uid}:`, error);
   }

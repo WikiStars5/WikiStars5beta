@@ -34,16 +34,12 @@ const defaultPerceptionCountsData: Record<EmotionKey, number> = {
 };
 
 export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts }) => {
-  const { currentUser, firebaseUser, isLoading } = useAuth();
+  const { firebaseUser, isLoading } = useAuth();
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const [figurePerceptionCounts, setFigurePerceptionCounts] = useState<Record<EmotionKey, number>>(initialPerceptionCounts || defaultPerceptionCountsData);
   const [totalVotes, setTotalVotes] = useState(0);
   const { toast } = useToast();
-
-  const getUserId = () => {
-    return firebaseUser?.uid || currentUser?.uid || localStorage.getItem('wikistars5-guestId');
-  };
 
   useEffect(() => {
     if (!figureId) return;
@@ -60,8 +56,8 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         console.error("Error listening to figure document for perceptions:", error);
     });
 
-    if (typeof window !== 'undefined') {
-        const storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem('wikistars5-userEmotions') || '[]');
+    if (typeof window !== 'undefined' && firebaseUser) {
+        const storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem(`wikistars5-emotions-${firebaseUser.uid}`) || '[]');
         const userVote = storedEmotions.find(e => e.figureId === figureId);
         if (userVote) {
             setSelectedEmotion(userVote.emotion);
@@ -71,23 +67,22 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
     return () => {
       unsubscribeFigure();
     };
-  }, [figureId]);
+  }, [figureId, firebaseUser]);
 
   const handleVote = async (newEmotion: EmotionKey) => {
-    if (isVoting || isLoading) return;
-
-    const userId = getUserId();
-    if (!userId) {
-        toast({ title: "Acción no permitida", description: "No se pudo identificar al usuario. Por favor, recarga la página.", variant: "destructive" });
-        return;
+    if (isVoting || isLoading || !firebaseUser) {
+      if (!firebaseUser) toast({ title: "Error", description: "Inicia sesión para votar.", variant: "destructive" });
+      return;
     }
       
     setIsVoting(true);
+    const userId = firebaseUser.uid;
 
     try {
+      const storageKey = `wikistars5-emotions-${userId}`;
       let previousVote: EmotionKey | null = null;
       if (typeof window !== 'undefined') {
-        const storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem('wikistars5-userEmotions') || '[]');
+        const storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
         previousVote = storedEmotions.find(e => e.figureId === figureId)?.emotion || null;
       }
       
@@ -116,7 +111,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
       });
 
       if (typeof window !== 'undefined') {
-        let storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem('wikistars5-userEmotions') || '[]');
+        let storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
         const existingVoteIndex = storedEmotions.findIndex(e => e.figureId === figureId);
 
         if (isDeselecting) {
@@ -132,16 +127,18 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
           }
           setSelectedEmotion(newEmotion);
           
-          const achievementResult = await grantEmocionAlDescubiertoAchievement(userId);
-          if (achievementResult.unlocked) {
-            toast({
-              title: "¡Logro Desbloqueado!",
-              description: achievementResult.message,
-            });
+          if (!firebaseUser.isAnonymous) {
+            const achievementResult = await grantEmocionAlDescubiertoAchievement(userId);
+            if (achievementResult.unlocked) {
+              toast({
+                title: "¡Logro Desbloqueado!",
+                description: achievementResult.message,
+              });
+            }
           }
         }
         
-        localStorage.setItem('wikistars5-userEmotions', JSON.stringify(storedEmotions));
+        localStorage.setItem(storageKey, JSON.stringify(storedEmotions));
       }
 
     } catch (error: any) {

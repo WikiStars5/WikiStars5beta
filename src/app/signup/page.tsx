@@ -14,7 +14,7 @@ import { Loader2, UserPlus, Terminal, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, EmailAuthProvider } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
@@ -36,6 +36,7 @@ export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { signInWithGoogle, isGoogleLoading } = useAuthWithGoogle();
+  const { linkAccount, isAnonymous } = useAuth();
 
   const form = useForm<SignupSchemaType>({
     resolver: zodResolver(signupSchema),
@@ -50,27 +51,39 @@ export default function SignupPage() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.user;
+      if (isAnonymous) {
+        // Link the anonymous account with the new email/password credential
+        const credential = EmailAuthProvider.credential(data.email, data.password);
+        await linkAccount(credential);
+        
+        // Update profile displayName after linking
+        if (auth.currentUser) {
+            await updateProfile(auth.currentUser, { displayName: data.username });
+        }
+        
+        toast({
+          title: "¡Cuenta Vinculada Exitosamente!",
+          description: `Bienvenido/a, ${data.username}.`,
+        });
 
-      // Update the user's profile in Firebase Auth
-      await updateProfile(user, { displayName: data.username });
-
-      // The onUserCreate cloud function will handle creating the user profile in Firestore.
-      // We don't need to do it here anymore.
-
-      toast({
-        title: "¡Cuenta Creada Exitosamente!",
-        description: `Bienvenido/a, ${data.username}. Ahora puedes iniciar sesión.`,
-      });
-      router.push('/login'); // Redirect to login page after successful signup
+      } else {
+        // This case should be rare if anonymous auth is the default.
+        // It would mean a signed-in user is trying to sign up again.
+        toast({ title: "Acción no válida", description: "Ya tienes una sesión iniciada.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      router.push('/'); // Redirect to home page after successful signup/link
 
     } catch (err: any) {
       if (err.code === 'auth/email-already-in-use') {
-        setError("Este correo electrónico ya está registrado. Por favor, intenta con otro.");
+        setError("Este correo electrónico ya está registrado. Por favor, inicia sesión.");
+      } else if (err.code === 'auth/credential-already-in-use') {
+        setError("Esta cuenta ya está vinculada. Por favor, inicia sesión.");
       } else {
         setError("Ocurrió un error inesperado. Por favor, inténtalo de nuevo.");
-        console.error("Signup error:", err);
+        console.error("Signup/Link error:", err);
       }
     } finally {
       setIsSubmitting(false);
@@ -82,7 +95,7 @@ export default function SignupPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-headline">Crear una Cuenta Nueva</CardTitle>
-          <CardDescription>Regístrate para empezar a participar.</CardDescription>
+          <CardDescription>Regístrate para guardar tu progreso y participar.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -195,5 +208,3 @@ export default function SignupPage() {
     </div>
   );
 }
-
-    
