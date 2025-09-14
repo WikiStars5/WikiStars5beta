@@ -2,9 +2,9 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import type { Figure, Attitude, EmotionVote, LocalUserStreak, AttitudeKey } from '@/lib/types';
+import type { Figure, Attitude, EmotionVote, LocalUserStreak, AttitudeKey, EmotionKey } from '@/lib/types';
 import { getFiguresByIds } from '@/lib/placeholder-data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { correctMalformedUrl } from '@/lib/utils';
 import Image from 'next/image';
+import { Separator } from '../ui/separator';
 
 const EMOTION_IMAGES: Record<string, string> = {
   alegria: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414',
@@ -21,6 +22,15 @@ const EMOTION_IMAGES: Record<string, string> = {
   miedo: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985',
   desagrado: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb',
   furia: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f',
+};
+
+const EMOTION_LABELS: Record<EmotionKey, string> = {
+    alegria: "Alegría",
+    envidia: "Envidia",
+    tristeza: "Tristeza",
+    miedo: "Miedo",
+    desagrado: "Desagrado",
+    furia: "Furia",
 };
 
 const ATTITUDE_ICONS: Record<AttitudeKey, React.ElementType> = {
@@ -87,10 +97,21 @@ export function ProfileActivity() {
 
         fetchActivity();
     }, [firebaseUser, isAuthLoading]);
+
+    const groupedEmotionVotes = useMemo(() => {
+        const groups: Partial<Record<EmotionKey, (EmotionVote & { figure: Figure | null })[]>> = {};
+        for (const vote of emotionVotes) {
+            if (!groups[vote.emotion]) {
+                groups[vote.emotion] = [];
+            }
+            groups[vote.emotion]?.push(vote);
+        }
+        return groups;
+    }, [emotionVotes]);
     
     if (isLoading || isAuthLoading) {
         return (
-            <Card className="h-full">
+            <Card>
                 <CardContent className="flex items-center justify-center h-full">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     <p className="ml-4 text-muted-foreground">Cargando tu actividad...</p>
@@ -150,18 +171,28 @@ export function ProfileActivity() {
                     </TabsContent>
                     <TabsContent value="emotion" className="mt-4">
                          {emotionVotes.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                {emotionVotes.map(vote => vote.figure && (
-                                    <Link key={vote.figureId} href={`/figures/${vote.figureId}`} className="group relative text-center">
-                                        <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-primary transition-all">
-                                            <AvatarImage src={correctMalformedUrl(vote.figure.photoUrl)} alt={vote.figure.name} />
-                                            <AvatarFallback><User /></AvatarFallback>
-                                        </Avatar>
-                                        <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-card p-1.5 rounded-full shadow-lg">
-                                            <Image src={EMOTION_IMAGES[vote.emotion]} alt={vote.emotion} width={24} height={24} />
+                            <div className="space-y-6">
+                                {Object.entries(groupedEmotionVotes).map(([emotion, votes]) => (
+                                    <div key={emotion}>
+                                        <div className="flex items-center gap-2 mb-3">
+                                             <Image src={EMOTION_IMAGES[emotion]} alt={emotion} width={24} height={24} />
+                                            <h3 className="font-semibold text-lg">
+                                                Perfiles que te provocan {EMOTION_LABELS[emotion as EmotionKey]}
+                                            </h3>
                                         </div>
-                                        <p className="text-sm font-medium mt-2 group-hover:text-primary transition-colors">{vote.figure.name}</p>
-                                    </Link>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                            {votes.map(vote => vote.figure && (
+                                                <Link key={vote.figureId} href={`/figures/${vote.figureId}`} className="group relative text-center">
+                                                    <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-primary transition-all">
+                                                        <AvatarImage src={correctMalformedUrl(vote.figure.photoUrl)} alt={vote.figure.name} />
+                                                        <AvatarFallback><User /></AvatarFallback>
+                                                    </Avatar>
+                                                    <p className="text-sm font-medium mt-2 group-hover:text-primary transition-colors">{vote.figure.name}</p>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                        <Separator className="mt-6"/>
+                                    </div>
                                 ))}
                             </div>
                         ) : (
