@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,32 +17,38 @@ import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
 import { LogOut, User, ShieldCheck, Loader2 } from 'lucide-react';
 import { correctMalformedUrl } from "@/lib/utils";
+import { useLocalProfile } from "@/hooks/use-local-profile";
 
 export function UserNav() {
   const { currentUser, firebaseUser, isAdmin, isLoading, logout } = useAuth();
+  const { localProfile } = useLocalProfile(firebaseUser?.uid);
   
   if (isLoading) {
     return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
   }
 
+  // If user is not authenticated (which they always should be, even anon), show nothing.
   if (!firebaseUser) {
-    return (
-      <div className="flex items-center gap-2">
-        <Button asChild>
-          <Link href="/login">Acceder</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/signup">Registrarse</Link>
-        </Button>
-      </div>
-    );
+    return null; 
   }
 
-  // User is authenticated, but profile data might still be loading
-  const displayName = currentUser?.username || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuario';
-  const displayEmail = currentUser?.email || firebaseUser.email || '';
-  const photoURL = currentUser?.photoURL || firebaseUser.photoURL;
+  // User is anonymous and has NOT created a local profile yet.
+  if (firebaseUser.isAnonymous && !localProfile) {
+    return null;
+  }
+  
+  const isGuest = firebaseUser.isAnonymous;
 
+  const displayName = isAdmin 
+    ? currentUser?.username 
+    : (isGuest ? localProfile?.username : (currentUser?.username || 'Usuario'));
+
+  const displayEmail = isAdmin ? currentUser?.email : (isGuest ? "Invitado" : currentUser?.email);
+  const photoURL = isAdmin ? currentUser?.photoURL : null;
+
+  if (!displayName) {
+     return null; // Don't render the nav if there's no profile info to show
+  }
 
   return (
     <DropdownMenu>

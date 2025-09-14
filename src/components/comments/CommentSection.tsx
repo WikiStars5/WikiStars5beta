@@ -5,7 +5,7 @@
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, MessagesSquare, Send, Star, User, UserPlus, StarOff } from 'lucide-react';
+import { Loader2, MessagesSquare, Send, Star, User, UserPlus, StarOff, Save } from 'lucide-react';
 import type { Figure, Comment as CommentType, RatingValue } from '@/lib/types';
 import { addComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
@@ -14,15 +14,18 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { CommentItem } from './CommentItem';
 import { Separator } from '../ui/separator';
 import { useAuth } from '@/hooks/use-auth';
-import Link from 'next/link';
 import { Textarea } from '../ui/textarea';
 import { cn } from '@/lib/utils';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel } from '../ui/form';
+import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel, FormProvider } from '../ui/form';
 import { StreakAnimation } from '../shared/StreakAnimation';
-
+import { useLocalProfile } from '@/hooks/use-local-profile';
+import { Input } from '../ui/input';
+import { CountryCombobox } from '../shared/CountryCombobox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { GENDER_OPTIONS } from '@/config/genderOptions';
 
 const StarRatingInput = ({ value, onChange, disabled }: { value: RatingValue | null, onChange: (value: RatingValue) => void, disabled: boolean }) => {
   const [hoverRating, setHoverRating] = React.useState<number | null>(null);
@@ -56,6 +59,103 @@ const commentSchema = z.object({
 
 type CommentFormData = z.infer<typeof commentSchema>;
 
+
+const guestProfileSchema = z.object({
+  username: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.').max(30, 'El nombre no puede tener más de 30 caracteres.'),
+  countryCode: z.string().optional(),
+  gender: z.string().optional(),
+});
+type GuestProfileFormData = z.infer<typeof guestProfileSchema>;
+
+
+const GuestProfileForm = ({ onProfileCreated }: { onProfileCreated: () => void }) => {
+    const { firebaseUser } = useAuth();
+    const { saveLocalProfile } = useLocalProfile(firebaseUser?.uid);
+    const { toast } = useToast();
+
+    const form = useForm<GuestProfileFormData>({
+        resolver: zodResolver(guestProfileSchema),
+        defaultValues: {
+            username: '',
+            countryCode: '',
+            gender: '',
+        },
+    });
+
+    const onSubmit: SubmitHandler<GuestProfileFormData> = (data) => {
+        saveLocalProfile(data.username, data.countryCode || '', data.gender || '');
+        toast({
+            title: "¡Perfil de Invitado Creado!",
+            description: "Ahora puedes dejar tu opinión.",
+        });
+        onProfileCreated();
+    };
+    
+    return (
+        <FormProvider {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4 border rounded-lg bg-card-darker">
+            <h3 className="font-semibold">Crea tu perfil de invitado para participar</h3>
+            <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Nombre de Usuario</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Tu nombre público" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="countryCode"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>País</FormLabel>
+                        <CountryCombobox
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                        />
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Sexo</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder="Selecciona tu sexo..." />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {GENDER_OPTIONS.map(option => (
+                                <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+                <Save className="mr-2 h-4 w-4" />
+                Guardar y Comentar
+            </Button>
+        </form>
+        </FormProvider>
+    );
+};
+
+
 const INITIAL_COMMENTS_TO_SHOW = 5;
 
 export function CommentSection({ figure, highlightedCommentId }: CommentSectionProps) {
@@ -64,7 +164,14 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
   const [showAllComments, setShowAllComments] = React.useState(false);
   const [streakToAnimate, setStreakToAnimate] = React.useState<number | null>(null);
   const { toast } = useToast();
-  const { currentUser, firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
+  const { currentUser, firebaseUser, isAnonymous, isAdmin, isLoading: isAuthLoading } = useAuth();
+  const { localProfile, clearLocalProfile } = useLocalProfile(firebaseUser?.uid);
+
+  const [hasGuestProfile, setHasGuestProfile] = React.useState(false);
+   React.useEffect(() => {
+    setHasGuestProfile(!!localProfile);
+  }, [localProfile]);
+
 
   const form = useForm<CommentFormData>({
     resolver: zodResolver(commentSchema),
@@ -97,10 +204,42 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
 
     return () => unsubscribe();
   }, [figure.id, toast]);
+  
+  const getAuthorData = () => {
+    if (!firebaseUser) return null;
+
+    if (isAdmin && currentUser) {
+      return {
+        id: currentUser.uid,
+        name: currentUser.username,
+        photoUrl: currentUser.photoURL,
+        gender: currentUser.gender || '',
+        country: currentUser.country || '',
+        countryCode: currentUser.countryCode || '',
+        isAnonymous: false,
+      };
+    }
+    
+    if (isAnonymous && localProfile) {
+       return {
+        id: firebaseUser.uid,
+        name: localProfile.username,
+        photoUrl: null,
+        gender: localProfile.gender || '',
+        country: '',
+        countryCode: localProfile.countryCode || '',
+        isAnonymous: true,
+      };
+    }
+    
+    return null;
+  }
+
 
   const onCommentSubmit = async (data: CommentFormData) => {
-    if (!firebaseUser) {
-      toast({ title: "Error", description: "No se pudo identificar al usuario.", variant: "destructive" });
+    const authorData = getAuthorData();
+    if (!authorData) {
+      toast({ title: "Error", description: "No se pudo identificar al autor.", variant: "destructive" });
       return;
     }
     
@@ -109,20 +248,10 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
       return;
     }
 
-    const authorData = {
-        id: firebaseUser.uid,
-        name: currentUser?.username || firebaseUser.displayName || 'Invitado',
-        photoUrl: currentUser?.photoURL || firebaseUser.photoURL || null,
-        gender: currentUser?.gender || '',
-        country: currentUser?.country || '',
-        countryCode: currentUser?.countryCode || '',
-        isAnonymous: firebaseUser.isAnonymous,
-    };
-    
     try {
         await addComment(figure.id, authorData, data.text, data.rating);
         
-        if (!isAnonymous) {
+        if (isAnonymous) {
           const newStreak = await updateStreak(figure.id, authorData);
           if (newStreak) {
             setStreakToAnimate(newStreak);
@@ -141,19 +270,11 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
       if (isAuthLoading) {
           return <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>;
       }
-
-      if (isAnonymous) {
-          return (
-            <div className="text-center p-6 border-2 border-dashed rounded-lg">
-                <p className="mb-4 text-muted-foreground">Debes tener una cuenta para dejar una opinión o calificación.</p>
-                <Button asChild>
-                    <Link href="/signup">
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Crear Cuenta para Participar
-                    </Link>
-                </Button>
-            </div>
-          )
+      
+      const canComment = isAdmin || (isAnonymous && hasGuestProfile);
+      
+      if (!canComment) {
+          return <GuestProfileForm onProfileCreated={() => setHasGuestProfile(true)} />;
       }
       
       return (
