@@ -39,13 +39,6 @@ const StarRatingInput = ({ value, onChange, disabled }: { value: RatingValue | n
 
   const handleRatingClick = (rating: RatingValue) => {
     onChange(rating);
-    if (rating > 0) {
-      const soundUrl = STAR_SOUNDS[rating];
-      if (soundUrl) {
-        const audio = new Audio(soundUrl);
-        audio.play().catch(error => console.error("Error playing audio:", error));
-      }
-    }
   };
 
   return (
@@ -272,6 +265,14 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
 
     try {
         await addComment(figure.id, authorData, data.text, data.rating);
+        
+        if (data.rating > 0) {
+            const soundUrl = STAR_SOUNDS[data.rating];
+            if (soundUrl) {
+                const audio = new Audio(soundUrl);
+                audio.play().catch(error => console.error("Error playing audio:", error));
+            }
+        }
         
         if (isAnonymous) {
           const newStreak = await updateStreak(figure.id, authorData);
