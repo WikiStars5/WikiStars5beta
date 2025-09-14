@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -36,7 +35,7 @@ interface ComboboxProps {
 
 export function Combobox({ options, value, onChange, placeholder = "Select an option...", disabled, creatable = false }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
-  const [search, setSearch] = React.useState("");
+  const [inputValue, setInputValue] = React.useState("");
 
   const selectedOption = value ? options.find(
     (option) => option.value.toLowerCase() === value.toLowerCase()
@@ -45,15 +44,15 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
   const handleSelect = (currentValue: string) => {
     onChange(currentValue);
     setOpen(false);
-    setSearch("");
   };
-
-  // Reset search when popover closes
+  
+  // When popover is closed, reset the input value
   React.useEffect(() => {
     if (!open) {
-      setSearch("");
+      setInputValue("");
     }
   }, [open]);
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -73,18 +72,17 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
         <Command>
           <CommandInput
             placeholder="Buscar..."
-            value={search}
-            onValueChange={setSearch}
+            onValueChange={setInputValue}
           />
           <CommandList>
             <CommandEmpty>
-                {creatable && search.trim().length > 0 ? (
+                {creatable && inputValue.trim().length > 0 ? (
                     <CommandItem
-                        onSelect={() => handleSelect(search)}
-                        value={search}
+                        onSelect={() => handleSelect(inputValue)}
+                        value={inputValue}
                         className="cursor-pointer"
                     >
-                    Crear "{search}"
+                    Crear "{inputValue}"
                     </CommandItem>
                 ) : "No se encontraron opciones."}
             </CommandEmpty>
