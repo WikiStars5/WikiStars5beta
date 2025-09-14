@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -129,7 +130,7 @@ export default function ProfilePage() {
                             <ShieldAlert className="h-4 w-4 text-blue-400" />
                             <AlertTitle className="text-blue-300">Estás navegando como invitado</AlertTitle>
                             <AlertDescription className="text-blue-400/80">
-                               Tu progreso (votos, rachas) se guardará. Para mantenerlo permanentemente, crea una cuenta de Google para vincular tus datos.
+                               Tu progreso (votos, rachas, etc.) se guarda únicamente en este dispositivo.
                             </AlertDescription>
                         </Alert>
                       )}
