@@ -552,15 +552,15 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
             <Separator/>
             <div className="space-y-2">
               <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Hashtags</h3>
-              <Input
-                placeholder="Añade un hashtag y presiona Enter"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddHashtag((e.target as HTMLInputElement).value);
-                    (e.target as HTMLInputElement).value = '';
-                  }
+              <Combobox
+                options={hashtagOptions}
+                value={hashtagSearch}
+                onChange={(value) => {
+                  if (value) handleAddHashtag(value);
+                  setHashtagSearch(''); // Reset search
                 }}
+                placeholder="Busca o crea un hashtag..."
+                creatable
               />
               <div className="flex flex-wrap gap-2 pt-2">
                 {(formData.hashtags || []).map((tag) => (
@@ -586,4 +586,3 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
     </Card>
   );
 }
-

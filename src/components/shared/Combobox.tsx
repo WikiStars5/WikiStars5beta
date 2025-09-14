@@ -43,12 +43,18 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
   );
 
   const handleSelect = (currentValue: string) => {
-    const selected = options.find(
-        (c) => c.label.toLowerCase() === currentValue.toLowerCase()
-    );
-    onChange(selected ? selected.value : currentValue);
+    // For creatable, the currentValue is the value itself.
+    // For non-creatable, it's the label, so we find the value.
+    if (creatable) {
+        onChange(currentValue);
+    } else {
+        const selected = options.find(
+            (c) => c.label.toLowerCase() === currentValue.toLowerCase()
+        );
+        onChange(selected ? selected.value : null);
+    }
     setOpen(false);
-    setInputValue('');
+    setInputValue(''); // Reset input after selection/creation
   };
 
   return (
@@ -72,17 +78,18 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
             value={inputValue}
             onValueChange={setInputValue}
           />
-          <CommandEmpty>
-            {creatable && inputValue.trim().length > 0 ? (
-                 <CommandItem
-                    onSelect={() => handleSelect(inputValue)}
-                    value={inputValue}
-                 >
-                   Crear "{inputValue}"
-                 </CommandItem>
-            ) : "No se encontraron opciones."}
-          </CommandEmpty>
           <CommandList>
+            <CommandEmpty>
+                {creatable && inputValue.trim().length > 0 ? (
+                    <CommandItem
+                        onSelect={() => handleSelect(inputValue)}
+                        value={inputValue}
+                        className="cursor-pointer"
+                    >
+                    Crear "{inputValue}"
+                    </CommandItem>
+                ) : "No se encontraron opciones."}
+            </CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
