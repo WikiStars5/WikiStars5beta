@@ -61,12 +61,12 @@ export function ProfileHeader({
                     <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
                 </div>
                 {currentStreak && currentStreak > 0 && (
-                    <div className="flex items-center gap-1.5 text-orange-400 font-bold text-sm">
+                    <div className="flex items-center gap-1.5 text-orange-400 font-bold text-lg">
                          <Image
                             src={FIRE_GIF_URL}
                             alt="Racha activa"
-                            width={20}
-                            height={20}
+                            width={24}
+                            height={24}
                             unoptimized
                             data-ai-hint="fire gif"
                         />
