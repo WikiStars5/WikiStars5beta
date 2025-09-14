@@ -6,7 +6,7 @@ import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, MessagesSquare, Send, Star, User, UserPlus, StarOff, Save } from 'lucide-react';
-import type { Figure, Comment as CommentType, RatingValue } from '@/lib/types';
+import type { Figure, Comment as CommentType, RatingValue, LocalProfile } from '@/lib/types';
 import { addComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
@@ -21,7 +21,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel, FormProvider } from '../ui/form';
 import { StreakAnimation } from '../shared/StreakAnimation';
-import { useLocalProfile } from '@/hooks/use-local-profile';
 import { Input } from '../ui/input';
 import { CountryCombobox } from '../shared/CountryCombobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -68,9 +67,7 @@ const guestProfileSchema = z.object({
 type GuestProfileFormData = z.infer<typeof guestProfileSchema>;
 
 
-const GuestProfileForm = ({ onProfileCreated }: { onProfileCreated: () => void }) => {
-    const { firebaseUser } = useAuth();
-    const { saveLocalProfile } = useLocalProfile(firebaseUser?.uid);
+const GuestProfileForm = ({ onProfileCreated }: { onProfileCreated: (profile: LocalProfile) => void }) => {
     const { toast } = useToast();
 
     const form = useForm<GuestProfileFormData>({
@@ -83,17 +80,21 @@ const GuestProfileForm = ({ onProfileCreated }: { onProfileCreated: () => void }
     });
 
     const onSubmit: SubmitHandler<GuestProfileFormData> = (data) => {
-        saveLocalProfile(data.username, data.countryCode || '', data.gender || '');
+        const profile = {
+            username: data.username,
+            countryCode: data.countryCode || '',
+            gender: data.gender || '',
+        };
+        onProfileCreated(profile);
         toast({
             title: "¡Perfil de Invitado Creado!",
             description: "Ahora puedes dejar tu opinión.",
         });
-        onProfileCreated();
     };
     
     return (
         <FormProvider {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4 border rounded-lg bg-card-darker">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4 border rounded-lg bg-muted/20">
             <h3 className="font-semibold">Crea tu perfil de invitado para participar</h3>
             <FormField
                 control={form.control}
@@ -164,15 +165,16 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
   const [showAllComments, setShowAllComments] = React.useState(false);
   const [streakToAnimate, setStreakToAnimate] = React.useState<number | null>(null);
   const { toast } = useToast();
-  const { currentUser, firebaseUser, isAnonymous, isAdmin, isLoading: isAuthLoading } = useAuth();
-  const { localProfile, clearLocalProfile } = useLocalProfile(firebaseUser?.uid);
-
-  const [hasGuestProfile, setHasGuestProfile] = React.useState(false);
-   React.useEffect(() => {
-    setHasGuestProfile(!!localProfile);
-  }, [localProfile]);
-
-
+  const { 
+    currentUser, 
+    firebaseUser, 
+    isAnonymous, 
+    isAdmin, 
+    isLoading: isAuthLoading,
+    localProfile,
+    updateUserProfile,
+  } = useAuth();
+  
   const form = useForm<CommentFormData>({
     resolver: zodResolver(commentSchema),
     defaultValues: {
@@ -271,10 +273,10 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
           return <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>;
       }
       
-      const canComment = isAdmin || (isAnonymous && hasGuestProfile);
+      const canComment = isAdmin || (isAnonymous && localProfile);
       
       if (!canComment) {
-          return <GuestProfileForm onProfileCreated={() => setHasGuestProfile(true)} />;
+          return <GuestProfileForm onProfileCreated={(profile) => updateUserProfile(profile.username, profile.countryCode, profile.gender)} />;
       }
       
       return (

@@ -2,12 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-
-interface LocalProfile {
-  username: string;
-  countryCode: string;
-  gender: string;
-}
+import type { LocalProfile } from '@/lib/types';
 
 const getStorageKey = (uid: string | undefined) => uid ? `wikistars5-local-profile-${uid}` : '';
 
@@ -16,7 +11,10 @@ export function useLocalProfile(uid: string | undefined) {
   const storageKey = getStorageKey(uid);
 
   useEffect(() => {
-    if (!storageKey) return;
+    if (!storageKey) {
+        setLocalProfile(null);
+        return;
+    };
 
     try {
       const item = window.localStorage.getItem(storageKey);
@@ -31,12 +29,11 @@ export function useLocalProfile(uid: string | undefined) {
     }
   }, [storageKey]);
 
-  const saveLocalProfile = useCallback((username: string, countryCode: string, gender: string) => {
+  const saveLocalProfile = useCallback((profile: LocalProfile) => {
     if (!storageKey) return;
     try {
-      const profile: LocalProfile = { username, countryCode, gender };
       window.localStorage.setItem(storageKey, JSON.stringify(profile));
-      setLocalProfile(profile);
+      // No longer setting state here, as it will be managed by AuthProvider
     } catch (error) {
       console.error("Error saving to local storage", error);
     }
@@ -46,7 +43,7 @@ export function useLocalProfile(uid: string | undefined) {
       if (!storageKey) return;
       try {
         window.localStorage.removeItem(storageKey);
-        setLocalProfile(null);
+        // No longer setting state here
       } catch (error) {
         console.error("Error removing from local storage", error);
       }

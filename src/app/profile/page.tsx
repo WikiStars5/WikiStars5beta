@@ -16,7 +16,6 @@ import { CountryCombobox } from '@/components/shared/CountryCombobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { useRouter } from 'next/navigation';
-import { useLocalProfile } from '@/hooks/use-local-profile';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 
@@ -29,10 +28,8 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
-  const { currentUser, firebaseUser, isAnonymous, isLoading, updateUserProfile } = useAuth();
-  const { localProfile, saveLocalProfile } = useLocalProfile(firebaseUser?.uid);
+  const { currentUser, isAnonymous, isLoading, updateUserProfile, localProfile } = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -68,17 +65,8 @@ export default function ProfilePage() {
 
 
   const onSubmit: SubmitHandler<ProfileFormValues> = async (data) => {
-    if (!firebaseUser) {
-        toast({ title: "Error", description: "No se ha podido identificar al usuario.", variant: "destructive" });
-        return;
-    }
-    
     try {
-        if (isAnonymous) {
-            saveLocalProfile(data.username, data.countryCode || '', data.gender || '');
-        } else {
-            await updateUserProfile(data.username, data.countryCode || '', data.gender || '');
-        }
+        await updateUserProfile(data.username, data.countryCode || '', data.gender || '');
         
         toast({
           title: "Perfil Guardado",
@@ -121,7 +109,7 @@ export default function ProfilePage() {
                 <ShieldAlert className="h-4 w-4 text-blue-400" />
                 <AlertTitle className="text-blue-300">Estás navegando como invitado</AlertTitle>
                 <AlertDescription className="text-blue-400/80">
-                   Tu progreso (votos, rachas) se guardará. Para mantenerlo permanentemente, <Link href="/signup" className="font-bold underline hover:text-blue-300">crea una cuenta</Link> para vincular tus datos.
+                   Tu progreso (votos, rachas) se guardará. Para mantenerlo permanentemente, crea una cuenta de Google para vincular tus datos.
                 </AlertDescription>
             </Alert>
           )}

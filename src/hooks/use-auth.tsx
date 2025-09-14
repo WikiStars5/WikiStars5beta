@@ -20,7 +20,7 @@ import {
   type User as FirebaseUser,
   type AuthCredential
 } from 'firebase/auth';
-import type { UserProfile } from '@/lib/types';
+import type { UserProfile, LocalProfile } from '@/lib/types';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { ADMIN_UID } from '@/config/admin';
 import { useRouter } from 'next/navigation';
@@ -29,6 +29,8 @@ import { useLocalProfile } from './use-local-profile';
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   currentUser: UserProfile | null;
+  localProfile: LocalProfile | null;
+  setLocalProfile: (profile: LocalProfile | null) => void;
   isAdmin: boolean;
   isLoading: boolean;
   isAnonymous: boolean;
@@ -45,7 +47,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const { localProfile, clearLocalProfile } = useLocalProfile(firebaseUser?.uid);
+  
+  // Integrate useLocalProfile directly into the AuthProvider
+  const { localProfile: initialLocalProfile, saveLocalProfile, clearLocalProfile } = useLocalProfile(firebaseUser?.uid);
+  const [localProfile, setLocalProfile] = useState<LocalProfile | null>(initialLocalProfile);
+
+  useEffect(() => {
+    setLocalProfile(initialLocalProfile);
+  }, [initialLocalProfile]);
+
 
   const handleUser = useCallback(async (user: FirebaseUser | null) => {
     setIsLoading(true);
@@ -71,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
       if (!firebaseUser) {
+        setIsLoading(false);
         return;
       }
       
@@ -79,7 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (userDocSnap.exists()) {
           setCurrentUser(userDocSnap.data() as UserProfile);
         } else {
-          // Profile might not be created yet for a new anonymous user. This is fine.
           setCurrentUser(null);
         }
         setIsLoading(false);
@@ -101,30 +111,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const logout = async () => {
     await signOut(auth);
-    // After signing out, onAuthStateChanged will trigger and sign in a new anonymous user.
     router.push('/');
   };
   
   const linkAccount = async (credential: AuthCredential, newUsername: string) => {
     if (!auth.currentUser) throw new Error("No user to link.");
     
-    // 1. Link the account
     const result = await linkWithCredential(auth.currentUser, credential);
     const linkedUser = result.user;
 
-    // 2. Update the profile displayName
     await updateProfile(linkedUser, { displayName: newUsername });
 
-    // 3. Migrate local profile data to Firestore
     if (localProfile) {
         await callFirebaseFunction('updateUserProfile', {
-            username: newUsername, // Use the new username from the form
+            username: newUsername,
             countryCode: localProfile.countryCode,
             gender: localProfile.gender,
         });
-        clearLocalProfile(); // Clean up local storage after migration
+        clearLocalProfile();
     } else {
-        // If there's no local profile, still set the username
          await callFirebaseFunction('updateUserProfile', {
             username: newUsername,
             countryCode: '',
@@ -134,6 +139,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateUserProfile = async (username: string, countryCode: string, gender: string) => {
+    if (isAnonymous && firebaseUser) {
+        const profile = { username, countryCode, gender };
+        saveLocalProfile(profile);
+        setLocalProfile(profile);
+        return;
+    }
+
     if (!auth.currentUser) {
       throw new Error("No authenticated user found.");
     }
@@ -150,6 +162,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = {
     firebaseUser,
     currentUser,
+    localProfile,
+    setLocalProfile,
     isAdmin,
     isLoading,
     isAnonymous,

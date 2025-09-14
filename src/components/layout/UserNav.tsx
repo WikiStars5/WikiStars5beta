@@ -17,11 +17,9 @@ import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
 import { LogOut, User, ShieldCheck, Loader2 } from 'lucide-react';
 import { correctMalformedUrl } from "@/lib/utils";
-import { useLocalProfile } from "@/hooks/use-local-profile";
 
 export function UserNav() {
-  const { currentUser, firebaseUser, isAdmin, isLoading, logout } = useAuth();
-  const { localProfile } = useLocalProfile(firebaseUser?.uid);
+  const { currentUser, firebaseUser, isAdmin, isLoading, logout, localProfile } = useAuth();
   
   if (isLoading) {
     return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
@@ -32,12 +30,12 @@ export function UserNav() {
     return null; 
   }
 
-  // User is anonymous and has NOT created a local profile yet.
-  if (firebaseUser.isAnonymous && !localProfile) {
-    return null;
-  }
-  
   const isGuest = firebaseUser.isAnonymous;
+  
+  // Do not show the nav if the user is a guest AND has not created a local profile yet.
+  if (isGuest && !localProfile) {
+      return null;
+  }
 
   const displayName = isAdmin 
     ? currentUser?.username 

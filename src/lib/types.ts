@@ -145,6 +145,13 @@ export interface UserProfile {
   isAnonymous?: boolean;
 }
 
+export interface LocalProfile {
+  username: string;
+  countryCode: string;
+  gender: string;
+}
+
+
 export interface GenderOption {
   value: string;
   label: string;
