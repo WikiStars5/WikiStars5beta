@@ -362,9 +362,9 @@ export function CommentItem({
                 {canDelete && (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" disabled={isDeleting || isAuthLoading} className="text-xs h-auto py-1 px-2 text-destructive hover:text-destructive hover:bg-destructive/10">
-                                {isDeleting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Trash2 className="mr-1 h-3 w-3" />}
-                                Eliminar
+                            <Button variant="ghost" size="icon" disabled={isDeleting || isAuthLoading} className="text-xs h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                <span className="sr-only">Eliminar</span>
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
