@@ -12,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Sparkles, Loader2, CalendarIcon, X } from 'lucide-react';
 import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory } from '@/lib/types';
+import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,6 +29,8 @@ import { correctMalformedUrl } from '@/lib/utils';
 import { OCCUPATION_OPTIONS } from '@/config/occupations';
 import { Slider } from '../ui/slider';
 import { VIDEO_GAME_GENRES } from '@/config/genres';
+import { Combobox } from '../shared/Combobox';
+import { searchHashtags } from '@/app/actions/searchHashtagsAction';
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -74,9 +76,12 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   
   const [socialLinks, setSocialLinks] = useState(initialData?.socialLinks || {});
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
-  const [newHashtag, setNewHashtag] = useState('');
   const [isFeatured, setIsFeatured] = useState(false);
   const [nationalityCode, setNationalityCode] = useState('');
+
+  const [hashtagOptions, setHashtagOptions] = useState<{ value: string; label: string }[]>([]);
+  const [hashtagSearch, setHashtagSearch] = useState('');
+
 
   // Character specific
   const [category, setCategory] = useState('');
@@ -183,6 +188,15 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     }
   }, [initialData]);
 
+  useEffect(() => {
+    const loadHashtags = async () => {
+      const existingHashtags = await searchHashtags('');
+      const options = existingHashtags.map(h => ({ value: h.id, label: `#${h.id}` }));
+      setHashtagOptions(options);
+    };
+    loadHashtags();
+  }, []);
+
   const handleProfileTypeChange = (value: ProfileType) => {
     setProfileType(value);
     if (value === 'character') {
@@ -192,18 +206,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     }
   };
   
-  const handleAddHashtag = () => {
-    const trimmedHashtag = newHashtag.trim().replace(/#/g, '');
+  const handleAddHashtag = (newTag: string) => {
+    const trimmedHashtag = newTag.trim().replace(/#/g, '');
     if (trimmedHashtag && !hashtags.includes(trimmedHashtag)) {
       setHashtags([...hashtags, trimmedHashtag]);
-      setNewHashtag('');
-    }
-  };
-
-  const handleHashtagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddHashtag();
     }
   };
 
@@ -565,19 +571,28 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       </div>
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Hashtags</h3>
-      <div>
-        <div className="flex gap-2">
-           <Input
-            id="new-hashtag"
-            value={newHashtag}
-            onChange={(e) => setNewHashtag(e.target.value)}
-            onKeyDown={handleHashtagInputKeyDown}
-            placeholder="Escribe un hashtag y presiona Enter..."
-          />
-          <Button type="button" onClick={handleAddHashtag}>Añadir</Button>
+        <div className="space-y-2">
+            <Combobox
+                options={hashtagOptions}
+                value={hashtagSearch}
+                onChange={(value) => {
+                    if (value) handleAddHashtag(value);
+                    setHashtagSearch(''); // Reset search
+                }}
+                placeholder="Busca o crea un hashtag..."
+                creatable
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+                {hashtags.map(tag => (
+                    <Badge key={tag} variant="secondary" className="text-sm">
+                        {tag}
+                        <button type="button" onClick={() => handleRemoveHashtag(tag)} className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" aria-label={`Eliminar ${tag}`}>
+                            <X className="h-3 w-3" />
+                        </button>
+                    </Badge>
+                ))}
+            </div>
         </div>
-        <div className="flex flex-wrap gap-2 mt-2">{hashtags.map(tag => (<Badge key={tag} variant="secondary" className="text-sm">{tag}<button type="button" onClick={() => handleRemoveHashtag(tag)} className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" aria-label={`Eliminar ${tag}`}><X className="h-3 w-3" /></button></Badge>))}</div>
-      </div>
       
       <div className="mt-6 border-t pt-4 border-border">
         <div className="flex items-center space-x-2">

@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
-import type { Figure, MediaSubcategory } from "@/lib/types";
+import type { Figure, MediaSubcategory, Hashtag } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -35,6 +35,8 @@ import { MediaInfoTemplate } from './infobox-templates/MediaInfoTemplate';
 import { Slider } from '../ui/slider';
 import { Badge } from '../ui/badge';
 import { VIDEO_GAME_GENRES } from '@/config/genres';
+import { Combobox } from '../shared/Combobox';
+import { searchHashtags } from '@/app/actions/searchHashtagsAction';
 
 interface FigureInfoProps {
   figure: Figure;
@@ -261,7 +263,8 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Figure>>(figure);
-  const [newHashtag, setNewHashtag] = useState('');
+  const [hashtagOptions, setHashtagOptions] = useState<{ value: string; label: string }[]>([]);
+  const [hashtagSearch, setHashtagSearch] = useState('');
 
   useEffect(() => {
     if (!isEditing) {
@@ -269,6 +272,17 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     }
   }, [figure, isEditing]);
 
+  useEffect(() => {
+    if (isEditing) {
+      const loadHashtags = async () => {
+        const existingHashtags = await searchHashtags('');
+        const options = existingHashtags.map(h => ({ value: h.id, label: `#${h.id}`}));
+        setHashtagOptions(options);
+      };
+      loadHashtags();
+    }
+  }, [isEditing]);
+  
   const handleInputChange = (field: keyof Figure, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -283,24 +297,15 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     }));
   };
   
-  const handleAddHashtag = () => {
-    const trimmedHashtag = newHashtag.trim().replace(/#/g, '');
+  const handleAddHashtag = (newTag: string) => {
+    const trimmedHashtag = newTag.trim().replace(/#/g, '');
     if (trimmedHashtag && !(formData.hashtags || []).includes(trimmedHashtag)) {
         setFormData(prev => ({
             ...prev,
             hashtags: [...(prev.hashtags || []), trimmedHashtag]
         }));
-        setNewHashtag('');
     }
   };
-
-  const handleHashtagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddHashtag();
-    }
-  };
-
 
   const handleRemoveHashtag = (hashtagToRemove: string) => {
     setFormData(prev => ({
@@ -534,32 +539,32 @@ export function FigureInfo({ figure }: FigureInfoProps) {
             </div>
             <Separator/>
             <div className="space-y-2">
-                <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Hashtags</h3>
-                 <div className="flex gap-2">
-                    <Input
-                        id="new-hashtag"
-                        value={newHashtag}
-                        onChange={(e) => setNewHashtag(e.target.value)}
-                        onKeyDown={handleHashtagInputKeyDown}
-                        placeholder="Escribe un hashtag y presiona Enter..."
-                    />
-                    <Button type="button" onClick={handleAddHashtag}>Añadir</Button>
-                </div>
-                <div className="flex flex-wrap gap-2 pt-2">
-                    {(formData.hashtags || []).map(tag => (
-                        <Badge key={tag} variant="secondary" className="text-sm">
-                            {tag}
-                            <button 
-                                type="button" 
-                                onClick={() => handleRemoveHashtag(tag)} 
-                                className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" 
-                                aria-label={`Eliminar ${tag}`}
-                            >
-                                <X className="h-3 w-3" />
-                            </button>
-                        </Badge>
-                    ))}
-                </div>
+              <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Hashtags</h3>
+              <Combobox
+                options={hashtagOptions}
+                value={hashtagSearch}
+                onChange={(value) => {
+                  if (value) handleAddHashtag(value);
+                  setHashtagSearch(''); // Reset search
+                }}
+                placeholder="Busca o crea un hashtag..."
+                creatable
+              />
+              <div className="flex flex-wrap gap-2 pt-2">
+                  {(formData.hashtags || []).map(tag => (
+                      <Badge key={tag} variant="secondary" className="text-sm">
+                          {tag}
+                          <button 
+                              type="button" 
+                              onClick={() => handleRemoveHashtag(tag)} 
+                              className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" 
+                              aria-label={`Eliminar ${tag}`}
+                          >
+                              <X className="h-3 w-3" />
+                          </button>
+                      </Badge>
+                  ))}
+              </div>
             </div>
           </div>
         ) : (

@@ -31,14 +31,25 @@ interface ComboboxProps {
   onChange: (value: string | null) => void;
   placeholder?: string;
   disabled?: boolean;
+  creatable?: boolean; // New prop
 }
 
-export function Combobox({ options, value, onChange, placeholder = "Select an option...", disabled }: ComboboxProps) {
+export function Combobox({ options, value, onChange, placeholder = "Select an option...", disabled, creatable = false }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  const [inputValue, setInputValue] = React.useState('');
 
   const selectedOption = options.find(
     (option) => option.value.toLowerCase() === value?.toLowerCase()
   );
+
+  const handleSelect = (currentValue: string) => {
+    const selected = options.find(
+        (c) => c.label.toLowerCase() === currentValue.toLowerCase()
+    );
+    onChange(selected ? selected.value : currentValue);
+    setOpen(false);
+    setInputValue('');
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -56,21 +67,28 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Buscar..." />
-          <CommandEmpty>No se encontraron opciones.</CommandEmpty>
+          <CommandInput 
+            placeholder="Buscar..." 
+            value={inputValue}
+            onValueChange={setInputValue}
+          />
+          <CommandEmpty>
+            {creatable && inputValue.trim().length > 0 ? (
+                 <CommandItem
+                    onSelect={() => handleSelect(inputValue)}
+                    value={inputValue}
+                 >
+                   Crear "{inputValue}"
+                 </CommandItem>
+            ) : "No se encontraron opciones."}
+          </CommandEmpty>
           <CommandList>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
                   value={option.label}
-                  onSelect={(currentValue) => {
-                    const selected = options.find(
-                      (c) => c.label.toLowerCase() === currentValue.toLowerCase()
-                    );
-                    onChange(selected ? selected.value : null);
-                    setOpen(false);
-                  }}
+                  onSelect={() => handleSelect(option.label)}
                 >
                   <Check
                     className={cn(
