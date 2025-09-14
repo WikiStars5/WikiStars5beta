@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -111,12 +112,10 @@ export function ProfileActivity() {
     
     if (isLoading || isAuthLoading) {
         return (
-            <Card>
-                <CardContent className="flex items-center justify-center h-full">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="ml-4 text-muted-foreground">Cargando tu actividad...</p>
-                </CardContent>
-            </Card>
+            <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-4 text-muted-foreground">Cargando tu actividad...</p>
+            </div>
         );
     }
     
@@ -135,6 +134,8 @@ export function ProfileActivity() {
             </Card>
         );
     }
+
+    const emotionKeys = Object.keys(groupedEmotionVotes) as EmotionKey[];
 
     return (
         <Card>
@@ -171,15 +172,16 @@ export function ProfileActivity() {
                     </TabsContent>
                     <TabsContent value="emotion" className="mt-4">
                          {emotionVotes.length > 0 ? (
-                            <div className="space-y-6">
+                            <Tabs defaultValue={emotionKeys[0]} className="w-full">
+                                <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto">
+                                    {Object.keys(EMOTION_LABELS).map((emotionKey) => (
+                                         <TabsTrigger key={emotionKey} value={emotionKey} disabled={!groupedEmotionVotes[emotionKey as EmotionKey]}>
+                                            {EMOTION_LABELS[emotionKey as EmotionKey]}
+                                         </TabsTrigger>
+                                    ))}
+                                </TabsList>
                                 {Object.entries(groupedEmotionVotes).map(([emotion, votes]) => (
-                                    <div key={emotion}>
-                                        <div className="flex items-center gap-2 mb-3">
-                                             <Image src={EMOTION_IMAGES[emotion]} alt={emotion} width={24} height={24} />
-                                            <h3 className="font-semibold text-lg">
-                                                Perfiles que te provocan {EMOTION_LABELS[emotion as EmotionKey]}
-                                            </h3>
-                                        </div>
+                                    <TabsContent key={emotion} value={emotion} className="mt-4">
                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                             {votes.map(vote => vote.figure && (
                                                 <Link key={vote.figureId} href={`/figures/${vote.figureId}`} className="group relative text-center">
@@ -191,10 +193,9 @@ export function ProfileActivity() {
                                                 </Link>
                                             ))}
                                         </div>
-                                        <Separator className="mt-6"/>
-                                    </div>
+                                    </TabsContent>
                                 ))}
-                            </div>
+                            </Tabs>
                         ) : (
                              <p className="text-center text-muted-foreground py-8">No has votado por ninguna emoción.</p>
                         )}
