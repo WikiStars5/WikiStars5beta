@@ -8,8 +8,7 @@ import { Search, Loader2, ImageOff, XCircle, Tag } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Figure, Hashtag } from '@/lib/types';
-import { searchFiguresByName } from '@/app/actions/searchFiguresAction';
-import { searchHashtags } from '@/app/actions/searchHashtagsAction';
+import { searchFiguresByName, searchFiguresByHashtag } from '@/app/actions/searchHashtagsAction';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
@@ -36,7 +35,6 @@ export function SearchBar({
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [figureResults, setFigureResults] = useState<Figure[]>([]);
-  const [hashtagResults, setHashtagResults] = useState<Hashtag[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -63,11 +61,11 @@ export function SearchBar({
 
   const debouncedSearch = useCallback(
     debounce(async (searchTerm: string) => {
-      if (searchTerm.trim().length < 2) {
+      const trimmedSearch = searchTerm.trim();
+      if (trimmedSearch.length < 2) {
         setFigureResults([]);
-        setHashtagResults([]);
         setIsLoading(false);
-        setIsDropdownOpen(searchTerm.trim().length > 0);
+        setIsDropdownOpen(trimmedSearch.length > 0);
         return;
       }
 
@@ -75,20 +73,17 @@ export function SearchBar({
       setIsDropdownOpen(true);
       
       try {
-        if (searchTerm.startsWith('#')) {
-          setFigureResults([]);
-          const hashtagQuery = searchTerm.substring(1);
-          const hashtags = await searchHashtags(hashtagQuery);
-          setHashtagResults(hashtags);
+        let figures: Figure[] = [];
+        if (trimmedSearch.startsWith('#')) {
+          const hashtagQuery = trimmedSearch.substring(1);
+          figures = await searchFiguresByHashtag(hashtagQuery);
         } else {
-          setHashtagResults([]);
-          const figures = await searchFiguresByName(searchTerm);
-          setFigureResults(figures);
+          figures = await searchFiguresByName(trimmedSearch);
         }
+        setFigureResults(figures);
       } catch (error) {
         console.error("Search error:", error);
         setFigureResults([]);
-        setHashtagResults([]);
       } finally {
         setIsLoading(false);
       }
@@ -106,7 +101,6 @@ export function SearchBar({
   useEffect(() => {
     if (query.trim() === '') {
       setFigureResults([]);
-      setHashtagResults([]);
       setIsLoading(false);
       setIsDropdownOpen(false);
       return;
@@ -140,12 +134,11 @@ export function SearchBar({
   const clearSearch = () => {
     setQuery('');
     setFigureResults([]);
-    setHashtagResults([]);
     setIsDropdownOpen(false);
     inputRef.current?.focus(); 
   };
 
-  const hasNoResults = !isLoading && query.trim().length >= 2 && figureResults.length === 0 && hashtagResults.length === 0;
+  const hasNoResults = !isLoading && query.trim().length >= 2 && figureResults.length === 0;
 
   return (
     <div className={cn("relative w-full", className)} ref={searchContainerRef}>
@@ -188,26 +181,6 @@ export function SearchBar({
           )}
           {!isLoading && query.trim().length < 2 && (
              <div className="p-3 text-xs text-center text-muted-foreground">Escribe al menos 2 caracteres.</div>
-          )}
-
-          {/* Hashtag Results */}
-          {hashtagResults.length > 0 && (
-            <ul className="divide-y divide-border">
-              {hashtagResults.map((hashtag) => (
-                 <li key={hashtag.id}>
-                  <Link
-                    href={`/figures/hashtagged/${hashtag.id}`}
-                    onClick={handleResultItemClick}
-                    className="flex items-center p-2 hover:bg-muted transition-colors duration-150 ease-in-out"
-                  >
-                     <div className="flex-shrink-0 mr-3 ml-1">
-                        <Tag className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <p className="font-medium text-xs text-foreground truncate">#{hashtag.id}</p>
-                  </Link>
-                 </li>
-              ))}
-            </ul>
           )}
 
           {/* Figure Results */}
@@ -267,9 +240,10 @@ export function SearchBar({
                     </div>
                     <div className="flex-grow min-w-0">
                       <p className="font-medium text-xs text-foreground truncate">{figure.name}</p>
-                      {figure.description && (
-                        <p className="text-xs text-muted-foreground truncate">{figure.description}</p>
-                      )}
+                      {query.startsWith('#') 
+                        ? <p className="text-xs text-muted-foreground truncate">Coincidencia por hashtag</p>
+                        : figure.description && <p className="text-xs text-muted-foreground truncate">{figure.description}</p>
+                      }
                     </div>
                   </Link>
                   )}

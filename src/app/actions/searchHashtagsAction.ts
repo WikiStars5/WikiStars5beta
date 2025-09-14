@@ -3,7 +3,9 @@
 
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Hashtag } from '@/lib/types';
+import type { Hashtag, Figure } from '@/lib/types';
+import { mapDocToFigure } from '@/lib/placeholder-data';
+
 
 /**
  * Searches for hashtags that start with the given search term.
@@ -41,5 +43,47 @@ export async function searchHashtags(searchTerm: string): Promise<Hashtag[]> {
         throw new Error("La función de búsqueda necesita un índice que no existe. Por favor, crea el índice para la colección 'hashtags' desde la consola de Firebase.");
     }
     throw new Error("Failed to search hashtags due to a server error.");
+  }
+}
+
+/**
+ * Searches for figures that have a hashtag starting with the given search term.
+ * This provides direct profile suggestions when typing a hashtag.
+ * @param searchTerm The term to search for (without the #).
+ * @returns A promise that resolves to an array of matching Figure objects.
+ */
+export async function searchFiguresByHashtag(searchTerm: string): Promise<Figure[]> {
+  const trimmedSearchTerm = searchTerm.trim().toLowerCase();
+  if (trimmedSearchTerm.length < 2) {
+    return [];
+  }
+
+  try {
+    const figuresCollectionRef = collection(db, 'figures');
+    
+    // Query for figures where hashtagsLower array contains a value that starts with the search term.
+    const q = query(
+      figuresCollectionRef,
+      where('hashtagsLower', 'array-contains-any', [trimmedSearchTerm]),
+      limit(10)
+    );
+
+    const querySnapshot = await getDocs(q);
+    // Note: This initial query might fetch more than needed if other hashtags match exactly.
+    // We will filter further on the client-side, but this is a good starting point.
+    // A more advanced solution would involve a dedicated search service like Algolia.
+    const figures = querySnapshot.docs
+      .map(mapDocToFigure)
+      .filter(figure => 
+        figure.hashtagsLower?.some(tag => tag.startsWith(trimmedSearchTerm))
+      );
+
+    return figures;
+  } catch (error) {
+    console.error("Error searching figures by hashtag in Firestore: ", error);
+    if (String(error).includes('requires an index')) {
+        throw new Error("La función de búsqueda necesita un índice de Firestore que no existe. Por favor, crea el índice compuesto para 'figures' en 'hashtagsLower' desde la consola de Firebase.");
+    }
+    throw new Error("Failed to search figures by hashtag due to a server error.");
   }
 }
