@@ -248,26 +248,28 @@ export function CommentItem({
                 isHighlighted ? "bg-primary/20" : ""
             )}>
                 <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                         <Avatar className="h-8 w-8">
                             <AvatarImage src={correctMalformedUrl(comment.authorPhotoUrl)} alt={comment.authorName} />
                             <AvatarFallback>{comment.authorName?.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                            <p className="font-semibold text-sm">{comment.authorName}</p>
-                            {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={comment.authorGender}>{genderSymbol}</span>}
-                            {comment.authorCountryCode && (
-                                <Image
-                                    src={`https://flagcdn.com/w20/${comment.authorCountryCode.toLowerCase()}.png`}
-                                    alt={comment.authorCountry || comment.authorCountryCode}
-                                    width={20}
-                                    height={15}
-                                    className="w-5 h-auto"
-                                    title={comment.authorCountry}
-                                />
-                            )}
+                        <div className="flex flex-col">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <p className="font-semibold text-sm">{comment.authorName}</p>
+                                {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={comment.authorGender}>{genderSymbol}</span>}
+                                {comment.authorCountryCode && (
+                                    <Image
+                                        src={`https://flagcdn.com/w20/${comment.authorCountryCode.toLowerCase()}.png`}
+                                        alt={comment.authorCountry || comment.authorCountryCode}
+                                        width={20}
+                                        height={15}
+                                        className="w-5 h-auto"
+                                        title={comment.authorCountry}
+                                    />
+                                )}
+                            </div>
                             {comment.rating !== undefined && comment.rating !== null && (
-                                <div className="hidden sm:flex">
+                                <div className="mt-0.5">
                                     <RatingDisplay rating={comment.rating} />
                                 </div>
                             )}
@@ -277,11 +279,6 @@ export function CommentItem({
                         <p className="text-xs text-muted-foreground flex-shrink-0">{timeSince(comment.createdAt.toDate())}</p>
                     )}
                 </div>
-                 {comment.rating !== undefined && comment.rating !== null && (
-                    <div className="flex sm:hidden ml-10 mt-1">
-                        <RatingDisplay rating={comment.rating} />
-                    </div>
-                )}
                 
                 <p className="text-sm mt-2 whitespace-pre-wrap ml-10">
                   {isLongComment && !isExpanded 
