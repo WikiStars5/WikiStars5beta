@@ -5,6 +5,8 @@ import type { Figure } from "@/lib/types";
 import Image from "next/image";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { correctMalformedUrl } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
+import { AdminDeleteFigureButton } from "../admin/AdminDeleteFigureButton";
 
 const FIRE_GIF_URL = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/image%2Ffire.gif?alt=media&token=fd18d32d-c443-4da6-a369-e55ae241f7c5";
 
@@ -21,6 +23,7 @@ export function ProfileHeader({
   currentStreak,
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
+  const { isAdmin } = useAuth();
 
   return (
     <div className="w-full bg-black border border-white/20 p-4 sm:p-6 rounded-lg shadow-md">
@@ -58,6 +61,7 @@ export function ProfileHeader({
               </h1>
               <div className="mt-3 md:mt-0 flex-shrink-0 flex flex-col items-center md:items-end gap-2">
                 <div className="flex items-center gap-2">
+                    {isAdmin && <AdminDeleteFigureButton figureId={figure.id} figureName={figure.name} />}
                     <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
                 </div>
                 {currentStreak && currentStreak > 0 && (
