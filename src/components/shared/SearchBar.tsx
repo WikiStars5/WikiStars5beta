@@ -8,7 +8,8 @@ import { Search, Loader2, ImageOff, XCircle, Tag } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Figure, Hashtag } from '@/lib/types';
-import { searchFiguresByName, searchFiguresByHashtag } from '@/app/actions/searchHashtagsAction';
+import { searchFiguresByHashtag } from '@/app/actions/searchHashtagsAction';
+import { searchFiguresByName } from '@/app/actions/searchFiguresAction';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
