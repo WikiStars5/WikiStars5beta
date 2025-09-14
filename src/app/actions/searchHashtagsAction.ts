@@ -54,24 +54,26 @@ export async function searchHashtags(searchTerm: string): Promise<Hashtag[]> {
  */
 export async function searchFiguresByHashtag(searchTerm: string): Promise<Figure[]> {
   const trimmedSearchTerm = searchTerm.trim().toLowerCase();
-  if (trimmedSearchTerm.length < 2) {
+  if (trimmedSearchTerm.length < 1) {
     return [];
   }
 
   try {
     const figuresCollectionRef = collection(db, 'figures');
     
-    // Query for figures where hashtagsLower array contains a value that starts with the search term.
+    // This is the "prefix search on an array" trick for Firestore.
+    // It finds documents where at least one element in `hashtagsLower` starts with the search term.
     const q = query(
       figuresCollectionRef,
-      where('hashtagsLower', 'array-contains-any', [trimmedSearchTerm]),
+      where('hashtagsLower', '>=', trimmedSearchTerm),
+      where('hashtagsLower', '<=', trimmedSearchTerm + '\uf8ff'),
       limit(10)
     );
 
     const querySnapshot = await getDocs(q);
-    // Note: This initial query might fetch more than needed if other hashtags match exactly.
-    // We will filter further on the client-side, but this is a good starting point.
-    // A more advanced solution would involve a dedicated search service like Algolia.
+    
+    // We still need to filter on the client-side because Firestore might return extra results.
+    // For example, if searching for "dev", it might match "developer" and also "device".
     const figures = querySnapshot.docs
       .map(mapDocToFigure)
       .filter(figure => 

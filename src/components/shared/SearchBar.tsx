@@ -63,7 +63,7 @@ export function SearchBar({
   const debouncedSearch = useCallback(
     debounce(async (searchTerm: string) => {
       const trimmedSearch = searchTerm.trim();
-      if (trimmedSearch.length < 2) {
+      if (trimmedSearch.length < 1) { // Allow search from 1 character
         setFigureResults([]);
         setIsLoading(false);
         setIsDropdownOpen(trimmedSearch.length > 0);
@@ -93,7 +93,7 @@ export function SearchBar({
   );
 
   useEffect(() => {
-    if (initialQuery.trim().length >= 2) {
+    if (initialQuery.trim().length >= 1) {
       debouncedSearch(initialQuery);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -139,7 +139,7 @@ export function SearchBar({
     inputRef.current?.focus(); 
   };
 
-  const hasNoResults = !isLoading && query.trim().length >= 2 && figureResults.length === 0;
+  const hasNoResults = !isLoading && query.trim().length >= 1 && figureResults.length === 0;
 
   return (
     <div className={cn("relative w-full", className)} ref={searchContainerRef}>
@@ -157,7 +157,7 @@ export function SearchBar({
           }}
           className="text-sm h-9 flex-grow pl-10 pr-10 rounded-full shadow-sm border-none bg-muted focus:ring-1 focus:ring-primary/50"
         />
-        {isLoading && query.length >= 2 && (
+        {isLoading && query.length >= 1 && (
            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
         )}
         {!isLoading && query.length > 0 && (
@@ -174,14 +174,14 @@ export function SearchBar({
 
       {isDropdownOpen && query.trim().length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-xl max-h-80 overflow-y-auto">
-          {isLoading && query.trim().length >=2 && (
+          {isLoading && query.trim().length >=1 && (
             <div className="p-3 text-xs text-center text-muted-foreground">Buscando...</div>
           )}
           {hasNoResults && (
             <div className="p-3 text-xs text-center text-muted-foreground">No se encontraron resultados para "{query}".</div>
           )}
-          {!isLoading && query.trim().length < 2 && (
-             <div className="p-3 text-xs text-center text-muted-foreground">Escribe al menos 2 caracteres.</div>
+          {!isLoading && query.trim().length < 1 && (
+             <div className="p-3 text-xs text-center text-muted-foreground">Escribe al menos 1 caracter.</div>
           )}
 
           {/* Figure Results */}
