@@ -78,6 +78,20 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
                  : undefined,
     status: data.status || 'approved',
     isFeatured: data.isFeatured || false,
+    deathDate: data.deathDate,
+    mediaSubcategory: data.mediaSubcategory,
+    mediaGenre: data.mediaGenre,
+    releaseDate: data.releaseDate,
+    director: data.director,
+    studio: data.studio,
+    developer: data.developer,
+    publisher: data.publisher,
+    platforms: data.platforms,
+    author: data.author,
+    artist: data.artist,
+    founder: data.founder,
+    industry: data.industry,
+    websiteUrl: data.websiteUrl,
   };
 
   return figureData;
@@ -917,6 +931,46 @@ export async function getTopStreaksForFigure(figureId: string, count: number = 1
     return [];
   }
 }
+
+export async function getStreaksForUser(userId: string): Promise<Streak[]> {
+    const figuresRef = collection(db, "figures");
+    const userStreaks: Streak[] = [];
+    
+    try {
+        const figuresSnapshot = await getDocs(figuresRef);
+        
+        for (const figureDoc of figuresSnapshot.docs) {
+            const streakDocRef = doc(db, `figures/${figureDoc.id}/streaks`, userId);
+            const streakDoc = await getDoc(streakDocRef);
+            
+            if (streakDoc.exists()) {
+                const data = streakDoc.data() as DocumentData;
+                const lastDate = (data.lastCommentDate as Timestamp).toDate();
+                if (isSameDay(new Date(), lastDate) || isYesterday(lastDate)) {
+                     userStreaks.push({
+                        figureId: figureDoc.id, // Add figureId to the streak object
+                        userId: streakDoc.id,
+                        currentStreak: data.currentStreak,
+                        lastCommentDate: data.lastCommentDate,
+                        isAnonymous: data.isAnonymous,
+                        username: data.username,
+                        gender: data.gender,
+                        countryCode: data.countryCode,
+                        attitude: data.attitude,
+                        emotion: data.emotion,
+                    } as Streak);
+                }
+            }
+        }
+        
+        return userStreaks.sort((a, b) => b.currentStreak - a.currentStreak);
+
+    } catch (error) {
+        console.error("Error fetching streaks for user:", error);
+        return [];
+    }
+}
+
 
 // --- Ratings ---
 export async function submitStarRating(

@@ -1,11 +1,12 @@
 
+
 "use client";
 
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import type { Figure, Attitude, EmotionVote, LocalUserStreak, AttitudeKey, EmotionKey } from '@/lib/types';
-import { getFiguresByIds } from '@/lib/placeholder-data';
+import type { Figure, Attitude, EmotionVote, LocalUserStreak, AttitudeKey, EmotionKey, Streak } from '@/lib/types';
+import { getFiguresByIds, getStreaksForUser } from '@/lib/placeholder-data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, User, Star, Flame, Smile, Heart, ThumbsDown } from 'lucide-react';
@@ -13,7 +14,6 @@ import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { correctMalformedUrl } from '@/lib/utils';
 import Image from 'next/image';
-import { Separator } from '../ui/separator';
 
 const EMOTION_LABELS: Record<EmotionKey, string> = {
     alegria: "Alegría",
@@ -50,7 +50,7 @@ export function ProfileActivity() {
     const { firebaseUser, isLoading: isAuthLoading } = useAuth();
     const [attitudes, setAttitudes] = useState<(Attitude & { figure: Figure | null })[]>([]);
     const [emotionVotes, setEmotionVotes] = useState<(EmotionVote & { figure: Figure | null })[]>([]);
-    const [streaks, setStreaks] = useState<(LocalUserStreak & { figure: Figure | null })[]>([]);
+    const [streaks, setStreaks] = useState<(Streak & { figure: Figure | null })[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -59,7 +59,7 @@ export function ProfileActivity() {
         const fetchActivity = async () => {
             setIsLoading(true);
             try {
-                // Fetch Attitudes
+                // Fetch Attitudes from localStorage
                 const storedAttitudes: Attitude[] = JSON.parse(localStorage.getItem(`wikistars5-attitudes-${firebaseUser.uid}`) || '[]');
                 const attitudeFigureIds = storedAttitudes.map(a => a.figureId);
                 if (attitudeFigureIds.length > 0) {
@@ -68,7 +68,7 @@ export function ProfileActivity() {
                     setAttitudes(storedAttitudes.map(vote => ({ ...vote, figure: figuresMap.get(vote.figureId) || null })));
                 }
 
-                // Fetch Emotions
+                // Fetch Emotions from localStorage
                 const storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem(`wikistars5-emotions-${firebaseUser.uid}`) || '[]');
                 const emotionFigureIds = storedEmotions.map(e => e.figureId);
                 if (emotionFigureIds.length > 0) {
@@ -77,13 +77,13 @@ export function ProfileActivity() {
                     setEmotionVotes(storedEmotions.map(vote => ({ ...vote, figure: figuresMap.get(vote.figureId) || null })));
                 }
 
-                // Fetch Streaks
-                const storedStreaks: LocalUserStreak[] = JSON.parse(localStorage.getItem(`wikistars5-streaks-${firebaseUser.uid}`) || '[]');
-                const streakFigureIds = storedStreaks.map(s => s.figureId);
-                if (streakFigureIds.length > 0) {
-                    const figures = await getFiguresByIds(streakFigureIds);
+                // Fetch Streaks from Firestore
+                const userStreaks = await getStreaksForUser(firebaseUser.uid);
+                const streakFigureIds = userStreaks.map(s => s.figureId);
+                 if (streakFigureIds.length > 0) {
+                    const figures = await getFiguresByIds(streakFigureIds as string[]);
                     const figuresMap = new Map(figures.map(f => [f.id, f]));
-                    setStreaks(storedStreaks.map(streak => ({ ...streak, figure: figuresMap.get(streak.figureId) || null })));
+                    setStreaks(userStreaks.map(streak => ({ ...streak, figure: figuresMap.get(streak.figureId as string) || null })));
                 }
 
             } catch (error) {
@@ -131,7 +131,7 @@ export function ProfileActivity() {
 
     if (!hasActivity) {
         return (
-            <Card>
+             <Card>
                 <CardHeader>
                     <CardTitle>Tu Actividad</CardTitle>
                     <CardDescription>Un resumen de tus interacciones en la plataforma.</CardDescription>
@@ -147,104 +147,96 @@ export function ProfileActivity() {
     const attitudeKeys = Object.keys(groupedAttitudeVotes) as AttitudeKey[];
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Tu Actividad</CardTitle>
-                <CardDescription>Un resumen de tus interacciones en la plataforma.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Tabs defaultValue="attitude" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="attitude">Mi Actitud</TabsTrigger>
-                        <TabsTrigger value="emotion">Mis Emociones</TabsTrigger>
-                        <TabsTrigger value="streak">Mis Rachas</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="attitude" className="mt-4">
-                       {attitudes.length > 0 ? (
-                            <Tabs defaultValue={attitudeKeys[0]} className="w-full">
-                                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
-                                    {Object.keys(ATTITUDE_LABELS).map((attitudeKey) => (
-                                         <TabsTrigger key={attitudeKey} value={attitudeKey} disabled={!groupedAttitudeVotes[attitudeKey as AttitudeKey]}>
-                                            {ATTITUDE_LABELS[attitudeKey as AttitudeKey]}
-                                         </TabsTrigger>
+        <Tabs defaultValue="attitude" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="attitude">Mi Actitud</TabsTrigger>
+                <TabsTrigger value="emotion">Mis Emociones</TabsTrigger>
+                <TabsTrigger value="streak">Mis Rachas</TabsTrigger>
+            </TabsList>
+            <TabsContent value="attitude" className="mt-4">
+                {attitudeKeys.length > 0 ? (
+                    <Tabs defaultValue={attitudeKeys[0]} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+                            {Object.keys(ATTITUDE_LABELS).map((attitudeKey) => (
+                                    <TabsTrigger key={attitudeKey} value={attitudeKey} disabled={!groupedAttitudeVotes[attitudeKey as AttitudeKey]}>
+                                    {ATTITUDE_LABELS[attitudeKey as AttitudeKey]}
+                                    </TabsTrigger>
+                            ))}
+                        </TabsList>
+                        {Object.entries(groupedAttitudeVotes).map(([attitude, votes]) => (
+                            <TabsContent key={attitude} value={attitude} className="mt-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                    {votes.map(vote => vote.figure && (
+                                        <Link key={vote.figureId} href={`/figures/${vote.figureId}`} className="group relative text-center">
+                                            <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-primary transition-all">
+                                                <AvatarImage src={correctMalformedUrl(vote.figure.photoUrl)} alt={vote.figure.name} />
+                                                <AvatarFallback><User /></AvatarFallback>
+                                            </Avatar>
+                                            <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-card p-1.5 rounded-full shadow-lg">
+                                                {React.createElement(ATTITUDE_ICONS[vote.attitude], { className: `h-5 w-5 ${ATTITUDE_COLORS[vote.attitude]}` })}
+                                            </div>
+                                            <p className="text-sm font-medium mt-2 group-hover:text-primary transition-colors">{vote.figure.name}</p>
+                                        </Link>
                                     ))}
-                                </TabsList>
-                                {Object.entries(groupedAttitudeVotes).map(([attitude, votes]) => (
-                                    <TabsContent key={attitude} value={attitude} className="mt-4">
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                            {votes.map(vote => vote.figure && (
-                                                <Link key={vote.figureId} href={`/figures/${vote.figureId}`} className="group relative text-center">
-                                                    <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-primary transition-all">
-                                                        <AvatarImage src={correctMalformedUrl(vote.figure.photoUrl)} alt={vote.figure.name} />
-                                                        <AvatarFallback><User /></AvatarFallback>
-                                                    </Avatar>
-                                                     <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-card p-1.5 rounded-full shadow-lg">
-                                                        {React.createElement(ATTITUDE_ICONS[vote.attitude], { className: `h-5 w-5 ${ATTITUDE_COLORS[vote.attitude]}` })}
-                                                    </div>
-                                                    <p className="text-sm font-medium mt-2 group-hover:text-primary transition-colors">{vote.figure.name}</p>
-                                                </Link>
-                                            ))}
-                                        </div>
-                                    </TabsContent>
-                                ))}
-                            </Tabs>
-                        ) : (
-                            <p className="text-center text-muted-foreground py-8">No has definido tu actitud hacia ningún perfil.</p>
-                        )}
-                    </TabsContent>
-                    <TabsContent value="emotion" className="mt-4">
-                         {emotionVotes.length > 0 ? (
-                            <Tabs defaultValue={emotionKeys[0]} className="w-full">
-                                <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto">
-                                    {Object.keys(EMOTION_LABELS).map((emotionKey) => (
-                                         <TabsTrigger key={emotionKey} value={emotionKey} disabled={!groupedEmotionVotes[emotionKey as EmotionKey]}>
-                                            {EMOTION_LABELS[emotionKey as EmotionKey]}
-                                         </TabsTrigger>
+                                </div>
+                            </TabsContent>
+                        ))}
+                    </Tabs>
+                ) : (
+                    <p className="text-center text-muted-foreground py-8">No has definido tu actitud hacia ningún perfil.</p>
+                )}
+            </TabsContent>
+            <TabsContent value="emotion" className="mt-4">
+                    {emotionKeys.length > 0 ? (
+                    <Tabs defaultValue={emotionKeys[0]} className="w-full">
+                        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 h-auto">
+                            {Object.keys(EMOTION_LABELS).map((emotionKey) => (
+                                    <TabsTrigger key={emotionKey} value={emotionKey} disabled={!groupedEmotionVotes[emotionKey as EmotionKey]}>
+                                    {EMOTION_LABELS[emotionKey as EmotionKey]}
+                                    </TabsTrigger>
+                            ))}
+                        </TabsList>
+                        {Object.entries(groupedEmotionVotes).map(([emotion, votes]) => (
+                            <TabsContent key={emotion} value={emotion} className="mt-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                    {votes.map(vote => vote.figure && (
+                                        <Link key={vote.figureId} href={`/figures/${vote.figureId}`} className="group relative text-center">
+                                            <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-primary transition-all">
+                                                <AvatarImage src={correctMalformedUrl(vote.figure.photoUrl)} alt={vote.figure.name} />
+                                                <AvatarFallback><User /></AvatarFallback>
+                                            </Avatar>
+                                            <p className="text-sm font-medium mt-2 group-hover:text-primary transition-colors">{vote.figure.name}</p>
+                                        </Link>
                                     ))}
-                                </TabsList>
-                                {Object.entries(groupedEmotionVotes).map(([emotion, votes]) => (
-                                    <TabsContent key={emotion} value={emotion} className="mt-4">
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                            {votes.map(vote => vote.figure && (
-                                                <Link key={vote.figureId} href={`/figures/${vote.figureId}`} className="group relative text-center">
-                                                    <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-primary transition-all">
-                                                        <AvatarImage src={correctMalformedUrl(vote.figure.photoUrl)} alt={vote.figure.name} />
-                                                        <AvatarFallback><User /></AvatarFallback>
-                                                    </Avatar>
-                                                    <p className="text-sm font-medium mt-2 group-hover:text-primary transition-colors">{vote.figure.name}</p>
-                                                </Link>
-                                            ))}
-                                        </div>
-                                    </TabsContent>
-                                ))}
-                            </Tabs>
-                        ) : (
-                             <p className="text-center text-muted-foreground py-8">No has votado por ninguna emoción.</p>
-                        )}
-                    </TabsContent>
-                    <TabsContent value="streak" className="mt-4">
-                        {streaks.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                {streaks.map(streak => streak.figure && (
-                                    <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="group relative text-center">
-                                        <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-orange-400 transition-all">
-                                            <AvatarImage src={correctMalformedUrl(streak.figure.photoUrl)} alt={streak.figure.name} />
-                                            <AvatarFallback><User /></AvatarFallback>
-                                        </Avatar>
-                                        <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-card p-1 rounded-full shadow-lg flex items-center gap-1 text-orange-400 font-bold">
-                                            <Flame className="h-4 w-4" />
-                                            <span>{streak.currentStreak}</span>
-                                        </div>
-                                        <p className="text-sm font-medium mt-2 group-hover:text-primary transition-colors">{streak.figure.name}</p>
-                                    </Link>
-                                ))}
-                            </div>
-                        ) : (
-                             <p className="text-center text-muted-foreground py-8">No tienes rachas activas.</p>
-                        )}
-                    </TabsContent>
-                </Tabs>
-            </CardContent>
-        </Card>
+                                </div>
+                            </TabsContent>
+                        ))}
+                    </Tabs>
+                ) : (
+                        <p className="text-center text-muted-foreground py-8">No has votado por ninguna emoción.</p>
+                )}
+            </TabsContent>
+            <TabsContent value="streak" className="mt-4">
+                {streaks.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {streaks.map(streak => streak.figure && (
+                            <Link key={streak.figureId} href={`/figures/${streak.figureId}`} className="group relative text-center">
+                                <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-orange-400 transition-all">
+                                    <AvatarImage src={correctMalformedUrl(streak.figure.photoUrl)} alt={streak.figure.name} />
+                                    <AvatarFallback><User /></AvatarFallback>
+                                </Avatar>
+                                <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-card p-1 rounded-full shadow-lg flex items-center gap-1 text-orange-400 font-bold">
+                                    <Flame className="h-4 w-4" />
+                                    <span>{streak.currentStreak}</span>
+                                </div>
+                                <p className="text-sm font-medium mt-2 group-hover:text-primary transition-colors">{streak.figure.name}</p>
+                            </Link>
+                        ))}
+                    </div>
+                ) : (
+                        <p className="text-center text-muted-foreground py-8">No tienes rachas activas.</p>
+                )}
+            </TabsContent>
+        </Tabs>
     );
 }
