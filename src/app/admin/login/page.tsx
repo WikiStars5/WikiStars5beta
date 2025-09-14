@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -34,6 +34,14 @@ export default function LoginPage() {
   });
 
   const { handleSubmit, control, formState: { isSubmitting } } = form;
+  
+  useEffect(() => {
+    // If the user is already an admin, redirect them away from the login page.
+    // This must be in a useEffect to avoid updating state during render.
+    if (isAdmin) {
+      router.push('/admin');
+    }
+  }, [isAdmin, router]);
 
   const onSubmit = async (data: LoginFormValues) => {
     setError(null);
@@ -43,8 +51,7 @@ export default function LoginPage() {
         title: "¡Sesión Iniciada!",
         description: "Bienvenido de nuevo.",
       });
-      // Redirect to admin panel after successful login
-      router.push('/admin');
+      // The useEffect will handle the redirect after this state change.
     } catch (err: any) {
       console.error("Login failed:", err);
       let errorMessage = "Ocurrió un error inesperado.";
@@ -62,8 +69,8 @@ export default function LoginPage() {
     }
   };
   
+  // If the user is already admin, show a redirecting message while the useEffect runs.
   if (isAdmin) {
-       router.push('/admin');
        return (
             <div className="flex justify-center items-center h-64">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
