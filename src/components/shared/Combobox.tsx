@@ -36,8 +36,6 @@ interface ComboboxProps {
 
 export function Combobox({ options, value, onChange, placeholder = "Select an option...", disabled, creatable = false }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
-  // This internal search state is the fix. It allows the input to be typed in
-  // without being immediately overwritten by the external `value` prop.
   const [search, setSearch] = React.useState("");
 
   const selectedOption = value ? options.find(
@@ -45,11 +43,9 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
   ) : null;
 
   const handleSelect = (currentValue: string) => {
-    // When an item is selected (or created), we call the main onChange handler
-    // to update the parent component's state.
     onChange(currentValue);
     setOpen(false);
-    setSearch(""); // Reset search after selection
+    setSearch("");
   };
 
   // Reset search when popover closes
@@ -78,7 +74,7 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
           <CommandInput
             placeholder="Buscar..."
             value={search}
-            onValueChange={setSearch} // Let the user type freely
+            onValueChange={setSearch}
           />
           <CommandList>
             <CommandEmpty>
