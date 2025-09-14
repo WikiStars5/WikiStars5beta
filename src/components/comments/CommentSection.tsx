@@ -26,17 +26,37 @@ import { CountryCombobox } from '../shared/CountryCombobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 
+const STAR_SOUNDS: Record<string, string> = {
+  '1': 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457',
+  '2': 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar2.mp3?alt=media&token=58cbf607-df0b-4bbd-b28e-291cf1951c18',
+  '3': 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar3.mp3?alt=media&token=df67dc5b-28ab-4773-8266-60b9127a325f',
+  '4': 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar4.mp3?alt=media&token=40c72095-e6a0-42d6-a3f6-86a81c356826',
+  '5': 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar5.mp3?alt=media&token=8705fce9-1baa-4f49-8783-7bfc9d35a80f',
+};
+
 const StarRatingInput = ({ value, onChange, disabled }: { value: RatingValue | null, onChange: (value: RatingValue) => void, disabled: boolean }) => {
   const [hoverRating, setHoverRating] = React.useState<number | null>(null);
+
+  const handleRatingClick = (rating: RatingValue) => {
+    onChange(rating);
+    if (rating > 0) {
+      const soundUrl = STAR_SOUNDS[rating];
+      if (soundUrl) {
+        const audio = new Audio(soundUrl);
+        audio.play().catch(error => console.error("Error playing audio:", error));
+      }
+    }
+  };
+
   return (
     <div className="flex items-center gap-2">
-      <button type="button" key={0} onClick={() => onChange(0)} onMouseEnter={() => setHoverRating(0)} onMouseLeave={() => setHoverRating(null)} className="focus:outline-none" disabled={disabled} aria-label="Calificar con 0 estrellas">
+      <button type="button" key={0} onClick={() => handleRatingClick(0)} onMouseEnter={() => setHoverRating(0)} onMouseLeave={() => setHoverRating(null)} className="focus:outline-none" disabled={disabled} aria-label="Calificar con 0 estrellas">
         <StarOff className={cn("h-7 w-7 transition-colors", (hoverRating === 0 || value === 0) ? "text-destructive" : "text-muted-foreground/30")} />
       </button>
       {[...Array(5)].map((_, i) => {
         const ratingValue = (i + 1) as RatingValue;
         return (
-          <button type="button" key={ratingValue} onClick={() => onChange(ratingValue)} onMouseEnter={() => setHoverRating(ratingValue)} onMouseLeave={() => setHoverRating(null)} className="focus:outline-none" disabled={disabled} aria-label={`Calificar con ${ratingValue} estrellas`}>
+          <button type="button" key={ratingValue} onClick={() => handleRatingClick(ratingValue)} onMouseEnter={() => setHoverRating(ratingValue)} onMouseLeave={() => setHoverRating(null)} className="focus:outline-none" disabled={disabled} aria-label={`Calificar con ${ratingValue} estrellas`}>
             <Star className={cn("h-7 w-7 transition-colors", (hoverRating ?? value ?? -1) >= ratingValue ? "text-primary fill-current" : "text-muted-foreground/30")} />
           </button>
         );
