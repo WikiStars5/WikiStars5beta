@@ -23,32 +23,9 @@ export function useAuthWithGoogle() {
     try {
       if (isAnonymous) {
         // If the user is anonymous, link their anonymous account to the Google account.
-        const credential = GoogleAuthProvider.credentialFromError({
-          code: "auth/account-exists-with-different-credential",
-          email: "",
-          credential: provider,
-        });
-
-        // This is a bit of a workaround to get the credential object.
-        // We trigger a sign-in, expect it to fail if the anonymous user exists, 
-        // catch the credential, and then link it.
-        // A more direct `new GoogleAuthProvider().credential()` doesn't exist on the client SDK.
-        try {
-            await linkAccount(provider);
-        } catch (error: any) {
-            if (error.code === 'auth/credential-already-in-use') {
-                toast({ title: "Error", description: "Esta cuenta de Google ya está registrada. Por favor, inicia sesión.", variant: "destructive" });
-                router.push('/login');
-                setIsGoogleLoading(false);
-                return;
-            }
-             throw error; // Re-throw other errors
-        }
-
+        const credential = provider; // For Google, the provider itself can be used.
+        await linkAccount(credential, "Nuevo Usuario"); // Pass a default username
       } else {
-         // This case should ideally not happen if anonymous is default, but it's a fallback.
-         // This is a normal sign-in, which will be handled by the main login page logic.
-         // This hook is primarily for linking now.
          toast({ title: "Acción no requerida", description: "Ya tienes una sesión iniciada." });
       }
 
@@ -67,6 +44,9 @@ export function useAuthWithGoogle() {
           description: "La ventana de Google fue cerrada.",
           variant: "default",
         });
+      } else if (authError.code === 'auth/credential-already-in-use') {
+          toast({ title: "Error", description: "Esta cuenta de Google ya está registrada. Por favor, inicia sesión.", variant: "destructive" });
+          router.push('/login');
       } else {
         toast({
           title: "Error de Autenticación",

@@ -7,6 +7,7 @@ import {
   useState,
   useEffect,
   type ReactNode,
+  useCallback,
 } from 'react';
 import { auth, db, callFirebaseFunction } from '@/lib/firebase';
 import { 
@@ -16,14 +17,14 @@ import {
   signOut,
   updateProfile,
   linkWithCredential,
-  GoogleAuthProvider,
   type User as FirebaseUser,
   type AuthCredential
 } from 'firebase/auth';
 import type { UserProfile } from '@/lib/types';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { ADMIN_UID } from '@/config/admin';
 import { useRouter } from 'next/navigation';
+import { useLocalProfile } from './use-local-profile';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -34,7 +35,7 @@ interface AuthContextType {
   signIn: (email: string, pass: string) => Promise<any>;
   logout: () => Promise<void>;
   updateUserProfile: (username: string, countryCode: string, gender: string) => Promise<void>;
-  linkAccount: (credential: AuthCredential) => Promise<void>;
+  linkAccount: (credential: AuthCredential, newUsername: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,41 +45,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const { localProfile, clearLocalProfile } = useLocalProfile(firebaseUser?.uid);
 
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      setIsLoading(true);
-      if (user) {
-        setFirebaseUser(user);
-      } else {
-        // If no user, sign in anonymously to get a UID for guest actions.
-        try {
-          const userCredential = await signInAnonymously(auth);
-          setFirebaseUser(userCredential.user);
-        } catch (error) {
-          console.error("Error signing in anonymously:", error);
-          setFirebaseUser(null);
-          setCurrentUser(null);
-          setIsLoading(false);
-        }
+  const handleUser = useCallback(async (user: FirebaseUser | null) => {
+    setIsLoading(true);
+    if (user) {
+      setFirebaseUser(user);
+    } else {
+      try {
+        const userCredential = await signInAnonymously(auth);
+        setFirebaseUser(userCredential.user);
+      } catch (error) {
+        console.error("Anonymous sign-in failed:", error);
+        setFirebaseUser(null);
+        setCurrentUser(null);
+        setIsLoading(false);
       }
-    });
-
-    return () => unsubscribeAuth();
+    }
   }, []);
+  
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, handleUser);
+    return () => unsubscribe();
+  }, [handleUser]);
 
   useEffect(() => {
       if (!firebaseUser) {
         return;
       }
-
+      
       const userDocRef = doc(db, 'users', firebaseUser.uid);
       const unsubscribeProfile = onSnapshot(userDocRef, (userDocSnap) => {
         if (userDocSnap.exists()) {
           setCurrentUser(userDocSnap.data() as UserProfile);
         } else {
           // Profile might not be created yet for a new anonymous user. This is fine.
-          // The createProfileOnRegister function will handle it.
           setCurrentUser(null);
         }
         setIsLoading(false);
@@ -104,11 +105,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/');
   };
   
-  const linkAccount = async (credential: AuthCredential) => {
+  const linkAccount = async (credential: AuthCredential, newUsername: string) => {
     if (!auth.currentUser) throw new Error("No user to link.");
-    await linkWithCredential(auth.currentUser, credential);
-    // After linking, the onAuthStateChanged listener will automatically receive the updated user state.
-    // Firestore profile will be updated by the onUserCreate function (it also triggers on link).
+    
+    // 1. Link the account
+    const result = await linkWithCredential(auth.currentUser, credential);
+    const linkedUser = result.user;
+
+    // 2. Update the profile displayName
+    await updateProfile(linkedUser, { displayName: newUsername });
+
+    // 3. Migrate local profile data to Firestore
+    if (localProfile) {
+        await callFirebaseFunction('updateUserProfile', {
+            username: newUsername, // Use the new username from the form
+            countryCode: localProfile.countryCode,
+            gender: localProfile.gender,
+        });
+        clearLocalProfile(); // Clean up local storage after migration
+    } else {
+        // If there's no local profile, still set the username
+         await callFirebaseFunction('updateUserProfile', {
+            username: newUsername,
+            countryCode: '',
+            gender: '',
+        });
+    }
   };
 
   const updateUserProfile = async (username: string, countryCode: string, gender: string) => {

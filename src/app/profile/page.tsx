@@ -9,13 +9,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Save, UserCircle } from 'lucide-react';
+import { Loader2, Save, UserCircle, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { CountryCombobox } from '@/components/shared/CountryCombobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { useRouter } from 'next/navigation';
+import { useLocalProfile } from '@/hooks/use-local-profile';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import Link from 'next/link';
 
 const profileSchema = z.object({
   username: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.').max(30, 'El nombre no puede tener más de 30 caracteres.'),
@@ -26,7 +29,8 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
-  const { currentUser, firebaseUser, isLoading, updateUserProfile } = useAuth();
+  const { currentUser, firebaseUser, isAnonymous, isLoading, updateUserProfile } = useAuth();
+  const { localProfile, saveLocalProfile } = useLocalProfile(firebaseUser?.uid);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -43,32 +47,47 @@ export default function ProfilePage() {
 
   // Effect to populate form when user data is available
   useEffect(() => {
-    if (currentUser) {
+    if (isLoading) return;
+    
+    if (isAnonymous) {
+      if (localProfile) {
+        reset({
+          username: localProfile.username,
+          countryCode: localProfile.countryCode,
+          gender: localProfile.gender,
+        });
+      }
+    } else if (currentUser) {
       reset({
         username: currentUser.username || '',
         countryCode: currentUser.countryCode || '',
         gender: currentUser.gender || '',
       });
     }
-  }, [currentUser, reset]);
+  }, [currentUser, localProfile, isAnonymous, isLoading, reset]);
 
 
   const onSubmit: SubmitHandler<ProfileFormValues> = async (data) => {
     if (!firebaseUser) {
-        toast({ title: "Error", description: "Debes iniciar sesión para actualizar tu perfil.", variant: "destructive" });
+        toast({ title: "Error", description: "No se ha podido identificar al usuario.", variant: "destructive" });
         return;
     }
     
     try {
-        await updateUserProfile(data.username, data.countryCode || '', data.gender || '');
+        if (isAnonymous) {
+            saveLocalProfile(data.username, data.countryCode || '', data.gender || '');
+        } else {
+            await updateUserProfile(data.username, data.countryCode || '', data.gender || '');
+        }
+        
         toast({
-          title: "Perfil Actualizado",
+          title: "Perfil Guardado",
           description: "Tus cambios han sido guardados.",
         });
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({
-        title: "Error al Actualizar",
+        title: "Error al Guardar",
         description: error.message || 'No se pudieron guardar los cambios.',
         variant: "destructive",
       });
@@ -84,11 +103,6 @@ export default function ProfilePage() {
     );
   }
 
-  if (!firebaseUser) {
-    router.push('/login');
-    return null;
-  }
-
   return (
     <div className="flex items-center justify-center">
       <Card className="w-full max-w-2xl">
@@ -98,10 +112,20 @@ export default function ProfilePage() {
             Mi Perfil
           </CardTitle>
           <CardDescription>
-            Edita la información de tu perfil público.
+            {isAnonymous ? "Edita tu perfil de invitado. Tus datos se guardan localmente." : "Edita la información de tu perfil público."}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {isAnonymous && (
+            <Alert className="mb-6 bg-blue-900/20 border-blue-500/50">
+                <ShieldAlert className="h-4 w-4 text-blue-400" />
+                <AlertTitle className="text-blue-300">Estás navegando como invitado</AlertTitle>
+                <AlertDescription className="text-blue-400/80">
+                   Tu progreso (votos, rachas) se guardará. Para mantenerlo permanentemente, <Link href="/signup" className="font-bold underline hover:text-blue-300">crea una cuenta</Link> para vincular tus datos.
+                </AlertDescription>
+            </Alert>
+          )}
+
           <Form {...form}>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <FormField

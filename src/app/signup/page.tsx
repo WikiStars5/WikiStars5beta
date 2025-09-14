@@ -14,10 +14,7 @@ import { Loader2, UserPlus, Terminal, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { createUserWithEmailAndPassword, updateProfile, EmailAuthProvider } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import type { UserProfile } from '@/lib/types';
+import { EmailAuthProvider } from 'firebase/auth';
 import Link from 'next/link';
 import { useAuthWithGoogle } from '@/hooks/useAuthWithGoogle';
 
@@ -52,14 +49,8 @@ export default function SignupPage() {
     setIsSubmitting(true);
     try {
       if (isAnonymous) {
-        // Link the anonymous account with the new email/password credential
         const credential = EmailAuthProvider.credential(data.email, data.password);
-        await linkAccount(credential);
-        
-        // Update profile displayName after linking
-        if (auth.currentUser) {
-            await updateProfile(auth.currentUser, { displayName: data.username });
-        }
+        await linkAccount(credential, data.username);
         
         toast({
           title: "¡Cuenta Vinculada Exitosamente!",
@@ -67,8 +58,6 @@ export default function SignupPage() {
         });
 
       } else {
-        // This case should be rare if anonymous auth is the default.
-        // It would mean a signed-in user is trying to sign up again.
         toast({ title: "Acción no válida", description: "Ya tienes una sesión iniciada.", variant: "destructive" });
         setIsSubmitting(false);
         return;
