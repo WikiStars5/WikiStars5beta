@@ -52,6 +52,7 @@ interface CommentItemProps {
     comment: CommentType;
     parentPath: string;
     highlightedCommentId?: string | null;
+    isLastCommentFromAuthor: boolean;
 }
 
 const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, parentPath: string, onReplySuccess: () => void }) => {
@@ -115,6 +116,7 @@ export function CommentItem({
     comment, 
     parentPath,
     highlightedCommentId,
+    isLastCommentFromAuthor
 }: CommentItemProps) {
     const { currentUser, firebaseUser, isAdmin, isLoading: isAuthLoading } = useAuth();
     const { toast } = useToast();
@@ -289,7 +291,7 @@ export function CommentItem({
                                     />
                                 )}
                             </div>
-                            {comment.rating !== undefined && comment.rating !== null && (
+                            {isLastCommentFromAuthor && comment.rating !== undefined && comment.rating !== null && (
                                 <div className="mt-1">
                                     {renderRating(comment.rating)}
                                 </div>
@@ -417,6 +419,7 @@ export function CommentItem({
                                 comment={reply}
                                 parentPath={`${currentPath}/replies`}
                                 highlightedCommentId={highlightedCommentId}
+                                isLastCommentFromAuthor={false} 
                             />
                         ))
                     )}

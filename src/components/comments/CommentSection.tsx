@@ -348,6 +348,21 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
   };
 
   const commentsToShow = showAllComments ? comments : comments.slice(0, INITIAL_COMMENTS_TO_SHOW);
+  
+  // This logic finds the latest comment for each user to decide if stars should be shown.
+  const latestUserCommentIds = React.useMemo(() => {
+    const seenUsers = new Set<string>();
+    const latestIds = new Set<string>();
+    // Comments are already sorted desc by date, so the first one we see for a user is the latest.
+    comments.forEach(comment => {
+      if (!seenUsers.has(comment.authorId)) {
+        seenUsers.add(comment.authorId);
+        latestIds.add(comment.id);
+      }
+    });
+    return latestIds;
+  }, [comments]);
+
 
   return (
     <>
@@ -382,6 +397,7 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
                     comment={comment}
                     parentPath={`figures/${figure.id}/comments`}
                     highlightedCommentId={highlightedCommentId}
+                    isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
                   />
                 ))}
                 {comments.length > INITIAL_COMMENTS_TO_SHOW && (
