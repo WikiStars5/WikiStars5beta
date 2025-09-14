@@ -38,10 +38,6 @@ import { VIDEO_GAME_GENRES } from '@/config/genres';
 import { Combobox } from '../shared/Combobox';
 import { searchHashtags } from '@/app/actions/searchHashtagsAction';
 
-interface FigureInfoProps {
-  figure: Figure;
-}
-
 const SOCIAL_MEDIA_CONFIG: Record<string, { label: string }> = {
   website: { label: 'Página Web' },
   instagram: { label: 'Instagram' },
@@ -258,13 +254,67 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
     );
 };
 
-export function FigureInfo({ figure }: FigureInfoProps) {
+export function FigureInfo({ figure }: { figure: Figure }) {
+  const hasInfo = useMemo(() => {
+    if (figure.profileType === 'character') {
+      return Object.values({
+        occupation: figure.occupation,
+        nationality: figure.nationality,
+        gender: figure.gender,
+        birthDateOrAge: figure.birthDateOrAge,
+        deathDate: figure.deathDate,
+        maritalStatus: figure.maritalStatus,
+        height: figure.height,
+        weight: figure.weight,
+        alias: figure.alias,
+      }).some(Boolean);
+    }
+    // Corrected, robust check for media profiles
+    return Object.values({
+        mediaGenre: figure.mediaGenre,
+        releaseDate: figure.releaseDate,
+        developer: figure.developer,
+        publisher: figure.publisher,
+        nationality: figure.nationality,
+        platforms: (figure.platforms ?? []).length > 0,
+        director: figure.director,
+        studio: figure.studio,
+        author: figure.author,
+        artist: figure.artist,
+        founder: figure.founder,
+        industry: figure.industry,
+        websiteUrl: figure.websiteUrl,
+        species: figure.species,
+    }).some(Boolean);
+  }, [figure]);
+
+  if ((!hasInfo && !figure.hashtags?.length && Object.values(figure.socialLinks || {}).every(v => !v))) {
+    return <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">No hay información detallada disponible para este perfil.</p>
+  }
+  
+  return figure.profileType === 'character' ? <CharacterInfoTemplate figure={figure} /> : <MediaInfoTemplate figure={figure} />
+}
+
+
+interface EditableFigureInfoProps {
+  figure: Figure;
+}
+
+export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfoProps) {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState<Partial<Figure>>(figure);
+  const [formData, setFormData] = useState<Partial<Figure>>(initialFigure);
   const [hashtagOptions, setHashtagOptions] = useState<{ value: string; label: string }[]>([]);
   const [hashtagSearch, setHashtagSearch] = useState('');
+
+  // When the initialFigure prop changes (due to real-time updates),
+  // update our form data *if not in editing mode*.
+  useEffect(() => {
+    if (!isEditing) {
+      setFormData(initialFigure);
+    }
+  }, [initialFigure, isEditing]);
 
   useEffect(() => {
     if (isEditing) {
@@ -319,7 +369,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
         updatePayload.height = '';
       }
 
-      await updateFigureInFirestore({ ...updatePayload, id: figure.id });
+      await updateFigureInFirestore({ ...updatePayload, id: initialFigure.id });
       toast({ title: "Perfil Actualizado", description: "Los cambios han sido guardados." });
       setIsEditing(false);
     } catch (error: any) {
@@ -331,42 +381,9 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   };
 
   const handleCancel = () => {
-    setFormData(figure); // Reset changes
+    setFormData(initialFigure); // Reset changes
     setIsEditing(false);
   };
-  
-  const hasInfo = useMemo(() => {
-    if (figure.profileType === 'character') {
-      return Object.values({
-        occupation: figure.occupation,
-        nationality: figure.nationality,
-        gender: figure.gender,
-        birthDateOrAge: figure.birthDateOrAge,
-        deathDate: figure.deathDate,
-        maritalStatus: figure.maritalStatus,
-        height: figure.height,
-        weight: figure.weight,
-        alias: figure.alias,
-      }).some(Boolean);
-    }
-    // Corrected, robust check for media profiles
-    return Object.values({
-        mediaGenre: figure.mediaGenre,
-        releaseDate: figure.releaseDate,
-        developer: figure.developer,
-        publisher: figure.publisher,
-        nationality: figure.nationality,
-        platforms: (figure.platforms ?? []).length > 0,
-        director: figure.director,
-        studio: figure.studio,
-        author: figure.author,
-        artist: figure.artist,
-        founder: figure.founder,
-        industry: figure.industry,
-        websiteUrl: figure.websiteUrl,
-        species: figure.species,
-    }).some(Boolean);
-  }, [figure]);
 
   const previewImageUrl = useMemo(() => correctMalformedUrl(formData.photoUrl), [formData.photoUrl]);
 
@@ -376,7 +393,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
         <div>
           <CardTitle>Información Detallada</CardTitle>
           <CardDescription>
-              Datos biográficos y descriptivos de {figure.name}.
+              Datos biográficos y descriptivos de {initialFigure.name}.
           </CardDescription>
         </div>
         <div className="flex gap-2">
@@ -423,13 +440,13 @@ export function FigureInfo({ figure }: FigureInfoProps) {
             </div>
             <Separator/>
 
-            <p className="font-semibold text-lg">Editando Información de {figure.name}</p>
+            <p className="font-semibold text-lg">Editando Información de {initialFigure.name}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                     <Label>Nombre Completo</Label>
                     <Input value={formData.name || ''} onChange={e => handleInputChange('name', e.target.value)} />
                 </div>
-                {figure.profileType === 'character' ? (
+                {initialFigure.profileType === 'character' ? (
                     <>
                          <div>
                             <Label>Sexo</Label>
@@ -495,7 +512,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                                 onDateChange={date => handleInputChange('releaseDate', date?.toISOString())} 
                             />
                         </div>
-                        {figure.mediaSubcategory === 'video_game' && (
+                        {initialFigure.mediaSubcategory === 'video_game' && (
                           <>
                              <div>
                                 <Label>Género</Label>
@@ -533,47 +550,40 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 <div><Label>Discord</Label><Input value={formData.socialLinks?.discord || ''} onChange={e => handleSocialLinkChange('discord', e.target.value)} placeholder="https://discord.gg/..."/></div>
             </div>
             <Separator/>
-            <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Hashtags</h3>
-                 <div className="flex items-center gap-2">
-                    <Combobox
-                        options={hashtagOptions}
-                        value={hashtagSearch}
-                        onChange={(value) => {
-                        if (value) handleAddHashtag(value);
-                        setHashtagSearch(''); // Reset search
-                        }}
-                        placeholder="Busca o crea un hashtag..."
-                        creatable
-                    />
-                </div>
-                <div className="flex flex-wrap gap-2 pt-2">
-                    {(formData.hashtags || []).map(tag => (
-                        <Badge key={tag} variant="secondary" className="text-sm">
-                            {tag}
-                            <button 
-                                type="button" 
-                                onClick={() => handleRemoveHashtag(tag)} 
-                                className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" 
-                                aria-label={`Eliminar ${tag}`}
-                            >
-                                <X className="h-3 w-3" />
-                            </button>
-                        </Badge>
-                    ))}
-                </div>
+            <div className="space-y-2">
+              <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Hashtags</h3>
+              <Input
+                placeholder="Añade un hashtag y presiona Enter"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddHashtag((e.target as HTMLInputElement).value);
+                    (e.target as HTMLInputElement).value = '';
+                  }
+                }}
+              />
+              <div className="flex flex-wrap gap-2 pt-2">
+                {(formData.hashtags || []).map((tag) => (
+                  <Badge key={tag} variant="secondary" className="text-sm">
+                    #{tag}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveHashtag(tag)}
+                      className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive"
+                      aria-label={`Eliminar ${tag}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
-          <>
-            {(!hasInfo && !figure.hashtags?.length && Object.values(figure.socialLinks || {}).every(v => !v)) ? (
-              <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">No hay información detallada disponible para este perfil.</p>
-            ) : (
-                figure.profileType === 'character' ? <CharacterInfoTemplate figure={figure} /> : <MediaInfoTemplate figure={figure} />
-            )}
-          </>
+          <FigureInfo figure={initialFigure} />
         )}
       </CardContent>
     </Card>
   );
 }
+

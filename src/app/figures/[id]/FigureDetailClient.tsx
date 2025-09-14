@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -21,7 +22,7 @@ import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type { Figure, Streak, AttitudeKey } from "@/lib/types";
-import { FigureInfo } from '@/components/figures/FigureInfo';
+import { EditableFigureInfo } from '@/components/figures/FigureInfo';
 import { doc, onSnapshot, type Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { mapDocToFigure } from "@/lib/placeholder-data";
@@ -164,7 +165,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
               </TabsList>
 
               <TabsContent value="personal-info">
-                  <FigureInfo figure={figure} />
+                  <EditableFigureInfo figure={figure} />
               </TabsContent>
               
               <TabsContent value="attitude">
@@ -214,3 +215,4 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
     </>
   );
 }
+
