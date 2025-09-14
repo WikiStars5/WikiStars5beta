@@ -66,6 +66,12 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link href="/profile">
+              <User className="mr-2 h-4 w-4" />
+              <span>Mi Perfil</span>
+            </Link>
+          </DropdownMenuItem>
           {isAdmin && (
             <DropdownMenuItem asChild>
               <Link href="/admin">
@@ -84,5 +90,3 @@ export function UserNav() {
     </DropdownMenu>
   );
 }
-
-    
