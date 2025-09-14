@@ -7,6 +7,7 @@ import type { Hashtag } from '@/lib/types';
 
 /**
  * Searches for hashtags that start with the given search term.
+ * This search is case-insensitive.
  * @param searchTerm The term to search for.
  * @returns A promise that resolves to an array of matching hashtags.
  */
@@ -19,7 +20,8 @@ export async function searchHashtags(searchTerm: string): Promise<Hashtag[]> {
   try {
     const hashtagsCollectionRef = collection(db, 'hashtags');
     
-    // Use Firestore's "starts with" query pattern.
+    // Firestore's "starts with" query pattern, case-insensitive.
+    // We query against the document ID, which is the lowercase version of the hashtag.
     const q = query(
       hashtagsCollectionRef,
       where('__name__', '>=', trimmedSearchTerm),
@@ -29,6 +31,7 @@ export async function searchHashtags(searchTerm: string): Promise<Hashtag[]> {
     );
 
     const querySnapshot = await getDocs(q);
+    // The document ID is the hashtag name (already lowercase).
     const hashtags: Hashtag[] = querySnapshot.docs.map(doc => ({ id: doc.id }));
 
     return hashtags;
