@@ -1,12 +1,11 @@
 
-
 "use client";
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, MessagesSquare, Send, Star, User, UserPlus, StarOff, Save } from 'lucide-react';
-import type { Figure, Comment as CommentType, RatingValue, LocalProfile } from '@/lib/types';
+import type { Figure, Comment as CommentType, RatingValue, LocalProfile, AttitudeKey } from '@/lib/types';
 import { addComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
@@ -62,6 +61,7 @@ const StarRatingInput = ({ value, onChange, disabled }: { value: RatingValue | n
 interface CommentSectionProps {
   figure: Figure;
   highlightedCommentId?: string | null;
+  sortPreference: AttitudeKey | null;
 }
 
 const commentSchema = z.object({
@@ -172,7 +172,7 @@ const GuestProfileForm = ({ onProfileCreated }: { onProfileCreated: (profile: Lo
 
 const INITIAL_COMMENTS_TO_SHOW = 5;
 
-export function CommentSection({ figure, highlightedCommentId }: CommentSectionProps) {
+export function CommentSection({ figure, highlightedCommentId, sortPreference }: CommentSectionProps) {
   const [comments, setComments] = React.useState<CommentType[]>([]);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [showAllComments, setShowAllComments] = React.useState(false);
@@ -202,6 +202,7 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
     setIsLoadingComments(true);
     const commentsPath = `figures/${figure.id}/comments`;
     const commentsRef = collection(db, commentsPath);
+    // Always fetch ordered by date initially
     const q = query(
       commentsRef, 
       orderBy('createdAt', 'desc')
@@ -346,14 +347,28 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
         </Form>
       );
   };
+  
+  const sortedComments = React.useMemo(() => {
+    const commentsCopy = [...comments];
+    if (sortPreference === 'fan' || sortPreference === 'simp') {
+      // Show negative comments first (lowest rating)
+      return commentsCopy.sort((a, b) => (a.rating ?? 3) - (b.rating ?? 3));
+    }
+    if (sortPreference === 'hater') {
+      // Show positive comments first (highest rating)
+      return commentsCopy.sort((a, b) => (b.rating ?? 3) - (a.rating ?? 3));
+    }
+    // Default: neutral or no vote, sort by newest
+    return commentsCopy;
+  }, [comments, sortPreference]);
 
-  const commentsToShow = showAllComments ? comments : comments.slice(0, INITIAL_COMMENTS_TO_SHOW);
+  const commentsToShow = showAllComments ? sortedComments : sortedComments.slice(0, INITIAL_COMMENTS_TO_SHOW);
   
   // This logic finds the latest comment for each user to decide if stars should be shown.
   const latestUserCommentIds = React.useMemo(() => {
     const seenUsers = new Set<string>();
     const latestIds = new Set<string>();
-    // Comments are already sorted desc by date, so the first one we see for a user is the latest.
+    // Use the original, date-sorted comments array to find the latest
     comments.forEach(comment => {
       if (!seenUsers.has(comment.authorId)) {
         seenUsers.add(comment.authorId);
@@ -400,10 +415,10 @@ export function CommentSection({ figure, highlightedCommentId }: CommentSectionP
                     isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
                   />
                 ))}
-                {comments.length > INITIAL_COMMENTS_TO_SHOW && (
+                {sortedComments.length > INITIAL_COMMENTS_TO_SHOW && (
                     <div className="text-center pt-4">
                       <Button variant="outline" onClick={() => setShowAllComments(!showAllComments)}>
-                          {showAllComments ? 'Mostrar menos comentarios' : `Ver los ${comments.length - INITIAL_COMMENTS_TO_SHOW} comentarios restantes`}
+                          {showAllComments ? 'Mostrar menos comentarios' : `Ver los ${sortedComments.length - INITIAL_COMMENTS_TO_SHOW} comentarios restantes`}
                       </Button>
                     </div>
                   )}

@@ -18,6 +18,7 @@ interface AttitudeVoteProps {
   figureName: string;
   profileType: ProfileType;
   initialAttitudeCounts?: Record<AttitudeKey, number>;
+  onVote: (attitude: AttitudeKey | null) => void;
 }
 
 const ATTITUDE_OPTIONS_CONFIG: {
@@ -38,7 +39,7 @@ const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, profileType, initialAttitudeCounts }) => {
+export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, profileType, initialAttitudeCounts, onVote }) => {
   const { firebaseUser, isLoading } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [isVoting, setIsVoting] = useState(false);
@@ -67,12 +68,14 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         const userVote = storedAttitudes.find(a => a.figureId === figureId);
         if (userVote) {
             setSelectedAttitude(userVote.attitude);
+            onVote(userVote.attitude); // Inform parent of initial attitude
         }
     }
 
     return () => {
       unsubscribeFigure();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [figureId, firebaseUser]);
   
   const handleVote = async (newAttitude: AttitudeKey) => {
@@ -93,6 +96,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
       }
       
       const isDeselecting = previousVote === newAttitude;
+      const finalAttitude = isDeselecting ? null : newAttitude;
 
       await runTransaction(db, async (transaction) => {
         const figureRef = doc(db, 'figures', figureId);
@@ -109,8 +113,8 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           newCounts[previousVote] = Math.max(0, (newCounts[previousVote] || 0) - 1);
         }
         
-        if (!isDeselecting) {
-          newCounts[newAttitude] = (newCounts[newAttitude] || 0) + 1;
+        if (finalAttitude) {
+          newCounts[finalAttitude] = (newCounts[finalAttitude] || 0) + 1;
         }
 
         transaction.update(figureRef, { attitudeCounts: newCounts });
@@ -120,31 +124,27 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         let storedAttitudes: Attitude[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
         const existingVoteIndex = storedAttitudes.findIndex(a => a.figureId === figureId);
 
-        if (isDeselecting) {
+        if (finalAttitude) {
           if (existingVoteIndex > -1) {
-            storedAttitudes.splice(existingVoteIndex, 1);
-          }
-          setSelectedAttitude(null);
-        } else {
-          if (existingVoteIndex > -1) {
-            storedAttitudes[existingVoteIndex].attitude = newAttitude;
+            storedAttitudes[existingVoteIndex].attitude = finalAttitude;
           } else {
-            storedAttitudes.push({ figureId, attitude: newAttitude, addedAt: new Date().toISOString() });
+            storedAttitudes.push({ figureId, attitude: finalAttitude, addedAt: new Date().toISOString() });
           }
-          setSelectedAttitude(newAttitude);
-          
           if (!firebaseUser.isAnonymous) {
             const achievementResult = await grantActitudDefinidaAchievement(userId);
             if (achievementResult.unlocked) {
-              toast({
-                title: "¡Logro Desbloqueado!",
-                description: achievementResult.message,
-              });
+              toast({ title: "¡Logro Desbloqueado!", description: achievementResult.message });
             }
           }
+        } else { // Deselecting
+            if (existingVoteIndex > -1) {
+                storedAttitudes.splice(existingVoteIndex, 1);
+            }
         }
         
         localStorage.setItem(storageKey, JSON.stringify(storedAttitudes));
+        setSelectedAttitude(finalAttitude);
+        onVote(finalAttitude); // Inform parent of the change
       }
 
     } catch (error: any) {

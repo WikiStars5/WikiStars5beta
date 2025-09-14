@@ -7,7 +7,7 @@ import {
   ImageOff, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
   MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight,
-  Archive, Bike, UserPlus, Flame, BarChart3, CheckSquare, FilePenLine
+  Archive, Bike, UserPlus, Flame, BarChart3, CheckSquare
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
@@ -20,7 +20,7 @@ import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import type { Figure, Streak } from "@/lib/types";
+import type { Figure, Streak, AttitudeKey } from "@/lib/types";
 import { FigureInfo } from '@/components/figures/FigureInfo';
 import { doc, onSnapshot, type Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -53,6 +53,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
   const [highlightedCommentId, setHighlightedCommentId] = React.useState<string | null>(null);
   const [currentUserStreak, setCurrentUserStreak] = React.useState<number | null>(null);
+  const [commentSortPreference, setCommentSortPreference] = React.useState<AttitudeKey | null>(null);
 
 
   // This effect will run once when the component mounts to check the URL.
@@ -171,7 +172,8 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
                     figureId={figure.id} 
                     figureName={figure.name}
                     profileType={figure.profileType} 
-                    initialAttitudeCounts={figure.attitudeCounts} 
+                    initialAttitudeCounts={figure.attitudeCounts}
+                    onVote={setCommentSortPreference}
                   />
               </TabsContent>
               
@@ -196,6 +198,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
         <CommentSection 
           figure={figure} 
           highlightedCommentId={highlightedCommentId} 
+          sortPreference={commentSortPreference}
         />
         
         <RelatedProfiles figure={figure} />
