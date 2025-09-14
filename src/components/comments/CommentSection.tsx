@@ -224,18 +224,6 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
   const getAuthorData = () => {
     if (!firebaseUser) return null;
 
-    if (isAdmin && currentUser) {
-      return {
-        id: currentUser.uid,
-        name: currentUser.username,
-        photoUrl: currentUser.photoURL,
-        gender: currentUser.gender || '',
-        country: currentUser.country || '',
-        countryCode: currentUser.countryCode || '',
-        isAnonymous: false,
-      };
-    }
-    
     if (isAnonymous && localProfile) {
        return {
         id: firebaseUser.uid,
@@ -248,6 +236,18 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
       };
     }
     
+    if (!isAnonymous && currentUser) {
+      return {
+        id: currentUser.uid,
+        name: currentUser.username,
+        photoUrl: currentUser.photoURL,
+        gender: currentUser.gender || '',
+        country: currentUser.country || '',
+        countryCode: currentUser.countryCode || '',
+        isAnonymous: false,
+      };
+    }
+    
     return null;
   }
 
@@ -255,7 +255,7 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
   const onCommentSubmit = async (data: CommentFormData) => {
     const authorData = getAuthorData();
     if (!authorData) {
-      toast({ title: "Error", description: "No se pudo identificar al autor.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudo identificar al autor. Por favor, crea un perfil de invitado.", variant: "destructive" });
       return;
     }
     
@@ -275,11 +275,9 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
             }
         }
         
-        if (isAnonymous) {
-          const newStreak = await updateStreak(figure.id, authorData);
-          if (newStreak) {
+        const newStreak = await updateStreak(figure.id, authorData);
+        if (newStreak) {
             setStreakToAnimate(newStreak);
-          }
         }
 
         toast({ title: "¡Opinión publicada!", description: "Gracias por tu contribución." });
@@ -295,7 +293,7 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
           return <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>;
       }
       
-      const canComment = isAdmin || (isAnonymous && localProfile);
+      const canComment = (isAnonymous && localProfile) || (!isAnonymous && currentUser);
       
       if (!canComment) {
           return <GuestProfileForm onProfileCreated={(profile) => updateUserProfile(profile.username, profile.countryCode, profile.gender)} />;

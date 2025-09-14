@@ -1,5 +1,4 @@
 
-
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -843,10 +842,10 @@ export async function updateStreak(
       let attitude: AttitudeKey | null = null;
       let emotion: EmotionKey | null = null;
       if (typeof window !== 'undefined') {
-        const localAttitudes: Attitude[] = JSON.parse(localStorage.getItem('wikistars5-userAttitudes') || '[]');
+        const localAttitudes: Attitude[] = JSON.parse(localStorage.getItem(`wikistars5-attitudes-${authorData.id}`) || '[]');
         attitude = localAttitudes.find(a => a.figureId === figureId)?.attitude || null;
         
-        const localEmotions: EmotionVote[] = JSON.parse(localStorage.getItem('wikistars5-userEmotions') || '[]');
+        const localEmotions: EmotionVote[] = JSON.parse(localStorage.getItem(`wikistars5-emotions-${authorData.id}`) || '[]');
         emotion = localEmotions.find(e => e.figureId === figureId)?.emotion || null;
       }
       
