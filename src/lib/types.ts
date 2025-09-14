@@ -30,8 +30,8 @@ export interface Hashtag {
 export interface Figure {
   id: string;
   name: string;
-  nameLower: string;
-  searchKeywords: string[]; 
+  nameLower?: string; // This is now deprecated in favor of nameSearch
+  nameSearch: string;
   profileType: ProfileType; 
   photoUrl: string;
   description?: string;

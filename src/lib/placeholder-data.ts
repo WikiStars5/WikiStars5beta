@@ -36,8 +36,7 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const figureData: Figure = {
     id: docSnap.id,
     name: data.name || "",
-    nameLower: data.nameLower || (data.name ? data.name.toLowerCase() : ""),
-    searchKeywords: data.searchKeywords || [],
+    nameSearch: data.nameSearch || (data.name ? data.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : ""),
     profileType: data.profileType || 'character', // Default to character for older data
     photoUrl: data.photoUrl || "",
     description: data.description || "",
@@ -229,7 +228,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
 
       // Destructure all known fields to separate them from the rest
       const { 
-          id, createdAt, nameLower: nameLowerInput, searchKeywords: searchKeywordsInput, perceptionCounts, attitudeCounts, ratingCounts,
+          id, createdAt, nameLower: nameLowerInput, nameSearch: nameSearchInput, perceptionCounts, attitudeCounts, ratingCounts,
           name, profileType, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, age, birthPlace, statusLiveOrDead, maritalStatus,
           height, heightCm, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
@@ -240,8 +239,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
 
       if (name !== undefined) {
         updatePayload.name = name;
-        updatePayload.nameLower = name.toLowerCase();
-        updatePayload.searchKeywords = name.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        updatePayload.nameSearch = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
       }
       if (profileType !== undefined) updatePayload.profileType = profileType;
       if (photoUrl !== undefined) updatePayload.photoUrl = photoUrl;

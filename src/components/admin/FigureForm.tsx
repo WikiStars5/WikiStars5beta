@@ -209,7 +209,12 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   }, 300), []);
 
   useEffect(() => {
-    debouncedSearchHashtags(hashtagSearch);
+    if (hashtagSearch) {
+        debouncedSearchHashtags(hashtagSearch);
+    } else {
+        setHashtagOptions([]);
+        setIsLoadingHashtags(false);
+    }
   }, [hashtagSearch, debouncedSearchHashtags]);
 
   const handleProfileTypeChange = (value: ProfileType) => {
@@ -226,6 +231,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     if (trimmedHashtag && !hashtags.includes(trimmedHashtag)) {
       setHashtags([...hashtags, trimmedHashtag]);
     }
+    setHashtagSearch(''); // Clear search after adding
   };
 
   const handleRemoveHashtag = (hashtagToRemove: string) => {
@@ -266,14 +272,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       
       // 1. Prepare figure data
       const finalPhotoUrlToSave = photoUrl.trim() || 'https://placehold.co/400x600.png';
-      const searchKeywords = name.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const nameTrimmed = name.trim();
+      const nameSearch = nameTrimmed.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
       const hashtagsLower = hashtags.map(tag => tag.toLowerCase());
       
       const baseData = {
-        name: name.trim(),
-        nameLower: name.trim().toLowerCase(),
+        name: nameTrimmed,
+        nameSearch: nameSearch,
         profileType: profileType,
-        searchKeywords: searchKeywords,
         description: description.trim() || "", 
         photoUrl: finalPhotoUrlToSave,
         hashtags: hashtags,
@@ -598,7 +604,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
               <Label>Añadir hashtag existente</Label>
               <Combobox
                   options={hashtagOptions}
-                  value={null}
+                  value={hashtagSearch}
                   onChange={(value) => {
                       if (value) handleAddHashtag(value);
                   }}

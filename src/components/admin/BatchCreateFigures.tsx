@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState } from 'react';
@@ -91,7 +92,8 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
       namesList.forEach(name => {
         const figureId = slugify(name, { lower: true, strict: true });
         if (figureId) {
-          const searchKeywords = name.trim().toLowerCase().split(/\s+/).filter(Boolean);
+          const nameTrimmed = name.trim();
+          const nameSearch = nameTrimmed.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
           const figureRef = doc(figuresCollectionRef, figureId);
           const attitudeCounts = { ...defaultAttitudeCounts };
           if (profileType === 'media') {
@@ -99,10 +101,9 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
           }
 
           const figureData: Partial<Figure> & { createdAt: any } = {
-            name: name,
-            nameLower: name.toLowerCase(),
+            name: nameTrimmed,
+            nameSearch: nameSearch,
             profileType: profileType,
-            searchKeywords: searchKeywords,
             photoUrl: `https://placehold.co/400x600.png?text=${encodeURIComponent(name)}`,
             description: '',
             isFeatured: false,

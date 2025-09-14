@@ -337,8 +337,11 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
   }, 300), []);
 
   useEffect(() => {
-    if (isEditing) {
+    if (isEditing && hashtagSearch) {
       debouncedSearchHashtags(hashtagSearch);
+    } else if (isEditing) {
+      setHashtagOptions([]);
+      setIsLoadingHashtags(false);
     }
   }, [hashtagSearch, isEditing, debouncedSearchHashtags]);
 
@@ -365,6 +368,7 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
             hashtags: [...(prev.hashtags || []), trimmedHashtag]
         }));
     }
+    setHashtagSearch('');
   };
 
   const handleRemoveHashtag = (hashtagToRemove: string) => {
@@ -384,7 +388,11 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const updatePayload = { ...formData };
+      const updatePayload: Partial<Figure> & { id: string } = { ...formData, id: initialFigure.id };
+      
+      if (updatePayload.name) {
+        updatePayload.nameSearch = updatePayload.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      }
 
       if (updatePayload.heightCm !== undefined) {
         updatePayload.height = `${updatePayload.heightCm} cm`;
@@ -392,7 +400,7 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
         updatePayload.height = '';
       }
 
-      await updateFigureInFirestore({ ...updatePayload, id: initialFigure.id });
+      await updateFigureInFirestore(updatePayload);
       toast({ title: "Perfil Actualizado", description: "Los cambios han sido guardados." });
       setIsEditing(false);
     } catch (error: any) {
@@ -579,7 +587,7 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
                   <Label>Añadir hashtag existente</Label>
                   <Combobox
                       options={hashtagOptions}
-                      value={null}
+                      value={hashtagSearch}
                       onChange={(value) => {
                           if (value) handleAddHashtag(value);
                       }}
