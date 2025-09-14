@@ -166,60 +166,14 @@ export const deleteFigure = onCall(async (request) => {
     }
 
     const figureRef = db.collection('figures').doc(figureId);
-    
-    // Helper function to delete collections and their subcollections recursively.
-    async function deleteCollection(collectionPath: string, batchSize: number) {
-        const collectionRef = db.collection(collectionPath);
-        const query = collectionRef.orderBy('__name__').limit(batchSize);
 
-        return new Promise<void>((resolve, reject) => {
-            deleteQueryBatch(query, resolve).catch(reject);
-        });
-    }
-
-    async function deleteQueryBatch(query: admin.firestore.Query, resolve: () => void) {
-        const snapshot = await query.get();
-
-        if (snapshot.size === 0) {
-            // When there are no documents left, we are done
-            resolve();
-            return;
-        }
-
-        // Delete documents in a batch
-        const batch = db.batch();
-        snapshot.docs.forEach(async (doc) => {
-             // Recursively delete subcollections
-            const subcollections = await doc.ref.listCollections();
-            for (const subcollection of subcollections) {
-                 await deleteCollection(`${doc.ref.path}/${subcollection.id}`, 500);
-            }
-            batch.delete(doc.ref);
-        });
-
-        await batch.commit();
-
-        // Recurse on the next process tick, to avoid hitting stack depth limits
-        process.nextTick(() => {
-            deleteQueryBatch(query, resolve);
-        });
-    }
-    
     try {
-        console.log(`Starting deletion for figure ${figureId}`);
+        console.log(`Starting recursive deletion for figure ${figureId}`);
 
-        // Get all subcollections of the figure document
-        const subcollections = await figureRef.listCollections();
-
-        // Delete each subcollection recursively
-        for (const subcollection of subcollections) {
-            await deleteCollection(`${figureRef.path}/${subcollection.id}`, 500);
-            console.log(`Finished deleting subcollection: ${subcollection.id}`);
-        }
-
-        // After all subcollections are deleted, delete the main figure document
-        await figureRef.delete();
-        console.log(`Successfully deleted figure document ${figureId}`);
+        // Firestore's `delete` method with the `recursive` option handles everything.
+        await db.recursiveDelete(figureRef);
+        
+        console.log(`Successfully deleted figure document ${figureId} and all subcollections.`);
 
         return { success: true, message: `Successfully deleted figure ${figureId} and all associated data.` };
 
@@ -276,5 +230,3 @@ export const toggleFeaturedStatus = onCall(async (request) => {
         throw new HttpsError('internal', `An error occurred while changing the status: ${error.message}`);
     }
 });
-
-    
