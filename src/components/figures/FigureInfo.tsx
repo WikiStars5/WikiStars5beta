@@ -267,12 +267,6 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   const [hashtagSearch, setHashtagSearch] = useState('');
 
   useEffect(() => {
-    if (!isEditing) {
-      setFormData(figure);
-    }
-  }, [figure, isEditing]);
-
-  useEffect(() => {
     if (isEditing) {
       const loadHashtags = async () => {
         const existingHashtags = await searchHashtags('');
@@ -385,24 +379,25 @@ export function FigureInfo({ figure }: FigureInfoProps) {
               Datos biográficos y descriptivos de {figure.name}.
           </CardDescription>
         </div>
-        {!isEditing && (
-          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-            <FilePenLine className="mr-2 h-4 w-4" />
-            Editar
-          </Button>
-        )}
-         {isEditing && (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
-              <X className="mr-2 h-4 w-4" />
-              Cancelar
+        <div className="flex gap-2">
+            {isEditing ? (
+            <>
+                <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
+                <X className="mr-2 h-4 w-4" />
+                Cancelar
+                </Button>
+                <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Guardar
+                </Button>
+            </>
+            ) : (
+            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <FilePenLine className="mr-2 h-4 w-4" />
+                Editar
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Guardar
-            </Button>
-          </div>
-        )}
+            )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {isEditing ? (
@@ -538,33 +533,35 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 <div><Label>Discord</Label><Input value={formData.socialLinks?.discord || ''} onChange={e => handleSocialLinkChange('discord', e.target.value)} placeholder="https://discord.gg/..."/></div>
             </div>
             <Separator/>
-            <div className="space-y-2">
-              <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Hashtags</h3>
-              <Combobox
-                options={hashtagOptions}
-                value={hashtagSearch}
-                onChange={(value) => {
-                  if (value) handleAddHashtag(value);
-                  setHashtagSearch(''); // Reset search
-                }}
-                placeholder="Busca o crea un hashtag..."
-                creatable
-              />
-              <div className="flex flex-wrap gap-2 pt-2">
-                  {(formData.hashtags || []).map(tag => (
-                      <Badge key={tag} variant="secondary" className="text-sm">
-                          {tag}
-                          <button 
-                              type="button" 
-                              onClick={() => handleRemoveHashtag(tag)} 
-                              className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" 
-                              aria-label={`Eliminar ${tag}`}
-                          >
-                              <X className="h-3 w-3" />
-                          </button>
-                      </Badge>
-                  ))}
-              </div>
+            <div className="space-y-4">
+                <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Hashtags</h3>
+                 <div className="flex items-center gap-2">
+                    <Combobox
+                        options={hashtagOptions}
+                        value={hashtagSearch}
+                        onChange={(value) => {
+                        if (value) handleAddHashtag(value);
+                        setHashtagSearch(''); // Reset search
+                        }}
+                        placeholder="Busca o crea un hashtag..."
+                        creatable
+                    />
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2">
+                    {(formData.hashtags || []).map(tag => (
+                        <Badge key={tag} variant="secondary" className="text-sm">
+                            {tag}
+                            <button 
+                                type="button" 
+                                onClick={() => handleRemoveHashtag(tag)} 
+                                className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" 
+                                aria-label={`Eliminar ${tag}`}
+                            >
+                                <X className="h-3 w-3" />
+                            </button>
+                        </Badge>
+                    ))}
+                </div>
             </div>
           </div>
         ) : (
