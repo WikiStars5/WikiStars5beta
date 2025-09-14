@@ -1,4 +1,5 @@
 
+
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -229,7 +230,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
 
       // Destructure all known fields to separate them from the rest
       const { 
-          id, createdAt, nameLower, nameSearch, nameKeywords, perceptionCounts, attitudeCounts, ratingCounts,
+          id, createdAt, nameLower, nameKeywords, perceptionCounts, attitudeCounts, ratingCounts,
           name, profileType, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, age, birthPlace, statusLiveOrDead, maritalStatus,
           height, heightCm, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
@@ -849,17 +850,20 @@ export async function updateStreak(
         emotion = localEmotions.find(e => e.figureId === figureId)?.emotion || null;
       }
       
-      const dataToSet: Streak = {
+      const dataToSet: Partial<Streak> = {
         userId: authorData.id,
         currentStreak: currentStreak,
         lastCommentDate: Timestamp.fromDate(now),
         isAnonymous: authorData.isAnonymous,
         attitude,
         emotion,
-        username: authorData.isAnonymous ? authorData.name : undefined,
-        gender: authorData.isAnonymous ? authorData.gender : undefined,
-        countryCode: authorData.isAnonymous ? authorData.countryCode : undefined,
       };
+
+      if (authorData.isAnonymous) {
+          dataToSet.username = authorData.name;
+          dataToSet.gender = authorData.gender;
+          dataToSet.countryCode = authorData.countryCode;
+      }
 
       transaction.set(streakRef, dataToSet, { merge: true });
     });
