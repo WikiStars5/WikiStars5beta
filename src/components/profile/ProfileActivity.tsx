@@ -1,6 +1,7 @@
 
 "use client";
 
+import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import type { Figure, Attitude, EmotionVote, LocalUserStreak, AttitudeKey } from '@/lib/types';
@@ -193,5 +194,3 @@ export function ProfileActivity() {
         </Card>
     );
 }
-
-    
