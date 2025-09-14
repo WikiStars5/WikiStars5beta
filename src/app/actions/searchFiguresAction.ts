@@ -14,24 +14,53 @@ export async function searchFiguresByName(searchTerm: string): Promise<Figure[]>
   try {
     const figuresCollectionRef = collection(db, 'figures');
     
-    // Firestore "starts with" query. This is the correct way to implement autocomplete.
-    // It finds all documents where nameSearch starts with the search term.
-    const q = query(
+    // Query 1: Prefix search on the full name (nameSearch field)
+    const prefixQuery = query(
       figuresCollectionRef,
       where('nameSearch', '>=', trimmedSearchTerm),
       where('nameSearch', '<=', trimmedSearchTerm + '\uf8ff'),
       orderBy('nameSearch'),
-      limit(10)
+      limit(5)
     );
 
-    const querySnapshot = await getDocs(q);
-    const figures: Figure[] = querySnapshot.docs.map(mapDocToFigure);
+    // Query 2: Search for the term as a keyword in the nameKeywords array
+    // This allows finding "Messi" in "Lionel Messi"
+    const keywordQuery = query(
+      figuresCollectionRef,
+      where('nameKeywords', 'array-contains', trimmedSearchTerm),
+      limit(5)
+    );
 
-    return figures;
+    const [prefixSnapshot, keywordSnapshot] = await Promise.all([
+      getDocs(prefixQuery),
+      getDocs(keywordQuery)
+    ]);
+
+    const figuresMap = new Map<string, Figure>();
+
+    prefixSnapshot.docs.forEach(doc => {
+      if (!figuresMap.has(doc.id)) {
+        figuresMap.set(doc.id, mapDocToFigure(doc));
+      }
+    });
+
+    keywordSnapshot.docs.forEach(doc => {
+      if (!figuresMap.has(doc.id)) {
+        figuresMap.set(doc.id, mapDocToFigure(doc));
+      }
+    });
+    
+    const combinedFigures = Array.from(figuresMap.values());
+
+    // Optional: sort the combined results alphabetically
+    combinedFigures.sort((a, b) => a.name.localeCompare(b.name));
+
+    return combinedFigures;
+
   } catch (error) {
     console.error("Error searching figures in Firestore: ", error);
     if (String(error).includes('requires an index')) {
-         throw new Error("La función de búsqueda necesita un índice de Firestore que no existe. Por favor, crea el índice compuesto para la colección 'figures' en el campo 'nameSearch' (ascendente) desde la consola de Firebase.");
+         throw new Error("La función de búsqueda necesita un índice de Firestore que no existe. Por favor, crea el índice compuesto para la colección 'figures' en el campo 'nameSearch' (ascendente) y/o 'nameKeywords' desde la consola de Firebase.");
     }
     throw new Error("Failed to search figures due to a server error.");
   }
