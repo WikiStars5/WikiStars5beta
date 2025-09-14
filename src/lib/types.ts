@@ -175,6 +175,7 @@ export interface Comment {
   text: string;
   rating?: RatingValue;
   createdAt: Timestamp;
+  lastEditedAt?: Timestamp;
   likes: string[]; // Array of user IDs who liked the comment
   likeCount: number;
   dislikes: string[]; // Array of user IDs who disliked the comment

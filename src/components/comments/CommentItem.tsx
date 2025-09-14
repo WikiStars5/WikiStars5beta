@@ -6,9 +6,9 @@ import * as React from 'react';
 import type { Figure, Comment as CommentType, RatingValue } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Loader2, Star, StarOff, Trash2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Loader2, Star, StarOff, Trash2, FilePenLine, Save, X } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
-import { mapDocToComment, toggleDislikeComment, toggleLikeComment, addReply, deleteComment } from '@/lib/placeholder-data';
+import { mapDocToComment, toggleDislikeComment, toggleLikeComment, addReply, deleteComment, updateComment } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
@@ -144,7 +144,10 @@ export function CommentItem({
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [isHighlighted, setIsHighlighted] = React.useState(false);
     const commentRef = React.useRef<HTMLDivElement>(null);
-
+    
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [editText, setEditText] = React.useState(comment.text);
+    const [isSavingEdit, setIsSavingEdit] = React.useState(false);
 
     const [isExpanded, setIsExpanded] = React.useState(false);
     const isLongComment = comment.text.length > TRUNCATE_LENGTH;
@@ -162,6 +165,10 @@ export function CommentItem({
         if (isAdmin) return true;
         return userId === comment.authorId;
     }, [isAdmin, userId, comment.authorId]);
+    
+    const canEdit = React.useMemo(() => {
+        return userId === comment.authorId;
+    }, [userId, comment.authorId]);
 
 
     React.useEffect(() => {
@@ -239,6 +246,22 @@ export function CommentItem({
             setIsDeleting(false);
         }
     };
+    
+    const handleSaveEdit = async () => {
+        if (isSavingEdit || !editText.trim()) return;
+
+        setIsSavingEdit(true);
+        try {
+            await updateComment(currentPath, editText.trim());
+            toast({ title: "Comentario actualizado" });
+            setIsEditing(false);
+        } catch (error: any) {
+            console.error("Error updating comment:", error);
+            toast({ title: "Error al guardar", description: error.message, variant: "destructive" });
+        } finally {
+            setIsSavingEdit(false);
+        }
+    };
 
 
     return (
@@ -275,25 +298,48 @@ export function CommentItem({
                             )}
                         </div>
                     </div>
-                    {comment.createdAt && (
-                        <p className="text-xs text-muted-foreground flex-shrink-0">{timeSince(comment.createdAt.toDate())}</p>
-                    )}
+                     <div className="text-xs text-muted-foreground flex-shrink-0 flex items-center gap-1">
+                        {comment.lastEditedAt && <span title={comment.lastEditedAt.toDate().toLocaleString()}>(editado)</span>}
+                        {comment.createdAt && <span>{timeSince(comment.createdAt.toDate())}</span>}
+                    </div>
                 </div>
                 
-                <p className="text-sm mt-2 whitespace-pre-wrap ml-10">
-                  {isLongComment && !isExpanded 
-                    ? `${comment.text.substring(0, TRUNCATE_LENGTH)}...` 
-                    : comment.text
-                  }
-                </p>
-                {isLongComment && (
-                  <Button 
-                    variant="link" 
-                    className="text-xs p-0 h-auto ml-10" 
-                    onClick={() => setIsExpanded(!isExpanded)}
-                  >
-                    {isExpanded ? 'Ver menos' : 'Ver más'}
-                  </Button>
+                {isEditing ? (
+                    <div className="space-y-2 mt-2 ml-10">
+                        <Textarea
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            rows={3}
+                            className="bg-card"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} disabled={isSavingEdit}>
+                                <X className="mr-1 h-4 w-4"/> Cancelar
+                            </Button>
+                            <Button size="sm" onClick={handleSaveEdit} disabled={isSavingEdit || !editText.trim()}>
+                                {isSavingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                <Save className="mr-1 h-4 w-4"/> Guardar
+                            </Button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <p className="text-sm mt-2 whitespace-pre-wrap ml-10">
+                        {isLongComment && !isExpanded 
+                            ? `${comment.text.substring(0, TRUNCATE_LENGTH)}...` 
+                            : comment.text
+                        }
+                        </p>
+                        {isLongComment && (
+                        <Button 
+                            variant="link" 
+                            className="text-xs p-0 h-auto ml-10" 
+                            onClick={() => setIsExpanded(!isExpanded)}
+                        >
+                            {isExpanded ? 'Ver menos' : 'Ver más'}
+                        </Button>
+                        )}
+                    </>
                 )}
             </div>
             <div className="flex items-center gap-2 mt-1 px-1 ml-10">
@@ -306,6 +352,11 @@ export function CommentItem({
                 {canReply && (
                     <Button variant="ghost" size="sm" onClick={() => setShowReplyForm(!showReplyForm)} disabled={isAuthLoading} className="text-xs h-auto py-1 px-2">
                         <MessageSquareReply className="mr-1 h-3 w-3" /> Responder
+                    </Button>
+                )}
+                 {canEdit && (
+                    <Button variant="ghost" size="sm" disabled={isAuthLoading} onClick={() => setIsEditing(true)} className="text-xs h-auto py-1 px-2">
+                        <FilePenLine className="mr-1 h-3 w-3" /> Editar
                     </Button>
                 )}
                 {canDelete && (

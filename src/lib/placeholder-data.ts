@@ -486,6 +486,7 @@ export const mapDocToComment = (docSnap: DocumentData): Comment => {
     text: data.text,
     rating: data.rating,
     createdAt: data.createdAt,
+    lastEditedAt: data.lastEditedAt,
     likes: data.likes || [],
     likeCount: data.likeCount || 0,
     dislikes: data.dislikes || [],
@@ -608,6 +609,15 @@ export async function addReply(
   });
 
   return docRef.id;
+}
+
+
+export async function updateComment(documentPath: string, newText: string): Promise<void> {
+    const commentRef = doc(db, documentPath);
+    await updateDoc(commentRef, {
+        text: newText,
+        lastEditedAt: serverTimestamp(),
+    });
 }
 
 
