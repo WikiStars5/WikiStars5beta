@@ -15,9 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { CountryCombobox } from '@/components/shared/CountryCombobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
-import { useRouter } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import Link from 'next/link';
+import { ProfileActivity } from '@/components/profile/ProfileActivity';
 
 const profileSchema = z.object({
   username: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.').max(30, 'El nombre no puede tener más de 30 caracteres.'),
@@ -92,8 +91,8 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex items-center justify-center">
-      <Card className="w-full max-w-2xl">
+    <div className="space-y-8">
+      <Card className="w-full max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-2xl font-headline">
             <UserCircle className="h-7 w-7" />
@@ -181,6 +180,9 @@ export default function ProfilePage() {
           </Form>
         </CardContent>
       </Card>
+
+      <ProfileActivity />
+
     </div>
   );
 }
