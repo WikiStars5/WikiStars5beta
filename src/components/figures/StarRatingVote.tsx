@@ -54,13 +54,20 @@ export const StarRatingVote: React.FC<StarRatingVoteProps> = ({ figure }) => {
   
   const { totalVotes, averageRating } = useMemo(() => {
     if (!ratingCounts) return { totalVotes: 0, averageRating: 0 };
+    
+    // Contar el número total de votos (incluyendo los de 0 estrellas)
     const total = Object.values(ratingCounts).reduce((sum, count) => sum + count, 0);
-    const votesForAverage = Object.entries(ratingCounts).filter(([key]) => key !== "0").reduce((acc, [, count]) => acc + count, 0);
-    if (votesForAverage === 0) {
-      return { totalVotes: total, averageRating: 0 };
+    
+    if (total === 0) {
+      return { totalVotes: 0, averageRating: 0 };
     }
-    const weightedSum = Object.entries(ratingCounts).filter(([key]) => key !== "0").reduce((sum, [rating, count]) => sum + parseInt(rating) * count, 0);
-    return { totalVotes: total, averageRating: weightedSum / votesForAverage };
+
+    // Calcular la suma ponderada (los votos de 0 no suman nada, lo cual es correcto)
+    const weightedSum = Object.entries(ratingCounts)
+        .reduce((sum, [rating, count]) => sum + parseInt(rating) * count, 0);
+    
+    // El promedio se calcula sobre el total de votos.
+    return { totalVotes: total, averageRating: weightedSum / total };
   }, [ratingCounts]);
 
   useEffect(() => {
