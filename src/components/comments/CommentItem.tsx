@@ -245,6 +245,22 @@ export function CommentItem({
         }
     };
 
+    const renderRating = (rating: RatingValue) => {
+      const stars = [];
+      const isZero = rating === 0;
+
+      if(isZero) {
+        stars.push(<StarOff key="zero" className="h-4 w-4 text-destructive" />);
+      } else {
+        for (let i = 1; i <= 5; i++) {
+          stars.push(
+            <Star key={i} className={cn("h-4 w-4", i <= rating ? "text-primary fill-current" : "text-muted-foreground/30")} />
+          );
+        }
+      }
+      return <div className="flex items-center gap-1">{stars}</div>;
+    };
+
 
     return (
         <div ref={commentRef} className={cn(depth > 0 && "ml-4 md:ml-8")} id={`comment-${comment.id}`}>
@@ -273,6 +289,11 @@ export function CommentItem({
                                     />
                                 )}
                             </div>
+                            {comment.rating !== undefined && comment.rating !== null && (
+                                <div className="mt-1">
+                                    {renderRating(comment.rating)}
+                                </div>
+                            )}
                         </div>
                     </div>
                      <div className="text-xs text-muted-foreground flex-shrink-0 flex items-center gap-1">
