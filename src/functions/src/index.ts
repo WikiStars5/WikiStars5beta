@@ -35,20 +35,21 @@ setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 export const createProfileOnRegister = onUserCreate(async (event) => {
   const user = event.data; // The user record created in Firebase Auth
   const { uid, email, displayName, photoURL } = user;
+  const isAnonymous = !email; // A simple check for anonymous users
 
   const userProfile: UserProfile = {
     uid: uid,
     email: email || null,
-    username: displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`,
+    username: isAnonymous ? "Invitado" : (displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`),
     country: '',
     countryCode: '',
     gender: '',
-    photoURL: photoURL || null,
-    role: uid === ADMIN_UID ? 'admin' : 'user',
+    photoURL: photoURL || null, // Ensure photoURL is always defined as string or null
+    role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
     createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString(), // Set initial login time
     achievements: [],
-    isAnonymous: false, // This function only triggers for non-anonymous users
+    isAnonymous: isAnonymous,
   };
 
   try {
