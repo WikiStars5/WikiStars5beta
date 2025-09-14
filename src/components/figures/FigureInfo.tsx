@@ -38,6 +38,16 @@ import { VIDEO_GAME_GENRES } from '@/config/genres';
 import { Combobox } from '../shared/Combobox';
 import { searchHashtags } from '@/app/actions/searchHashtagsAction';
 
+// Debounce function
+function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<F>): Promise<ReturnType<F>> =>
+    new Promise(resolve => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => resolve(func(...args)), waitFor);
+    });
+}
+
 const SOCIAL_MEDIA_CONFIG: Record<string, { label: string }> = {
   website: { label: 'Página Web' },
   instagram: { label: 'Instagram' },
@@ -569,7 +579,7 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
                   <Label>Añadir hashtag existente</Label>
                   <Combobox
                       options={hashtagOptions}
-                      value={null} // Always reset after selection
+                      value={null}
                       onChange={(value) => {
                           if (value) handleAddHashtag(value);
                       }}
