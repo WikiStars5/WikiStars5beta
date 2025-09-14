@@ -7,61 +7,36 @@ import { mapDocToFigure } from '@/lib/placeholder-data';
 
 export async function searchFiguresByName(searchTerm: string): Promise<Figure[]> {
   const trimmedSearchTerm = searchTerm.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  if (trimmedSearchTerm.length < 2) {
+  if (trimmedSearchTerm.length < 1) { // Allow search from 1 character
     return [];
   }
 
   try {
     const figuresCollectionRef = collection(db, 'figures');
     
-    // Query 1: Prefix search on the full name (nameSearch field)
-    const prefixQuery = query(
-      figuresCollectionRef,
-      where('nameSearch', '>=', trimmedSearchTerm),
-      where('nameSearch', '<=', trimmedSearchTerm + '\uf8ff'),
-      orderBy('nameSearch'),
-      limit(5)
-    );
-
-    // Query 2: Search for the term as a keyword in the nameKeywords array
-    // This allows finding "Messi" in "Lionel Messi"
-    const keywordQuery = query(
+    // The single, powerful query for autocomplete on any part of the name
+    const q = query(
       figuresCollectionRef,
       where('nameKeywords', 'array-contains', trimmedSearchTerm),
-      limit(5)
+      limit(10)
     );
 
-    const [prefixSnapshot, keywordSnapshot] = await Promise.all([
-      getDocs(prefixQuery),
-      getDocs(keywordQuery)
-    ]);
+    const querySnapshot = await getDocs(q);
 
-    const figuresMap = new Map<string, Figure>();
+    const figures = querySnapshot.docs.map(mapDocToFigure);
 
-    prefixSnapshot.docs.forEach(doc => {
-      if (!figuresMap.has(doc.id)) {
-        figuresMap.set(doc.id, mapDocToFigure(doc));
-      }
-    });
+    // Optional: sort the combined results alphabetically for consistent display
+    figures.sort((a, b) => a.name.localeCompare(b.name));
 
-    keywordSnapshot.docs.forEach(doc => {
-      if (!figuresMap.has(doc.id)) {
-        figuresMap.set(doc.id, mapDocToFigure(doc));
-      }
-    });
-    
-    const combinedFigures = Array.from(figuresMap.values());
-
-    // Optional: sort the combined results alphabetically
-    combinedFigures.sort((a, b) => a.name.localeCompare(b.name));
-
-    return combinedFigures;
+    return figures;
 
   } catch (error) {
     console.error("Error searching figures in Firestore: ", error);
     if (String(error).includes('requires an index')) {
-         throw new Error("La función de búsqueda necesita un índice de Firestore que no existe. Por favor, crea el índice compuesto para la colección 'figures' en el campo 'nameSearch' (ascendente) y/o 'nameKeywords' desde la consola de Firebase.");
+         throw new Error("La función de búsqueda necesita un índice de Firestore que no existe. Por favor, crea el índice compuesto para la colección 'figures' en el campo 'nameKeywords' desde la consola de Firebase.");
     }
     throw new Error("Failed to search figures due to a server error.");
   }
 }
+
+    

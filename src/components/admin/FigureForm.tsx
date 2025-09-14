@@ -42,12 +42,21 @@ function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
     });
 }
 
-// Helper function to generate keywords from a name
+// Generates all possible prefixes for each word in a name.
+// E.g., "Lionel Messi" -> ['l', 'li', 'lio', ... 'lionel', 'm', 'me', ... 'messi']
 const generateKeywords = (name: string): string[] => {
     if (!name) return [];
+    const keywords = new Set<string>();
     const normalizedName = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const parts = normalizedName.split(/\s+/).filter(part => part.length > 0);
-    return parts;
+    const words = normalizedName.split(/\s+/).filter(Boolean);
+
+    words.forEach(word => {
+        for (let i = 1; i <= word.length; i++) {
+            keywords.add(word.substring(0, i));
+        }
+    });
+
+    return Array.from(keywords);
 };
 
 interface FigureFormProps {
@@ -282,7 +291,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       const finalPhotoUrlToSave = photoUrl.trim() || 'https://placehold.co/400x600.png';
       const nameTrimmed = name.trim();
       const nameSearch = nameTrimmed.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-      const nameKeywords = generateKeywords(nameTrimmed);
+      const nameKeywords = generateKeywords(nameTrimmed); // Use the new prefix generator
       const hashtagsLower = hashtags.map(tag => tag.toLowerCase());
       
       const baseData = {
@@ -666,3 +675,5 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 };
 
 export default FigureForm;
+
+    

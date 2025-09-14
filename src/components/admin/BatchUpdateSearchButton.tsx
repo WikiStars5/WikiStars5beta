@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState } from 'react';
@@ -20,12 +21,21 @@ import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure } from '@/lib/types';
 
-// Helper function to generate keywords from a name
+// Generates all possible prefixes for each word in a name.
+// E.g., "Lionel Messi" -> ['l', 'li', 'lio', ... 'lionel', 'm', 'me', ... 'messi']
 const generateKeywords = (name: string): string[] => {
     if (!name) return [];
+    const keywords = new Set<string>();
     const normalizedName = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const parts = normalizedName.split(/\s+/).filter(part => part.length > 0);
-    return parts;
+    const words = normalizedName.split(/\s+/).filter(Boolean);
+
+    words.forEach(word => {
+        for (let i = 1; i <= word.length; i++) {
+            keywords.add(word.substring(0, i));
+        }
+    });
+
+    return Array.from(keywords);
 };
 
 
@@ -132,3 +142,5 @@ export function BatchUpdateSearchButton() {
     </AlertDialog>
   );
 }
+
+    

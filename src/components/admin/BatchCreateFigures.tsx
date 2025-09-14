@@ -50,12 +50,21 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-// Helper function to generate keywords from a name
+// Generates all possible prefixes for each word in a name.
+// E.g., "Lionel Messi" -> ['l', 'li', 'lio', ... 'lionel', 'm', 'me', ... 'messi']
 const generateKeywords = (name: string): string[] => {
     if (!name) return [];
+    const keywords = new Set<string>();
     const normalizedName = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const parts = normalizedName.split(/\s+/).filter(part => part.length > 0);
-    return parts;
+    const words = normalizedName.split(/\s+/).filter(Boolean);
+
+    words.forEach(word => {
+        for (let i = 1; i <= word.length; i++) {
+            keywords.add(word.substring(0, i));
+        }
+    });
+
+    return Array.from(keywords);
 };
 
 interface BatchCreateFiguresProps {
@@ -102,7 +111,7 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
         if (figureId) {
           const nameTrimmed = name.trim();
           const nameSearch = nameTrimmed.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-          const nameKeywords = generateKeywords(nameTrimmed);
+          const nameKeywords = generateKeywords(nameTrimmed); // Use the new prefix generator
           const figureRef = doc(figuresCollectionRef, figureId);
           const attitudeCounts = { ...defaultAttitudeCounts };
           if (profileType === 'media') {
@@ -243,3 +252,5 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
     </Card>
   );
 }
+
+    
