@@ -172,7 +172,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
                     figureId={figure.id} 
                     figureName={figure.name}
                     profileType={figure.profileType} 
-                    initialAttitudeCounts={figure.attitudeCounts}
+                    attitudeCounts={figure.attitudeCounts}
                     onVote={setCommentSortPreference}
                   />
               </TabsContent>
@@ -181,7 +181,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
                   <PerceptionEmotions 
                     figureId={figure.id} 
                     figureName={figure.name} 
-                    initialPerceptionCounts={figure.perceptionCounts}
+                    perceptionCounts={figure.perceptionCounts}
                   />
               </TabsContent>
 

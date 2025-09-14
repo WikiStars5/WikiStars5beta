@@ -17,7 +17,7 @@ interface AttitudeVoteProps {
   figureId: string;
   figureName: string;
   profileType: ProfileType;
-  initialAttitudeCounts?: Record<AttitudeKey, number>;
+  attitudeCounts: Record<AttitudeKey, number>;
   onVote: (attitude: AttitudeKey | null) => void;
 }
 
@@ -39,29 +39,17 @@ const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, profileType, initialAttitudeCounts, onVote }) => {
+export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, profileType, attitudeCounts, onVote }) => {
   const { firebaseUser, isLoading } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [isVoting, setIsVoting] = useState(false);
-  const [figureAttitudeCounts, setFigureAttitudeCounts] = useState<Record<AttitudeKey, number>>(initialAttitudeCounts || defaultAttitudeCountsData);
-  const [totalVotes, setTotalVotes] = useState(0);
   const { toast } = useToast();
   
+  const totalVotes = React.useMemo(() => {
+    return Object.values(attitudeCounts || defaultAttitudeCountsData).reduce((sum, count) => sum + count, 0);
+  }, [attitudeCounts]);
+  
   useEffect(() => {
-    if (!figureId) return;
-
-    const figureDocRef = doc(db, "figures", figureId);
-    const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as Figure;
-        const counts = data.attitudeCounts || defaultAttitudeCountsData;
-        setFigureAttitudeCounts(counts);
-        setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
-      }
-    }, (error) => {
-      console.error("Error listening to figure document for attitudes:", error);
-    });
-    
     // Load user's vote from local storage on component mount
     if (typeof window !== 'undefined' && firebaseUser) {
         const storedAttitudes: Attitude[] = JSON.parse(localStorage.getItem(`wikistars5-attitudes-${firebaseUser.uid}`) || '[]');
@@ -71,10 +59,6 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
             onVote(userVote.attitude); // Inform parent of initial attitude
         }
     }
-
-    return () => {
-      unsubscribeFigure();
-    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [figureId, firebaseUser]);
   
@@ -196,7 +180,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                 <span className="text-3xl" role="img" aria-label={label}>{emoji}</span>
                 <span className="text-xs font-medium">{label}</span>
                 <span className="text-sm font-bold">
-                  {(figureAttitudeCounts[key] || 0).toLocaleString()}
+                  {(attitudeCounts[key] || 0).toLocaleString()}
                 </span>
               </Button>
             ))}

@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Figure, EmotionKey, EmotionVote } from '@/lib/types';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, runTransaction } from 'firebase/firestore';
+import { doc, runTransaction } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 interface PerceptionEmotionsProps {
   figureId: string;
   figureName: string;
-  initialPerceptionCounts?: Record<EmotionKey, number>;
+  perceptionCounts: Record<EmotionKey, number>;
 }
 
 const EMOTIONS_CONFIG: { key: EmotionKey; label: string; imageUrl: string; colorClass: string, selectedClass: string }[] = [
@@ -33,29 +33,17 @@ const defaultPerceptionCountsData: Record<EmotionKey, number> = {
   alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
 };
 
-export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, initialPerceptionCounts }) => {
+export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, perceptionCounts }) => {
   const { firebaseUser, isLoading } = useAuth();
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
   const [isVoting, setIsVoting] = useState(false);
-  const [figurePerceptionCounts, setFigurePerceptionCounts] = useState<Record<EmotionKey, number>>(initialPerceptionCounts || defaultPerceptionCountsData);
-  const [totalVotes, setTotalVotes] = useState(0);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (!figureId) return;
-    
-    const figureDocRef = doc(db, "figures", figureId);
-    const unsubscribeFigure = onSnapshot(figureDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as Figure;
-        const counts = data.perceptionCounts || defaultPerceptionCountsData;
-        setFigurePerceptionCounts(counts);
-        setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
-      }
-    }, (error) => {
-        console.error("Error listening to figure document for perceptions:", error);
-    });
+  const totalVotes = React.useMemo(() => {
+      return Object.values(perceptionCounts || defaultPerceptionCountsData).reduce((sum, count) => sum + count, 0);
+  }, [perceptionCounts]);
 
+  useEffect(() => {
     if (typeof window !== 'undefined' && firebaseUser) {
         const storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem(`wikistars5-emotions-${firebaseUser.uid}`) || '[]');
         const userVote = storedEmotions.find(e => e.figureId === figureId);
@@ -63,10 +51,6 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
             setSelectedEmotion(userVote.emotion);
         }
     }
-
-    return () => {
-      unsubscribeFigure();
-    };
   }, [figureId, firebaseUser]);
 
   const handleVote = async (newEmotion: EmotionKey) => {
@@ -194,7 +178,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
                 </div>
                 <span className="text-xs font-medium text-center block">{label}</span>
                 <span className="text-sm font-bold">
-                  {(figurePerceptionCounts[key] || 0).toLocaleString()}
+                  {(perceptionCounts[key] || 0).toLocaleString()}
                 </span>
               </Button>
             ))}
