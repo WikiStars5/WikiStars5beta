@@ -61,30 +61,22 @@ export async function searchFiguresByHashtag(searchTerm: string): Promise<Figure
   try {
     const figuresCollectionRef = collection(db, 'figures');
     
-    // This is the "prefix search on an array" trick for Firestore.
-    // It finds documents where at least one element in `hashtagsLower` starts with the search term.
     const q = query(
       figuresCollectionRef,
-      where('hashtagsLower', '>=', trimmedSearchTerm),
-      where('hashtagsLower', '<=', trimmedSearchTerm + '\uf8ff'),
+      where('hashtagKeywords', 'array-contains', trimmedSearchTerm),
       limit(10)
     );
 
     const querySnapshot = await getDocs(q);
     
-    // We still need to filter on the client-side because Firestore might return extra results.
-    // For example, if searching for "dev", it might match "developer" and also "device".
-    const figures = querySnapshot.docs
-      .map(mapDocToFigure)
-      .filter(figure => 
-        figure.hashtagsLower?.some(tag => tag.startsWith(trimmedSearchTerm))
-      );
+    const figures = querySnapshot.docs.map(mapDocToFigure);
+    figures.sort((a, b) => a.name.localeCompare(b.name));
 
     return figures;
   } catch (error) {
     console.error("Error searching figures by hashtag in Firestore: ", error);
     if (String(error).includes('requires an index')) {
-        throw new Error("La función de búsqueda necesita un índice de Firestore que no existe. Por favor, crea el índice compuesto para 'figures' en 'hashtagsLower' desde la consola de Firebase.");
+        throw new Error("La función de búsqueda de figuras por hashtag necesita un índice de Firestore. Por favor, crea el índice compuesto para 'figures' en el campo 'hashtagKeywords' (array-contains) desde la consola de Firebase.");
     }
     throw new Error("Failed to search figures by hashtag due to a server error.");
   }

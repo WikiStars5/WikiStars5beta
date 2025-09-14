@@ -22,6 +22,22 @@ import { db } from '@/lib/firebase';
 import type { Figure } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
+const generateHashtagKeywords = (hashtags: string[]): string[] => {
+    if (!hashtags || hashtags.length === 0) return [];
+    const keywords = new Set<string>();
+
+    hashtags.forEach(tag => {
+        const normalizedTag = tag.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        if (!normalizedTag) return;
+        for (let i = 1; i <= normalizedTag.length; i++) {
+            keywords.add(normalizedTag.substring(0, i));
+        }
+    });
+
+    return Array.from(keywords);
+};
+
+
 export function BatchUpdateTagsButton() {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -45,15 +61,23 @@ export function BatchUpdateTagsButton() {
       querySnapshot.forEach(docSnap => {
         const figureData = docSnap.data() as Figure;
         const hashtags = figureData.hashtags || [];
-        const hashtagsLower = figureData.hashtagsLower || [];
-
-        // Check if a sync is needed. Convert to JSON strings for easy comparison of array contents.
-        const currentLower = JSON.stringify(hashtags.map(t => t.toLowerCase()).sort());
-        const existingLower = JSON.stringify(hashtagsLower.sort());
         
-        if (currentLower !== existingLower) {
+        // Generate both lowercase list and prefix keywords
+        const newHashtagsLower = hashtags.map(t => t.toLowerCase());
+        const newHashtagKeywords = generateHashtagKeywords(hashtags);
+        
+        const currentHashtagsLower = JSON.stringify((figureData.hashtagsLower || []).sort());
+        const currentHashtagKeywords = JSON.stringify((figureData.hashtagKeywords || []).sort());
+
+        if (
+          JSON.stringify(newHashtagsLower.sort()) !== currentHashtagsLower ||
+          JSON.stringify(newHashtagKeywords.sort()) !== currentHashtagKeywords
+        ) {
           const figureRef = doc(db, 'figures', docSnap.id);
-          batch.update(figureRef, { hashtagsLower: hashtags.map(t => t.toLowerCase()) });
+          batch.update(figureRef, { 
+              hashtagsLower: newHashtagsLower,
+              hashtagKeywords: newHashtagKeywords,
+          });
           updatedCount++;
         }
       });
@@ -62,7 +86,7 @@ export function BatchUpdateTagsButton() {
         await batch.commit();
         toast({
           title: "Proceso Completado",
-          description: `Se sincronizaron los hashtags para ${updatedCount} perfiles.`,
+          description: `Se sincronizaron los hashtags y sus palabras clave para ${updatedCount} perfiles.`,
         });
         router.refresh(); 
       } else {
@@ -105,9 +129,9 @@ export function BatchUpdateTagsButton() {
         <AlertDialogHeader>
           <AlertDialogTitle>¿Confirmar Sincronización de Hashtags?</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta acción escaneará todas las figuras en la base de datos y creará el campo `hashtagsLower` necesario para la búsqueda de hashtags.
+            Esta acción escaneará todas las figuras y (re)generará los campos `hashtagsLower` y `hashtagKeywords` para habilitar búsquedas por autocompletado en hashtags.
             <br/><br/>
-            Esto solucionará el problema de que las figuras existentes no aparezcan en las páginas de hashtags. ¿Deseas continuar?
+            Usa esto si las figuras existentes no aparecen al buscar hashtags. ¿Deseas continuar?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

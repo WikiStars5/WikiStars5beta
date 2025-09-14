@@ -42,9 +42,7 @@ function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
     });
 }
 
-// Generates all possible prefixes for each word in a name.
-// E.g., "Lionel Messi" -> ['l', 'li', 'lio', ... 'lionel', 'm', 'me', ... 'messi']
-const generateKeywords = (name: string): string[] => {
+const generateNameKeywords = (name: string): string[] => {
     if (!name) return [];
     const keywords = new Set<string>();
     const normalizedName = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -58,6 +56,22 @@ const generateKeywords = (name: string): string[] => {
 
     return Array.from(keywords);
 };
+
+const generateHashtagKeywords = (hashtags: string[]): string[] => {
+    if (!hashtags || hashtags.length === 0) return [];
+    const keywords = new Set<string>();
+
+    hashtags.forEach(tag => {
+        const normalizedTag = tag.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        if (!normalizedTag) return;
+        for (let i = 1; i <= normalizedTag.length; i++) {
+            keywords.add(normalizedTag.substring(0, i));
+        }
+    });
+
+    return Array.from(keywords);
+};
+
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -291,8 +305,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       const finalPhotoUrlToSave = photoUrl.trim() || 'https://placehold.co/400x600.png';
       const nameTrimmed = name.trim();
       const nameSearch = nameTrimmed.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-      const nameKeywords = generateKeywords(nameTrimmed); // Use the new prefix generator
+      const nameKeywords = generateNameKeywords(nameTrimmed);
       const hashtagsLower = hashtags.map(tag => tag.toLowerCase());
+      const hashtagKeywords = generateHashtagKeywords(hashtags);
       
       const baseData = {
         name: nameTrimmed,
@@ -303,6 +318,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         photoUrl: finalPhotoUrlToSave,
         hashtags: hashtags,
         hashtagsLower: hashtagsLower,
+        hashtagKeywords: hashtagKeywords,
         socialLinks: socialLinks,
         isFeatured: isFeatured,
         nationality: countryCodeToNameMap.get(nationalityCode) || '',
@@ -675,5 +691,3 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 };
 
 export default FigureForm;
-
-    

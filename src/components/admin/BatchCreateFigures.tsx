@@ -43,16 +43,14 @@ const MEDIA_SUBCATEGORIES: { value: MediaSubcategory, label: string }[] = [
 
 
 const defaultPerceptionCounts: Record<EmotionKey, number> = {
-  alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
+  alegria: 0, inspiracion: 0, admiracion: 0, diversion: 0, tristeza: 0, decepcion: 0, miedo: 0, desagrado: 0,
 };
 
 const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-// Generates all possible prefixes for each word in a name.
-// E.g., "Lionel Messi" -> ['l', 'li', 'lio', ... 'lionel', 'm', 'me', ... 'messi']
-const generateKeywords = (name: string): string[] => {
+const generateNameKeywords = (name: string): string[] => {
     if (!name) return [];
     const keywords = new Set<string>();
     const normalizedName = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -66,6 +64,7 @@ const generateKeywords = (name: string): string[] => {
 
     return Array.from(keywords);
 };
+
 
 interface BatchCreateFiguresProps {
   profileType: ProfileType;
@@ -111,7 +110,7 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
         if (figureId) {
           const nameTrimmed = name.trim();
           const nameSearch = nameTrimmed.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-          const nameKeywords = generateKeywords(nameTrimmed); // Use the new prefix generator
+          const nameKeywords = generateNameKeywords(nameTrimmed);
           const figureRef = doc(figuresCollectionRef, figureId);
           const attitudeCounts = { ...defaultAttitudeCounts };
           if (profileType === 'media') {
@@ -130,8 +129,9 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
             perceptionCounts: defaultPerceptionCounts,
             attitudeCounts: attitudeCounts,
             createdAt: serverTimestamp(),
-            tags: [],
-            tagsLower: [],
+            hashtags: [],
+            hashtagsLower: [],
+            hashtagKeywords: [],
           };
           
           if (profileType === 'media') {
@@ -252,5 +252,3 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
     </Card>
   );
 }
-
-    

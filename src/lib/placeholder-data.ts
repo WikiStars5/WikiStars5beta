@@ -49,6 +49,7 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     sportSubcategory: data.sportSubcategory || "",
     hashtags: data.hashtags || [],
     hashtagsLower: data.hashtagsLower || [],
+    hashtagKeywords: data.hashtagKeywords || [],
     alias: data.alias || "",
     species: data.species || "",
     firstAppearance: data.firstAppearance || "",

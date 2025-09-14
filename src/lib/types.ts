@@ -40,6 +40,7 @@ export interface Figure {
   // --- Shared fields ---
   hashtags?: string[];
   hashtagsLower?: string[]; 
+  hashtagKeywords?: string[];
   socialLinks?: {
     instagram?: string;
     twitter?: string;
