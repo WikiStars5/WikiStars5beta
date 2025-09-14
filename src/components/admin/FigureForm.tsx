@@ -22,8 +22,6 @@ import { CountryCombobox } from '../shared/CountryCombobox';
 import { countryCodeToNameMap } from '@/config/countries';
 import { DatePicker } from '../shared/DatePicker';
 import { Badge } from '../ui/badge';
-import { TAG_OPTIONS } from '@/config/tags';
-import { Combobox } from '../shared/Combobox';
 import { differenceInYears } from 'date-fns';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import Image from 'next/image';
@@ -51,7 +49,7 @@ const MEDIA_SUBCATEGORIES: { value: MediaSubcategory, label: string }[] = [
 ];
 
 const defaultPerceptionCounts: Record<EmotionKey, number> = {
-  alegria: 0, inspiracion: 0, admiracion: 0, diversion: 0, tristeza: 0, decepcion: 0, miedo: 0, desagrado: 0
+  alegria: 0, inspiracion: 0, admiracion: 0, diversion: 0, tristeza: 0, decepcion: 0, miedo: 0, desagrado: 0,
 };
 
 const defaultAttitudeCounts: Record<AttitudeKey, number> = {
@@ -76,7 +74,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   
   const [socialLinks, setSocialLinks] = useState(initialData?.socialLinks || {});
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
-  const [selectedHashtag, setSelectedHashtag] = useState<string | null>(null);
+  const [newHashtag, setNewHashtag] = useState('');
   const [isFeatured, setIsFeatured] = useState(false);
   const [nationalityCode, setNationalityCode] = useState('');
 
@@ -195,9 +193,17 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   };
   
   const handleAddHashtag = () => {
-    if (selectedHashtag && !hashtags.includes(selectedHashtag)) {
-        setHashtags([...hashtags, selectedHashtag]);
-        setSelectedHashtag(null); // Reset the combobox
+    const trimmedHashtag = newHashtag.trim().replace(/#/g, '');
+    if (trimmedHashtag && !hashtags.includes(trimmedHashtag)) {
+      setHashtags([...hashtags, trimmedHashtag]);
+      setNewHashtag('');
+    }
+  };
+
+  const handleHashtagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddHashtag();
     }
   };
 
@@ -492,12 +498,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
               </div>
               <div>
                 <Label htmlFor="occupation">Ocupación</Label>
-                 <Combobox
-                    options={OCCUPATION_OPTIONS}
-                    value={occupation}
-                    onChange={(value) => setOccupation(value || '')}
-                    placeholder="Selecciona una ocupación..."
-                />
+                 <Input value={occupation} onChange={(e) => setOccupation(e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="maritalStatus">Estado Civil</Label>
@@ -549,8 +550,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Hashtags</h3>
       <div>
         <div className="flex gap-2">
-          <Combobox options={TAG_OPTIONS.map(tag => ({ value: tag, label: tag }))} value={selectedHashtag || ''} onChange={(value) => setSelectedHashtag(value)} placeholder="Selecciona un hashtag..." />
-          <Button type="button" onClick={handleAddHashtag} disabled={!selectedHashtag}>Añadir</Button>
+           <Input
+            id="new-hashtag"
+            value={newHashtag}
+            onChange={(e) => setNewHashtag(e.target.value)}
+            onKeyDown={handleHashtagInputKeyDown}
+            placeholder="Escribe un hashtag y presiona Enter..."
+          />
+          <Button type="button" onClick={handleAddHashtag}>Añadir</Button>
         </div>
         <div className="flex flex-wrap gap-2 mt-2">{hashtags.map(tag => (<Badge key={tag} variant="secondary" className="text-sm">{tag}<button type="button" onClick={() => handleRemoveHashtag(tag)} className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" aria-label={`Eliminar ${tag}`}><X className="h-3 w-3" /></button></Badge>))}</div>
       </div>

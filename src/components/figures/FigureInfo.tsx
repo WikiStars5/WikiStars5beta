@@ -23,7 +23,6 @@ import { FigureHashtags } from './FigureHashtags';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
-import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateFigureInFirestore } from '@/lib/placeholder-data';
@@ -33,11 +32,8 @@ import { CountryCombobox } from '../shared/CountryCombobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DatePicker } from '../shared/DatePicker';
 import { MediaInfoTemplate } from './infobox-templates/MediaInfoTemplate';
-import { Combobox } from '../shared/Combobox';
-import { OCCUPATION_OPTIONS } from '@/config/occupations';
 import { Slider } from '../ui/slider';
 import { Badge } from '../ui/badge';
-import { TAG_OPTIONS } from '@/config/tags';
 import { VIDEO_GAME_GENRES } from '@/config/genres';
 
 interface FigureInfoProps {
@@ -265,7 +261,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Figure>>(figure);
-  const [selectedHashtag, setSelectedHashtag] = useState<string | null>(null);
+  const [newHashtag, setNewHashtag] = useState('');
 
   useEffect(() => {
     if (!isEditing) {
@@ -288,14 +284,23 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   };
   
   const handleAddHashtag = () => {
-    if (selectedHashtag && !formData.hashtags?.includes(selectedHashtag)) {
+    const trimmedHashtag = newHashtag.trim().replace(/#/g, '');
+    if (trimmedHashtag && !(formData.hashtags || []).includes(trimmedHashtag)) {
         setFormData(prev => ({
             ...prev,
-            hashtags: [...(prev.hashtags || []), selectedHashtag]
+            hashtags: [...(prev.hashtags || []), trimmedHashtag]
         }));
-        setSelectedHashtag(null); 
+        setNewHashtag('');
     }
   };
+
+  const handleHashtagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddHashtag();
+    }
+  };
+
 
   const handleRemoveHashtag = (hashtagToRemove: string) => {
     setFormData(prev => ({
@@ -453,12 +458,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                         </div>
                          <div>
                             <Label>Ocupación</Label>
-                            <Combobox
-                                options={OCCUPATION_OPTIONS}
-                                value={formData.occupation || ''}
-                                onChange={(value) => handleInputChange('occupation', value)}
-                                placeholder="Selecciona una ocupación..."
-                            />
+                            <Input value={formData.occupation || ''} onChange={e => handleInputChange('occupation', e.target.value)} />
                         </div>
                         <div>
                             <Label>Estado Civil</Label>
@@ -535,14 +535,15 @@ export function FigureInfo({ figure }: FigureInfoProps) {
             <Separator/>
             <div className="space-y-4">
                 <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Hashtags</h3>
-                <div className="flex gap-2">
-                    <Combobox 
-                        options={TAG_OPTIONS.map(tag => ({ value: tag, label: tag }))} 
-                        value={selectedHashtag || ''} 
-                        onChange={(value) => setSelectedHashtag(value)} 
-                        placeholder="Selecciona un hashtag..." 
+                 <div className="flex gap-2">
+                    <Input
+                        id="new-hashtag"
+                        value={newHashtag}
+                        onChange={(e) => setNewHashtag(e.target.value)}
+                        onKeyDown={handleHashtagInputKeyDown}
+                        placeholder="Escribe un hashtag y presiona Enter..."
                     />
-                    <Button type="button" onClick={handleAddHashtag} disabled={!selectedHashtag}>Añadir</Button>
+                    <Button type="button" onClick={handleAddHashtag}>Añadir</Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {(formData.hashtags || []).map(tag => (
