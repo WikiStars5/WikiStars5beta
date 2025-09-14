@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Save, UserCircle, ShieldAlert } from 'lucide-react';
+import { Loader2, Save, UserCircle, ShieldAlert, Edit, X } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { CountryCombobox } from '@/components/shared/CountryCombobox';
@@ -29,6 +29,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 export default function ProfilePage() {
   const { currentUser, isAnonymous, isLoading, updateUserProfile, localProfile } = useAuth();
   const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -41,10 +42,7 @@ export default function ProfilePage() {
 
   const { handleSubmit, control, reset, formState: { isSubmitting } } = form;
 
-  // Effect to populate form when user data is available
-  useEffect(() => {
-    if (isLoading) return;
-    
+  const populateForm = useCallback(() => {
     if (isAnonymous) {
       if (localProfile) {
         reset({
@@ -60,7 +58,13 @@ export default function ProfilePage() {
         gender: currentUser.gender || '',
       });
     }
-  }, [currentUser, localProfile, isAnonymous, isLoading, reset]);
+  }, [isAnonymous, localProfile, currentUser, reset]);
+
+  // Effect to populate form when user data is available
+  useEffect(() => {
+    if (isLoading) return;
+    populateForm();
+  }, [currentUser, localProfile, isAnonymous, isLoading, populateForm]);
 
 
   const onSubmit: SubmitHandler<ProfileFormValues> = async (data) => {
@@ -71,6 +75,7 @@ export default function ProfilePage() {
           title: "Perfil Guardado",
           description: "Tus cambios han sido guardados.",
         });
+        setIsEditing(false);
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({
@@ -80,6 +85,11 @@ export default function ProfilePage() {
       });
     }
   };
+  
+  const handleCancel = () => {
+      populateForm(); // Revert changes to original values
+      setIsEditing(false);
+  }
 
   if (isLoading) {
     return (
@@ -105,8 +115,14 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1">
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-xl">Mi Información</CardTitle>
+                        {!isEditing && (
+                            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                            </Button>
+                        )}
                     </CardHeader>
                     <CardContent>
                       {isAnonymous && (
@@ -128,7 +144,7 @@ export default function ProfilePage() {
                               <FormItem>
                                 <FormLabel>Nombre de Usuario</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Tu nombre público" {...field} />
+                                  <Input placeholder="Tu nombre público" {...field} disabled={!isEditing || isSubmitting} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -143,6 +159,7 @@ export default function ProfilePage() {
                                 <CountryCombobox
                                   value={field.value || ''}
                                   onChange={field.onChange}
+                                  disabled={!isEditing || isSubmitting}
                                 />
                                 <FormMessage />
                               </FormItem>
@@ -154,7 +171,7 @@ export default function ProfilePage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Sexo</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                                <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={!isEditing || isSubmitting}>
                                    <FormControl>
                                       <SelectTrigger>
                                         <SelectValue placeholder="Selecciona tu sexo..." />
@@ -172,16 +189,22 @@ export default function ProfilePage() {
                               </FormItem>
                             )}
                           />
-                          <div className="flex justify-end">
-                            <Button type="submit" disabled={isSubmitting}>
-                              {isSubmitting ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <Save className="mr-2 h-4 w-4" />
-                              )}
-                              {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
-                            </Button>
-                          </div>
+                          {isEditing && (
+                            <div className="flex justify-end gap-2">
+                                <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
+                                    <X className="mr-2 h-4 w-4" />
+                                    Cancelar
+                                </Button>
+                                <Button type="submit" disabled={isSubmitting}>
+                                  {isSubmitting ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Save className="mr-2 h-4 w-4" />
+                                  )}
+                                  {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
+                                </Button>
+                            </div>
+                          )}
                         </form>
                       </Form>
                     </CardContent>
@@ -196,4 +219,4 @@ export default function ProfilePage() {
   );
 }
 
-    
+  
