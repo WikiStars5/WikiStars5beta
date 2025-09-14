@@ -27,7 +27,7 @@ interface ComboboxOption {
 
 interface ComboboxProps {
   options: ComboboxOption[];
-  value: string;
+  value: string | null;
   onChange: (value: string | null) => void;
   placeholder?: string;
   disabled?: boolean;
@@ -36,15 +36,12 @@ interface ComboboxProps {
 
 export function Combobox({ options, value, onChange, placeholder = "Select an option...", disabled, creatable = false }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
-  const [inputValue, setInputValue] = React.useState('');
 
-  const selectedOption = options.find(
-    (option) => option.value.toLowerCase() === value?.toLowerCase()
-  );
+  const selectedOption = value ? options.find(
+    (option) => option.value.toLowerCase() === value.toLowerCase()
+  ) : null;
 
   const handleSelect = (currentValue: string) => {
-    // For creatable, the currentValue is the value itself.
-    // For non-creatable, it's the label, so we find the value.
     if (creatable) {
         onChange(currentValue);
     } else {
@@ -54,7 +51,6 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
         onChange(selected ? selected.value : null);
     }
     setOpen(false);
-    setInputValue(''); // Reset input after selection/creation
   };
 
   return (
@@ -73,20 +69,20 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
-          <CommandInput 
-            placeholder="Buscar..." 
-            value={inputValue}
-            onValueChange={setInputValue}
+          <CommandInput
+            placeholder="Buscar..."
+            value={typeof value === 'string' ? value : ''}
+            onValueChange={(search) => onChange(search)}
           />
           <CommandList>
             <CommandEmpty>
-                {creatable && inputValue.trim().length > 0 ? (
+                {creatable && typeof value === 'string' && value.trim().length > 0 ? (
                     <CommandItem
-                        onSelect={() => handleSelect(inputValue)}
-                        value={inputValue}
+                        onSelect={() => handleSelect(value)}
+                        value={value}
                         className="cursor-pointer"
                     >
-                    Crear "{inputValue}"
+                    Crear "{value}"
                     </CommandItem>
                 ) : "No se encontraron opciones."}
             </CommandEmpty>

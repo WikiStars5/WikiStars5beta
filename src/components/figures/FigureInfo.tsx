@@ -306,7 +306,7 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Figure>>(initialFigure);
   const [hashtagOptions, setHashtagOptions] = useState<{ value: string; label: string }[]>([]);
-  const [hashtagSearch, setHashtagSearch] = useState('');
+  const [hashtagSearch, setHashtagSearch] = useState<string | null>(null);
 
   // When the initialFigure prop changes (due to real-time updates),
   // update our form data *if not in editing mode*.
@@ -556,8 +556,23 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
                 options={hashtagOptions}
                 value={hashtagSearch}
                 onChange={(value) => {
-                  if (value) handleAddHashtag(value);
-                  setHashtagSearch(''); // Reset search
+                    if (!value) {
+                        setHashtagSearch(null);
+                        return;
+                    }
+
+                    const isCreating = !hashtagOptions.some(opt => opt.label.toLowerCase() === value.toLowerCase());
+                    if (isCreating) {
+                        handleAddHashtag(value);
+                        setHashtagSearch(null); // Reset after adding
+                    } else {
+                        // It's a selection from the list
+                        const selectedHashtag = hashtagOptions.find(opt => opt.label.toLowerCase() === value.toLowerCase())?.value;
+                        if (selectedHashtag) {
+                            handleAddHashtag(selectedHashtag);
+                        }
+                        setHashtagSearch(null); // Reset after adding
+                    }
                 }}
                 placeholder="Busca o crea un hashtag..."
                 creatable
