@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -16,15 +15,6 @@ import { correctMalformedUrl } from '@/lib/utils';
 import Image from 'next/image';
 import { Separator } from '../ui/separator';
 
-const EMOTION_IMAGES: Record<string, string> = {
-  alegria: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414',
-  envidia: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fenvidia.png?alt=media&token=940aa136-2235-48db-84d6-2c461730fde5',
-  tristeza: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ftrizteza.png?alt=media&token=0115df4b-55e4-4281-9cff-a8a560c38903',
-  miedo: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985',
-  desagrado: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb',
-  furia: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f',
-};
-
 const EMOTION_LABELS: Record<EmotionKey, string> = {
     alegria: "Alegría",
     envidia: "Envidia",
@@ -32,6 +22,13 @@ const EMOTION_LABELS: Record<EmotionKey, string> = {
     miedo: "Miedo",
     desagrado: "Desagrado",
     furia: "Furia",
+};
+
+const ATTITUDE_LABELS: Record<AttitudeKey, string> = {
+    fan: "Fan",
+    simp: "Simp",
+    hater: "Hater",
+    neutral: "Neutral",
 };
 
 const ATTITUDE_ICONS: Record<AttitudeKey, React.ElementType> = {
@@ -110,6 +107,17 @@ export function ProfileActivity() {
         return groups;
     }, [emotionVotes]);
     
+    const groupedAttitudeVotes = useMemo(() => {
+        const groups: Partial<Record<AttitudeKey, (Attitude & { figure: Figure | null })[]>> = {};
+        for (const vote of attitudes) {
+            if (!groups[vote.attitude]) {
+                groups[vote.attitude] = [];
+            }
+            groups[vote.attitude]?.push(vote);
+        }
+        return groups;
+    }, [attitudes]);
+
     if (isLoading || isAuthLoading) {
         return (
             <div className="flex items-center justify-center h-full">
@@ -136,6 +144,7 @@ export function ProfileActivity() {
     }
 
     const emotionKeys = Object.keys(groupedEmotionVotes) as EmotionKey[];
+    const attitudeKeys = Object.keys(groupedAttitudeVotes) as AttitudeKey[];
 
     return (
         <Card>
@@ -151,21 +160,34 @@ export function ProfileActivity() {
                         <TabsTrigger value="streak">Mis Rachas</TabsTrigger>
                     </TabsList>
                     <TabsContent value="attitude" className="mt-4">
-                        {attitudes.length > 0 ? (
-                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                {attitudes.map(vote => vote.figure && (
-                                    <Link key={vote.figureId} href={`/figures/${vote.figureId}`} className="group relative text-center">
-                                        <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-primary transition-all">
-                                            <AvatarImage src={correctMalformedUrl(vote.figure.photoUrl)} alt={vote.figure.name} />
-                                            <AvatarFallback><User /></AvatarFallback>
-                                        </Avatar>
-                                        <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-card p-1.5 rounded-full shadow-lg">
-                                            {React.createElement(ATTITUDE_ICONS[vote.attitude], { className: `h-5 w-5 ${ATTITUDE_COLORS[vote.attitude]}` })}
+                       {attitudes.length > 0 ? (
+                            <Tabs defaultValue={attitudeKeys[0]} className="w-full">
+                                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+                                    {Object.keys(ATTITUDE_LABELS).map((attitudeKey) => (
+                                         <TabsTrigger key={attitudeKey} value={attitudeKey} disabled={!groupedAttitudeVotes[attitudeKey as AttitudeKey]}>
+                                            {ATTITUDE_LABELS[attitudeKey as AttitudeKey]}
+                                         </TabsTrigger>
+                                    ))}
+                                </TabsList>
+                                {Object.entries(groupedAttitudeVotes).map(([attitude, votes]) => (
+                                    <TabsContent key={attitude} value={attitude} className="mt-4">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                            {votes.map(vote => vote.figure && (
+                                                <Link key={vote.figureId} href={`/figures/${vote.figureId}`} className="group relative text-center">
+                                                    <Avatar className="h-24 w-24 mx-auto border-2 border-transparent group-hover:border-primary transition-all">
+                                                        <AvatarImage src={correctMalformedUrl(vote.figure.photoUrl)} alt={vote.figure.name} />
+                                                        <AvatarFallback><User /></AvatarFallback>
+                                                    </Avatar>
+                                                     <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-card p-1.5 rounded-full shadow-lg">
+                                                        {React.createElement(ATTITUDE_ICONS[vote.attitude], { className: `h-5 w-5 ${ATTITUDE_COLORS[vote.attitude]}` })}
+                                                    </div>
+                                                    <p className="text-sm font-medium mt-2 group-hover:text-primary transition-colors">{vote.figure.name}</p>
+                                                </Link>
+                                            ))}
                                         </div>
-                                        <p className="text-sm font-medium mt-2 group-hover:text-primary transition-colors">{vote.figure.name}</p>
-                                    </Link>
+                                    </TabsContent>
                                 ))}
-                            </div>
+                            </Tabs>
                         ) : (
                             <p className="text-center text-muted-foreground py-8">No has definido tu actitud hacia ningún perfil.</p>
                         )}
