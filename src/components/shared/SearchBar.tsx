@@ -10,6 +10,7 @@ import Image from 'next/image';
 import type { Figure } from '@/lib/types';
 import { searchFiguresByName } from '@/app/actions/searchFiguresAction';
 import { cn, correctMalformedUrl } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 // Debounce function
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
@@ -38,9 +39,34 @@ export function SearchBar({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+
+  const handleSearchSubmit = (searchTerm: string) => {
+    const trimmedTerm = searchTerm.trim();
+    if (trimmedTerm.startsWith('#')) {
+      const hashtag = trimmedTerm.substring(1).toLowerCase();
+      if (hashtag) {
+        router.push(`/figures/hashtagged/${encodeURIComponent(hashtag)}`);
+        clearSearch();
+      }
+    }
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleSearchSubmit(query);
+    }
+  };
 
   const debouncedSearch = useCallback(
     debounce(async (searchTerm: string) => {
+      if (searchTerm.startsWith('#')) {
+        setResults([]);
+        setIsLoading(false);
+        setIsDropdownOpen(false);
+        return;
+      }
       if (searchTerm.trim().length < 2) {
         setResults([]);
         setIsLoading(false);
@@ -96,9 +122,7 @@ export function SearchBar({
   }, [searchContainerRef]);
 
   const handleResultItemClick = (figure: Figure) => {
-    setQuery('');
-    setResults([]);
-    setIsDropdownOpen(false);
+    clearSearch();
     if (onResultClick) {
       onResultClick(figure);
     }
@@ -118,11 +142,12 @@ export function SearchBar({
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Buscar en WikiStars5"
+          placeholder="Buscar perfiles o #hashtags"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
           onFocus={() => { 
-            if (query.trim().length > 0) setIsDropdownOpen(true);
+            if (query.trim().length > 0 && !query.startsWith('#')) setIsDropdownOpen(true);
           }}
           onBlur={() => {
             setTimeout(() => {
@@ -133,7 +158,7 @@ export function SearchBar({
           }}
           className="text-sm h-9 flex-grow pl-10 pr-10 rounded-full shadow-sm border-none bg-muted focus:ring-1 focus:ring-primary/50"
         />
-        {isLoading && query.length >= 2 && (
+        {isLoading && query.length >= 2 && !query.startsWith('#') && (
            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
         )}
         {!isLoading && query.length > 0 && (
@@ -148,7 +173,7 @@ export function SearchBar({
         )}
       </div>
 
-      {isDropdownOpen && query.trim().length > 0 && (
+      {isDropdownOpen && query.trim().length > 0 && !query.startsWith('#') && (
         <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-xl max-h-80 overflow-y-auto">
           {isLoading && query.trim().length >=2 && (
             <div className="p-3 text-xs text-center text-muted-foreground">Buscando...</div>
