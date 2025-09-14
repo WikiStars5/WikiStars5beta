@@ -7,6 +7,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { onUserCreate } from "firebase-functions/v2/auth";
 
 import type { UserProfile } from "./types";
 import { COUNTRIES } from "./countries";
@@ -21,11 +22,44 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-
+const auth = admin.auth();
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
+
+/**
+ * This function triggers automatically whenever a new user is created in Firebase Authentication.
+ * Its purpose is to create a corresponding user profile document in Firestore.
+ */
+export const createProfileOnRegister = onUserCreate(async (event) => {
+  const user = event.data; // The user record created in Firebase Auth
+  const { uid, email, displayName, photoURL } = user;
+  const isAnonymous = !email; // A simple check for anonymous users
+
+  const userProfile: UserProfile = {
+    uid: uid,
+    email: email || null,
+    username: isAnonymous ? "Invitado" : (displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`),
+    country: '',
+    countryCode: '',
+    gender: '',
+    photoURL: photoURL || null, // Ensure photoURL is always defined as string or null
+    role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
+    createdAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString(), // Set initial login time
+    achievements: [],
+    isAnonymous: isAnonymous,
+  };
+
+  try {
+    // Set the document in the 'users' collection with the user's UID as the document ID.
+    await db.collection('users').doc(uid).set(userProfile);
+    console.log(`Successfully created profile for user: ${uid}`);
+  } catch (error) {
+    console.error(`Error creating user profile for ${uid}:`, error);
+  }
+});
 
 
 export const updateUserProfile = onCall(async (request) => {
@@ -52,6 +86,7 @@ export const updateUserProfile = onCall(async (request) => {
     };
 
     try {
+        await auth.updateUser(uid, { displayName: username });
         await userRef.set(updateData, { merge: true });
         
         return { success: true, message: 'Profile updated successfully.' };
