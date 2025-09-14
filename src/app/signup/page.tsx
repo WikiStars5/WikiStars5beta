@@ -19,6 +19,7 @@ import { auth, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 import Link from 'next/link';
+import { useAuthWithGoogle } from '@/hooks/useAuthWithGoogle';
 
 const signupSchema = z.object({
   username: z.string().min(3, { message: "El nombre de usuario debe tener al menos 3 caracteres." }).max(20, { message: "El nombre de usuario no puede tener más de 20 caracteres." }),
@@ -34,6 +35,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { signInWithGoogle, isGoogleLoading } = useAuthWithGoogle();
 
   const form = useForm<SignupSchemaType>({
     resolver: zodResolver(signupSchema),
@@ -158,7 +160,7 @@ export default function SignupPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button type="submit" className="w-full" disabled={isSubmitting || isGoogleLoading}>
                 {isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -168,6 +170,18 @@ export default function SignupPage() {
               </Button>
             </form>
           </Form>
+           <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">O regístrate con</span>
+            </div>
+          </div>
+          <Button variant="outline" className="w-full" onClick={signInWithGoogle} disabled={isSubmitting || isGoogleLoading}>
+            {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 381.5 512 244 512 111.8 512 0 400.2 0 264.1 0 127.8 111.8 16 244 16c73.1 0 134.3 29.3 181.4 75.9l-62.8 53.4c-34.6-32.4-79.3-54.9-129.8-54.9-106.1 0-192.3 85.9-192.3 191.7s86.2 191.7 192.3 191.7c120.3 0 162.1-95.3 166.4-138.8H244v-75.2h243.6c2.6 15.6 4.4 32.3 4.4 50.4z"></path></svg>}
+            Google
+          </Button>
         </CardContent>
         <CardFooter className="flex justify-center">
             <p className="text-sm text-muted-foreground">
@@ -181,3 +195,5 @@ export default function SignupPage() {
     </div>
   );
 }
+
+    

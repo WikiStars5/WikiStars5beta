@@ -38,7 +38,7 @@ export function UserNav() {
   }
 
   // User is authenticated, but profile data might still be loading
-  const displayName = currentUser?.username || firebaseUser.email?.split('@')[0] || 'Usuario';
+  const displayName = currentUser?.username || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuario';
   const displayEmail = currentUser?.email || firebaseUser.email || '';
   const photoURL = currentUser?.photoURL || firebaseUser.photoURL;
 
@@ -66,12 +66,6 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-           <DropdownMenuItem asChild>
-              <Link href="/profile">
-                <User className="mr-2 h-4 w-4" />
-                <span>Mi Perfil</span>
-              </Link>
-            </DropdownMenuItem>
           {isAdmin && (
             <DropdownMenuItem asChild>
               <Link href="/admin">
@@ -90,3 +84,5 @@ export function UserNav() {
     </DropdownMenu>
   );
 }
+
+    
