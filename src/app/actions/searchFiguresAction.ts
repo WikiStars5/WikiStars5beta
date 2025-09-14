@@ -1,4 +1,3 @@
-
 'use server';
 
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
@@ -15,10 +14,13 @@ export async function searchFiguresByName(searchTerm: string): Promise<Figure[]>
   try {
     const figuresCollectionRef = collection(db, 'figures');
     
-    // Use `array-contains` for a more flexible "contains" search on keywords.
+    // Firestore "starts with" query. This is the correct way to implement autocomplete.
+    // It finds all documents where nameSearch starts with the search term.
     const q = query(
       figuresCollectionRef,
-      where('nameKeywords', 'array-contains', trimmedSearchTerm),
+      where('nameSearch', '>=', trimmedSearchTerm),
+      where('nameSearch', '<=', trimmedSearchTerm + '\uf8ff'),
+      orderBy('nameSearch'),
       limit(10)
     );
 
@@ -29,7 +31,7 @@ export async function searchFiguresByName(searchTerm: string): Promise<Figure[]>
   } catch (error) {
     console.error("Error searching figures in Firestore: ", error);
     if (String(error).includes('requires an index')) {
-         throw new Error("La función de búsqueda necesita un índice de Firestore que no existe. Por favor, crea el índice compuesto para la colección 'figures' en el campo 'nameKeywords' (ascendente) desde la consola de Firebase.");
+         throw new Error("La función de búsqueda necesita un índice de Firestore que no existe. Por favor, crea el índice compuesto para la colección 'figures' en el campo 'nameSearch' (ascendente) desde la consola de Firebase.");
     }
     throw new Error("Failed to search figures due to a server error.");
   }
