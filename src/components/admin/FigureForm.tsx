@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Sparkles, Loader2, CalendarIcon, X } from 'lucide-react';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory } from '@/lib/types';
 import slugify from 'slugify'; 
@@ -234,8 +234,12 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         throw new Error('El nombre del perfil es obligatorio.');
       }
       
+      const batch = writeBatch(db);
+      
+      // 1. Prepare figure data
       const finalPhotoUrlToSave = photoUrl.trim() || 'https://placehold.co/400x600.png';
       const searchKeywords = name.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const hashtagsLower = hashtags.map(tag => tag.toLowerCase());
       
       const baseData = {
         name: name.trim(),
@@ -245,7 +249,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         description: description.trim() || "", 
         photoUrl: finalPhotoUrlToSave,
         hashtags: hashtags,
-        hashtagsLower: hashtags.map(tag => tag.toLowerCase()),
+        hashtagsLower: hashtagsLower,
         socialLinks: socialLinks,
         isFeatured: isFeatured,
         nationality: countryCodeToNameMap.get(nationalityCode) || '',
@@ -315,8 +319,21 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         }
       });
       
+      // 2. Set figure document in batch
       const figureRef = doc(db, 'figures', figureDocId);
-      await setDoc(figureRef, figureData, { merge: true });
+      batch.set(figureRef, figureData, { merge: true });
+
+      // 3. Sync hashtags with global collection
+      for (const tag of hashtagsLower) {
+        if (tag) {
+          const hashtagRef = doc(db, 'hashtags', tag);
+          // Using an empty object as we only need the document ID for querying
+          batch.set(hashtagRef, {});
+        }
+      }
+
+      // 4. Commit the batch
+      await batch.commit();
 
       setSuccess(`Perfil "${name}" guardado exitosamente.`);
       

@@ -22,6 +22,11 @@ export type MediaSubcategory =
   | 'board_game' // Juegos de mesa
   | 'animal'; // Animales
 
+export interface Hashtag {
+  id: string; // The hashtag itself, e.g., "kpop"
+  // You could add more fields here if needed, like a count of how many figures use it.
+}
+  
 export interface Figure {
   id: string;
   name: string;

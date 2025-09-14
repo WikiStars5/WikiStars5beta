@@ -215,6 +215,9 @@ export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
   }
 };
 
+/**
+ * Updates a figure document and syncs its hashtags with the global 'hashtags' collection.
+ */
 export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: string }): Promise<void> => {
   const figureRef = doc(db, "figures", figure.id);
   try {
@@ -265,10 +268,21 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured;
       if (category !== undefined) updatePayload.category = category;
       if (sportSubcategory !== undefined) updatePayload.sportSubcategory = sportSubcategory;
+      
+      // Handle hashtags and sync with the global collection
       if (hashtags !== undefined) {
         updatePayload.hashtags = hashtags;
-        updatePayload.hashtagsLower = hashtags.map(t => t.toLowerCase());
+        const lowerCaseHashtags = hashtags.map(t => t.toLowerCase());
+        updatePayload.hashtagsLower = lowerCaseHashtags;
+
+        for (const tag of lowerCaseHashtags) {
+            const hashtagRef = doc(db, 'hashtags', tag);
+            // This is an "upsert" - it creates the doc if it doesn't exist.
+            // We set an empty object because we only care about the document ID for querying.
+            transaction.set(hashtagRef, {});
+        }
       }
+
       if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
       if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
       if (ratingCounts) updatePayload.ratingCounts = ratingCounts;

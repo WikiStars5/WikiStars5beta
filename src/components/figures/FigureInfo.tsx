@@ -533,7 +533,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                 <div><Label>Discord</Label><Input value={formData.socialLinks?.discord || ''} onChange={e => handleSocialLinkChange('discord', e.target.value)} placeholder="https://discord.gg/..."/></div>
             </div>
             <Separator/>
-            <div className="space-y-4">
+            <div className="space-y-2">
                 <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Hashtags</h3>
                  <div className="flex gap-2">
                     <Input
@@ -545,7 +545,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
                     />
                     <Button type="button" onClick={handleAddHashtag}>Añadir</Button>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 pt-2">
                     {(formData.hashtags || []).map(tag => (
                         <Badge key={tag} variant="secondary" className="text-sm">
                             {tag}

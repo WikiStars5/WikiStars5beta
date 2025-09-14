@@ -4,11 +4,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2, ImageOff, XCircle } from 'lucide-react';
+import { Search, Loader2, ImageOff, XCircle, Tag } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import type { Figure } from '@/lib/types';
+import type { Figure, Hashtag } from '@/lib/types';
 import { searchFiguresByName } from '@/app/actions/searchFiguresAction';
+import { searchHashtags } from '@/app/actions/searchHashtagsAction';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
@@ -34,7 +35,8 @@ export function SearchBar({
   onResultClick
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState<Figure[]>([]);
+  const [figureResults, setFigureResults] = useState<Figure[]>([]);
+  const [hashtagResults, setHashtagResults] = useState<Hashtag[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -61,30 +63,32 @@ export function SearchBar({
 
   const debouncedSearch = useCallback(
     debounce(async (searchTerm: string) => {
-      if (searchTerm.startsWith('#')) {
-        setResults([]);
-        setIsLoading(false);
-        setIsDropdownOpen(false);
-        return;
-      }
       if (searchTerm.trim().length < 2) {
-        setResults([]);
+        setFigureResults([]);
+        setHashtagResults([]);
         setIsLoading(false);
-        if (searchTerm.trim().length === 0) {
-            setIsDropdownOpen(false);
-        } else if (searchTerm.trim().length > 0) {
-            setIsDropdownOpen(true); 
-        }
+        setIsDropdownOpen(searchTerm.trim().length > 0);
         return;
       }
+
       setIsLoading(true);
       setIsDropdownOpen(true);
+      
       try {
-        const figures = await searchFiguresByName(searchTerm);
-        setResults(figures);
+        if (searchTerm.startsWith('#')) {
+          setFigureResults([]);
+          const hashtagQuery = searchTerm.substring(1);
+          const hashtags = await searchHashtags(hashtagQuery);
+          setHashtagResults(hashtags);
+        } else {
+          setHashtagResults([]);
+          const figures = await searchFiguresByName(searchTerm);
+          setFigureResults(figures);
+        }
       } catch (error) {
         console.error("Search error:", error);
-        setResults([]);
+        setFigureResults([]);
+        setHashtagResults([]);
       } finally {
         setIsLoading(false);
       }
@@ -101,7 +105,8 @@ export function SearchBar({
 
   useEffect(() => {
     if (query.trim() === '') {
-      setResults([]);
+      setFigureResults([]);
+      setHashtagResults([]);
       setIsLoading(false);
       setIsDropdownOpen(false);
       return;
@@ -121,8 +126,12 @@ export function SearchBar({
     };
   }, [searchContainerRef]);
 
-  const handleResultItemClick = (figure: Figure) => {
+  const handleResultItemClick = () => {
     clearSearch();
+  };
+
+  const handleFigureResultClick = (figure: Figure) => {
+    handleResultItemClick();
     if (onResultClick) {
       onResultClick(figure);
     }
@@ -130,10 +139,13 @@ export function SearchBar({
 
   const clearSearch = () => {
     setQuery('');
-    setResults([]);
+    setFigureResults([]);
+    setHashtagResults([]);
     setIsDropdownOpen(false);
     inputRef.current?.focus(); 
   };
+
+  const hasNoResults = !isLoading && query.trim().length >= 2 && figureResults.length === 0 && hashtagResults.length === 0;
 
   return (
     <div className={cn("relative w-full", className)} ref={searchContainerRef}>
@@ -147,18 +159,11 @@ export function SearchBar({
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => { 
-            if (query.trim().length > 0 && !query.startsWith('#')) setIsDropdownOpen(true);
-          }}
-          onBlur={() => {
-            setTimeout(() => {
-              if (!searchContainerRef.current?.contains(document.activeElement)) {
-                setIsDropdownOpen(false);
-              }
-            }, 100);
+            if (query.trim().length > 0) setIsDropdownOpen(true);
           }}
           className="text-sm h-9 flex-grow pl-10 pr-10 rounded-full shadow-sm border-none bg-muted focus:ring-1 focus:ring-primary/50"
         />
-        {isLoading && query.length >= 2 && !query.startsWith('#') && (
+        {isLoading && query.length >= 2 && (
            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
         )}
         {!isLoading && query.length > 0 && (
@@ -173,24 +178,46 @@ export function SearchBar({
         )}
       </div>
 
-      {isDropdownOpen && query.trim().length > 0 && !query.startsWith('#') && (
+      {isDropdownOpen && query.trim().length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-xl max-h-80 overflow-y-auto">
           {isLoading && query.trim().length >=2 && (
             <div className="p-3 text-xs text-center text-muted-foreground">Buscando...</div>
           )}
-          {!isLoading && query.trim().length >= 2 && results.length === 0 && (
-            <div className="p-3 text-xs text-center text-muted-foreground">No se encontraron figuras para "{query}".</div>
+          {hasNoResults && (
+            <div className="p-3 text-xs text-center text-muted-foreground">No se encontraron resultados para "{query}".</div>
           )}
           {!isLoading && query.trim().length < 2 && (
              <div className="p-3 text-xs text-center text-muted-foreground">Escribe al menos 2 caracteres.</div>
           )}
-          {!isLoading && results.length > 0 && (
+
+          {/* Hashtag Results */}
+          {hashtagResults.length > 0 && (
             <ul className="divide-y divide-border">
-              {results.map((figure) => (
+              {hashtagResults.map((hashtag) => (
+                 <li key={hashtag.id}>
+                  <Link
+                    href={`/figures/hashtagged/${hashtag.id}`}
+                    onClick={handleResultItemClick}
+                    className="flex items-center p-2 hover:bg-muted transition-colors duration-150 ease-in-out"
+                  >
+                     <div className="flex-shrink-0 mr-3 ml-1">
+                        <Tag className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <p className="font-medium text-xs text-foreground truncate">#{hashtag.id}</p>
+                  </Link>
+                 </li>
+              ))}
+            </ul>
+          )}
+
+          {/* Figure Results */}
+          {figureResults.length > 0 && (
+            <ul className="divide-y divide-border">
+              {figureResults.map((figure) => (
                 <li key={figure.id}>
                   {onResultClick ? (
                      <button
-                      onClick={() => handleResultItemClick(figure)}
+                      onClick={() => handleFigureResultClick(figure)}
                       className="w-full flex items-center p-2 hover:bg-muted transition-colors duration-150 ease-in-out text-left"
                     >
                       <div className="flex-shrink-0 mr-2">
@@ -219,7 +246,7 @@ export function SearchBar({
                   ) : (
                   <Link
                     href={`/figures/${figure.id}`}
-                    onClick={() => handleResultItemClick(figure)}
+                    onClick={handleResultItemClick}
                     className="flex items-center p-2 hover:bg-muted transition-colors duration-150 ease-in-out"
                   >
                     <div className="flex-shrink-0 mr-2">
