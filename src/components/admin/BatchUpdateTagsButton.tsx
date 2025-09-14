@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState } from 'react';
@@ -43,14 +44,14 @@ export function BatchUpdateTagsButton() {
 
       querySnapshot.forEach(docSnap => {
         const figureData = docSnap.data() as Figure;
-        const tags = figureData.tags || [];
-        const tagsLower = figureData.tagsLower || [];
+        const hashtags = figureData.hashtags || [];
+        const hashtagsLower = figureData.hashtagsLower || [];
 
         // Check if a sync is needed
-        if (tags.length > 0 && tags.length !== tagsLower.length) {
-          const newTagsLower = tags.map(t => t.toLowerCase());
+        if (hashtags.length > 0 && hashtags.length !== hashtagsLower.length) {
+          const newHashtagsLower = hashtags.map(t => t.toLowerCase());
           const figureRef = doc(db, 'figures', docSnap.id);
-          batch.update(figureRef, { tagsLower: newTagsLower });
+          batch.update(figureRef, { hashtagsLower: newHashtagsLower });
           updatedCount++;
         }
       });
@@ -59,13 +60,13 @@ export function BatchUpdateTagsButton() {
         await batch.commit();
         toast({
           title: "Proceso Completado",
-          description: `Se sincronizaron las etiquetas para ${updatedCount} perfiles.`,
+          description: `Se sincronizaron los hashtags para ${updatedCount} perfiles.`,
         });
         router.refresh(); 
       } else {
         toast({
           title: "Proceso Exitoso",
-          description: "¡Todas las etiquetas ya están sincronizadas!",
+          description: "¡Todos los hashtags ya están sincronizados!",
         });
       }
     } catch (error: any) {
@@ -95,16 +96,16 @@ export function BatchUpdateTagsButton() {
             ) : (
               <Tags className="mr-2 h-4 w-4" />
             )}
-            {isProcessing ? 'Procesando...' : 'Sincronizar Etiquetas'}
+            {isProcessing ? 'Procesando...' : 'Sincronizar Hashtags'}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>¿Confirmar Sincronización de Etiquetas?</AlertDialogTitle>
+          <AlertDialogTitle>¿Confirmar Sincronización de Hashtags?</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta acción escaneará todas las figuras en la base de datos y creará el campo `tagsLower` necesario para la búsqueda de etiquetas.
+            Esta acción escaneará todas las figuras en la base de datos y creará el campo `hashtagsLower` necesario para la búsqueda de hashtags.
             <br/><br/>
-            Esto solucionará el problema de que las figuras existentes no aparezcan en las páginas de etiquetas. ¿Deseas continuar?
+            Esto solucionará el problema de que las figuras existentes no aparezcan en las páginas de hashtags. ¿Deseas continuar?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

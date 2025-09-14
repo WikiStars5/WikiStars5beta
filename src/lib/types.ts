@@ -32,8 +32,8 @@ export interface Figure {
   description?: string;
   
   // --- Shared fields ---
-  tags?: string[];
-  tagsLower?: string[]; 
+  hashtags?: string[];
+  hashtagsLower?: string[]; 
   socialLinks?: {
     instagram?: string;
     twitter?: string;

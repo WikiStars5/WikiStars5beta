@@ -15,14 +15,7 @@ export const PERCEPTION_OPTIONS: PerceptionOption[] = [
 ];
 
 const defaultPerceptionCounts: Record<EmotionKey, number> = {
-  alegria: 0,
-  inspiracion: 0,
-  admiracion: 0,
-  diversion: 0,
-  tristeza: 0,
-  decepcion: 0,
-  miedo: 0,
-  desagrado: 0,
+  alegria: 0, inspiracion: 0, admiracion: 0, diversion: 0, tristeza: 0, decepcion: 0, miedo: 0, desagrado: 0,
 };
 
 const defaultAttitudeCounts: Record<AttitudeKey, number> = {
@@ -54,8 +47,8 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     gender: data.gender || "",
     category: data.category || "",
     sportSubcategory: data.sportSubcategory || "",
-    tags: data.tags || [],
-    tagsLower: data.tagsLower || [],
+    hashtags: data.hashtags || [],
+    hashtagsLower: data.hashtagsLower || [],
     alias: data.alias || "",
     species: data.species || "",
     firstAppearance: data.firstAppearance || "",
@@ -237,7 +230,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
           name, profileType, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, age, birthPlace, statusLiveOrDead, maritalStatus,
           height, heightCm, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
-          category, sportSubcategory, relatedFigureIds, socialLinks, tags, tagsLower, ...rest
+          category, sportSubcategory, relatedFigureIds, socialLinks, hashtags, hashtagsLower, ...rest
       } = figure;
 
       const updatePayload: { [key: string]: any } = {};
@@ -272,9 +265,9 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
       if (isFeatured !== undefined) updatePayload.isFeatured = isFeatured;
       if (category !== undefined) updatePayload.category = category;
       if (sportSubcategory !== undefined) updatePayload.sportSubcategory = sportSubcategory;
-      if (tags !== undefined) {
-        updatePayload.tags = tags;
-        updatePayload.tagsLower = tags.map(t => t.toLowerCase());
+      if (hashtags !== undefined) {
+        updatePayload.hashtags = hashtags;
+        updatePayload.hashtagsLower = hashtags.map(t => t.toLowerCase());
       }
       if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
       if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
@@ -437,19 +430,18 @@ export const getFiguresByIds = async (ids: string[]): Promise<Figure[]> => {
 };
 
 
-export const getFiguresByTag = async (tag: string): Promise<Figure[]> => {
+export const getFiguresByHashtag = async (hashtag: string): Promise<Figure[]> => {
   const figures: Figure[] = [];
   try {
     const figuresCollectionRef = collection(db, "figures");
-    // This now correctly queries the `tagsLower` field for case-insensitive matching.
-    const q = query(figuresCollectionRef, where('tagsLower', 'array-contains', tag.toLowerCase()), limit(50));
+    const q = query(figuresCollectionRef, where('hashtagsLower', 'array-contains', hashtag.toLowerCase()), limit(50));
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach((docSnap) => {
       figures.push(mapDocToFigure(docSnap));
     });
     return figures;
   } catch (error) {
-    console.error(`Error fetching figures for tag "${tag}":`, error);
+    console.error(`Error fetching figures for hashtag "${hashtag}":`, error);
     return [];
   }
 };
@@ -514,7 +506,6 @@ export async function addComment(
   rating: RatingValue
 ): Promise<string> {
     const figureDocRef = doc(db, 'figures', figureId);
-    const userRatingDocRef = doc(db, 'userRatings', `${authorData.id}_${figureId}`);
     const newCommentRef = doc(collection(db, `figures/${figureId}/comments`));
 
     const newCommentData: Omit<Comment, 'id' | 'replies'> & { createdAt: any } = {
@@ -536,29 +527,7 @@ export async function addComment(
         isAnonymous: authorData.isAnonymous,
     };
 
-    await runTransaction(db, async (transaction) => {
-        const figureDoc = await transaction.get(figureDocRef);
-        if (!figureDoc.exists()) {
-            throw new Error("Figure document not found.");
-        }
-        const figureData = figureDoc.data();
-        const newRatingCounts = { ...defaultRatingCounts, ...figureData.ratingCounts };
-
-        const userRatingDoc = await transaction.get(userRatingDocRef);
-        const previousRating = userRatingDoc.exists() ? userRatingDoc.data().rating as RatingValue : null;
-
-        if (previousRating !== null) {
-            newRatingCounts[previousRating] = Math.max(0, (newRatingCounts[previousRating] || 0) - 1);
-        }
-        
-        newRatingCounts[rating] = (newRatingCounts[rating] || 0) + 1;
-
-        // Perform all writes
-        transaction.update(figureDocRef, { ratingCounts: newRatingCounts });
-        transaction.set(userRatingDocRef, { userId: authorData.id, figureId, rating, addedAt: serverTimestamp() }, { merge: true });
-        transaction.set(newCommentRef, newCommentData);
-    });
-
+    await setDoc(newCommentRef, newCommentData);
     return newCommentRef.id;
 }
 

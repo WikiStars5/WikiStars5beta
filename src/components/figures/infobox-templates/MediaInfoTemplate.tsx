@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -10,7 +11,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { FigureTags } from '../FigureTags';
+import { FigureHashtags } from '../FigureHashtags';
 import { Separator } from '@/components/ui/separator';
 
 const SOCIAL_MEDIA_CONFIG: Record<keyof Figure['socialLinks'], { label: string, icon?: React.ElementType }> = {
@@ -124,7 +125,7 @@ export const MediaInfoTemplate = ({ figure }: { figure: Figure }) => {
 
     const socialLinksArray = Object.entries(figure.socialLinks || {}).filter(([, link]) => !!link);
     const hasSocialLinks = socialLinksArray.length > 0;
-    const hasTags = figure.tags && figure.tags.length > 0;
+    const hasHashtags = figure.hashtags && figure.hashtags.length > 0;
 
     return (
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
@@ -181,11 +182,11 @@ export const MediaInfoTemplate = ({ figure }: { figure: Figure }) => {
                 </div>
              )}
 
-             {hasTags && (
+             {hasHashtags && (
                 <div className="md:col-span-2 lg:col-span-3">
                    <Separator className="my-4"/>
-                   <h3 className="font-headline text-base mb-4">Etiquetas</h3>
-                   <FigureTags tags={figure.tags!} />
+                   <h3 className="font-headline text-base mb-4">Hashtags</h3>
+                   <FigureHashtags hashtags={figure.hashtags!} />
                 </div>
             )}
         </div>

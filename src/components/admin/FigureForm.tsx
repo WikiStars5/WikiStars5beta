@@ -51,7 +51,7 @@ const MEDIA_SUBCATEGORIES: { value: MediaSubcategory, label: string }[] = [
 ];
 
 const defaultPerceptionCounts: Record<EmotionKey, number> = {
-  alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
+  alegria: 0, inspiracion: 0, admiracion: 0, diversion: 0, tristeza: 0, decepcion: 0, miedo: 0, desagrado: 0
 };
 
 const defaultAttitudeCounts: Record<AttitudeKey, number> = {
@@ -75,8 +75,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [profileType, setProfileType] = useState<ProfileType>('character');
   
   const [socialLinks, setSocialLinks] = useState(initialData?.socialLinks || {});
-  const [tags, setTags] = useState<string[]>(initialData?.tags || []);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
+  const [selectedHashtag, setSelectedHashtag] = useState<string | null>(null);
   const [isFeatured, setIsFeatured] = useState(false);
   const [nationalityCode, setNationalityCode] = useState('');
 
@@ -141,7 +141,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setNationalityCode(initialData.nationalityCode || '');
       setIsFeatured(initialData.isFeatured || false);
       setSocialLinks(initialData.socialLinks || {});
-      setTags(initialData.tags || []);
+      setHashtags(initialData.hashtags || []);
 
       if (initialData.profileType === 'character') {
         setCategory(initialData.category || '');
@@ -179,7 +179,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     } else {
       // Reset all fields for a new form
       setName(''); setProfileType('character'); setDescription(''); setPhotoUrl('');
-      setNationalityCode(''); setIsFeatured(false); setSocialLinks({}); setTags([]);
+      setNationalityCode(''); setIsFeatured(false); setSocialLinks({}); setHashtags([]);
       clearCharacterFields();
       clearMediaFields();
     }
@@ -194,15 +194,15 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     }
   };
   
-  const handleAddTag = () => {
-    if (selectedTag && !tags.includes(selectedTag)) {
-        setTags([...tags, selectedTag]);
-        setSelectedTag(null); // Reset the combobox
+  const handleAddHashtag = () => {
+    if (selectedHashtag && !hashtags.includes(selectedHashtag)) {
+        setHashtags([...hashtags, selectedHashtag]);
+        setSelectedHashtag(null); // Reset the combobox
     }
   };
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
+  const handleRemoveHashtag = (hashtagToRemove: string) => {
+    setHashtags(hashtags.filter(tag => tag !== hashtagToRemove));
   };
 
 
@@ -238,8 +238,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         searchKeywords: searchKeywords,
         description: description.trim() || "", 
         photoUrl: finalPhotoUrlToSave,
-        tags: tags,
-        tagsLower: tags.map(tag => tag.toLowerCase()),
+        hashtags: hashtags,
+        hashtagsLower: hashtags.map(tag => tag.toLowerCase()),
         socialLinks: socialLinks,
         isFeatured: isFeatured,
         nationality: countryCodeToNameMap.get(nationalityCode) || '',
@@ -546,13 +546,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         <div><Label htmlFor="discord">Discord</Label><Input id="discord" value={(socialLinks as Record<string,string>)['discord'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, discord: e.target.value}))} placeholder="https://discord.gg/..."/></div>
       </div>
 
-      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Etiquetas (Tags)</h3>
+      <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Hashtags</h3>
       <div>
         <div className="flex gap-2">
-          <Combobox options={TAG_OPTIONS.map(tag => ({ value: tag, label: tag }))} value={selectedTag || ''} onChange={(value) => setSelectedTag(value)} placeholder="Selecciona una etiqueta..." />
-          <Button type="button" onClick={handleAddTag} disabled={!selectedTag}>Añadir</Button>
+          <Combobox options={TAG_OPTIONS.map(tag => ({ value: tag, label: tag }))} value={selectedHashtag || ''} onChange={(value) => setSelectedHashtag(value)} placeholder="Selecciona un hashtag..." />
+          <Button type="button" onClick={handleAddHashtag} disabled={!selectedHashtag}>Añadir</Button>
         </div>
-        <div className="flex flex-wrap gap-2 mt-2">{tags.map(tag => (<Badge key={tag} variant="secondary" className="text-sm">{tag}<button type="button" onClick={() => handleRemoveTag(tag)} className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" aria-label={`Eliminar ${tag}`}><X className="h-3 w-3" /></button></Badge>))}</div>
+        <div className="flex flex-wrap gap-2 mt-2">{hashtags.map(tag => (<Badge key={tag} variant="secondary" className="text-sm">{tag}<button type="button" onClick={() => handleRemoveHashtag(tag)} className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" aria-label={`Eliminar ${tag}`}><X className="h-3 w-3" /></button></Badge>))}</div>
       </div>
       
       <div className="mt-6 border-t pt-4 border-border">

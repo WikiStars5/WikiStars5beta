@@ -19,7 +19,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { FigureTags } from './FigureTags';
+import { FigureHashtags } from './FigureHashtags';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { Separator } from '../ui/separator';
@@ -219,7 +219,7 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
 
     const socialLinksArray = Object.entries(figure.socialLinks || {}).filter(([,link]) => !!link);
     const hasSocialLinks = socialLinksArray.length > 0;
-    const hasTags = figure.tags && figure.tags.length > 0;
+    const hasHashtags = figure.hashtags && figure.hashtags.length > 0;
 
     return (
         <div className="space-y-8">
@@ -249,11 +249,11 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
                 </div>
              )}
 
-             {hasTags && (
+             {hasHashtags && (
                 <div className="md:col-span-2 lg:col-span-3">
                    <Separator className="my-4"/>
-                   <h3 className="font-headline text-base mb-4">Etiquetas</h3>
-                   <FigureTags tags={figure.tags!} />
+                   <h3 className="font-headline text-base mb-4">Hashtags</h3>
+                   <FigureHashtags hashtags={figure.hashtags!} />
                 </div>
             )}
         </div>
@@ -265,7 +265,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Figure>>(figure);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedHashtag, setSelectedHashtag] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isEditing) {
@@ -287,20 +287,20 @@ export function FigureInfo({ figure }: FigureInfoProps) {
     }));
   };
   
-  const handleAddTag = () => {
-    if (selectedTag && !formData.tags?.includes(selectedTag)) {
+  const handleAddHashtag = () => {
+    if (selectedHashtag && !formData.hashtags?.includes(selectedHashtag)) {
         setFormData(prev => ({
             ...prev,
-            tags: [...(prev.tags || []), selectedTag]
+            hashtags: [...(prev.hashtags || []), selectedHashtag]
         }));
-        setSelectedTag(null); 
+        setSelectedHashtag(null); 
     }
   };
 
-  const handleRemoveTag = (tagToRemove: string) => {
+  const handleRemoveHashtag = (hashtagToRemove: string) => {
     setFormData(prev => ({
         ...prev,
-        tags: (prev.tags || []).filter(tag => tag !== tagToRemove)
+        hashtags: (prev.hashtags || []).filter(tag => tag !== hashtagToRemove)
     }));
   };
 
@@ -534,23 +534,23 @@ export function FigureInfo({ figure }: FigureInfoProps) {
             </div>
             <Separator/>
             <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Etiquetas</h3>
+                <h3 className="font-semibold text-lg flex items-center gap-2"><Tags /> Editar Hashtags</h3>
                 <div className="flex gap-2">
                     <Combobox 
                         options={TAG_OPTIONS.map(tag => ({ value: tag, label: tag }))} 
-                        value={selectedTag || ''} 
-                        onChange={(value) => setSelectedTag(value)} 
-                        placeholder="Selecciona una etiqueta..." 
+                        value={selectedHashtag || ''} 
+                        onChange={(value) => setSelectedHashtag(value)} 
+                        placeholder="Selecciona un hashtag..." 
                     />
-                    <Button type="button" onClick={handleAddTag} disabled={!selectedTag}>Añadir</Button>
+                    <Button type="button" onClick={handleAddHashtag} disabled={!selectedHashtag}>Añadir</Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    {(formData.tags || []).map(tag => (
+                    {(formData.hashtags || []).map(tag => (
                         <Badge key={tag} variant="secondary" className="text-sm">
                             {tag}
                             <button 
                                 type="button" 
-                                onClick={() => handleRemoveTag(tag)} 
+                                onClick={() => handleRemoveHashtag(tag)} 
                                 className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive" 
                                 aria-label={`Eliminar ${tag}`}
                             >
@@ -563,7 +563,7 @@ export function FigureInfo({ figure }: FigureInfoProps) {
           </div>
         ) : (
           <>
-            {(!hasInfo && !figure.tags?.length && Object.values(figure.socialLinks || {}).every(v => !v)) ? (
+            {(!hasInfo && !figure.hashtags?.length && Object.values(figure.socialLinks || {}).every(v => !v)) ? (
               <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">No hay información detallada disponible para este perfil.</p>
             ) : (
                 figure.profileType === 'character' ? <CharacterInfoTemplate figure={figure} /> : <MediaInfoTemplate figure={figure} />

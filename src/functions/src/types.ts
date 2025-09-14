@@ -1,6 +1,7 @@
 
 
-export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
+
+export type EmotionKey = 'alegria' | 'decepcion' | 'tristeza' | 'miedo' | 'desagrado' | 'inspiracion' | 'admiracion' | 'diversion';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 
 export interface Figure {
@@ -16,8 +17,8 @@ export interface Figure {
   gender?: string;
   category?: string;
   sportSubcategory?: string; 
-  tags?: string[];
-  tagsLower?: string[];
+  hashtags?: string[];
+  hashtagsLower?: string[];
 
   alias?: string;
   species?: string; 
