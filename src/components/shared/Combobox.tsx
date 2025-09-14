@@ -35,23 +35,29 @@ interface ComboboxProps {
 }
 
 export function Combobox({ options, value, onChange, placeholder = "Select an option...", disabled, creatable = false }: ComboboxProps) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
+  // This internal search state is the fix. It allows the input to be typed in
+  // without being immediately overwritten by the external `value` prop.
+  const [search, setSearch] = React.useState("");
 
   const selectedOption = value ? options.find(
     (option) => option.value.toLowerCase() === value.toLowerCase()
   ) : null;
 
   const handleSelect = (currentValue: string) => {
-    if (creatable) {
-        onChange(currentValue);
-    } else {
-        const selected = options.find(
-            (c) => c.label.toLowerCase() === currentValue.toLowerCase()
-        );
-        onChange(selected ? selected.value : null);
-    }
+    // When an item is selected (or created), we call the main onChange handler
+    // to update the parent component's state.
+    onChange(currentValue);
     setOpen(false);
+    setSearch(""); // Reset search after selection
   };
+
+  // Reset search when popover closes
+  React.useEffect(() => {
+    if (!open) {
+      setSearch("");
+    }
+  }, [open]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -71,18 +77,18 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
         <Command>
           <CommandInput
             placeholder="Buscar..."
-            value={typeof value === 'string' ? value : ''}
-            onValueChange={(search) => onChange(search)}
+            value={search}
+            onValueChange={setSearch} // Let the user type freely
           />
           <CommandList>
             <CommandEmpty>
-                {creatable && typeof value === 'string' && value.trim().length > 0 ? (
+                {creatable && search.trim().length > 0 ? (
                     <CommandItem
-                        onSelect={() => handleSelect(value)}
-                        value={value}
+                        onSelect={() => handleSelect(search)}
+                        value={search}
                         className="cursor-pointer"
                     >
-                    Crear "{value}"
+                    Crear "{search}"
                     </CommandItem>
                 ) : "No se encontraron opciones."}
             </CommandEmpty>
@@ -91,7 +97,7 @@ export function Combobox({ options, value, onChange, placeholder = "Select an op
                 <CommandItem
                   key={option.value}
                   value={option.label}
-                  onSelect={() => handleSelect(option.label)}
+                  onSelect={() => handleSelect(option.value)}
                 >
                   <Check
                     className={cn(
