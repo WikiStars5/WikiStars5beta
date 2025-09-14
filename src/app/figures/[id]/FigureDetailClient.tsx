@@ -20,9 +20,9 @@ import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import type { Figure, LocalUserStreak, UserProfile, Comment as CommentType } from "@/lib/types";
+import type { Figure, Streak } from "@/lib/types";
 import { FigureInfo } from '@/components/figures/FigureInfo';
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, type Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { mapDocToFigure } from "@/lib/placeholder-data";
 import { RelatedProfiles } from "@/components/figures/RelatedProfiles";
@@ -36,6 +36,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { isSameDay, isYesterday } from "date-fns";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -46,12 +47,12 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = routeParams?.id;
+  const { firebaseUser } = useAuth();
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
-  
-  // State to hold the comment ID from the URL
   const [highlightedCommentId, setHighlightedCommentId] = React.useState<string | null>(null);
+  const [currentUserStreak, setCurrentUserStreak] = React.useState<number | null>(null);
 
 
   // This effect will run once when the component mounts to check the URL.
@@ -87,6 +88,36 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
     return () => unsubscribe();
   }, [id]);
 
+  // Add a real-time listener for the user's streak on this figure
+  React.useEffect(() => {
+      if (!id || !firebaseUser) {
+          setCurrentUserStreak(null);
+          return;
+      }
+
+      const streakDocRef = doc(db, `figures/${id}/streaks`, firebaseUser.uid);
+      const unsubscribeStreak = onSnapshot(streakDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+              const data = docSnap.data() as Streak;
+              const lastDate = (data.lastCommentDate as Timestamp).toDate();
+              const today = new Date();
+              if (isSameDay(today, lastDate) || isYesterday(today, lastDate)) {
+                  setCurrentUserStreak(data.currentStreak);
+              } else {
+                  setCurrentUserStreak(null); // Streak is not active
+              }
+          } else {
+              setCurrentUserStreak(null); // No streak exists
+          }
+      }, (error) => {
+          console.error("Error listening to user streak:", error);
+          setCurrentUserStreak(null);
+      });
+
+      return () => unsubscribeStreak();
+
+  }, [id, firebaseUser]);
+
   // Scroll to hash element if present in URL
   React.useEffect(() => {
     // We wrap this in a setTimeout to ensure the DOM has had time to render the comments.
@@ -118,6 +149,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
         <ProfileHeader 
           figure={figure}
           onImageClick={handleOpenProfileImage}
+          currentStreak={currentUserStreak}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">

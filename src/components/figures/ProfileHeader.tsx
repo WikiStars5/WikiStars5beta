@@ -6,14 +6,19 @@ import Image from "next/image";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { correctMalformedUrl } from "@/lib/utils";
 
+const FIRE_GIF_URL = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/image%2Ffire.gif?alt=media&token=fd18d32d-c443-4da6-a369-e55ae241f7c5";
+
+
 interface ProfileHeaderProps {
   figure: Figure;
   onImageClick: (imageUrl: string) => void;
+  currentStreak: number | null;
 }
 
 export function ProfileHeader({ 
   figure, 
   onImageClick,
+  currentStreak,
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
 
@@ -55,6 +60,19 @@ export function ProfileHeader({
                 <div className="flex items-center gap-2">
                     <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
                 </div>
+                {currentStreak && currentStreak > 0 && (
+                    <div className="flex items-center gap-1.5 text-orange-400 font-bold text-sm">
+                         <Image
+                            src={FIRE_GIF_URL}
+                            alt="Racha activa"
+                            width={20}
+                            height={20}
+                            unoptimized
+                            data-ai-hint="fire gif"
+                        />
+                        <span>Día {currentStreak}</span>
+                    </div>
+                )}
               </div>
             </div>
             
