@@ -261,7 +261,6 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
 };
 
 export function FigureInfo({ figure }: FigureInfoProps) {
-  const { isAdmin } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -376,13 +375,13 @@ export function FigureInfo({ figure }: FigureInfoProps) {
               Datos biográficos y descriptivos de {figure.name}.
           </CardDescription>
         </div>
-        {isAdmin && !isEditing && (
+        {!isEditing && (
           <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
             <FilePenLine className="mr-2 h-4 w-4" />
             Editar
           </Button>
         )}
-         {isAdmin && isEditing && (
+         {isEditing && (
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
               <X className="mr-2 h-4 w-4" />
