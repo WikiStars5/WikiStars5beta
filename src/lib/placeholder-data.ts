@@ -521,6 +521,7 @@ export async function addComment(
 ): Promise<string> {
     const figureDocRef = doc(db, 'figures', figureId);
     const newCommentRef = doc(collection(db, `figures/${figureId}/comments`));
+    const userRatingDocRef = doc(db, 'userRatings', `${authorData.id}_${figureId}`);
 
     const newCommentData: Omit<Comment, 'id' | 'replies'> & { createdAt: any } = {
         figureId: figureId,
@@ -541,21 +542,28 @@ export async function addComment(
         isAnonymous: authorData.isAnonymous,
     };
 
-    // Use a transaction to ensure both writes succeed or fail together.
     await runTransaction(db, async (transaction) => {
         const figureDoc = await transaction.get(figureDocRef);
-        if (!figureDoc.exists()) {
-            throw new Error("Figure document not found.");
-        }
+        if (!figureDoc.exists()) throw new Error("Figure document not found.");
 
-        // 1. Update the figure's rating counts
-        const figureData = figureDoc.data();
-        const newRatingCounts = { ...defaultRatingCounts, ...figureData.ratingCounts };
-        newRatingCounts[rating] = (newRatingCounts[rating] || 0) + 1;
-        transaction.update(figureDocRef, { ratingCounts: newRatingCounts });
+        const userRatingDoc = await transaction.get(userRatingDocRef);
+        const previousRating = userRatingDoc.exists() ? userRatingDoc.data().rating as RatingValue : null;
         
-        // 2. Set the new comment document
+        const newRatingCounts = { ...defaultRatingCounts, ...figureDoc.data().ratingCounts };
+
+        if (previousRating !== null) {
+            newRatingCounts[previousRating] = Math.max(0, (newRatingCounts[previousRating] || 0) - 1);
+        }
+        newRatingCounts[rating] = (newRatingCounts[rating] || 0) + 1;
+
+        transaction.update(figureDocRef, { ratingCounts: newRatingCounts });
         transaction.set(newCommentRef, newCommentData);
+        transaction.set(userRatingDocRef, { 
+            userId: authorData.id,
+            figureId: figureId,
+            rating: rating,
+            addedAt: serverTimestamp() 
+        });
     });
 
     return newCommentRef.id;
@@ -745,11 +753,15 @@ export async function deleteComment(documentPath: string): Promise<void> {
       return;
     }
     const commentData = commentDoc.data();
-    const rating = commentData.rating;
-    const authorId = commentData.authorId;
-    const figureId = commentData.figureId;
+    const rating = commentData.rating as RatingValue;
+    const authorId = commentData.authorId as string;
+    const figureId = commentData.figureId as string;
 
-    if (rating !== undefined && rating !== null) {
+    const userRatingDocRef = doc(db, 'userRatings', `${authorId}_${figureId}`);
+    const userRatingDoc = await transaction.get(userRatingDocRef);
+    
+    // Only adjust counts if this comment's rating matches the user's last official rating
+    if (userRatingDoc.exists() && userRatingDoc.data().rating === rating) {
         const figureRef = doc(db, 'figures', figureId);
         const figureDoc = await transaction.get(figureRef);
 
@@ -761,7 +773,6 @@ export async function deleteComment(documentPath: string): Promise<void> {
             transaction.update(figureRef, { ratingCounts: newRatingCounts });
         }
         
-        const userRatingDocRef = doc(db, 'userRatings', `${authorId}_${figureId}`);
         transaction.delete(userRatingDocRef);
     }
 
