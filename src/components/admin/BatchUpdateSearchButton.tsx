@@ -20,6 +20,15 @@ import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure } from '@/lib/types';
 
+// Helper function to generate keywords from a name
+const generateKeywords = (name: string): string[] => {
+    if (!name) return [];
+    const normalizedName = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const parts = normalizedName.split(/\s+/).filter(part => part.length > 0);
+    return parts;
+};
+
+
 export function BatchUpdateSearchButton() {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -42,13 +51,18 @@ export function BatchUpdateSearchButton() {
       querySnapshot.forEach(docSnap => {
         const figureData = docSnap.data() as Figure;
         const currentName = figureData.name;
-        const currentSearchName = figureData.nameSearch;
         
         if (currentName) {
             const newSearchName = currentName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-            if (currentSearchName !== newSearchName) {
+            const newKeywords = generateKeywords(currentName);
+            
+            // Check if an update is needed
+            if (figureData.nameSearch !== newSearchName || JSON.stringify(figureData.nameKeywords) !== JSON.stringify(newKeywords)) {
                 const figureRef = doc(db, 'figures', docSnap.id);
-                batch.update(figureRef, { nameSearch: newSearchName });
+                batch.update(figureRef, { 
+                    nameSearch: newSearchName,
+                    nameKeywords: newKeywords
+                });
                 updatedCount++;
             }
         }
@@ -100,9 +114,9 @@ export function BatchUpdateSearchButton() {
         <AlertDialogHeader>
           <AlertDialogTitle>¿Confirmar Sincronización de Búsqueda?</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta acción escaneará todas las figuras en la base de datos y creará o actualizará el campo `nameSearch` para que las búsquedas sin acentos funcionen correctamente.
+            Esta acción escaneará todas las figuras y (re)generará los campos `nameSearch` y `nameKeywords` para habilitar búsquedas flexibles y por cualquier parte del nombre.
             <br/><br/>
-            Usa esto para reparar el buscador si los personajes existentes no aparecen en los resultados. ¿Deseas continuar?
+            Usa esto si personajes existentes no aparecen en los resultados. ¿Deseas continuar?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

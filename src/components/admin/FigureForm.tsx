@@ -42,6 +42,14 @@ function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
     });
 }
 
+// Helper function to generate keywords from a name
+const generateKeywords = (name: string): string[] => {
+    if (!name) return [];
+    const normalizedName = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const parts = normalizedName.split(/\s+/).filter(part => part.length > 0);
+    return parts;
+};
+
 interface FigureFormProps {
   initialData?: Figure;
 }
@@ -274,11 +282,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       const finalPhotoUrlToSave = photoUrl.trim() || 'https://placehold.co/400x600.png';
       const nameTrimmed = name.trim();
       const nameSearch = nameTrimmed.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      const nameKeywords = generateKeywords(nameTrimmed);
       const hashtagsLower = hashtags.map(tag => tag.toLowerCase());
       
       const baseData = {
         name: nameTrimmed,
         nameSearch: nameSearch,
+        nameKeywords: nameKeywords,
         profileType: profileType,
         description: description.trim() || "", 
         photoUrl: finalPhotoUrlToSave,

@@ -37,6 +37,7 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     id: docSnap.id,
     name: data.name || "",
     nameSearch: data.nameSearch || (data.name ? data.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : ""),
+    nameKeywords: data.nameKeywords || [],
     profileType: data.profileType || 'character', // Default to character for older data
     photoUrl: data.photoUrl || "",
     description: data.description || "",
@@ -228,11 +229,11 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
 
       // Destructure all known fields to separate them from the rest
       const { 
-          id, createdAt, nameLower: nameLowerInput, nameSearch: nameSearchInput, perceptionCounts, attitudeCounts, ratingCounts,
+          id, createdAt, nameLower, nameSearch, nameKeywords, perceptionCounts, attitudeCounts, ratingCounts,
           name, profileType, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, age, birthPlace, statusLiveOrDead, maritalStatus,
           height, heightCm, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
-          category, sportSubcategory, relatedFigureIds, socialLinks, hashtags, hashtagsLower, ...rest
+          category, sportSubcategory, relatedFigureIds, socialLinks, hashtags, hashtagsLower: hashtagsLowerInput, ...rest
       } = figure;
 
       const updatePayload: { [key: string]: any } = {};

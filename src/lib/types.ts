@@ -32,6 +32,7 @@ export interface Figure {
   name: string;
   nameLower?: string; // This is now deprecated in favor of nameSearch
   nameSearch: string;
+  nameKeywords: string[]; // New field for full text search capabilities
   profileType: ProfileType; 
   photoUrl: string;
   description?: string;

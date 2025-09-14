@@ -50,6 +50,14 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
+// Helper function to generate keywords from a name
+const generateKeywords = (name: string): string[] => {
+    if (!name) return [];
+    const normalizedName = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const parts = normalizedName.split(/\s+/).filter(part => part.length > 0);
+    return parts;
+};
+
 interface BatchCreateFiguresProps {
   profileType: ProfileType;
 }
@@ -94,6 +102,7 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
         if (figureId) {
           const nameTrimmed = name.trim();
           const nameSearch = nameTrimmed.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          const nameKeywords = generateKeywords(nameTrimmed);
           const figureRef = doc(figuresCollectionRef, figureId);
           const attitudeCounts = { ...defaultAttitudeCounts };
           if (profileType === 'media') {
@@ -103,6 +112,7 @@ export function BatchCreateFigures({ profileType }: BatchCreateFiguresProps) {
           const figureData: Partial<Figure> & { createdAt: any } = {
             name: nameTrimmed,
             nameSearch: nameSearch,
+            nameKeywords: nameKeywords,
             profileType: profileType,
             photoUrl: `https://placehold.co/400x600.png?text=${encodeURIComponent(name)}`,
             description: '',
