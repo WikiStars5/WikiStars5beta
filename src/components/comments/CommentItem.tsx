@@ -59,7 +59,7 @@ const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, par
     const [text, setText] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const { toast } = useToast();
-    const { currentUser, firebaseUser, isLoading: isAuthLoading } = useAuth();
+    const { currentUser, firebaseUser, isLoading: isAuthLoading, localProfile } = useAuth();
     
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -69,14 +69,26 @@ const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, par
         }
 
         setIsSubmitting(true);
+
+        const isAnonymous = firebaseUser.isAnonymous;
+        const authorName = isAnonymous 
+            ? localProfile?.username 
+            : currentUser?.username;
+
+        if (!authorName) {
+            toast({ title: "Error de Perfil", description: "No se pudo encontrar tu nombre de usuario.", variant: "destructive" });
+            setIsSubmitting(false);
+            return;
+        }
+        
         const authorData = {
             id: firebaseUser.uid,
-            name: currentUser?.username || firebaseUser.displayName || 'Usuario',
-            photoUrl: currentUser?.photoURL || null,
-            gender: currentUser?.gender || '',
-            country: currentUser?.country || '',
-            countryCode: currentUser?.countryCode || '',
-            isAnonymous: firebaseUser.isAnonymous,
+            name: authorName,
+            photoUrl: isAnonymous ? null : (currentUser?.photoURL || null),
+            gender: isAnonymous ? localProfile?.gender || '' : currentUser?.gender || '',
+            country: isAnonymous ? '' : currentUser?.country || '',
+            countryCode: isAnonymous ? localProfile?.countryCode || '' : currentUser?.countryCode || '',
+            isAnonymous: isAnonymous,
         };
 
         try {
@@ -141,9 +153,9 @@ export function CommentItem({
     const canReply = depth < MAX_REPLY_DEPTH;
 
     const userId = firebaseUser?.uid;
+    const isOwnComment = userId === comment.authorId;
     const isLiked = userId ? comment.likes.includes(userId) : false;
     const isDisliked = userId ? comment.dislikes.includes(userId) : false;
-    const isOwnComment = userId === comment.authorId;
 
 
     const canDelete = React.useMemo(() => {
@@ -154,6 +166,14 @@ export function CommentItem({
     const canEdit = React.useMemo(() => {
         return userId === comment.authorId;
     }, [userId, comment.authorId]);
+
+    const displayName = React.useMemo(() => {
+        if (comment.isAnonymous) {
+            const discriminator = comment.authorId.slice(-4);
+            return `${comment.authorName} #${discriminator}`;
+        }
+        return comment.authorName;
+    }, [comment.authorName, comment.isAnonymous, comment.authorId]);
 
 
     React.useEffect(() => {
@@ -279,7 +299,7 @@ export function CommentItem({
                         </Avatar>
                         <div className="flex flex-col">
                             <div className="flex flex-wrap items-center gap-1.5">
-                                <p className="font-semibold text-sm">{comment.authorName}</p>
+                                <p className="font-semibold text-sm">{displayName}</p>
                                 {isOwnComment && <span className="text-xs font-bold text-primary">(Yo)</span>}
                                 {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={comment.authorGender}>{genderSymbol}</span>}
                                 {comment.authorCountryCode && (
