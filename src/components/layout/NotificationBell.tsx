@@ -56,8 +56,12 @@ const NOTIFICATION_COLORS: Record<Notification['type'], string> = {
     'system': 'text-primary'
 };
 
+interface NotificationBellProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+}
 
-export function NotificationBell() {
+export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps) {
   const { firebaseUser, isAnonymous } = useAuth();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -121,7 +125,7 @@ export function NotificationBell() {
   if (!firebaseUser || isAnonymous) return null;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative text-foreground/70 hover:text-foreground">
           <Bell className="h-5 w-5" />
@@ -164,7 +168,10 @@ export function NotificationBell() {
                     >
                        <Link 
                             href={linkHref}
-                            onClick={() => handleMarkAsRead(notif.id)}
+                            onClick={() => {
+                              handleMarkAsRead(notif.id);
+                              onOpenChange(false); // Close dropdown on click
+                            }}
                             className="block w-full p-2 cursor-pointer"
                         >
                             <div className="flex items-start gap-3">

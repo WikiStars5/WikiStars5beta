@@ -14,10 +14,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
-import { LogOut, User, ShieldCheck, Loader2 } from 'lucide-react';
+import { LogOut, User, ShieldCheck, Loader2, Bell } from 'lucide-react';
 import { correctMalformedUrl } from "@/lib/utils";
 
-export function UserNav() {
+interface UserNavProps {
+  onNotificationClick: () => void;
+}
+
+export function UserNav({ onNotificationClick }: UserNavProps) {
   const { currentUser, firebaseUser, isAdmin, isLoading, logout, localProfile, isAnonymous } = useAuth();
   
   if (isLoading) {
@@ -76,6 +80,12 @@ export function UserNav() {
               <span>Mi Perfil</span>
             </Link>
           </DropdownMenuItem>
+          {!isAnonymous && (
+            <DropdownMenuItem onClick={onNotificationClick}>
+              <Bell className="mr-2 h-4 w-4" />
+              <span>Notificaciones</span>
+            </DropdownMenuItem>
+          )}
           {isAdmin && (
             <DropdownMenuItem asChild>
               <Link href="/admin">
