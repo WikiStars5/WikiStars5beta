@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Bell, Check, MessageSquare, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,8 @@ const NOTIFICATION_COLORS: Record<Notification['type'], string> = {
     'system': 'text-primary'
 };
 
+const NOTIFICATION_SOUND_URL = 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711';
+
 interface NotificationBellProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -66,22 +68,41 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Effect to handle playing sound on new notification
+  useEffect(() => {
+    // Only create audio element on the client
+    if (typeof window !== 'undefined' && !audioRef.current) {
+        audioRef.current = new Audio(NOTIFICATION_SOUND_URL);
+    }
+
+    // Compare previous unread count with current to detect a new notification
+    if (unreadCount > (notifications.filter(n => n.isRead).length + unreadCount - 1)) {
+        // Play sound if there's a new unread notification
+        const lastUnreadCount = notifications.filter(n => !n.isRead).length -1;
+        if( unreadCount > lastUnreadCount && unreadCount > 0){
+             audioRef.current?.play().catch(error => {
+                // Autoplay is often restricted by browsers. We can ignore this error.
+                console.log("Notification sound autoplay was prevented by the browser.");
+            });
+        }
+    }
+  }, [unreadCount, notifications]);
+
 
   useEffect(() => {
-    // A user must exist to fetch notifications.
     if (!firebaseUser) {
         setNotifications([]);
         setUnreadCount(0);
         return;
     }
-    
-    // For anonymous users, only proceed if they have a local profile created.
+
     if (firebaseUser.isAnonymous && !localProfile) {
         setNotifications([]);
         setUnreadCount(0);
         return;
     }
-
 
     const notificationsRef = collection(db, 'notifications');
     const q = query(
@@ -99,6 +120,15 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
         }
         return { id: doc.id, ...data };
       });
+      
+      // Check if there is a new unread notification
+      if (count > unreadCount && notifications.length > 0) {
+        // Play sound
+         if (audioRef.current) {
+            audioRef.current.play().catch(e => console.log("Audio play failed:", e));
+        }
+      }
+
       setNotifications(newNotifications);
       setUnreadCount(count);
     }, (error) => {
@@ -106,7 +136,7 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
     });
 
     return () => unsubscribe();
-  }, [firebaseUser, localProfile]);
+  }, [firebaseUser, localProfile, notifications.length, unreadCount]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     const result = await markNotificationAsRead(notificationId);
@@ -131,8 +161,6 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
     }
   };
 
-  // If there's no firebase user or if the user is anonymous without a local profile,
-  // do not render the bell.
   if (!firebaseUser || (firebaseUser.isAnonymous && !localProfile)) {
     return null;
   }
@@ -226,3 +254,5 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
     </DropdownMenu>
   );
 }
+
+    
