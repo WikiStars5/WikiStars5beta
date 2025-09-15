@@ -122,6 +122,16 @@ const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, par
     );
 };
 
+// Function to generate a color from a string (e.g., user ID)
+const stringToHslColor = (str: string, s: number, l: number): string => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = hash % 360;
+  return `hsl(${h}, ${s}%, ${l}%)`;
+};
+
 
 export function CommentItem({ 
     figure, 
@@ -170,10 +180,22 @@ export function CommentItem({
     const displayName = React.useMemo(() => {
         if (comment.isAnonymous) {
             const discriminator = comment.authorId.slice(-4);
-            return `${comment.authorName} #${discriminator}`;
+            return (
+                <span className="flex items-center gap-1.5">
+                    <span>{comment.authorName}</span>
+                    <span className="text-muted-foreground">#{discriminator}</span>
+                </span>
+            );
         }
-        return comment.authorName;
+        return <span>{comment.authorName}</span>;
     }, [comment.authorName, comment.isAnonymous, comment.authorId]);
+    
+    const anonymousUserColor = React.useMemo(() => {
+        if (comment.isAnonymous) {
+            return stringToHslColor(comment.authorId, 70, 75); // Use HSL for good-looking colors
+        }
+        return undefined;
+    }, [comment.isAnonymous, comment.authorId]);
 
 
     React.useEffect(() => {
@@ -299,7 +321,7 @@ export function CommentItem({
                         </Avatar>
                         <div className="flex flex-col">
                             <div className="flex flex-wrap items-center gap-1.5">
-                                <p className="font-semibold text-sm">{displayName}</p>
+                                <p className="font-semibold text-sm" style={{ color: anonymousUserColor }}>{displayName}</p>
                                 {isOwnComment && <span className="text-xs font-bold text-primary">(Yo)</span>}
                                 {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={comment.authorGender}>{genderSymbol}</span>}
                                 {comment.authorCountryCode && (

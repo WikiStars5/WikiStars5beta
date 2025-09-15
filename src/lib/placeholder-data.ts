@@ -526,7 +526,7 @@ export async function addComment(
     const newCommentData: Omit<Comment, 'id' | 'replies'> & { createdAt: any } = {
         figureId: figureId,
         authorId: authorData.id,
-        authorName: authorData.name,
+        authorName: authorData.name, // Store the clean name
         authorPhotoUrl: authorData.photoUrl || null,
         authorGender: authorData.gender,
         authorCountry: authorData.country,
@@ -589,7 +589,7 @@ export async function addReply(
   const replyData = {
     figureId: figureId,
     authorId: authorData.id,
-    authorName: authorData.name,
+    authorName: authorData.name, // Store clean name
     authorPhotoUrl: authorData.photoUrl || null,
     authorGender: authorData.gender,
     authorCountry: authorData.country,
