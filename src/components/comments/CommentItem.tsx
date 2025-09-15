@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -176,26 +175,34 @@ export function CommentItem({
     const canEdit = React.useMemo(() => {
         return userId === comment.authorId;
     }, [userId, comment.authorId]);
+    
+    const anonymousUserColor = React.useMemo(() => {
+        if (comment.isAnonymous) {
+            return stringToHslColor(comment.authorId, 60, 65); // Use HSL for good-looking colors
+        }
+        return undefined;
+    }, [comment.isAnonymous, comment.authorId]);
 
     const displayName = React.useMemo(() => {
+        if (isOwnComment) {
+             return (
+                <span className="flex items-center gap-1.5" style={{ color: anonymousUserColor }}>
+                    <span>{comment.authorName}</span>
+                    <span className="font-bold text-primary">(Yo)</span>
+                </span>
+            );
+        }
         if (comment.isAnonymous) {
             const discriminator = comment.authorId.slice(-4);
             return (
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5" style={{ color: anonymousUserColor }}>
                     <span>{comment.authorName}</span>
-                    <span className="text-muted-foreground">#{discriminator}</span>
+                    <span className="text-current/70">#{discriminator}</span>
                 </span>
             );
         }
         return <span>{comment.authorName}</span>;
-    }, [comment.authorName, comment.isAnonymous, comment.authorId]);
-    
-    const anonymousUserColor = React.useMemo(() => {
-        if (comment.isAnonymous) {
-            return stringToHslColor(comment.authorId, 70, 75); // Use HSL for good-looking colors
-        }
-        return undefined;
-    }, [comment.isAnonymous, comment.authorId]);
+    }, [comment.authorName, comment.isAnonymous, comment.authorId, isOwnComment, anonymousUserColor]);
 
 
     React.useEffect(() => {
@@ -321,11 +328,8 @@ export function CommentItem({
                         </Avatar>
                         <div className="flex flex-col">
                             <div className="flex flex-wrap items-center gap-1.5">
-                                <p className="font-semibold text-sm" style={{ color: anonymousUserColor }}>
-                                  {isOwnComment ? 
-                                    <span className="flex items-center gap-1.5">{comment.authorName} <span className="font-bold text-primary">(Yo)</span></span> :
-                                    displayName
-                                  }
+                                <p className="font-semibold text-sm">
+                                  {displayName}
                                 </p>
                                 {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={comment.authorGender}>{genderSymbol}</span>}
                                 {comment.authorCountryCode && (
