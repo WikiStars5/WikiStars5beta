@@ -62,17 +62,26 @@ interface NotificationBellProps {
 }
 
 export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps) {
-  const { firebaseUser, isAnonymous } = useAuth();
+  const { firebaseUser, localProfile } = useAuth();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!firebaseUser || isAnonymous) {
+    // A user must exist to fetch notifications.
+    if (!firebaseUser) {
         setNotifications([]);
         setUnreadCount(0);
         return;
     }
+    
+    // For anonymous users, only proceed if they have a local profile created.
+    if (firebaseUser.isAnonymous && !localProfile) {
+        setNotifications([]);
+        setUnreadCount(0);
+        return;
+    }
+
 
     const notificationsRef = collection(db, 'notifications');
     const q = query(
@@ -97,7 +106,7 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
     });
 
     return () => unsubscribe();
-  }, [firebaseUser, isAnonymous]);
+  }, [firebaseUser, localProfile]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     const result = await markNotificationAsRead(notificationId);
@@ -122,7 +131,12 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
     }
   };
 
-  if (!firebaseUser || isAnonymous) return null;
+  // If there's no firebase user or if the user is anonymous without a local profile,
+  // do not render the bell.
+  if (!firebaseUser || (firebaseUser.isAnonymous && !localProfile)) {
+    return null;
+  }
+
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={onOpenChange}>

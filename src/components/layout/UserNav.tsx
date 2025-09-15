@@ -80,12 +80,10 @@ export function UserNav({ onNotificationClick }: UserNavProps) {
               <span>Mi Perfil</span>
             </Link>
           </DropdownMenuItem>
-          {!isAnonymous && (
-            <DropdownMenuItem onClick={onNotificationClick}>
-              <Bell className="mr-2 h-4 w-4" />
-              <span>Notificaciones</span>
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem onClick={onNotificationClick}>
+            <Bell className="mr-2 h-4 w-4" />
+            <span>Notificaciones</span>
+          </DropdownMenuItem>
           {isAdmin && (
             <DropdownMenuItem asChild>
               <Link href="/admin">
