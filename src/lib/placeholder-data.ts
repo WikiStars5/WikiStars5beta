@@ -1,4 +1,5 @@
 
+
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -606,16 +607,22 @@ export async function addReply(
   let docRef;
 
   await runTransaction(db, async (transaction) => {
-    // 1. Add the new reply document
-    docRef = doc(repliesCollectionRef); // Create a new doc reference inside the transaction
-    transaction.set(docRef, replyData);
-
-    // 2. Increment replyCount on the parent document
+    // ---- READS FIRST ----
     const parentRef = doc(db, parentPath);
     const parentDoc = await transaction.get(parentRef);
     if (!parentDoc.exists()) {
       throw new Error("Parent document does not exist.");
     }
+    const figureRef = doc(db, 'figures', figureId);
+    const figureDoc = await transaction.get(figureRef);
+    const figureName = figureDoc.exists() ? figureDoc.data().name : '';
+
+    // ---- WRITES SECOND ----
+    // 1. Add the new reply document
+    docRef = doc(repliesCollectionRef); // Create a new doc reference inside the transaction
+    transaction.set(docRef, replyData);
+
+    // 2. Increment replyCount on the parent document
     const newReplyCount = (parentDoc.data().replyCount || 0) + 1;
     transaction.update(parentRef, { replyCount: newReplyCount });
     
@@ -631,7 +638,7 @@ export async function addReply(
            actorName: authorData.name,
            actorPhotoUrl: authorData.photoUrl,
            figureId: figureId,
-           figureName: (await getDoc(doc(db, 'figures', figureId))).data()?.name || '',
+           figureName: figureName, // Use the name read at the start
            commentId: parentRef.id,
            replyId: docRef.id,
            isRead: false,
