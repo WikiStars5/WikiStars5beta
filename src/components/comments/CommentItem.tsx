@@ -72,7 +72,7 @@ const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, par
         const authorData = {
             id: firebaseUser.uid,
             name: currentUser?.username || firebaseUser.displayName || 'Usuario',
-            photoUrl: currentUser?.photoURL || firebaseUser.photoURL || null,
+            photoUrl: currentUser?.photoURL || null,
             gender: currentUser?.gender || '',
             country: currentUser?.country || '',
             countryCode: currentUser?.countryCode || '',
@@ -143,6 +143,7 @@ export function CommentItem({
     const userId = firebaseUser?.uid;
     const isLiked = userId ? comment.likes.includes(userId) : false;
     const isDisliked = userId ? comment.dislikes.includes(userId) : false;
+    const isOwnComment = userId === comment.authorId;
 
 
     const canDelete = React.useMemo(() => {
@@ -279,6 +280,7 @@ export function CommentItem({
                         <div className="flex flex-col">
                             <div className="flex flex-wrap items-center gap-1.5">
                                 <p className="font-semibold text-sm">{comment.authorName}</p>
+                                {isOwnComment && <span className="text-xs font-bold text-primary">(Yo)</span>}
                                 {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={comment.authorGender}>{genderSymbol}</span>}
                                 {comment.authorCountryCode && (
                                     <Image
