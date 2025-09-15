@@ -257,7 +257,7 @@ export function CommentItem({
         setIsProcessingLike(true);
         try {
             if (isLike) {
-                await toggleLikeComment(currentPath, userId);
+                 await toggleLikeComment(currentPath, userId, comment.authorId, figure.id, figure.name, comment.id);
             } else {
                  await toggleDislikeComment(currentPath, userId, comment.authorId, figure.id, figure.name, comment.id);
             }

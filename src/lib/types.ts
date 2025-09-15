@@ -200,14 +200,14 @@ export interface LocalUserStreak {
 
 export interface Notification {
   id: string;
-  userId: string;
-  actorId: string;
+  userId: string; // The user who receives the notification
+  actorId: string; // The user who triggered the notification
   actorName: string;
-  actorPhotoUrl?: string;
+  actorPhotoUrl?: string | null;
   figureId: string;
   figureName: string;
   commentId: string; 
-  replyId?: string; 
+  replyId?: string; // Only present for 'reply' type
   type: 'like' | 'dislike' | 'reply' | 'system';
   isRead: boolean;
   createdAt: Timestamp;

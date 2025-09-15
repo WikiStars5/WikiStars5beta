@@ -581,7 +581,7 @@ export async function addReply(
     countryCode: string;
     isAnonymous: boolean;
   },
-  text: string
+  text: string,
 ): Promise<string> {
   const repliesCollectionRef = collection(db, `${parentPath}/replies`);
   
@@ -603,19 +603,47 @@ export async function addReply(
     isAnonymous: authorData.isAnonymous,
   };
 
-  const docRef = await addDoc(repliesCollectionRef, replyData);
-  
-  // Increment replyCount on the parent document
-  const parentRef = doc(db, parentPath);
+  let docRef;
+
   await runTransaction(db, async (transaction) => {
+    // 1. Add the new reply document
+    docRef = doc(repliesCollectionRef); // Create a new doc reference inside the transaction
+    transaction.set(docRef, replyData);
+
+    // 2. Increment replyCount on the parent document
+    const parentRef = doc(db, parentPath);
     const parentDoc = await transaction.get(parentRef);
     if (!parentDoc.exists()) {
       throw new Error("Parent document does not exist.");
     }
     const newReplyCount = (parentDoc.data().replyCount || 0) + 1;
     transaction.update(parentRef, { replyCount: newReplyCount });
+    
+    // 3. Create a notification for the parent comment's author
+    const parentCommentAuthorId = parentDoc.data().authorId;
+    if (parentCommentAuthorId && parentCommentAuthorId !== authorData.id) {
+       const notificationsCollectionRef = collection(db, 'notifications');
+       const notificationDocRef = doc(notificationsCollectionRef);
+       transaction.set(notificationDocRef, {
+           type: 'reply',
+           userId: parentCommentAuthorId, // The user to be notified
+           actorId: authorData.id, // The user who performed the action
+           actorName: authorData.name,
+           actorPhotoUrl: authorData.photoUrl,
+           figureId: figureId,
+           figureName: (await getDoc(doc(db, 'figures', figureId))).data()?.name || '',
+           commentId: parentRef.id,
+           replyId: docRef.id,
+           isRead: false,
+           createdAt: serverTimestamp(),
+       });
+    }
   });
-
+  
+  if (!docRef) {
+    throw new Error("Failed to create reply document reference.");
+  }
+  
   return docRef.id;
 }
 
@@ -631,7 +659,11 @@ export async function updateComment(documentPath: string, newText: string): Prom
 
 export async function toggleLikeComment(
   documentPath: string, 
-  userId: string
+  userId: string,
+  authorId: string,
+  figureId: string,
+  figureName: string,
+  commentId: string
 ): Promise<boolean> {
   const commentRef = doc(db, documentPath);
   let isLiked = false;
@@ -657,6 +689,28 @@ export async function toggleLikeComment(
         updateData.dislikes = arrayRemove(userId);
         updateData.dislikeCount = Math.max(0, (commentData.dislikeCount || 0) - 1);
       }
+      
+      // Create notification only if someone else's comment is liked
+      if (authorId !== userId) {
+        const actorProfile = await getDoc(doc(db, 'users', userId));
+        const actorName = actorProfile.data()?.username || 'Alguien';
+        const actorPhotoUrl = actorProfile.data()?.photoURL || null;
+
+        const notificationsCollectionRef = collection(db, 'notifications');
+        const notificationDocRef = doc(notificationsCollectionRef);
+        transaction.set(notificationDocRef, {
+            type: 'like',
+            userId: authorId,
+            actorId: userId,
+            actorName: actorName,
+            actorPhotoUrl: actorPhotoUrl,
+            figureId: figureId,
+            figureName: figureName,
+            commentId: commentId,
+            isRead: false,
+            createdAt: serverTimestamp(),
+        });
+      }
     }
     
     transaction.update(commentRef, updateData);
@@ -676,14 +730,6 @@ export async function toggleDislikeComment(
 ): Promise<boolean> {
   const commentRef = doc(db, documentPath);
   let isDisliked = false;
-  let actorName = "Alguien";
-  let actorPhotoUrl: string | null = null;
-
-  const userProfileDoc = await getDoc(doc(db, 'users', userId));
-  if (userProfileDoc.exists()) {
-    actorName = userProfileDoc.data().username || "Alguien";
-    actorPhotoUrl = userProfileDoc.data().photoURL || null;
-  }
 
   await runTransaction(db, async (transaction) => {
     const commentDoc = await transaction.get(commentRef);
@@ -705,23 +751,6 @@ export async function toggleDislikeComment(
       if (likes.includes(userId)) {
         updateData.likes = arrayRemove(userId);
         updateData.likeCount = Math.max(0, (commentData.likeCount || 0) - 1);
-      }
-      
-      // Add notification only when disliking, not when removing dislike
-      if (authorId !== userId) {
-        const notificationsCollectionRef = collection(db, 'notifications');
-        addDoc(notificationsCollectionRef, {
-            type: 'dislike',
-            userId: authorId,
-            actorId: userId,
-            actorName: actorName,
-            actorPhotoUrl: actorPhotoUrl,
-            figureId: figureId,
-            figureName: figureName,
-            commentId: commentId,
-            isRead: false,
-            createdAt: serverTimestamp(),
-        });
       }
     }
     
@@ -858,11 +887,10 @@ export async function updateStreak(
         emotion,
       };
 
-      // Only add guest-specific data if the user is anonymous
       if (authorData.isAnonymous) {
-          dataToSet.username = authorData.name;
-          dataToSet.gender = authorData.gender;
-          dataToSet.countryCode = authorData.countryCode;
+        dataToSet.username = authorData.name;
+        dataToSet.gender = authorData.gender;
+        dataToSet.countryCode = authorData.countryCode;
       }
 
       transaction.set(streakRef, dataToSet, { merge: true });
