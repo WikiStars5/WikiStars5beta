@@ -321,8 +321,12 @@ export function CommentItem({
                         </Avatar>
                         <div className="flex flex-col">
                             <div className="flex flex-wrap items-center gap-1.5">
-                                <p className="font-semibold text-sm" style={{ color: anonymousUserColor }}>{displayName}</p>
-                                {isOwnComment && <span className="text-xs font-bold text-primary">(Yo)</span>}
+                                <p className="font-semibold text-sm" style={{ color: anonymousUserColor }}>
+                                  {isOwnComment ? 
+                                    <span className="flex items-center gap-1.5">{comment.authorName} <span className="font-bold text-primary">(Yo)</span></span> :
+                                    displayName
+                                  }
+                                </p>
                                 {genderSymbol && <span className={cn("text-sm", genderColorClass)} title={comment.authorGender}>{genderSymbol}</span>}
                                 {comment.authorCountryCode && (
                                     <Image

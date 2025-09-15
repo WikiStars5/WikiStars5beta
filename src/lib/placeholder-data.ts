@@ -1,5 +1,4 @@
 
-
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -526,7 +525,7 @@ export async function addComment(
     const newCommentData: Omit<Comment, 'id' | 'replies'> & { createdAt: any } = {
         figureId: figureId,
         authorId: authorData.id,
-        authorName: authorData.name, // Store the clean name
+        authorName: authorData.name,
         authorPhotoUrl: authorData.photoUrl || null,
         authorGender: authorData.gender,
         authorCountry: authorData.country,
@@ -589,7 +588,7 @@ export async function addReply(
   const replyData = {
     figureId: figureId,
     authorId: authorData.id,
-    authorName: authorData.name, // Store clean name
+    authorName: authorData.name,
     authorPhotoUrl: authorData.photoUrl || null,
     authorGender: authorData.gender,
     authorCountry: authorData.country,
@@ -859,6 +858,7 @@ export async function updateStreak(
         emotion,
       };
 
+      // Only add guest-specific data if the user is anonymous
       if (authorData.isAnonymous) {
           dataToSet.username = authorData.name;
           dataToSet.gender = authorData.gender;
