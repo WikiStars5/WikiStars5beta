@@ -526,7 +526,7 @@ export async function addComment(
     const newCommentData: Omit<Comment, 'id' | 'replies'> & { createdAt: any } = {
         figureId: figureId,
         authorId: authorData.id,
-        authorName: authorData.name,
+        authorName: authorData.isAnonymous ? `${authorData.name} #${authorData.id.slice(-4)}` : authorData.name,
         authorPhotoUrl: authorData.photoUrl || null,
         authorGender: authorData.gender,
         authorCountry: authorData.country,
@@ -589,7 +589,7 @@ export async function addReply(
   const replyData = {
     figureId: figureId,
     authorId: authorData.id,
-    authorName: authorData.name,
+    authorName: authorData.isAnonymous ? `${authorData.name} #${authorData.id.slice(-4)}` : authorData.name,
     authorPhotoUrl: authorData.photoUrl || null,
     authorGender: authorData.gender,
     authorCountry: authorData.country,
@@ -860,7 +860,7 @@ export async function updateStreak(
       };
 
       if (authorData.isAnonymous) {
-          dataToSet.username = authorData.name;
+          dataToSet.username = `${authorData.name} #${authorData.id.slice(-4)}`;
           dataToSet.gender = authorData.gender;
           dataToSet.countryCode = authorData.countryCode;
       }
