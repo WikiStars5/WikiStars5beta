@@ -1,9 +1,10 @@
+
 "use client";
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, MessagesSquare, Send, Star, User, UserPlus, StarOff, Save } from 'lucide-react';
+import { Loader2, MessagesSquare, Send, Star, User, UserPlus, StarOff, Save, Filter } from 'lucide-react';
 import type { Figure, Comment as CommentType, RatingValue, LocalProfile, AttitudeKey } from '@/lib/types';
 import { addComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +24,7 @@ import { Input } from '../ui/input';
 import { CountryCombobox } from '../shared/CountryCombobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
 const STAR_SOUNDS: Record<string, string> = {
   '1': 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457',
@@ -171,11 +173,15 @@ const GuestProfileForm = ({ onProfileCreated }: { onProfileCreated: (profile: Lo
 
 const INITIAL_COMMENTS_TO_SHOW = 5;
 
+type FilterType = 'all' | 'mine' | '5' | '4' | '3' | '2' | '1' | '0';
+
 export function CommentSection({ figure, highlightedCommentId, sortPreference }: CommentSectionProps) {
   const [comments, setComments] = React.useState<CommentType[]>([]);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [showAllComments, setShowAllComments] = React.useState(false);
   const [streakToAnimate, setStreakToAnimate] = React.useState<number | null>(null);
+  const [activeFilter, setActiveFilter] = React.useState<FilterType>('all');
+  
   const { toast } = useToast();
   const { 
     currentUser, 
@@ -201,7 +207,6 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
     setIsLoadingComments(true);
     const commentsPath = `figures/${figure.id}/comments`;
     const commentsRef = collection(db, commentsPath);
-    // Always fetch ordered by date initially
     const q = query(
       commentsRef, 
       orderBy('createdAt', 'desc')
@@ -251,7 +256,7 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
   }
 
 
-  const onCommentSubmit = async (data: CommentFormData) => {
+  const onCommentSubmit: SubmitHandler<CommentFormData> = async (data) => {
     const authorData = getAuthorData();
     if (!authorData) {
       toast({ title: "Error", description: "No se pudo identificar al autor. Por favor, crea un perfil de invitado.", variant: "destructive" });
@@ -299,7 +304,7 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
       }
       
       return (
-        <Form {...form}>
+        <FormProvider {...form}>
             <form onSubmit={handleSubmit(onCommentSubmit)} className="space-y-4">
                 <FormField
                     control={control}
@@ -341,31 +346,40 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
                     </Button>
                 </div>
             </form>
-        </Form>
+        </FormProvider>
       );
   };
   
-  const sortedComments = React.useMemo(() => {
-    const commentsCopy = [...comments];
+  const filteredAndSortedComments = React.useMemo(() => {
+    let intermediateComments = [...comments];
+
+    // 1. Filter
+    if (activeFilter !== 'all') {
+      intermediateComments = intermediateComments.filter(comment => {
+        if (activeFilter === 'mine') {
+          return comment.authorId === firebaseUser?.uid;
+        }
+        const ratingFilter = parseInt(activeFilter, 10);
+        return comment.rating === ratingFilter;
+      });
+    }
+
+    // 2. Sort
     if (sortPreference === 'fan' || sortPreference === 'simp') {
-      // Show negative comments first (lowest rating)
-      return commentsCopy.sort((a, b) => (a.rating ?? 3) - (b.rating ?? 3));
+      return intermediateComments.sort((a, b) => (a.rating ?? 3) - (b.rating ?? 3));
     }
     if (sortPreference === 'hater') {
-      // Show positive comments first (highest rating)
-      return commentsCopy.sort((a, b) => (b.rating ?? 3) - (a.rating ?? 3));
+      return intermediateComments.sort((a, b) => (b.rating ?? 3) - (a.rating ?? 3));
     }
-    // Default: neutral or no vote, sort by newest
-    return commentsCopy;
-  }, [comments, sortPreference]);
+    // Default: neutral or no vote, sort by newest (already sorted by default)
+    return intermediateComments;
+  }, [comments, sortPreference, activeFilter, firebaseUser]);
 
-  const commentsToShow = showAllComments ? sortedComments : sortedComments.slice(0, INITIAL_COMMENTS_TO_SHOW);
+  const commentsToShow = showAllComments ? filteredAndSortedComments : filteredAndSortedComments.slice(0, INITIAL_COMMENTS_TO_SHOW);
   
-  // This logic finds the latest comment for each user to decide if stars should be shown.
   const latestUserCommentIds = React.useMemo(() => {
     const seenUsers = new Set<string>();
     const latestIds = new Set<string>();
-    // Use the original, date-sorted comments array to find the latest
     comments.forEach(comment => {
       if (!seenUsers.has(comment.authorId)) {
         seenUsers.add(comment.authorId);
@@ -385,7 +399,7 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
             <MessagesSquare /> Opiniones y Discusión
           </CardTitle>
           <CardDescription>
-            Comparte tu opinión sobre {figure.name}. Sé respetuoso y mantén la conversación constructiva. Tu calificación se gestiona en el panel superior.
+            Comparte tu opinión sobre {figure.name}. Sé respetuoso y mantén la conversación constructiva.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -393,14 +407,26 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
           {renderCommentInput()}
 
           <Separator />
+          
+          <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as FilterType)}>
+             <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 h-auto">
+                <TabsTrigger value="all">Todo</TabsTrigger>
+                <TabsTrigger value="mine">Mis Opiniones</TabsTrigger>
+                <TabsTrigger value="5">5 <Star className="h-3 w-3 ml-1"/></TabsTrigger>
+                <TabsTrigger value="4">4 <Star className="h-3 w-3 ml-1"/></TabsTrigger>
+                <TabsTrigger value="3">3 <Star className="h-3 w-3 ml-1"/></TabsTrigger>
+                <TabsTrigger value="2">2 <Star className="h-3 w-3 ml-1"/></TabsTrigger>
+                <TabsTrigger value="1">1 <Star className="h-3 w-3 ml-1"/></TabsTrigger>
+             </TabsList>
+          </Tabs>
 
-          <div className="space-y-6">
+          <div className="space-y-6 pt-4">
             {isLoadingComments ? (
               <div className="flex justify-center items-center py-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="ml-3 text-muted-foreground">Cargando comentarios...</p>
               </div>
-            ) : comments.length > 0 ? (
+            ) : filteredAndSortedComments.length > 0 ? (
               <>
                 {commentsToShow.map((comment) => (
                   <CommentItem 
@@ -412,17 +438,17 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
                     isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
                   />
                 ))}
-                {sortedComments.length > INITIAL_COMMENTS_TO_SHOW && (
+                {filteredAndSortedComments.length > INITIAL_COMMENTS_TO_SHOW && (
                     <div className="text-center pt-4">
                       <Button variant="outline" onClick={() => setShowAllComments(!showAllComments)}>
-                          {showAllComments ? 'Mostrar menos comentarios' : `Ver los ${sortedComments.length - INITIAL_COMMENTS_TO_SHOW} comentarios restantes`}
+                          {showAllComments ? 'Mostrar menos comentarios' : `Ver los ${filteredAndSortedComments.length - INITIAL_COMMENTS_TO_SHOW} comentarios restantes`}
                       </Button>
                     </div>
                   )}
               </>
             ) : (
               <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
-                Aún no hay opiniones. ¡Sé el primero en comentar!
+                No hay opiniones que coincidan con este filtro.
               </p>
             )}
           </div>
