@@ -25,6 +25,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { correctMalformedUrl } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 function timeSince(date: Date): string {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -63,12 +65,15 @@ interface NotificationBellProps {
   onOpenChange: (isOpen: boolean) => void;
 }
 
+type NotificationFilter = "all" | "reply" | "like" | "dislike";
+
 export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps) {
-  const { firebaseUser, localProfile } = useAuth();
+  const { firebaseUser, localProfile, isAnonymous } = useAuth();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [filter, setFilter] = useState<NotificationFilter>("all");
 
   // Effect to handle playing sound on new notification
   useEffect(() => {
@@ -98,7 +103,7 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
         return;
     }
 
-    if (firebaseUser.isAnonymous && !localProfile) {
+    if (isAnonymous && !localProfile) {
         setNotifications([]);
         setUnreadCount(0);
         return;
@@ -136,7 +141,7 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
     });
 
     return () => unsubscribe();
-  }, [firebaseUser, localProfile, notifications.length, unreadCount]);
+  }, [firebaseUser, localProfile, notifications.length, unreadCount, isAnonymous]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     const result = await markNotificationAsRead(notificationId);
@@ -161,10 +166,14 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
     }
   };
 
-  if (!firebaseUser || (firebaseUser.isAnonymous && !localProfile)) {
+  const filteredNotifications = notifications.filter(notif => {
+    if (filter === 'all') return true;
+    return notif.type === filter;
+  });
+
+  if (!firebaseUser || (isAnonymous && !localProfile)) {
     return null;
   }
-
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={onOpenChange}>
@@ -182,23 +191,35 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
           <span className="sr-only">Notificaciones</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 md:w-96">
-        <DropdownMenuLabel className="flex justify-between items-center">
-            <span>Notificaciones</span>
-            {unreadCount > 0 && (
-                 <Button variant="link" size="sm" className="h-auto p-0" onClick={handleMarkAllAsRead}>
-                    Marcar todo como leído
-                 </Button>
-            )}
-        </DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-80 md:w-96 p-0">
+        <div className="p-2">
+            <DropdownMenuLabel className="flex justify-between items-center">
+                <span>Notificaciones</span>
+                {unreadCount > 0 && (
+                     <Button variant="link" size="sm" className="h-auto p-0" onClick={handleMarkAllAsRead}>
+                        Marcar todo como leído
+                     </Button>
+                )}
+            </DropdownMenuLabel>
+        </div>
         <DropdownMenuSeparator />
+        <Tabs defaultValue="all" onValueChange={(value) => setFilter(value as NotificationFilter)} className="p-2">
+            <TabsList className="grid w-full grid-cols-4 h-auto">
+                <TabsTrigger value="all">Todo</TabsTrigger>
+                <TabsTrigger value="reply">Respuestas</TabsTrigger>
+                <TabsTrigger value="like">Me gusta</TabsTrigger>
+                <TabsTrigger value="dislike">No me gusta</TabsTrigger>
+            </TabsList>
+        </Tabs>
         
         <ScrollArea className="h-[400px]">
-            <DropdownMenuGroup>
-            {notifications.length === 0 ? (
-                <p className="p-4 text-sm text-center text-muted-foreground">No tienes notificaciones.</p>
+            <DropdownMenuGroup className="p-2">
+            {filteredNotifications.length === 0 ? (
+                <p className="p-4 text-sm text-center text-muted-foreground">
+                    {filter === 'all' ? 'No tienes notificaciones.' : `No tienes notificaciones de tipo "${filter}".`}
+                </p>
             ) : (
-                notifications.map((notif) => {
+                filteredNotifications.map((notif) => {
                     const Icon = NOTIFICATION_ICONS[notif.type] || Bell;
                     const iconColor = NOTIFICATION_COLORS[notif.type] || 'text-primary';
                     const linkHref = `/figures/${notif.figureId}?comment=${notif.replyId || notif.commentId}#comment-${notif.replyId || notif.commentId}`;
