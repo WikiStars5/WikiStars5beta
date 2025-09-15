@@ -148,7 +148,7 @@ const GuestProfileForm = ({ onProfileCreated }: { onProfileCreated: (profile: Lo
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                {GENDER_OPTIONS.map(option => (
+                                {GENDER_OPTIONS.filter(option => option.value === 'male' || option.value === 'female').map(option => (
                                 <SelectItem key={option.value} value={option.value}>
                                     {option.label}
                                 </SelectItem>
