@@ -15,7 +15,7 @@ export const PERCEPTION_OPTIONS: PerceptionOption[] = [
 ];
 
 const defaultPerceptionCounts: Record<EmotionKey, number> = {
-  alegria: 0, inspiracion: 0, admiracion: 0, diversion: 0, tristeza: 0, decepcion: 0, miedo: 0, desagrado: 0,
+  alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
 };
 
 const defaultAttitudeCounts: Record<AttitudeKey, number> = {
