@@ -34,42 +34,58 @@ setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 export const communityVerificationJob = onSchedule("every 24 hours", async (event) => {
   console.log("Running community verification job...");
   const now = admin.firestore.Timestamp.now();
-  
   const figuresRef = db.collection("figures");
-  const query = figuresRef.where("creationMethod", "==", "manual").where("isCommunityVerified", "==", false);
-  
-  const snapshot = await query.get();
-  
-  if (snapshot.empty) {
-    console.log("No manually created profiles to verify.");
-    return null;
-  }
 
-  const batch = db.batch();
-  let verifiedCount = 0;
   let deletedCount = 0;
+  let verifiedCount = 0;
 
-  for (const doc of snapshot.docs) {
-    const figure = doc.data() as Figure;
-    
-    const attitudeCounts = figure.attitudeCounts || {};
-    const totalVotes = Object.values(attitudeCounts).reduce((sum, count) => sum + count, 0);
+  // --- Step 1: Delete expired profiles ---
+  const expiredQuery = figuresRef
+    .where("creationMethod", "==", "manual")
+    .where("isCommunityVerified", "==", false)
+    .where("manualVerificationExpiresAt", "<=", now);
 
-    // Condition 1: Profile reached the vote threshold
-    if (totalVotes >= 1000) {
-      console.log(`Profile ${figure.name} (${doc.id}) reached 1000 votes. Marking as verified.`);
-      batch.update(doc.ref, { isCommunityVerified: true });
-      verifiedCount++;
-    } 
-    // Condition 2: Profile's verification period has expired
-    else if (figure.manualVerificationExpiresAt && now > figure.manualVerificationExpiresAt) {
-       console.log(`Profile ${figure.name} (${doc.id}) expired without enough votes. Deleting.`);
-       batch.delete(doc.ref);
-       deletedCount++;
-    }
+  const expiredSnapshot = await expiredQuery.get();
+
+  if (!expiredSnapshot.empty) {
+    const deleteBatch = db.batch();
+    expiredSnapshot.docs.forEach(doc => {
+      console.log(`Profile ${doc.data().name} (${doc.id}) has expired. Deleting.`);
+      deleteBatch.delete(doc.ref);
+    });
+    await deleteBatch.commit();
+    deletedCount = expiredSnapshot.size;
+  } else {
+    console.log("No expired profiles to delete.");
   }
+  
+  // --- Step 2: Verify profiles that reached the vote threshold ---
+  const pendingVerificationQuery = figuresRef
+    .where("creationMethod", "==", "manual")
+    .where("isCommunityVerified", "==", false);
+    // Note: We don't check for expiration here, as expired ones are already deleted.
 
-  await batch.commit();
+  const pendingSnapshot = await pendingVerificationQuery.get();
+
+  if (!pendingSnapshot.empty) {
+      const verifyBatch = db.batch();
+      pendingSnapshot.forEach(doc => {
+          const figure = doc.data() as Figure;
+          const attitudeCounts = figure.attitudeCounts || {};
+          const totalVotes = Object.values(attitudeCounts).reduce((sum, count) => sum + count, 0);
+
+          if (totalVotes >= 1000) {
+              console.log(`Profile ${figure.name} (${doc.id}) reached 1000 votes. Marking as verified.`);
+              verifyBatch.update(doc.ref, { isCommunityVerified: true });
+              verifiedCount++;
+          }
+      });
+      if (verifiedCount > 0) {
+        await verifyBatch.commit();
+      }
+  } else {
+      console.log("No manually created profiles to check for verification.");
+  }
 
   console.log(`Verification job complete. Verified: ${verifiedCount}, Deleted: ${deletedCount}.`);
   return { verifiedCount, deletedCount };
