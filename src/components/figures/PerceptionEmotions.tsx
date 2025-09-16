@@ -167,13 +167,13 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
                 style={{ minHeight: '120px' }}
               >
                 {isVoting && selectedEmotion === key && <Loader2 className="absolute h-5 w-5 animate-spin" />}
-                <div className="relative w-10 h-10 mb-1" data-ai-hint={`emoji ${label}`}>
+                <div className="relative w-16 h-16 mb-1" data-ai-hint={`emoji ${label}`}>
                   <Image
                     src={imageUrl}
                     alt={label}
                     fill
                     className="object-contain"
-                    sizes="(max-width: 768px) 10vw, 5vw"
+                    sizes="(max-width: 768px) 15vw, 10vw"
                     unoptimized={key === 'furia'}
                   />
                 </div>
