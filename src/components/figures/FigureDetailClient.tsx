@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -20,15 +21,23 @@ import { ProfileHeader } from "@/components/figures/ProfileHeader";
 import { PerceptionEmotions } from "@/components/figures/PerceptionEmotions";
 import { ImageGalleryViewer } from "@/components/figures/ImageGalleryViewer";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import type { Figure, LocalUserStreak, UserProfile, Comment as CommentType } from "@/lib/types";
-import { FigureInfo } from '@/components/figures/FigureInfo';
-import { doc, onSnapshot } from "firebase/firestore";
+import type { Figure, Streak, AttitudeKey } from "@/lib/types";
+import { EditableFigureInfo } from '@/components/figures/FigureInfo';
+import { doc, onSnapshot, type Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { mapDocToFigure } from "@/lib/placeholder-data";
 import { RelatedProfiles } from "@/components/figures/RelatedProfiles";
 import { CommentSection } from "@/components/comments/CommentSection";
 import { TopStreaks } from "@/components/figures/TopStreaks";
 import { StarRatingVote } from "@/components/figures/StarRatingVote";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { isSameDay, isYesterday } from "date-fns";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -39,12 +48,13 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = routeParams?.id;
+  const { firebaseUser } = useAuth();
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
-  
-  // State to hold the comment ID from the URL
   const [highlightedCommentId, setHighlightedCommentId] = React.useState<string | null>(null);
+  const [currentUserStreak, setCurrentUserStreak] = React.useState<number | null>(null);
+  const [commentSortPreference, setCommentSortPreference] = React.useState<AttitudeKey | null>(null);
 
 
   // This effect will run once when the component mounts to check the URL.
@@ -80,6 +90,36 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
     return () => unsubscribe();
   }, [id]);
 
+  // Add a real-time listener for the user's streak on this figure
+  React.useEffect(() => {
+      if (!id || !firebaseUser) {
+          setCurrentUserStreak(null);
+          return;
+      }
+
+      const streakDocRef = doc(db, `figures/${id}/streaks`, firebaseUser.uid);
+      const unsubscribeStreak = onSnapshot(streakDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+              const data = docSnap.data() as Streak;
+              const lastDate = (data.lastCommentDate as Timestamp).toDate();
+              const today = new Date();
+              if (isSameDay(today, lastDate) || isYesterday(today, lastDate)) {
+                  setCurrentUserStreak(data.currentStreak);
+              } else {
+                  setCurrentUserStreak(null); // Streak is not active
+              }
+          } else {
+              setCurrentUserStreak(null); // No streak exists
+          }
+      }, (error) => {
+          console.error("Error listening to user streak:", error);
+          setCurrentUserStreak(null);
+      });
+
+      return () => unsubscribeStreak();
+
+  }, [id, firebaseUser]);
+
   // Scroll to hash element if present in URL
   React.useEffect(() => {
     // We wrap this in a setTimeout to ensure the DOM has had time to render the comments.
@@ -106,67 +146,72 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   if (!figure) return <div>Figura no encontrada.</div>;
 
   return (
-    <div className="space-y-8 lg:space-y-12">
-      <ProfileHeader 
-        figure={figure}
-        onImageClick={handleOpenProfileImage}
-      />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-        <div className="lg:col-span-3 space-y-8">
-           <Tabs defaultValue="attitude" className="w-full">
-            <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20"> 
-              <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
-              <TabsTrigger value="attitude" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><CheckSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
-              <TabsTrigger value="emotion" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
-              <TabsTrigger value="top-streaks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Flame className="h-4 sm:h-5 w-4 sm:w-5" />Top Rachas</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="personal-info">
-                <FigureInfo figure={figure} />
-            </TabsContent>
-            
-            <TabsContent value="attitude">
-                <AttitudeVote 
-                  figureId={figure.id} 
-                  figureName={figure.name}
-                  profileType={figure.profileType} 
-                  initialAttitudeCounts={figure.attitudeCounts} 
-                />
-            </TabsContent>
-            
-            <TabsContent value="emotion">
-                <PerceptionEmotions 
-                  figureId={figure.id} 
-                  figureName={figure.name} 
-                  initialPerceptionCounts={figure.perceptionCounts}
-                />
-            </TabsContent>
-
-            <TabsContent value="top-streaks">
-                <TopStreaks figureId={figure.id} />
-            </TabsContent>
-            
-          </Tabs>
-        </div> 
-      </div>
-      
-      <StarRatingVote figure={figure} />
-      
-      <CommentSection 
-        figure={figure} 
-        highlightedCommentId={highlightedCommentId} 
-      />
-      
-      <RelatedProfiles figure={figure} />
-      
-      {viewerImageUrl && (
-        <ImageGalleryViewer
-            imageUrl={viewerImageUrl}
-            isOpen={!!viewerImageUrl}
-            onClose={() => setViewerImageUrl(null)}
+    <>
+      <div className="space-y-8 lg:space-y-12">
+        <ProfileHeader 
+          figure={figure}
+          onImageClick={handleOpenProfileImage}
+          currentStreak={currentUserStreak}
         />
-      )}
-    </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+          <div className="lg:col-span-3 space-y-8">
+             <Tabs defaultValue="attitude" className="w-full">
+              <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20"> 
+                <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
+                <TabsTrigger value="attitude" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><CheckSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
+                <TabsTrigger value="emotion" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
+                <TabsTrigger value="top-streaks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Flame className="h-4 sm:h-5 w-4 sm:w-5" />Top Rachas</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="personal-info">
+                  <EditableFigureInfo figure={figure} />
+              </TabsContent>
+              
+              <TabsContent value="attitude">
+                  <AttitudeVote 
+                    figureId={figure.id} 
+                    figureName={figure.name}
+                    profileType={figure.profileType} 
+                    attitudeCounts={figure.attitudeCounts}
+                    onVote={setCommentSortPreference}
+                  />
+              </TabsContent>
+              
+              <TabsContent value="emotion">
+                  <PerceptionEmotions 
+                    figureId={figure.id} 
+                    figureName={figure.name} 
+                    perceptionCounts={figure.perceptionCounts}
+                  />
+              </TabsContent>
+
+              <TabsContent value="top-streaks">
+                  <TopStreaks figureId={figure.id} />
+              </TabsContent>
+              
+            </Tabs>
+          </div> 
+        </div>
+        
+        <StarRatingVote figure={figure} />
+        
+        <CommentSection 
+          figure={figure} 
+          highlightedCommentId={highlightedCommentId} 
+          sortPreference={commentSortPreference}
+        />
+        
+        <RelatedProfiles figure={figure} />
+        
+        {viewerImageUrl && (
+          <ImageGalleryViewer
+              imageUrl={viewerImageUrl}
+              isOpen={!!viewerImageUrl}
+              onClose={() => setViewerImageUrl(null)}
+          />
+        )}
+      </div>
+    </>
   );
 }
