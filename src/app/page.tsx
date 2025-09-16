@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import { SearchBar } from "@/components/shared/SearchBar";
+import { CreateWebsiteProfile } from "@/components/admin/CreateWebsiteProfile";
 
 function HeroSection() {
   return (
@@ -82,6 +83,9 @@ export default function HomePage() {
   return (
     <div className="space-y-12">
       <HeroSection />
+      
+      <CreateWebsiteProfile />
+
       <HowItWorks />
 
       {error && (
