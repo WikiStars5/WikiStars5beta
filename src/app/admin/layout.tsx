@@ -1,3 +1,4 @@
+
 "use client"; 
 
 import { ShieldCheck, Hourglass } from 'lucide-react';
@@ -59,7 +60,6 @@ export default function AdminLayout({
         <nav className="flex flex-wrap gap-2">
           <Button variant="outline" asChild><Link href="/admin">Panel</Link></Button>
           <Button variant="outline" asChild><Link href="/admin/figures">Gestionar Figuras</Link></Button>
-          <Button variant="outline" asChild><Link href="/admin/pending-review">Revisar Pendientes</Link></Button>
         </nav>
       </div>
       {children}

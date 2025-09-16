@@ -108,7 +108,7 @@ export interface Figure {
   ratingCounts?: Record<string, number>;
   
   createdAt?: string; 
-  status?: 'approved' | 'rejected' | 'pending_admin_review'; 
+  status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
 
   // --- Manual Creation Fields ---

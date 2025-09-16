@@ -337,14 +337,11 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
   const allFigures: Figure[] = [];
   
   try {
-    // This query is intentionally simple to avoid needing a composite index.
-    // It fetches all documents, and we filter them client-side.
     const q = query(figuresCollectionRef, orderBy('name'));
     const querySnapshot = await getDocs(q);
 
     querySnapshot.forEach((docSnap) => {
         const figure = mapDocToFigure(docSnap);
-        // We manually filter here to only include 'approved' figures.
         if (figure.status === 'approved') {
             allFigures.push(figure);
         }
@@ -470,19 +467,10 @@ export const getFiguresByNationality = async (nationalityCode: string): Promise<
 };
 
 export const getPendingReviewFigures = async (): Promise<Figure[]> => {
-  const figures: Figure[] = [];
-  try {
-    const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef, where('status', '==', 'pending_admin_review'), orderBy('manualVerificationExpiresAt', 'asc'));
-    const querySnapshot = await getDocs(q);
-    querySnapshot.forEach((docSnap) => {
-      figures.push(mapDocToFigure(docSnap));
-    });
-    return figures;
-  } catch (error) {
-    console.error("Error fetching pending review figures:", error);
+    // This function is no longer needed as the feature has been removed.
+    // It is kept to avoid breaking imports, but will always return an empty array.
+    console.warn("getPendingReviewFigures is deprecated and will be removed.");
     return [];
-  }
 }
 
 
