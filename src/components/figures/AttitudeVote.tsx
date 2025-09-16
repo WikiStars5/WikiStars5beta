@@ -174,7 +174,12 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className={cn(
+            "grid gap-4",
+            availableOptions.length === 3
+              ? "grid-cols-3" // Grid of 3 for media
+              : "grid-cols-2 sm:grid-cols-2 md:grid-cols-4" // Original grid for characters
+          )}>
             {availableOptions.map(({ key, label, emoji, colorClass, selectedClass }) => (
               <Button
                 key={key}
