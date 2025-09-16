@@ -31,7 +31,7 @@ const EMOTION_IMAGES: Record<EmotionKey, string> = {
   tristeza: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ftrizteza.png?alt=media&token=0115df4b-55e4-4281-9cff-a8a560c38903',
   miedo: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985',
   desagrado: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb',
-  furia: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ffuria.png?alt=media&token=e596fcc4-3ef2-4b32-8529-ce42d4758f2f',
+  furia: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/gif%2Ffuria.gif?alt=media&token=18d1c677-2291-45b0-8001-99a1e5df6859',
 };
 
 
@@ -121,7 +121,7 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                                             {(attitudeEmoji || emotionImageUrl) && (
                                                 <div className="flex items-center gap-2 mt-1">
                                                     {attitudeEmoji && <span className="text-lg" title={`Actitud: ${streak.attitude}`}>{attitudeEmoji}</span>}
-                                                    {emotionImageUrl && <Image src={emotionImageUrl} alt={streak.emotion || 'emotion'} width={20} height={20} className="w-5 h-5" />}
+                                                    {emotionImageUrl && <Image src={emotionImageUrl} alt={streak.emotion || 'emotion'} width={20} height={20} className="w-5 h-5" unoptimized={streak.emotion === 'furia'} />}
                                                 </div>
                                             )}
                                         </div>
