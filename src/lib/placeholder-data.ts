@@ -171,12 +171,12 @@ export async function getPublicFiguresList(options: {
   const order = isPrev ? 'desc' : 'asc';
   const cursorId = isPrev ? endBefore : startAfter;
 
-  let q = query(figuresCollectionRef, orderBy('name', order), limit(limitSize + 1));
+  let q = query(figuresCollectionRef, where("status", "==", "approved"), orderBy('name', order), limit(limitSize + 1));
 
   if (cursorId) {
     const cursorDoc = await getDoc(doc(db, 'figures', cursorId));
     if (cursorDoc.exists()) {
-      q = query(figuresCollectionRef, orderBy('name', order), firestoreStartAfter(cursorDoc), limit(limitSize + 1));
+      q = query(figuresCollectionRef, where("status", "==", "approved"), orderBy('name', order), firestoreStartAfter(cursorDoc), limit(limitSize + 1));
     }
   }
 
@@ -340,9 +340,10 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
 
   try {
     while (true) {
-      const q = lastVisible
-        ? query(figuresCollectionRef, orderBy('name'), firestoreStartAfter(lastVisible), limit(batchSize))
-        : query(figuresCollectionRef, orderBy('name'), limit(batchSize));
+      let q = query(figuresCollectionRef, where("status", "==", "approved"), orderBy('name'), limit(batchSize));
+      if (lastVisible) {
+        q = query(figuresCollectionRef, where("status", "==", "approved"), orderBy('name'), firestoreStartAfter(lastVisible), limit(batchSize));
+      }
 
       const querySnapshot = await getDocs(q);
 
@@ -385,7 +386,8 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
     const figuresCollectionRef = collection(db, "figures");
     const q = query(
       figuresCollectionRef, 
-      where("isFeatured", "==", true), 
+      where("isFeatured", "==", true),
+      where("status", "==", "approved"),
       limit(count)
     );
     const querySnapshot = await getDocs(q);
@@ -454,7 +456,7 @@ export const getFiguresByHashtag = async (hashtag: string): Promise<Figure[]> =>
   const figures: Figure[] = [];
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef, where('hashtagKeywords', 'array-contains', hashtag), limit(50));
+    const q = query(figuresCollectionRef, where('hashtagKeywords', 'array-contains', hashtag), where("status", "==", "approved"), limit(50));
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach((docSnap) => {
       figures.push(mapDocToFigure(docSnap));
@@ -471,7 +473,7 @@ export const getFiguresByNationality = async (nationalityCode: string): Promise<
   const figures: Figure[] = [];
   try {
     const figuresCollectionRef = collection(db, "figures");
-    const q = query(figuresCollectionRef, where('nationalityCode', '==', nationalityCode), limit(50));
+    const q = query(figuresCollectionRef, where('nationalityCode', '==', nationalityCode), where("status", "==", "approved"), limit(50));
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach((docSnap) => {
       figures.push(mapDocToFigure(docSnap));
@@ -482,6 +484,22 @@ export const getFiguresByNationality = async (nationalityCode: string): Promise<
     return [];
   }
 };
+
+export const getPendingReviewFigures = async (): Promise<Figure[]> => {
+  const figures: Figure[] = [];
+  try {
+    const figuresCollectionRef = collection(db, "figures");
+    const q = query(figuresCollectionRef, where('status', '==', 'pending_admin_review'), orderBy('manualVerificationExpiresAt', 'asc'));
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((docSnap) => {
+      figures.push(mapDocToFigure(docSnap));
+    });
+    return figures;
+  } catch (error) {
+    console.error("Error fetching pending review figures:", error);
+    return [];
+  }
+}
 
 
 // --- Comments ---

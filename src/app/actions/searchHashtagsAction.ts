@@ -64,6 +64,7 @@ export async function searchFiguresByHashtag(searchTerm: string): Promise<Figure
     const q = query(
       figuresCollectionRef,
       where('hashtagKeywords', 'array-contains', trimmedSearchTerm),
+      where('status', '==', 'approved'),
       limit(10)
     );
 

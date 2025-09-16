@@ -1,4 +1,5 @@
 
+
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -107,7 +108,7 @@ export interface Figure {
   ratingCounts?: Record<string, number>;
   
   createdAt?: string; 
-  status?: 'approved' | 'rejected' | 'pending'; 
+  status?: 'approved' | 'rejected' | 'pending_admin_review'; 
   isFeatured?: boolean;
 
   // --- Manual Creation Fields ---

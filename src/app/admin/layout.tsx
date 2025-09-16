@@ -1,6 +1,6 @@
 "use client"; 
 
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Hourglass } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import type { ReactNode } from 'react';
@@ -59,6 +59,7 @@ export default function AdminLayout({
         <nav className="flex flex-wrap gap-2">
           <Button variant="outline" asChild><Link href="/admin">Panel</Link></Button>
           <Button variant="outline" asChild><Link href="/admin/figures">Gestionar Figuras</Link></Button>
+          <Button variant="outline" asChild><Link href="/admin/pending-review">Revisar Pendientes</Link></Button>
           <Button variant="outline" asChild><Link href="/admin/users">Gestionar Usuarios</Link></Button>
         </nav>
       </div>

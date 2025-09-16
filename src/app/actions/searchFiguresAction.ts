@@ -18,6 +18,7 @@ export async function searchFiguresByName(searchTerm: string): Promise<Figure[]>
     const q = query(
       figuresCollectionRef,
       where('nameKeywords', 'array-contains', trimmedSearchTerm),
+      where('status', '==', 'approved'),
       limit(10)
     );
 
@@ -38,5 +39,3 @@ export async function searchFiguresByName(searchTerm: string): Promise<Figure[]>
     throw new Error("Failed to search figures due to a server error.");
   }
 }
-
-    

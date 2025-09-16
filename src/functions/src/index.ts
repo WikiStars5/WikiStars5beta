@@ -36,34 +36,35 @@ export const communityVerificationJob = onSchedule("every 5 minutes", async (eve
   const now = admin.firestore.Timestamp.now();
   const figuresRef = db.collection("figures");
 
-  let deletedCount = 0;
+  let movedToReviewCount = 0;
   let verifiedCount = 0;
 
-  // --- Step 1: Delete expired profiles ---
+  // --- Step 1: Move expired, unverified profiles to 'pending_admin_review' status ---
   const expiredQuery = figuresRef
     .where("creationMethod", "==", "manual")
     .where("isCommunityVerified", "==", false)
+    .where("status", "==", "approved") // Only act on profiles that are currently public
     .where("manualVerificationExpiresAt", "<=", now);
 
   const expiredSnapshot = await expiredQuery.get();
 
   if (!expiredSnapshot.empty) {
-    const deleteBatch = db.batch();
+    const reviewBatch = db.batch();
     expiredSnapshot.docs.forEach(doc => {
-      console.log(`Profile ${doc.data().name} (${doc.id}) has expired. Deleting.`);
-      deleteBatch.delete(doc.ref);
+      console.log(`Profile ${doc.data().name} (${doc.id}) has expired. Moving to admin review.`);
+      reviewBatch.update(doc.ref, { status: 'pending_admin_review' });
     });
-    await deleteBatch.commit();
-    deletedCount = expiredSnapshot.size;
+    await reviewBatch.commit();
+    movedToReviewCount = expiredSnapshot.size;
   } else {
-    console.log("No expired profiles to delete.");
+    console.log("No expired profiles to move to review.");
   }
   
   // --- Step 2: Verify profiles that reached the vote threshold ---
   const pendingVerificationQuery = figuresRef
     .where("creationMethod", "==", "manual")
-    .where("isCommunityVerified", "==", false);
-    // Note: We don't check for expiration here, as expired ones are already deleted.
+    .where("isCommunityVerified", "==", false)
+    .where("status", "==", "approved"); // Only check active profiles
 
   const pendingSnapshot = await pendingVerificationQuery.get();
 
@@ -87,8 +88,8 @@ export const communityVerificationJob = onSchedule("every 5 minutes", async (eve
       console.log("No manually created profiles to check for verification.");
   }
 
-  console.log(`Verification job complete. Verified: ${verifiedCount}, Deleted: ${deletedCount}.`);
-  return { verifiedCount, deletedCount };
+  console.log(`Verification job complete. Verified: ${verifiedCount}, Moved to Review: ${movedToReviewCount}.`);
+  return { verifiedCount, movedToReviewCount };
 });
 
 
