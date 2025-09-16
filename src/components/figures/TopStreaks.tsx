@@ -26,7 +26,7 @@ const ATTITUDE_EMOJIS: Record<AttitudeKey, string> = {
 };
 
 const EMOTION_IMAGES: Record<EmotionKey, string> = {
-  alegria: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Falegria.png?alt=media&token=0638fdc0-d367-4fec-b8d6-8b32c0c83414',
+  alegria: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/gif%2Falegria.gif?alt=media&token=ae532025-03c5-45a9-97d2-d475235bd74e',
   envidia: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fenvidia.png?alt=media&token=940aa136-2235-48db-84d6-2c461730fde5',
   tristeza: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Ftrizteza.png?alt=media&token=0115df4b-55e4-4281-9cff-a8a560c38903',
   miedo: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985',
@@ -121,7 +121,7 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                                             {(attitudeEmoji || emotionImageUrl) && (
                                                 <div className="flex items-center gap-2 mt-1">
                                                     {attitudeEmoji && <span className="text-lg" title={`Actitud: ${streak.attitude}`}>{attitudeEmoji}</span>}
-                                                    {emotionImageUrl && <Image src={emotionImageUrl} alt={streak.emotion || 'emotion'} width={20} height={20} className="w-5 h-5" unoptimized={streak.emotion === 'furia'} />}
+                                                    {emotionImageUrl && <Image src={emotionImageUrl} alt={streak.emotion || 'emotion'} width={20} height={20} className="w-5 h-5" unoptimized={streak.emotion === 'furia' || streak.emotion === 'alegria'} />}
                                                 </div>
                                             )}
                                         </div>
