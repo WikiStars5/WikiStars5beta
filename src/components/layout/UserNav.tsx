@@ -140,7 +140,7 @@ export function UserNav() {
           <DialogHeader>
             <DialogTitle>Crear Perfil de Personaje</DialogTitle>
             <DialogDescription>
-              Busca una figura pública en Wikipedia para crear su perfil.
+              Busca una figura pública en Wikipedia para crear su perfil. Te recomendamos poner el nombre tal y como está en Wikipedia.
             </DialogDescription>
           </DialogHeader>
           <CreateProfileFromWikipedia onProfileCreated={() => setIsCharacterDialogOpen(false)} />
