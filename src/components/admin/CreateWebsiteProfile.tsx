@@ -54,32 +54,6 @@ const generateNameKeywords = (name: string): string[] => {
     return Array.from(keywords);
 };
 
-// New, more robust validation function
-async function validateDomain(domain: string): Promise<boolean> {
-  // 1. Primary Method: Direct HEAD request (lightweight)
-  try {
-    const response = await fetch(`https://${domain}`, { method: 'HEAD', mode: 'no-cors' });
-    // 'no-cors' returns an opaque response, but if it doesn't throw an error,
-    // it means a network connection was likely possible.
-    return true;
-  } catch (e) {
-    // This might fail due to CORS even if the site is up. So we try the fallback.
-    console.warn(`Direct HEAD request to ${domain} failed, trying fallback. Error:`, e);
-  }
-
-  // 2. Fallback Method: Google Favicon service
-  try {
-    const faviconTestUrl = `https://www.google.com/s2/favicons?sz=16&domain_url=${domain}`;
-    const response = await fetch(faviconTestUrl);
-    // Check if the response is OK and has content. Some domains might not have a favicon but are valid.
-    // A 0-length response often means the domain is invalid.
-    return response.ok && Number(response.headers.get('content-length')) > 0;
-  } catch (error) {
-    console.error(`Favicon fallback for ${domain} also failed. Error:`, error);
-    return false;
-  }
-}
-
 
 export function CreateWebsiteProfile() {
   const [domainInput, setDomainInput] = useState('');
@@ -118,18 +92,11 @@ export function CreateWebsiteProfile() {
       setIsProcessing(false);
       return;
     }
-
-    // Use the new validation logic
-    const isDomainValid = await validateDomain(rootDomain);
-
-    if (isDomainValid) {
-        const finalFaviconUrl = `https://www.google.com/s2/favicons?sz=64&domain_url=${rootDomain}`;
-        setValidatedDomain(rootDomain);
-        setFaviconUrl(finalFaviconUrl);
-        setShowConfirmation(true);
-    } else {
-        toast({ title: "Error de Validación", description: `No se pudo validar el dominio "${rootDomain}". Asegúrate de que sea un sitio web activo y accesible.`, variant: "destructive" });
-    }
+    
+    const finalFaviconUrl = `https://www.google.com/s2/favicons?sz=64&domain_url=${rootDomain}`;
+    setValidatedDomain(rootDomain);
+    setFaviconUrl(finalFaviconUrl);
+    setShowConfirmation(true);
     
     setIsProcessing(false);
   };
