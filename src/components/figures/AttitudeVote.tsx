@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -13,6 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
 import { useAuth } from '@/hooks/use-auth';
+import { updateFigureInFirestore } from '@/lib/placeholder-data';
 
 interface AttitudeVoteProps {
   figureId: string;
@@ -91,7 +91,8 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           throw new Error("Figura no encontrada.");
         }
         
-        const currentCounts = figureDoc.data().attitudeCounts || defaultAttitudeCountsData;
+        const figureData = figureDoc.data();
+        const currentCounts = figureData.attitudeCounts || defaultAttitudeCountsData;
         const newCounts = { ...currentCounts };
         
         if (previousVote) {
@@ -102,8 +103,19 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
           newCounts[finalAttitude] = (newCounts[finalAttitude] || 0) + 1;
         }
 
-        transaction.update(figureRef, { attitudeCounts: newCounts });
+        const updateData: Partial<Figure> = { attitudeCounts: newCounts };
+
+        // Check for community verification
+        if (figureData.creationMethod === 'manual' && !figureData.isCommunityVerified) {
+          const totalNewVotes = Object.values(newCounts).reduce((sum, count) => sum + count, 0);
+          if (totalNewVotes >= 1000) {
+            updateData.isCommunityVerified = true;
+          }
+        }
+        
+        transaction.update(figureRef, updateData);
       });
+
 
       if (typeof window !== 'undefined') {
         let storedAttitudes: Attitude[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
