@@ -87,7 +87,10 @@ export function CreateWebsiteProfile() {
     const docSnap = await getDoc(figureRef);
 
     if (docSnap.exists()) {
-      toast({ title: "Perfil Existente", description: `El perfil para "${rootDomain}" ya existe.` });
+      toast({ 
+          title: "Perfil Existente", 
+          description: `El perfil para "${rootDomain}" ya existe. Redirigiendo...` 
+      });
       router.push(`/figures/${figureId}`);
       setIsProcessing(false);
       return;

@@ -13,7 +13,7 @@ import { verifyFamousBirthdaysCharacter } from '@/ai/flows/verifyFamousBirthdays
 import Image from 'next/image';
 import { correctMalformedUrl } from '@/lib/utils';
 import type { Figure, AttitudeKey, EmotionKey, CreationMethod } from '@/lib/types';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import slugify from 'slugify';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
@@ -137,6 +137,20 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
 
     try {
         const figureRef = doc(db, 'figures', figureId);
+        
+        // Check if figure already exists
+        const docSnap = await getDoc(figureRef);
+        if (docSnap.exists()) {
+            toast({
+                title: "Perfil Existente",
+                description: `El perfil para "${title}" ya existe. Redirigiendo...`,
+                variant: "destructive",
+            });
+            router.push(`/figures/${figureId}`);
+            setIsCreating(false);
+            return;
+        }
+
         const nameKeywords = generateNameKeywords(title);
 
         const figureData: Partial<Figure> & { createdAt: any } = {
