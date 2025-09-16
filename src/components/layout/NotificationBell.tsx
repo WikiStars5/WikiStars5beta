@@ -68,7 +68,7 @@ interface NotificationBellProps {
 type NotificationFilter = "all" | "reply" | "like" | "dislike";
 
 export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps) {
-  const { firebaseUser, localProfile, isAnonymous } = useAuth();
+  const { firebaseUser } = useAuth();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -138,8 +138,8 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
   }, [firebaseUser, notifications.length, unreadCount]);
 
   const handleMarkAsRead = async (notificationId: string) => {
-    if (!firebaseUser) return;
-    const result = await markNotificationAsRead(notificationId, firebaseUser.uid);
+    // We don't need to pass the userId anymore, as the Cloud Function gets it from context
+    const result = await markNotificationAsRead(notificationId);
     if (!result.success) {
       toast({
         title: "Error",
@@ -151,7 +151,7 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
 
   const handleMarkAllAsRead = async () => {
     if (!firebaseUser || unreadCount === 0) return;
-    const result = await markAllNotificationsAsRead(firebaseUser.uid);
+    const result = await markAllNotificationsAsRead(firebaseUser.uid); // Pass UID for safety, though context is used
     if (!result.success) {
         toast({
             title: "Error",
@@ -166,7 +166,8 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
     return notif.type === filter;
   });
 
-  if (!firebaseUser || (isAnonymous && !localProfile)) {
+  // The bell should be visible for anonymous users with a profile, so we check for firebaseUser existence
+  if (!firebaseUser) {
     return null;
   }
 
@@ -223,11 +224,12 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
                         key={notif.id} 
                         asChild 
                         className={cn("p-0 data-[highlighted]:bg-primary/10", !notif.isRead && "bg-muted/50 font-semibold")}
+                        // Use onPointerDown to trigger the read action before navigation
+                        onPointerDown={() => handleMarkAsRead(notif.id)}
                     >
                        <Link 
                             href={linkHref}
                             onClick={() => {
-                              handleMarkAsRead(notif.id);
                               onOpenChange(false); // Close dropdown on click
                             }}
                             className="block w-full p-2 cursor-pointer"

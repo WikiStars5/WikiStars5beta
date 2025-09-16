@@ -1,55 +1,43 @@
 
 "use server";
 
-import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, getDocs, query, updateDoc, where, writeBatch } from 'firebase/firestore';
+// This file is being refactored. The logic for marking notifications
+// as read has been moved to onCall Cloud Functions ('markNotificationAsRead' and 'markAllNotificationsAsRead')
+// in `functions/src/index.ts`. This resolves persistent permission issues by ensuring
+// the user's authentication context is correctly handled on the backend.
 
-export async function markNotificationAsRead(notificationId: string, userId: string): Promise<{ success: boolean; message?: string }> {
-  if (!userId) return { success: false, message: 'Usuario no autenticado.' };
-  if (!notificationId) return { success: false, message: 'ID de notificación no proporcionado.' };
-  
+import { callFirebaseFunction } from '@/lib/firebase';
+
+export async function markNotificationAsRead(notificationId: string): Promise<{ success: boolean; message?: string }> {
   try {
-    const notificationRef = doc(db, 'notifications', notificationId);
-    
-    // The security rule will validate that the userId matches the authenticated user.
-    // This ensures a user cannot mark another user's notifications as read.
-    await updateDoc(notificationRef, { 
-      isRead: true,
-      userId: userId, // Ensure userId is part of the update for security rule validation
-    });
-
-    return { success: true };
+    const result = await callFirebaseFunction('markNotificationAsRead', { notificationId });
+    if (result.success) {
+      return { success: true };
+    } else {
+      // Propagate the error message from the cloud function
+      return { success: false, message: result.message || 'La función en la nube falló sin un mensaje.' };
+    }
   } catch (error: any) {
-    console.error('Error marcando notificación como leída:', error);
-    return { success: false, message: `No se pudo marcar la notificación como leída. Error: ${error.message}` };
+    console.error('Error llamando a la función markNotificationAsRead:', error);
+    // The error from a cloud function call might have a 'details' property
+    const message = error.details?.message || error.message || 'No se pudo conectar con la función en la nube.';
+    return { success: false, message };
   }
 }
+
 
 export async function markAllNotificationsAsRead(userId: string): Promise<{ success: boolean; message?: string }> {
-  if (!userId) return { success: false, message: 'ID de usuario no proporcionado.' };
-  
-  try {
-    const notificationsRef = collection(db, 'notifications');
-    const q = query(notificationsRef, where('userId', '==', userId), where('isRead', '==', false));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-      return { success: true, message: "No hay notificaciones para marcar." };
+   try {
+    // The userId is automatically available in the onCall function's context, so we don't need to pass it.
+    const result = await callFirebaseFunction('markAllNotificationsAsRead');
+    if (result.success) {
+      return { success: true, message: result.message };
+    } else {
+      return { success: false, message: result.message || 'La función en la nube para marcar todo como leído falló.' };
     }
-
-    const batch = writeBatch(db);
-    querySnapshot.forEach(doc => {
-      // The security rule will still verify that the userId matches the authenticated user's UID.
-      batch.update(doc.ref, { 
-        isRead: true,
-      });
-    });
-
-    await batch.commit();
-    return { success: true };
   } catch (error: any) {
-    console.error('Error marcando todas las notificaciones como leídas:', error);
-    return { success: false, message: `Ocurrió un error al marcar todo como leído: ${error.message}` };
+    console.error('Error llamando a la función markAllNotificationsAsRead:', error);
+    const message = error.details?.message || error.message || 'No se pudo conectar con la función en la nube.';
+    return { success: false, message };
   }
 }
-
