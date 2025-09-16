@@ -138,7 +138,8 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
   }, [firebaseUser, notifications.length, unreadCount]);
 
   const handleMarkAsRead = async (notificationId: string) => {
-    const result = await markNotificationAsRead(notificationId);
+    if (!firebaseUser) return;
+    const result = await markNotificationAsRead(notificationId, firebaseUser.uid);
     if (!result.success) {
       toast({
         title: "Error",

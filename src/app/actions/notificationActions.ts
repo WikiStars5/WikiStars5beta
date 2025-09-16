@@ -3,22 +3,19 @@
 
 import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, updateDoc, where, writeBatch } from 'firebase/firestore';
-import { auth } from '@/lib/firebase';
 
-export async function markNotificationAsRead(notificationId: string): Promise<{ success: boolean; message?: string }> {
-  // We can't easily pass the UID here without a bigger refactor of the on-click event.
-  // Instead, we rely on the security rule and the fact that this is called after auth state is likely stable.
-  // The primary fix is for markAllNotificationsAsRead.
-  const currentUser = auth.currentUser;
-  if (!currentUser) return { success: false, message: 'Usuario no autenticado.' };
+export async function markNotificationAsRead(notificationId: string, userId: string): Promise<{ success: boolean; message?: string }> {
+  if (!userId) return { success: false, message: 'Usuario no autenticado.' };
   if (!notificationId) return { success: false, message: 'ID de notificación no proporcionado.' };
   
   try {
     const notificationRef = doc(db, 'notifications', notificationId);
     
+    // The security rule will validate that the userId matches the authenticated user.
+    // This ensures a user cannot mark another user's notifications as read.
     await updateDoc(notificationRef, { 
       isRead: true,
-      userId: currentUser.uid 
+      userId: userId, // Ensure userId is part of the update for security rule validation
     });
 
     return { success: true };
@@ -55,3 +52,4 @@ export async function markAllNotificationsAsRead(userId: string): Promise<{ succ
     return { success: false, message: `Ocurrió un error al marcar todo como leído: ${error.message}` };
   }
 }
+
