@@ -6,6 +6,9 @@ import { collection, doc, getDoc, getDocs, query, updateDoc, where, writeBatch }
 import { auth } from '@/lib/firebase';
 
 export async function markNotificationAsRead(notificationId: string): Promise<{ success: boolean; message?: string }> {
+  // We can't easily pass the UID here without a bigger refactor of the on-click event.
+  // Instead, we rely on the security rule and the fact that this is called after auth state is likely stable.
+  // The primary fix is for markAllNotificationsAsRead.
   const currentUser = auth.currentUser;
   if (!currentUser) return { success: false, message: 'Usuario no autenticado.' };
   if (!notificationId) return { success: false, message: 'ID de notificación no proporcionado.' };
@@ -13,9 +16,6 @@ export async function markNotificationAsRead(notificationId: string): Promise<{ 
   try {
     const notificationRef = doc(db, 'notifications', notificationId);
     
-    // Al actualizar, incluimos el userId para que las reglas de seguridad puedan validarlo.
-    // La regla `allow update: if request.auth.uid == request.resource.data.userId;`
-    // ahora tendrá acceso a este campo en `request.resource.data`.
     await updateDoc(notificationRef, { 
       isRead: true,
       userId: currentUser.uid 
@@ -42,10 +42,9 @@ export async function markAllNotificationsAsRead(userId: string): Promise<{ succ
 
     const batch = writeBatch(db);
     querySnapshot.forEach(doc => {
-      // También incluimos el userId en la actualización por lotes.
+      // The security rule will still verify that the userId matches the authenticated user's UID.
       batch.update(doc.ref, { 
         isRead: true,
-        userId: userId
       });
     });
 

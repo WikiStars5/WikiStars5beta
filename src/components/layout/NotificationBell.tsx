@@ -103,12 +103,6 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
         return;
     }
 
-    if (isAnonymous && !localProfile) {
-        setNotifications([]);
-        setUnreadCount(0);
-        return;
-    }
-
     const notificationsRef = collection(db, 'notifications');
     const q = query(
       notificationsRef,
@@ -141,7 +135,7 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
     });
 
     return () => unsubscribe();
-  }, [firebaseUser, localProfile, notifications.length, unreadCount, isAnonymous]);
+  }, [firebaseUser, notifications.length, unreadCount]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     const result = await markNotificationAsRead(notificationId);
@@ -275,5 +269,3 @@ export function NotificationBell({ isOpen, onOpenChange }: NotificationBellProps
     </DropdownMenu>
   );
 }
-
-    

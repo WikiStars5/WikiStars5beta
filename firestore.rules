@@ -1,42 +1,75 @@
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permite la lectura de perfiles de usuario, figuras y hashtags por cualquier persona.
+    
+    // --- Users Collection ---
+    // Rules for user profiles.
     match /users/{userId} {
-      allow read, create; 
-      allow update: if request.auth.uid == userId;
+      // Anyone can read a user's public profile.
+      allow read: if true;
+      // Only the authenticated user themselves can create or update their own profile.
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      // Users cannot delete their profiles through the client. Deletion should be handled by an admin process.
+      allow delete: if false; 
     }
+
+    // --- Figures Collection ---
+    // Rules for public figure profiles.
     match /figures/{figureId} {
-      allow read, list;
-      allow write: if request.auth != null && request.auth.token.role == 'admin';
+      // Anyone can read a figure's profile.
+      allow read: if true;
+      // Only authenticated admins can create, update, or delete figures.
+      allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-     match /figures/{figureId}/{subcollection}/{documentId} {
-      allow read, list;
-      allow write: if request.auth != null;
-    }
-    match /hashtags/{hashtagId} {
-      allow read, list;
-       allow write: if request.auth != null; // Allow logged-in users to create hashtags
+
+    // --- Comments and Replies Subcollections ---
+    // These rules apply recursively to all `comments` and `replies` subcollections.
+    match /figures/{figureId}/{subcollection}/{document=**} {
+        // Anyone can read comments.
+        allow read: if true;
+        // Any authenticated user (including anonymous) can create a comment.
+        allow create: if request.auth != null;
+        // Only the author of a comment or an admin can update or delete it.
+        allow update, delete: if request.auth != null && (request.auth.uid == resource.data.authorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
     }
     
-    // Reglas para Notificaciones
-    match /notifications/{notificationId} {
-      // Las funciones de backend pueden crear notificaciones.
-      // Los usuarios autenticados pueden leer sus propias notificaciones.
-      allow read: if request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null;
-
-      // Un usuario solo puede actualizar un documento si el `userId` del documento
-      // coincide con su propio ID de autenticación.
-      // Usamos request.resource.data en lugar de resource.data para mayor robustez.
-      allow update: if request.auth.uid == request.resource.data.userId;
+    // --- Streaks Subcollection ---
+    match /figures/{figureId}/streaks/{userId} {
+      // Anyone can read streak data (for leaderboards).
+      allow read: if true;
+      // Only the user themselves can create or update their own streak.
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false; // Streaks shouldn't be deletable by clients.
     }
 
-    // Reglas para Calificaciones de Estrellas (userRatings)
+    // --- User Ratings Collection ---
+    // Used to track which rating a user has given a figure to prevent duplicate vote counting.
     match /userRatings/{ratingId} {
-      // Un usuario puede crear, leer o actualizar su propia calificación
-      allow read, write: if request.auth.uid == request.resource.data.userId;
+        // Only the user who owns the rating can read/write it.
+        // ratingId is formatted as "{userId}_{figureId}"
+        allow read, write: if request.auth != null && request.auth.uid == ratingId.split('_')[0];
+    }
+    
+    // --- Hashtags Collection ---
+    // This collection is just for querying and is managed by the server.
+    match /hashtags/{hashtagId} {
+        allow read: if true;
+        // Only admins can write to this collection, which is done when updating a figure.
+        allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // --- Notifications Collection ---
+    match /notifications/{notificationId} {
+      // A user can only read their own notifications.
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Server-side triggers create notifications, clients cannot create them.
+      allow create: if false;
+      // A user can update their own notification (e.g., to mark it as read).
+      // We check the incoming data (`request.resource.data`) to ensure the userId is not being changed.
+      allow update: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Users can't delete notifications.
+      allow delete: if false;
     }
   }
 }
