@@ -22,14 +22,16 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
-import { LogOut, User, ShieldCheck, Loader2, Globe } from 'lucide-react';
+import { LogOut, User, ShieldCheck, Loader2, Globe, UserPlus } from 'lucide-react';
 import { correctMalformedUrl } from "@/lib/utils";
 import { CreateWebsiteProfile } from "../admin/CreateWebsiteProfile";
 import React from "react";
+import { CreateProfileFromWikipedia } from "../admin/CreateProfileFromWikipedia";
 
 export function UserNav() {
   const { currentUser, firebaseUser, isAdmin, isLoading, logout, localProfile, isAnonymous } = useAuth();
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isWebsiteDialogOpen, setIsWebsiteDialogOpen] = React.useState(false);
+  const [isCharacterDialogOpen, setIsCharacterDialogOpen] = React.useState(false);
   
   if (isLoading) {
     return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
@@ -59,7 +61,7 @@ export function UserNav() {
   }
 
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <Dialog>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-9 w-9 rounded-full">
@@ -89,7 +91,13 @@ export function UserNav() {
               </Link>
             </DropdownMenuItem>
              <DialogTrigger asChild>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setIsCharacterDialogOpen(true); }}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  <span>Crear Perfil de Personaje</span>
+                </DropdownMenuItem>
+              </DialogTrigger>
+             <DialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setIsWebsiteDialogOpen(true); }}>
                   <Globe className="mr-2 h-4 w-4" />
                   <span>Crear Perfil Web</span>
                 </DropdownMenuItem>
@@ -115,15 +123,29 @@ export function UserNav() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Crear Perfil Web</DialogTitle>
-          <DialogDescription>
-            Añade un nuevo perfil para un sitio web introduciendo su dominio.
-          </DialogDescription>
-        </DialogHeader>
-        <CreateWebsiteProfile />
-      </DialogContent>
+      <Dialog open={isWebsiteDialogOpen} onOpenChange={setIsWebsiteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear Perfil Web</DialogTitle>
+            <DialogDescription>
+              Añade un nuevo perfil para un sitio web introduciendo su dominio.
+            </DialogDescription>
+          </DialogHeader>
+          <CreateWebsiteProfile />
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isCharacterDialogOpen} onOpenChange={setIsCharacterDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear Perfil de Personaje</DialogTitle>
+            <DialogDescription>
+              Busca una figura pública en Wikipedia para crear su perfil.
+            </DialogDescription>
+          </DialogHeader>
+          <CreateProfileFromWikipedia onProfileCreated={() => setIsCharacterDialogOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
