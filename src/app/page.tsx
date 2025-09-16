@@ -84,8 +84,6 @@ export default function HomePage() {
     <div className="space-y-12">
       <HeroSection />
       
-      <CreateWebsiteProfile />
-
       <HowItWorks />
 
       {error && (
