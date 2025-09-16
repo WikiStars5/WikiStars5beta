@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Loader2, Search, Sparkles, User, ImageOff, CheckCircle } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import { callFirebaseFunction } from '@/lib/firebase';
+import { verifyWikipediaCharacter } from '@/ai/flows/verifyWikipediaCharacter';
 import Image from 'next/image';
 import { correctMalformedUrl } from '@/lib/utils';
 import type { Figure, AttitudeKey, EmotionKey } from '@/lib/types';
@@ -64,7 +64,7 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
     setVerificationResult(null);
 
     try {
-      const result: WikipediaVerificationResult = await callFirebaseFunction('verifyWikipediaCharacter', { name: nameInput.trim() });
+      const result: WikipediaVerificationResult = await verifyWikipediaCharacter({ name: nameInput.trim() });
       if (result.found) {
         setVerificationResult(result);
       } else {
