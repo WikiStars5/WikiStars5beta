@@ -1,13 +1,11 @@
 
 
-
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 
 export interface Figure {
   id: string;
   name: string;
-  nameLower: string;
   photoUrl: string;
   description?: string;
   

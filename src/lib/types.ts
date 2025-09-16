@@ -1,5 +1,4 @@
 
-
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -30,7 +29,6 @@ export interface Hashtag {
 export interface Figure {
   id: string;
   name: string;
-  nameLower?: string; // This is now deprecated in favor of nameSearch
   nameSearch: string;
   nameKeywords: string[]; // New field for full text search capabilities
   profileType: ProfileType; 
