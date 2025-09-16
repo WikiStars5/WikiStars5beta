@@ -13,10 +13,9 @@ interface FigurePageProps {
 
 // Generate dynamic metadata for SEO
 export async function generateMetadata(
-  { params }: FigurePageProps,
+  { params: { id } }: FigurePageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const id = params.id;
   const figure = await getFigureFromFirestore(id);
 
   if (!figure) {
@@ -52,8 +51,8 @@ export async function generateMetadata(
   };
 }
 
-export default async function FigurePage({ params }: { params: { id: string }}) {
-  const figure = await getFigureFromFirestore(params.id);
+export default async function FigurePage({ params: { id } }: FigurePageProps) {
+  const figure = await getFigureFromFirestore(id);
 
   if (!figure) {
     notFound();
