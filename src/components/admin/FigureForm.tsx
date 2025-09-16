@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Sparkles, Loader2, CalendarIcon, X, Plus } from 'lucide-react';
-import { doc, setDoc, serverTimestamp, writeBatch, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag } from '@/lib/types';
 import slugify from 'slugify'; 
@@ -21,7 +22,7 @@ import { CountryCombobox } from '../shared/CountryCombobox';
 import { countryCodeToNameMap } from '@/config/countries';
 import { DatePicker } from '../shared/DatePicker';
 import { Badge } from '../ui/badge';
-import { differenceInYears, addMinutes } from 'date-fns';
+import { differenceInYears } from 'date-fns';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import Image from 'next/image';
 import { correctMalformedUrl } from '@/lib/utils';
@@ -74,7 +75,6 @@ const generateHashtagKeywords = (hashtags: string[]): string[] => {
 
 interface FigureFormProps {
   initialData?: Figure;
-  mode?: 'admin' | 'manual';
 }
 
 const MEDIA_SUBCATEGORIES: { value: MediaSubcategory, label: string }[] = [
@@ -108,7 +108,7 @@ const MARITAL_STATUS_OPTIONS = [
     { value: 'Conviviente / En unión de hecho', label: 'Conviviente / En unión de hecho' },
 ];
 
-const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) => {
+const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
   const [name, setName] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
@@ -225,13 +225,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
     } else {
       // Reset all fields for a new form
       setName(''); 
-      setProfileType(mode === 'manual' ? 'character' : 'character');
+      setProfileType('character');
       setDescription(''); setPhotoUrl('');
       setNationalityCode(''); setIsFeatured(false); setSocialLinks({}); setHashtags([]);
       clearCharacterFields();
       clearMediaFields();
     }
-  }, [initialData, mode]);
+  }, [initialData]);
 
   const debouncedSearchHashtags = useCallback(debounce(async (searchTerm: string) => {
     setIsLoadingHashtags(true);
@@ -285,8 +285,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
     setError(null);
     setSuccess(null);
 
-    let finalProfileType = mode === 'manual' ? 'character' : profileType;
-
     let figureDocId = initialData?.id || slugify(name.trim(), { lower: true, strict: true });
     
     if (!figureDocId && name.trim()) { 
@@ -317,7 +315,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
         name: nameTrimmed,
         nameSearch: nameSearch,
         nameKeywords: nameKeywords,
-        profileType: finalProfileType,
+        profileType: profileType,
         description: description.trim() || "", 
         photoUrl: finalPhotoUrlToSave,
         hashtags: hashtags,
@@ -332,7 +330,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
       
       let profileSpecificData: Partial<Figure> = {};
 
-      if (finalProfileType === 'character') {
+      if (profileType === 'character') {
         profileSpecificData = {
           category: category.trim(),
           occupation: occupation.trim(),
@@ -371,24 +369,13 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
       }
       
       const attitudeCounts = { ...defaultAttitudeCounts };
-      if(finalProfileType === 'media') {
+      if(profileType === 'media') {
         delete (attitudeCounts as Partial<typeof attitudeCounts>).simp;
       }
       
-      let manualCreationData: Partial<Figure> = {};
-      if (mode === 'manual' && !initialData) {
-        const expirationDate = addMinutes(new Date(), 5);
-        manualCreationData = {
-          creationMethod: 'manual',
-          manualVerificationExpiresAt: Timestamp.fromDate(expirationDate),
-          isCommunityVerified: false,
-        };
-      }
-
       const figureData: Partial<Figure> & { createdAt?: any } = {
         ...baseData,
         ...profileSpecificData,
-        ...manualCreationData,
         ...(initialData ? {} : {
             perceptionCounts: { ...defaultPerceptionCounts },
             attitudeCounts: attitudeCounts,
@@ -422,11 +409,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
       setSuccess(`Perfil "${name}" guardado exitosamente.`);
       
       setTimeout(() => {
-        if (mode === 'manual') {
-            router.push(`/figures/${figureDocId}`);
-        } else {
-            router.push(`/admin/figures`);
-        }
+        router.push(`/admin/figures`);
         router.refresh(); 
       }, 1500);
 
@@ -502,8 +485,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
     </div>
   );
 
-  const finalProfileType = mode === 'manual' ? 'character' : profileType;
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-card rounded-lg shadow-md">
       {error && (
@@ -521,21 +502,19 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
         </Alert>
       )}
 
-      {mode === 'admin' && (
-        <div>
-            <Label>Tipo de Perfil</Label>
-            <RadioGroup
-            value={profileType}
-            onValueChange={(value) => handleProfileTypeChange(value as ProfileType)}
-            className="flex gap-4 mt-2"
-            >
-            <div className="flex items-center space-x-2">
-                <RadioGroupItem value="character" id="type-character" />
-                <Label htmlFor="type-character">Personaje</Label>
-            </div>
-            </RadioGroup>
-        </div>
-      )}
+      <div>
+          <Label>Tipo de Perfil</Label>
+          <RadioGroup
+          value={profileType}
+          onValueChange={(value) => handleProfileTypeChange(value as ProfileType)}
+          className="flex gap-4 mt-2"
+          >
+          <div className="flex items-center space-x-2">
+              <RadioGroupItem value="character" id="type-character" />
+              <Label htmlFor="type-character">Personaje</Label>
+          </div>
+          </RadioGroup>
+      </div>
 
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Información Básica</h3>
@@ -564,7 +543,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
             <Label htmlFor="description">Descripción</Label>
             <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
         </div>
-        {finalProfileType === 'character' && (
+        {profileType === 'character' && (
             <div>
                 <Label htmlFor="category">Categoría General</Label>
                 <Select onValueChange={setCategory} value={category}>
@@ -575,7 +554,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
         )}
       </div>
       
-      {finalProfileType === 'character' ? (
+      {profileType === 'character' ? (
         <div className="space-y-6 animate-in fade-in-50">
            <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Detalles del Personaje</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -633,7 +612,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales y Enlaces</h3>
       <div className="space-y-4">
         <div><Label htmlFor="website">Página Web</Label><Input id="website" value={(socialLinks as Record<string,string>)['website'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, website: e.target.value}))} placeholder="https://..."/></div>
-        {finalProfileType === 'media' && mediaSubcategory === 'video_game' && (
+        {profileType === 'media' && mediaSubcategory === 'video_game' && (
           <>
             <div><Label htmlFor="playStoreUrl">Google Play Store</Label><Input id="playStoreUrl" value={(socialLinks as Record<string,string>)['playStoreUrl'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, playStoreUrl: e.target.value}))} placeholder="https://play.google.com/store/..."/></div>
             <div><Label htmlFor="appStoreUrl">Apple App Store</Label><Input id="appStoreUrl" value={(socialLinks as Record<string,string>)['appStoreUrl'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, appStoreUrl: e.target.value}))} placeholder="https://apps.apple.com/..."/></div>
@@ -689,14 +668,12 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
           </div>
       </div>
       
-      {mode === 'admin' && (
-        <div className="mt-6 border-t pt-4 border-border">
-          <div className="flex items-center space-x-2">
-            <Checkbox id="isFeatured" checked={isFeatured} onCheckedChange={(checked) => setIsFeatured(checked as boolean)} disabled={isSaving} />
-            <Label htmlFor="isFeatured">Marcar como Perfil Destacado</Label>
-          </div>
+      <div className="mt-6 border-t pt-4 border-border">
+        <div className="flex items-center space-x-2">
+          <Checkbox id="isFeatured" checked={isFeatured} onCheckedChange={(checked) => setIsFeatured(checked as boolean)} disabled={isSaving} />
+          <Label htmlFor="isFeatured">Marcar como Perfil Destacado</Label>
         </div>
-      )}
+      </div>
 
       <div className="flex justify-end gap-2 mt-6">
         <Button type="submit" disabled={isSaving}>

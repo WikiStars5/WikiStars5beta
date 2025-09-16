@@ -2,7 +2,7 @@
 
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
-export type CreationMethod = 'manual' | 'wikipedia';
+export type CreationMethod = 'wikipedia';
 
 export interface Figure {
   id: string;
@@ -52,7 +52,6 @@ export interface Figure {
   isFeatured?: boolean;
 
   creationMethod?: CreationMethod;
-  manualVerificationExpiresAt?: any; // Using 'any' for Timestamp compatibility in functions
   isCommunityVerified?: boolean;
 }
 

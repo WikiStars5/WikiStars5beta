@@ -32,7 +32,6 @@ const defaultRatingCounts: Record<string, number> = {
 export const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data() as DocumentData;
   const createdAtTimestamp = data.createdAt;
-  const manualVerificationExpiresAt = data.manualVerificationExpiresAt;
   
   const figureData: Figure = {
     id: docSnap.id,
@@ -90,9 +89,6 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     industry: data.industry,
     websiteUrl: data.websiteUrl,
     creationMethod: data.creationMethod,
-    manualVerificationExpiresAt: manualVerificationExpiresAt && manualVerificationExpiresAt.seconds
-        ? { _seconds: manualVerificationExpiresAt.seconds, _nanoseconds: manualVerificationExpiresAt.nanoseconds }
-        : undefined,
     isCommunityVerified: data.isCommunityVerified,
   };
 
@@ -465,13 +461,6 @@ export const getFiguresByNationality = async (nationalityCode: string): Promise<
     return [];
   }
 };
-
-export const getPendingReviewFigures = async (): Promise<Figure[]> => {
-    // This function is no longer needed as the feature has been removed.
-    // It is kept to avoid breaking imports, but will always return an empty array.
-    console.warn("getPendingReviewFigures is deprecated and will be removed.");
-    return [];
-}
 
 
 // --- Comments ---

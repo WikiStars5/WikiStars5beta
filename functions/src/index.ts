@@ -33,37 +33,14 @@ setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 // This function runs automatically every 24 hours.
 export const communityVerificationJob = onSchedule("every 24 hours", async (event) => {
   console.log("Running community verification job...");
-  const now = admin.firestore.Timestamp.now();
   const figuresRef = db.collection("figures");
 
-  let deletedCount = 0;
   let verifiedCount = 0;
-
-  // --- Step 1: Delete expired profiles ---
-  const expiredQuery = figuresRef
-    .where("creationMethod", "==", "manual")
-    .where("isCommunityVerified", "==", false)
-    .where("manualVerificationExpiresAt", "<=", now);
-
-  const expiredSnapshot = await expiredQuery.get();
-
-  if (!expiredSnapshot.empty) {
-    const deleteBatch = db.batch();
-    expiredSnapshot.docs.forEach(doc => {
-      console.log(`Profile ${doc.data().name} (${doc.id}) has expired. Deleting.`);
-      deleteBatch.delete(doc.ref);
-    });
-    await deleteBatch.commit();
-    deletedCount = expiredSnapshot.size;
-  } else {
-    console.log("No expired profiles to delete.");
-  }
   
-  // --- Step 2: Verify profiles that reached the vote threshold ---
+  // --- Step 1: Verify profiles that reached the vote threshold ---
   const pendingVerificationQuery = figuresRef
-    .where("creationMethod", "==", "manual")
+    .where("creationMethod", "==", "wikipedia") // Only check Wikipedia-created profiles now
     .where("isCommunityVerified", "==", false);
-    // Note: We don't check for expiration here, as expired ones are already deleted.
 
   const pendingSnapshot = await pendingVerificationQuery.get();
 
@@ -84,11 +61,11 @@ export const communityVerificationJob = onSchedule("every 24 hours", async (even
         await verifyBatch.commit();
       }
   } else {
-      console.log("No manually created profiles to check for verification.");
+      console.log("No profiles to check for verification.");
   }
 
-  console.log(`Verification job complete. Verified: ${verifiedCount}, Deleted: ${deletedCount}.`);
-  return { verifiedCount, deletedCount };
+  console.log(`Verification job complete. Verified: ${verifiedCount}.`);
+  return { verifiedCount };
 });
 
 
