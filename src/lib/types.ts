@@ -7,7 +7,7 @@ export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagra
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 export type RatingValue = 0 | 1 | 2 | 3 | 4 | 5;
 export type ProfileType = 'character' | 'media';
-export type CreationMethod = 'wikipedia';
+export type CreationMethod = 'wikipedia' | 'famous_birthdays';
 
 // Define specific media sub-categories
 export type MediaSubcategory = 

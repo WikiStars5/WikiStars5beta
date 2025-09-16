@@ -7,20 +7,22 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Loader2, Search, Sparkles, User, ImageOff, CheckCircle } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { Loader2, Search, Sparkles, User, ImageOff, CheckCircle, Link as LinkIcon, AlertTriangle } from 'lucide-react';
 import { verifyWikipediaCharacter } from '@/ai/flows/verifyWikipediaCharacter';
+import { verifyFamousBirthdaysCharacter } from '@/ai/flows/verifyFamousBirthdaysCharacter';
 import Image from 'next/image';
 import { correctMalformedUrl } from '@/lib/utils';
-import type { Figure, AttitudeKey, EmotionKey } from '@/lib/types';
+import type { Figure, AttitudeKey, EmotionKey, CreationMethod } from '@/lib/types';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import slugify from 'slugify';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
-interface WikipediaVerificationResult {
+interface VerificationResult {
   found: boolean;
   title: string;
   imageUrl: string | null;
+  method: CreationMethod;
 }
 
 const generateNameKeywords = (name: string): string[] => {
@@ -45,15 +47,60 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
+function FamousBirthdaysForm({ name, onVerified }: { name: string, onVerified: (result: VerificationResult) => void }) {
+    const [url, setUrl] = useState('');
+    const [isVerifying, setIsVerifying] = useState(false);
+    const { toast } = useToast();
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!url.trim()) {
+            toast({ title: "URL Vacía", description: "Por favor, introduce la URL del perfil.", variant: "destructive" });
+            return;
+        }
+        setIsVerifying(true);
+        try {
+            const result = await verifyFamousBirthdaysCharacter({ name, url });
+            if (result.found) {
+                onVerified({ ...result, method: 'famous_birthdays' });
+            } else {
+                toast({ title: "Verificación Fallida", description: `No se pudo verificar el nombre "${name}" en la URL proporcionada. Asegúrate de que el enlace y el nombre son correctos.`, variant: "destructive" });
+            }
+        } catch (error: any) {
+            toast({ title: "Error de Verificación", description: error.message, variant: "destructive" });
+        } finally {
+            setIsVerifying(false);
+        }
+    };
+    
+    return (
+        <form onSubmit={handleSubmit} className="space-y-3 pt-4">
+            <Label htmlFor="fb-url">URL de FamousBirthdays.com</Label>
+            <Input 
+                id="fb-url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://es.famousbirthdays.com/people/..."
+                disabled={isVerifying}
+            />
+            <Button type="submit" className="w-full" disabled={isVerifying || !url.trim()}>
+                {isVerifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                Verificar con URL
+            </Button>
+        </form>
+    );
+}
+
 export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCreated: () => void }) {
   const [nameInput, setNameInput] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [verificationResult, setVerificationResult] = useState<WikipediaVerificationResult | null>(null);
+  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
+  const [showPlanB, setShowPlanB] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
-  const handleVerify = async (e: React.FormEvent) => {
+  const handleVerifyWikipedia = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameInput.trim()) {
         toast({ title: "Nombre Vacío", description: "Por favor, introduce el nombre de una figura pública.", variant: "destructive" });
@@ -62,17 +109,20 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
     
     setIsVerifying(true);
     setVerificationResult(null);
+    setShowPlanB(false);
 
     try {
-      const result: WikipediaVerificationResult = await verifyWikipediaCharacter({ name: nameInput.trim() });
+      const result = await verifyWikipediaCharacter({ name: nameInput.trim() });
       if (result.found) {
-        setVerificationResult(result);
+        setVerificationResult({ ...result, method: 'wikipedia' });
       } else {
-        toast({ title: "No Encontrado", description: `No se encontró una página de Wikipedia para "${nameInput}". Asegúrate de que el nombre esté bien escrito.`, variant: "destructive" });
+        toast({ title: "No Encontrado en Wikipedia", description: `Se activó el Plan B para "${nameInput}".`, variant: "default" });
+        setShowPlanB(true);
       }
     } catch (error: any) {
       console.error("Error verifying on Wikipedia:", error);
       toast({ title: "Error de Verificación", description: error.message || "No se pudo contactar con Wikipedia.", variant: "destructive" });
+      setShowPlanB(true); // Show Plan B on error too
     } finally {
       setIsVerifying(false);
     }
@@ -82,7 +132,7 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
     if (!verificationResult) return;
     setIsCreating(true);
 
-    const { title, imageUrl } = verificationResult;
+    const { title, imageUrl, method } = verificationResult;
     const figureId = slugify(title, { lower: true, strict: true });
 
     try {
@@ -104,6 +154,8 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
             hashtags: [],
             hashtagsLower: [],
             hashtagKeywords: [],
+            creationMethod: method,
+            isCommunityVerified: false, // All new profiles start as not community verified
         };
         
         await setDoc(figureRef, figureData, { merge: true });
@@ -129,9 +181,13 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
     setVerificationResult(null);
     setIsVerifying(false);
     setIsCreating(false);
+    setShowPlanB(false);
   }
 
   if (verificationResult) {
+    const sourceText = verificationResult.method === 'wikipedia' ? 'Verificado en Wikipedia' : 'Verificado en FamousBirthdays';
+    const SourceIcon = verificationResult.method === 'wikipedia' ? CheckCircle : LinkIcon;
+
     return (
         <div className="space-y-4 text-center">
             <h3 className="font-semibold">Confirmar Creación</h3>
@@ -151,7 +207,7 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
                 )}
                 <div className='text-center'>
                     <p className="font-bold text-lg">{verificationResult.title}</p>
-                    <p className="text-sm text-green-500 flex items-center justify-center gap-1"><CheckCircle className="h-4 w-4" /> Verificado en Wikipedia</p>
+                    <p className="text-sm text-green-500 flex items-center justify-center gap-1"><SourceIcon className="h-4 w-4" /> {sourceText}</p>
                 </div>
             </div>
             <div className="flex justify-end gap-2">
@@ -166,21 +222,38 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
   }
 
   return (
-    <form onSubmit={handleVerify} className="space-y-4">
-        <div>
-            <Label htmlFor="character-name">Nombre del Personaje</Label>
-            <Input
-                id="character-name"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                placeholder="Ej: Lionel Messi, Superman..."
-                disabled={isVerifying}
+    <div className="space-y-4">
+      <form onSubmit={handleVerifyWikipedia} className="space-y-3">
+          <div>
+              <Label htmlFor="character-name">Nombre del Personaje</Label>
+              <Input
+                  id="character-name"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  placeholder="Ej: Lionel Messi, Superman..."
+                  disabled={isVerifying}
+              />
+          </div>
+          <Button type="submit" disabled={isVerifying || nameInput.trim().length === 0} className="w-full">
+              {isVerifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+              {isVerifying ? 'Verificando...' : 'Verificar en Wikipedia'}
+          </Button>
+      </form>
+      {showPlanB && (
+        <div className="border-t pt-4">
+            <Alert variant="destructive" className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Plan B: Verificación Manual</AlertTitle>
+                <AlertDescription>
+                    No se encontró en Wikipedia. Pega el enlace de su perfil en <strong>es.famousbirthdays.com</strong> para verificarlo manualmente.
+                </AlertDescription>
+            </Alert>
+            <FamousBirthdaysForm 
+                name={nameInput} 
+                onVerified={(result) => setVerificationResult(result)}
             />
         </div>
-        <Button type="submit" disabled={isVerifying || nameInput.trim().length === 0} className="w-full">
-            {isVerifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-            {isVerifying ? 'Verificando en Wikipedia...' : 'Verificar y Continuar'}
-        </Button>
-    </form>
+      )}
+    </div>
   );
 }
