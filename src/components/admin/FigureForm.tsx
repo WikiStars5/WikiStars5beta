@@ -21,7 +21,7 @@ import { CountryCombobox } from '../shared/CountryCombobox';
 import { countryCodeToNameMap } from '@/config/countries';
 import { DatePicker } from '../shared/DatePicker';
 import { Badge } from '../ui/badge';
-import { differenceInYears, addDays } from 'date-fns';
+import { differenceInYears, addMinutes } from 'date-fns';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import Image from 'next/image';
 import { correctMalformedUrl } from '@/lib/utils';
@@ -377,7 +377,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
       
       let manualCreationData: Partial<Figure> = {};
       if (mode === 'manual' && !initialData) {
-        const expirationDate = addDays(new Date(), 5);
+        const expirationDate = addMinutes(new Date(), 5);
         manualCreationData = {
           creationMethod: 'manual',
           manualVerificationExpiresAt: Timestamp.fromDate(expirationDate),
@@ -532,10 +532,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
             <div className="flex items-center space-x-2">
                 <RadioGroupItem value="character" id="type-character" />
                 <Label htmlFor="type-character">Personaje</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-                <RadioGroupItem value="media" id="type-media" />
-                <Label htmlFor="type-media">Medio (Película, Juego, etc.)</Label>
             </div>
             </RadioGroup>
         </div>
@@ -713,5 +709,3 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
 };
 
 export default FigureForm;
-
-    
