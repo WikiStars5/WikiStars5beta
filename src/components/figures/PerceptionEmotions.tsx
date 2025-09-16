@@ -174,7 +174,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
                     fill
                     className="object-contain"
                     sizes="(max-width: 768px) 15vw, 10vw"
-                    unoptimized={key === 'furia' || key === 'alegria'}
+                    unoptimized
                   />
                 </div>
                 <span className="text-xs font-medium text-center block">{label}</span>

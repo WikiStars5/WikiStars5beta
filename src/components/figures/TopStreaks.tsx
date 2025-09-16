@@ -121,7 +121,7 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
                                             {(attitudeEmoji || emotionImageUrl) && (
                                                 <div className="flex items-center gap-2 mt-1">
                                                     {attitudeEmoji && <span className="text-lg" title={`Actitud: ${streak.attitude}`}>{attitudeEmoji}</span>}
-                                                    {emotionImageUrl && <Image src={emotionImageUrl} alt={streak.emotion || 'emotion'} width={20} height={20} className="w-5 h-5" unoptimized={streak.emotion === 'furia' || streak.emotion === 'alegria'} />}
+                                                    {emotionImageUrl && <Image src={emotionImageUrl} alt={streak.emotion || 'emotion'} width={20} height={20} className="w-5 h-5" unoptimized />}
                                                 </div>
                                             )}
                                         </div>
