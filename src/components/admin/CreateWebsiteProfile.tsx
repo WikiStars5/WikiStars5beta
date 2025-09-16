@@ -22,9 +22,6 @@ const defaultAttitudeCounts: Record<AttitudeKey, number> = {
   neutral: 0, fan: 0, simp: 0, hater: 0,
 };
 
-// Function to extract the root domain from a URL or string.
-// e.g., "www.facebook.com/somepage" -> "facebook.com"
-// e.g., "google.co.uk" -> "google.co.uk"
 const getRootDomain = (input: string): string | null => {
     try {
         let urlString = input.trim();
@@ -32,8 +29,6 @@ const getRootDomain = (input: string): string | null => {
             urlString = `https://${urlString}`;
         }
         const url = new URL(urlString);
-        // This regex is a simple way to get the last two parts of a hostname,
-        // which covers .com, .org, etc., and also .co.uk, .com.au, etc.
         const domainParts = url.hostname.split('.').slice(-3);
         if (domainParts.length === 3 && domainParts[1].length <= 3 && domainParts[0] !== 'www') {
              return domainParts.join('.');
@@ -58,6 +53,33 @@ const generateNameKeywords = (name: string): string[] => {
 
     return Array.from(keywords);
 };
+
+// New, more robust validation function
+async function validateDomain(domain: string): Promise<boolean> {
+  // 1. Primary Method: Direct HEAD request (lightweight)
+  try {
+    const response = await fetch(`https://${domain}`, { method: 'HEAD', mode: 'no-cors' });
+    // 'no-cors' returns an opaque response, but if it doesn't throw an error,
+    // it means a network connection was likely possible.
+    return true;
+  } catch (e) {
+    // This might fail due to CORS even if the site is up. So we try the fallback.
+    console.warn(`Direct HEAD request to ${domain} failed, trying fallback. Error:`, e);
+  }
+
+  // 2. Fallback Method: Google Favicon service
+  try {
+    const faviconTestUrl = `https://www.google.com/s2/favicons?sz=16&domain_url=${domain}`;
+    const response = await fetch(faviconTestUrl);
+    // Check if the response is OK and has content. Some domains might not have a favicon but are valid.
+    // A 0-length response often means the domain is invalid.
+    return response.ok && Number(response.headers.get('content-length')) > 0;
+  } catch (error) {
+    console.error(`Favicon fallback for ${domain} also failed. Error:`, error);
+    return false;
+  }
+}
+
 
 export function CreateWebsiteProfile() {
   const [domainInput, setDomainInput] = useState('');
@@ -91,28 +113,25 @@ export function CreateWebsiteProfile() {
     const docSnap = await getDoc(figureRef);
 
     if (docSnap.exists()) {
-      toast({ title: "Perfil Existente", description: `El perfil para "${rootDomain}" ya existe.`, variant: "destructive" });
+      toast({ title: "Perfil Existente", description: `El perfil para "${rootDomain}" ya existe.` });
       router.push(`/figures/${figureId}`);
       setIsProcessing(false);
       return;
     }
 
-    // Validate domain by trying to fetch its favicon
-    const faviconTestUrl = `https://www.google.com/s2/favicons?sz=64&domain_url=${rootDomain}`;
-    try {
-        const response = await fetch(faviconTestUrl);
-        if (response.ok && response.headers.get('content-length') !== '0') {
-            setValidatedDomain(rootDomain);
-            setFaviconUrl(faviconTestUrl);
-            setShowConfirmation(true);
-        } else {
-            throw new Error('No se pudo obtener el favicon, el dominio podría no ser válido.');
-        }
-    } catch (error) {
-        toast({ title: "Error de Validación", description: `No se pudo validar el dominio "${rootDomain}". Asegúrate de que sea un sitio web activo.`, variant: "destructive" });
-    } finally {
-        setIsProcessing(false);
+    // Use the new validation logic
+    const isDomainValid = await validateDomain(rootDomain);
+
+    if (isDomainValid) {
+        const finalFaviconUrl = `https://www.google.com/s2/favicons?sz=64&domain_url=${rootDomain}`;
+        setValidatedDomain(rootDomain);
+        setFaviconUrl(finalFaviconUrl);
+        setShowConfirmation(true);
+    } else {
+        toast({ title: "Error de Validación", description: `No se pudo validar el dominio "${rootDomain}". Asegúrate de que sea un sitio web activo y accesible.`, variant: "destructive" });
     }
+    
+    setIsProcessing(false);
   };
 
   const handleCreate = async () => {
