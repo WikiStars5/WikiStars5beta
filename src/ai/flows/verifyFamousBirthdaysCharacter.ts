@@ -2,6 +2,7 @@
 'use server';
 /**
  * @fileOverview A flow to verify a character on famousbirthdays.com and extract their main image.
+ * This flow now also attempts to fetch a better image from Wikipedia.
  *
  * - verifyFamousBirthdaysCharacter - A function that handles the verification process.
  * - FamousBirthdaysVerificationInput - The input type for the function.
@@ -10,6 +11,7 @@
 
 import { z } from 'zod';
 import fetch from 'node-fetch';
+import { verifyWikipediaCharacter } from './verifyWikipediaCharacter';
 
 const FamousBirthdaysVerificationInputSchema = z.object({
   name: z.string().describe('The name of the public figure to verify.'),
@@ -54,17 +56,23 @@ export async function verifyFamousBirthdaysCharacter(
       throw new Error(`El nombre "${input.name}" no se encontró en el contenido de la página.`);
     }
     
-    // 4. Extract the title and image URL using regex
+    // 4. Extract the title and image URL from FamousBirthdays
     const nameMatch = html.match(nameRegex);
     const title = nameMatch ? nameMatch[1].trim() : input.name; // Fallback to input name
 
     const imageMatch = html.match(imageUrlRegex);
-    const imageUrl = imageMatch ? imageMatch[1] : null;
+    const famousBirthdaysImageUrl = imageMatch ? imageMatch[1] : null;
+
+    // 5. Try to get a better image from Wikipedia using the found title
+    const wikipediaResult = await verifyWikipediaCharacter({ name: title });
+
+    // Prioritize Wikipedia image, fallback to FamousBirthdays image
+    const finalImageUrl = wikipediaResult.imageUrl || famousBirthdaysImageUrl;
 
     return {
       found: true,
       title: title,
-      imageUrl: imageUrl,
+      imageUrl: finalImageUrl,
     };
 
   } catch (error: any) {
