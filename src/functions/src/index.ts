@@ -39,55 +39,56 @@ export const communityVerificationJob = onSchedule("every 5 minutes", async (eve
   let movedToReviewCount = 0;
   let verifiedCount = 0;
 
-  // --- Step 1: Move expired, unverified profiles to 'pending_admin_review' status ---
-  const expiredQuery = figuresRef
+  // Query for all manual, unverified, and approved profiles.
+  // We will check the expiration date in the code to avoid complex index requirements.
+  const candidatesQuery = figuresRef
     .where("creationMethod", "==", "manual")
     .where("isCommunityVerified", "==", false)
-    .where("status", "==", "approved") // Only act on profiles that are currently public
-    .where("manualVerificationExpiresAt", "<=", now);
+    .where("status", "==", "approved");
 
-  const expiredSnapshot = await expiredQuery.get();
+  const candidatesSnapshot = await candidatesQuery.get();
 
-  if (!expiredSnapshot.empty) {
-    const reviewBatch = db.batch();
-    expiredSnapshot.docs.forEach(doc => {
-      console.log(`Profile ${doc.data().name} (${doc.id}) has expired. Moving to admin review.`);
-      reviewBatch.update(doc.ref, { status: 'pending_admin_review' });
-    });
+  if (candidatesSnapshot.empty) {
+    console.log("No pending manual profiles found to process.");
+    return { verifiedCount, movedToReviewCount };
+  }
+
+  const reviewBatch = db.batch();
+  const verifyBatch = db.batch();
+
+  candidatesSnapshot.forEach(doc => {
+      const figure = doc.data() as Figure;
+      
+      // --- Logic for Verification ---
+      const attitudeCounts = figure.attitudeCounts || {};
+      const totalVotes = Object.values(attitudeCounts).reduce((sum, count) => sum + count, 0);
+
+      if (totalVotes >= 1000) {
+          console.log(`Profile ${figure.name} (${doc.id}) reached 1000 votes. Marking as verified.`);
+          verifyBatch.update(doc.ref, { isCommunityVerified: true });
+          verifiedCount++;
+          return; // Move to the next document
+      }
+
+      // --- Logic for Expiration ---
+      if (figure.manualVerificationExpiresAt) {
+        const expiresAt = (figure.manualVerificationExpiresAt as admin.firestore.Timestamp).toDate();
+        if (now.toDate() >= expiresAt) {
+          console.log(`Profile ${figure.name} (${doc.id}) has expired. Moving to admin review.`);
+          reviewBatch.update(doc.ref, { status: 'pending_admin_review' });
+          movedToReviewCount++;
+        }
+      }
+  });
+
+  // Commit batches if there are changes
+  if (movedToReviewCount > 0) {
     await reviewBatch.commit();
-    movedToReviewCount = expiredSnapshot.size;
-  } else {
-    console.log("No expired profiles to move to review.");
+  }
+  if (verifiedCount > 0) {
+    await verifyBatch.commit();
   }
   
-  // --- Step 2: Verify profiles that reached the vote threshold ---
-  const pendingVerificationQuery = figuresRef
-    .where("creationMethod", "==", "manual")
-    .where("isCommunityVerified", "==", false)
-    .where("status", "==", "approved"); // Only check active profiles
-
-  const pendingSnapshot = await pendingVerificationQuery.get();
-
-  if (!pendingSnapshot.empty) {
-      const verifyBatch = db.batch();
-      pendingSnapshot.forEach(doc => {
-          const figure = doc.data() as Figure;
-          const attitudeCounts = figure.attitudeCounts || {};
-          const totalVotes = Object.values(attitudeCounts).reduce((sum, count) => sum + count, 0);
-
-          if (totalVotes >= 1000) {
-              console.log(`Profile ${figure.name} (${doc.id}) reached 1000 votes. Marking as verified.`);
-              verifyBatch.update(doc.ref, { isCommunityVerified: true });
-              verifiedCount++;
-          }
-      });
-      if (verifiedCount > 0) {
-        await verifyBatch.commit();
-      }
-  } else {
-      console.log("No manually created profiles to check for verification.");
-  }
-
   console.log(`Verification job complete. Verified: ${verifiedCount}, Moved to Review: ${movedToReviewCount}.`);
   return { verifiedCount, movedToReviewCount };
 });
