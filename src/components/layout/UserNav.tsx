@@ -96,12 +96,6 @@ export function UserNav() {
                   <span>Crear Perfil (Wikipedia)</span>
                 </DropdownMenuItem>
               </DialogTrigger>
-             <DropdownMenuItem asChild>
-                <Link href="/figures/new-manual">
-                  <Pencil className="mr-2 h-4 w-4" />
-                  <span>Crear Perfil (Manual)</span>
-                </Link>
-              </DropdownMenuItem>
              <DialogTrigger asChild>
                 <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setIsWebsiteDialogOpen(true); }}>
                   <Globe className="mr-2 h-4 w-4" />
