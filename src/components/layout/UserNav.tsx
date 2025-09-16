@@ -18,7 +18,7 @@ import { LogOut, User, ShieldCheck, Loader2, Bell } from 'lucide-react';
 import { correctMalformedUrl } from "@/lib/utils";
 
 interface UserNavProps {
-  onNotificationClick: () => void;
+  onNotificationClick?: () => void;
 }
 
 export function UserNav({ onNotificationClick }: UserNavProps) {
@@ -79,10 +79,6 @@ export function UserNav({ onNotificationClick }: UserNavProps) {
               <User className="mr-2 h-4 w-4" />
               <span>Mi Perfil</span>
             </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onNotificationClick}>
-            <Bell className="mr-2 h-4 w-4" />
-            <span>Notificaciones</span>
           </DropdownMenuItem>
           {isAdmin && (
             <DropdownMenuItem asChild>

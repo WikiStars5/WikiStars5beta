@@ -7,12 +7,8 @@ import { SearchBar } from '@/components/shared/SearchBar';
 import { InstallPwaButton } from './InstallPwaButton';
 import { PrimaryNav } from './PrimaryNav';
 import { UserNav } from './UserNav';
-import { NotificationBell } from './NotificationBell';
-import { useState } from 'react';
-
 
 export function Header() {
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card text-card-foreground">
@@ -32,11 +28,7 @@ export function Header() {
 
         {/* Right Section */}
         <div className="flex items-center gap-1 md:gap-2 lg:gap-3">
-          <NotificationBell 
-            isOpen={isNotificationsOpen}
-            onOpenChange={setIsNotificationsOpen}
-          />
-          <UserNav onNotificationClick={() => setIsNotificationsOpen(true)} />
+          <UserNav />
           <div className="hidden md:flex items-center">
             <InstallPwaButton />
           </div>

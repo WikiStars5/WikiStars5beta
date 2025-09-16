@@ -613,10 +613,7 @@ export async function addReply(
     if (!parentDoc.exists()) {
       throw new Error("Parent document does not exist.");
     }
-    const figureRef = doc(db, 'figures', figureId);
-    const figureDoc = await transaction.get(figureRef);
-    const figureName = figureDoc.exists() ? figureDoc.data().name : '';
-
+    
     // ---- WRITES SECOND ----
     // 1. Add the new reply document
     docRef = doc(repliesCollectionRef); // Create a new doc reference inside the transaction
@@ -626,25 +623,6 @@ export async function addReply(
     const newReplyCount = (parentDoc.data().replyCount || 0) + 1;
     transaction.update(parentRef, { replyCount: newReplyCount });
     
-    // 3. Create a notification for the parent comment's author
-    const parentCommentAuthorId = parentDoc.data().authorId;
-    if (parentCommentAuthorId && parentCommentAuthorId !== authorData.id) {
-       const notificationsCollectionRef = collection(db, 'notifications');
-       const notificationDocRef = doc(notificationsCollectionRef);
-       transaction.set(notificationDocRef, {
-           type: 'reply',
-           userId: parentCommentAuthorId, // The user to be notified
-           actorId: authorData.id, // The user who performed the action
-           actorName: authorData.name,
-           actorPhotoUrl: authorData.photoUrl,
-           figureId: figureId,
-           figureName: figureName, // Use the name read at the start
-           commentId: parentRef.id,
-           replyId: docRef.id,
-           isRead: false,
-           createdAt: serverTimestamp(),
-       });
-    }
   });
   
   if (!docRef) {
@@ -697,27 +675,6 @@ export async function toggleLikeComment(
         updateData.dislikeCount = Math.max(0, (commentData.dislikeCount || 0) - 1);
       }
       
-      // Create notification only if someone else's comment is liked
-      if (authorId !== userId) {
-        const actorProfile = await getDoc(doc(db, 'users', userId));
-        const actorName = actorProfile.data()?.username || 'Alguien';
-        const actorPhotoUrl = actorProfile.data()?.photoURL || null;
-
-        const notificationsCollectionRef = collection(db, 'notifications');
-        const notificationDocRef = doc(notificationsCollectionRef);
-        transaction.set(notificationDocRef, {
-            type: 'like',
-            userId: authorId,
-            actorId: userId,
-            actorName: actorName,
-            actorPhotoUrl: actorPhotoUrl,
-            figureId: figureId,
-            figureName: figureName,
-            commentId: commentId,
-            isRead: false,
-            createdAt: serverTimestamp(),
-        });
-      }
     }
     
     transaction.update(commentRef, updateData);
