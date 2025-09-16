@@ -224,12 +224,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
       }
     } else {
       // Reset all fields for a new form
-      setName(''); setProfileType('character'); setDescription(''); setPhotoUrl('');
+      setName(''); 
+      setProfileType(mode === 'manual' ? 'character' : 'character');
+      setDescription(''); setPhotoUrl('');
       setNationalityCode(''); setIsFeatured(false); setSocialLinks({}); setHashtags([]);
       clearCharacterFields();
       clearMediaFields();
     }
-  }, [initialData]);
+  }, [initialData, mode]);
 
   const debouncedSearchHashtags = useCallback(debounce(async (searchTerm: string) => {
     setIsLoadingHashtags(true);
@@ -283,6 +285,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
     setError(null);
     setSuccess(null);
 
+    let finalProfileType = mode === 'manual' ? 'character' : profileType;
+
     let figureDocId = initialData?.id || slugify(name.trim(), { lower: true, strict: true });
     
     if (!figureDocId && name.trim()) { 
@@ -313,7 +317,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
         name: nameTrimmed,
         nameSearch: nameSearch,
         nameKeywords: nameKeywords,
-        profileType: profileType,
+        profileType: finalProfileType,
         description: description.trim() || "", 
         photoUrl: finalPhotoUrlToSave,
         hashtags: hashtags,
@@ -328,7 +332,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
       
       let profileSpecificData: Partial<Figure> = {};
 
-      if (profileType === 'character') {
+      if (finalProfileType === 'character') {
         profileSpecificData = {
           category: category.trim(),
           occupation: occupation.trim(),
@@ -367,7 +371,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
       }
       
       const attitudeCounts = { ...defaultAttitudeCounts };
-      if(profileType === 'media') {
+      if(finalProfileType === 'media') {
         delete (attitudeCounts as Partial<typeof attitudeCounts>).simp;
       }
       
@@ -498,6 +502,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
     </div>
   );
 
+  const finalProfileType = mode === 'manual' ? 'character' : profileType;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-card rounded-lg shadow-md">
       {error && (
@@ -515,23 +521,26 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
         </Alert>
       )}
 
-      <div>
-        <Label>Tipo de Perfil</Label>
-        <RadioGroup
-          value={profileType}
-          onValueChange={(value) => handleProfileTypeChange(value as ProfileType)}
-          className="flex gap-4 mt-2"
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="character" id="type-character" />
-            <Label htmlFor="type-character">Personaje</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="media" id="type-media" />
-            <Label htmlFor="type-media">Medio (Película, Juego, etc.)</Label>
-          </div>
-        </RadioGroup>
-      </div>
+      {mode === 'admin' && (
+        <div>
+            <Label>Tipo de Perfil</Label>
+            <RadioGroup
+            value={profileType}
+            onValueChange={(value) => handleProfileTypeChange(value as ProfileType)}
+            className="flex gap-4 mt-2"
+            >
+            <div className="flex items-center space-x-2">
+                <RadioGroupItem value="character" id="type-character" />
+                <Label htmlFor="type-character">Personaje</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+                <RadioGroupItem value="media" id="type-media" />
+                <Label htmlFor="type-media">Medio (Película, Juego, etc.)</Label>
+            </div>
+            </RadioGroup>
+        </div>
+      )}
+
 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Información Básica</h3>
       <div className="space-y-4">
@@ -559,7 +568,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
             <Label htmlFor="description">Descripción</Label>
             <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
         </div>
-        {profileType === 'character' && (
+        {finalProfileType === 'character' && (
             <div>
                 <Label htmlFor="category">Categoría General</Label>
                 <Select onValueChange={setCategory} value={category}>
@@ -570,7 +579,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
         )}
       </div>
       
-      {profileType === 'character' ? (
+      {finalProfileType === 'character' ? (
         <div className="space-y-6 animate-in fade-in-50">
            <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Detalles del Personaje</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -628,7 +637,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
       <h3 className="text-lg font-semibold mt-6 border-t pt-4 border-border">Redes Sociales y Enlaces</h3>
       <div className="space-y-4">
         <div><Label htmlFor="website">Página Web</Label><Input id="website" value={(socialLinks as Record<string,string>)['website'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, website: e.target.value}))} placeholder="https://..."/></div>
-        {profileType === 'media' && mediaSubcategory === 'video_game' && (
+        {finalProfileType === 'media' && mediaSubcategory === 'video_game' && (
           <>
             <div><Label htmlFor="playStoreUrl">Google Play Store</Label><Input id="playStoreUrl" value={(socialLinks as Record<string,string>)['playStoreUrl'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, playStoreUrl: e.target.value}))} placeholder="https://play.google.com/store/..."/></div>
             <div><Label htmlFor="appStoreUrl">Apple App Store</Label><Input id="appStoreUrl" value={(socialLinks as Record<string,string>)['appStoreUrl'] || ''} onChange={(e) => setSocialLinks(prev => ({...prev, appStoreUrl: e.target.value}))} placeholder="https://apps.apple.com/..."/></div>
@@ -704,3 +713,5 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) 
 };
 
 export default FigureForm;
+
+    
