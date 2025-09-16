@@ -59,20 +59,33 @@ const toDate = (timestamp: VerificationCountdownProps['expiresAt']): Date => {
 
 
 export function VerificationCountdown({ expiresAt }: VerificationCountdownProps) {
-  const expirationDate = toDate(expiresAt);
-  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(expirationDate));
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number; } | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
-    // Set an interval to update the countdown every second.
+    const expirationDate = toDate(expiresAt);
+    if (isNaN(expirationDate.getTime()) || expirationDate.getTime() === 0) {
+        setIsExpired(true);
+        return;
+    }
+
+    // Set initial value on client mount
+    setTimeLeft(calculateTimeLeft(expirationDate));
+
     const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft(expirationDate));
+      const newTimeLeft = calculateTimeLeft(expirationDate);
+      if (newTimeLeft) {
+        setTimeLeft(newTimeLeft);
+      } else {
+        setIsExpired(true);
+        clearInterval(timer);
+      }
     }, 1000);
 
-    // Clear the interval when the component is unmounted.
     return () => clearInterval(timer);
-  }, [expirationDate]);
+  }, [expiresAt]);
 
-  if (!timeLeft || isNaN(expirationDate.getTime()) || expirationDate.getTime() === 0) {
+  if (isExpired) {
     return (
        <TooltipProvider>
         <Tooltip>
@@ -98,10 +111,14 @@ export function VerificationCountdown({ expiresAt }: VerificationCountdownProps)
         <TooltipTrigger>
           <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400 bg-amber-500/10 px-2 py-1 rounded-full border border-amber-500/30">
             <Hourglass className="h-4 w-4 animate-spin" style={{ animationDuration: '5s' }} />
-            <span>
-              {timeLeft.days > 0 && `${timeLeft.days}d `}
-              {format(timeLeft.hours)}:{format(timeLeft.minutes)}:{format(timeLeft.seconds)}
-            </span>
+             {timeLeft ? (
+                <span>
+                {timeLeft.days > 0 && `${timeLeft.days}d `}
+                {format(timeLeft.hours)}:{format(timeLeft.minutes)}:{format(timeLeft.seconds)}
+                </span>
+             ) : (
+                <span>Calculando...</span>
+             )}
           </div>
         </TooltipTrigger>
         <TooltipContent>
