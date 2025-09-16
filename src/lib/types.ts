@@ -112,7 +112,7 @@ export interface Figure {
 
   // --- Manual Creation Fields ---
   creationMethod?: CreationMethod;
-  manualVerificationExpiresAt?: Timestamp;
+  manualVerificationExpiresAt?: Timestamp | { _seconds: number; _nanoseconds: number };
   isCommunityVerified?: boolean;
 }
 

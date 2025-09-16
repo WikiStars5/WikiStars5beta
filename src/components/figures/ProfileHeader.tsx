@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { correctMalformedUrl } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { VerificationCountdown } from "./VerificationCountdown";
 
 const FIRE_GIF_URL = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/image%2Ffire.gif?alt=media&token=fd18d32d-c443-4da6-a369-e55ae241f7c5";
 
@@ -23,6 +24,10 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const correctedPhotoUrl = correctMalformedUrl(figure.photoUrl);
   const { isAdmin } = useAuth();
+  
+  const showCountdown = figure.creationMethod === 'manual' && 
+                        !figure.isCommunityVerified && 
+                        figure.manualVerificationExpiresAt;
 
   return (
     <div className="w-full bg-black border border-white/20 p-4 sm:p-6 rounded-lg shadow-md">
@@ -54,13 +59,16 @@ export function ProfileHeader({
           </div>
 
           <div className="flex-grow flex flex-col items-center md:items-start text-center md:text-left mt-4 md:mt-0 w-full">
-            <div className="flex-grow flex flex-col md:flex-row justify-between items-center w-full">
+            <div className="flex-grow flex flex-col md:flex-row justify-between items-center w-full gap-2">
               <h1 className="text-2xl md:text-4xl font-headline font-bold text-foreground drop-shadow-lg">
                 {figure.name}
               </h1>
-              <div className="mt-3 md:mt-0 flex-shrink-0 flex flex-col items-center md:items-end gap-2">
-                <div className="flex items-center gap-2">
-                    <ShareButton figureName={figure.name} figureId={figure.id} showText={true} />
+              <div className="flex-shrink-0 flex flex-col items-center md:items-end gap-2">
+                 <div className="flex items-center gap-2">
+                    {showCountdown && (
+                      <VerificationCountdown expiresAt={figure.manualVerificationExpiresAt!} />
+                    )}
+                    <ShareButton figureName={figure.name} figureId={figure.id} showText={false} />
                 </div>
                 {currentStreak && currentStreak > 0 && (
                     <div className="flex items-center gap-1.5 text-orange-400 font-bold text-lg">

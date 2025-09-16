@@ -88,6 +88,9 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     founder: data.founder,
     industry: data.industry,
     websiteUrl: data.websiteUrl,
+    creationMethod: data.creationMethod,
+    manualVerificationExpiresAt: data.manualVerificationExpiresAt,
+    isCommunityVerified: data.isCommunityVerified,
   };
 
   return figureData;
