@@ -60,7 +60,6 @@ export default function AdminLayout({
           <Button variant="outline" asChild><Link href="/admin">Panel</Link></Button>
           <Button variant="outline" asChild><Link href="/admin/figures">Gestionar Figuras</Link></Button>
           <Button variant="outline" asChild><Link href="/admin/pending-review">Revisar Pendientes</Link></Button>
-          <Button variant="outline" asChild><Link href="/admin/users">Gestionar Usuarios</Link></Button>
         </nav>
       </div>
       {children}
