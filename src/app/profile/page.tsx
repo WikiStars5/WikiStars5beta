@@ -17,7 +17,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ProfileActivity } from '@/components/profile/ProfileActivity';
-import { CreateWebsiteProfile } from '@/components/admin/CreateWebsiteProfile';
 
 const profileSchema = z.object({
   username: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.').max(30, 'El nombre no puede tener más de 30 caracteres.'),
@@ -113,8 +112,6 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         
-        <CreateWebsiteProfile />
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1">
                 <Card>

@@ -166,54 +166,43 @@ export function CreateWebsiteProfile() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl font-headline flex items-center gap-2">
-            <Globe className="h-5 w-5" />
-            Crear un Perfil Web
-        </CardTitle>
-        <CardDescription>
-          ¿No encuentras una página web? Añádela tú mismo. Solo introduce su dominio (ej. `google.com`).
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleValidate} className="flex flex-col sm:flex-row gap-2">
-            <Label htmlFor="domain-input" className="sr-only">Dominio del sitio web</Label>
-            <Input
-                id="domain-input"
-                value={domainInput}
-                onChange={(e) => setDomainInput(e.target.value)}
-                placeholder="ejemplo.com"
-                disabled={isProcessing}
-                className="flex-grow"
-            />
-            <Button type="submit" disabled={isProcessing || domainInput.trim().length === 0}>
-                {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                {isProcessing ? 'Validando...' : 'Crear Perfil'}
-            </Button>
-        </form>
+    <div className="space-y-4">
+      <form onSubmit={handleValidate} className="flex flex-col sm:flex-row gap-2">
+          <Label htmlFor="domain-input" className="sr-only">Dominio del sitio web</Label>
+          <Input
+              id="domain-input"
+              value={domainInput}
+              onChange={(e) => setDomainInput(e.target.value)}
+              placeholder="ejemplo.com"
+              disabled={isProcessing}
+              className="flex-grow"
+          />
+          <Button type="submit" disabled={isProcessing || domainInput.trim().length === 0}>
+              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              {isProcessing ? 'Validando...' : 'Crear Perfil'}
+          </Button>
+      </form>
 
-        <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>¿Confirmar creación?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Se creará un nuevo perfil para el dominio <strong>{validatedDomain}</strong>. Este será su nombre y su imagen de perfil.
-                </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="flex justify-center my-4">
-                    {faviconUrl && <img src={faviconUrl} alt={`Favicon de ${validatedDomain}`} className="w-16 h-16 rounded-md border" />}
-                </div>
-                <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setValidatedDomain(null)} disabled={isProcessing}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleCreate} disabled={isProcessing}>
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {isProcessing ? 'Creando...' : 'Sí, Crear'}
-                </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-      </CardContent>
-    </Card>
+      <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+              <AlertDialogTitle>¿Confirmar creación?</AlertDialogTitle>
+              <AlertDialogDescription>
+                  Se creará un nuevo perfil para el dominio <strong>{validatedDomain}</strong>. Este será su nombre y su imagen de perfil.
+              </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="flex justify-center my-4">
+                  {faviconUrl && <img src={faviconUrl} alt={`Favicon de ${validatedDomain}`} className="w-16 h-16 rounded-md border" />}
+              </div>
+              <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setValidatedDomain(null)} disabled={isProcessing}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleCreate} disabled={isProcessing}>
+                  {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isProcessing ? 'Creando...' : 'Sí, Crear'}
+              </AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }

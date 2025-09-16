@@ -12,13 +12,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
-import { LogOut, User, ShieldCheck, Loader2 } from 'lucide-react';
+import { LogOut, User, ShieldCheck, Loader2, Globe } from 'lucide-react';
 import { correctMalformedUrl } from "@/lib/utils";
+import { CreateWebsiteProfile } from "../admin/CreateWebsiteProfile";
+import React from "react";
 
 export function UserNav() {
   const { currentUser, firebaseUser, isAdmin, isLoading, logout, localProfile, isAnonymous } = useAuth();
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   
   if (isLoading) {
     return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
@@ -48,53 +59,71 @@ export function UserNav() {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-          <Avatar className="h-9 w-9">
-            <AvatarImage src={correctMalformedUrl(photoURL)} alt={displayName} />
-            <AvatarFallback>
-              <User />
-            </AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{displayName}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {displayEmail}
-            </p>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href="/profile">
-              <User className="mr-2 h-4 w-4" />
-              <span>Mi Perfil</span>
-            </Link>
-          </DropdownMenuItem>
-          {isAdmin && (
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={correctMalformedUrl(photoURL)} alt={displayName} />
+              <AvatarFallback>
+                <User />
+              </AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">{displayName}</p>
+              <p className="text-xs leading-none text-muted-foreground">
+                {displayEmail}
+              </p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
             <DropdownMenuItem asChild>
-              <Link href="/admin">
-                <ShieldCheck className="mr-2 h-4 w-4" />
-                <span>Panel de Administración</span>
+              <Link href="/profile">
+                <User className="mr-2 h-4 w-4" />
+                <span>Mi Perfil</span>
               </Link>
             </DropdownMenuItem>
+             <DialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  <Globe className="mr-2 h-4 w-4" />
+                  <span>Crear Perfil Web</span>
+                </DropdownMenuItem>
+              </DialogTrigger>
+            {isAdmin && (
+              <DropdownMenuItem asChild>
+                <Link href="/admin">
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  <span>Panel de Administración</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuGroup>
+          {!isAnonymous && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Cerrar sesión</span>
+              </DropdownMenuItem>
+            </>
           )}
-        </DropdownMenuGroup>
-        {!isAnonymous && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Cerrar sesión</span>
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Crear Perfil Web</DialogTitle>
+          <DialogDescription>
+            Añade un nuevo perfil para un sitio web introduciendo su dominio.
+          </DialogDescription>
+        </DialogHeader>
+        <CreateWebsiteProfile />
+      </DialogContent>
+    </Dialog>
   );
 }
