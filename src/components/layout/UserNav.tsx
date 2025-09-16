@@ -14,14 +14,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
-import { LogOut, User, ShieldCheck, Loader2, Bell } from 'lucide-react';
+import { LogOut, User, ShieldCheck, Loader2 } from 'lucide-react';
 import { correctMalformedUrl } from "@/lib/utils";
 
-interface UserNavProps {
-  onNotificationClick?: () => void;
-}
-
-export function UserNav({ onNotificationClick }: UserNavProps) {
+export function UserNav() {
   const { currentUser, firebaseUser, isAdmin, isLoading, logout, localProfile, isAnonymous } = useAuth();
   
   if (isLoading) {
