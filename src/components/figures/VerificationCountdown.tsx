@@ -35,6 +35,7 @@ const calculateTimeLeft = (expirationDate: Date): { total: number; days: number;
 
 // Helper function to safely convert various timestamp formats to a Date object
 const toDate = (timestamp: VerificationCountdownProps['expiresAt']): Date => {
+  if (!timestamp) return new Date(0); // Return an invalid date if no timestamp
   if (timestamp instanceof Date) {
     return timestamp;
   }
@@ -42,10 +43,18 @@ const toDate = (timestamp: VerificationCountdownProps['expiresAt']): Date => {
     return timestamp.toDate();
   }
   if ('_seconds' in timestamp && typeof timestamp._seconds === 'number') {
-    return new Date(timestamp._seconds * 1000);
+    return new Date(timestamp._seconds * 1000 + (timestamp._nanoseconds || 0) / 1000000);
   }
   // Fallback for ISO string or other formats Date can parse
-  return new Date(timestamp as any);
+  try {
+    const parsedDate = new Date(timestamp as any);
+    if (!isNaN(parsedDate.getTime())) {
+      return parsedDate;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return new Date(0); // Return an invalid date on failure
 };
 
 
@@ -63,7 +72,7 @@ export function VerificationCountdown({ expiresAt }: VerificationCountdownProps)
     return () => clearInterval(timer);
   }, [expirationDate]);
 
-  if (!timeLeft) {
+  if (!timeLeft || isNaN(expirationDate.getTime()) || expirationDate.getTime() === 0) {
     return (
        <TooltipProvider>
         <Tooltip>
