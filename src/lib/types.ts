@@ -198,21 +198,6 @@ export interface LocalUserStreak {
     lastCommentDate: string;
 }
 
-export interface Notification {
-  id: string;
-  userId: string; // The user who receives the notification
-  actorId: string; // The user who triggered the notification
-  actorName: string;
-  actorPhotoUrl?: string | null;
-  figureId: string;
-  figureName: string;
-  commentId: string; 
-  replyId?: string; // Only present for 'reply' type
-  type: 'like' | 'dislike' | 'reply' | 'system';
-  isRead: boolean;
-  createdAt: Timestamp;
-}
-
 export interface Streak {
     userId: string;
     currentStreak: number;
