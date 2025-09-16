@@ -335,36 +335,20 @@ export const getFigureFromFirestore = async (id: string): Promise<Figure | undef
 export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
   const figuresCollectionRef = collection(db, "figures");
   const allFigures: Figure[] = [];
-  let lastVisible: QueryDocumentSnapshot | null = null;
-  const batchSize = 100; // Fetch 100 figures at a time
-
+  
   try {
-    while (true) {
-      let q = query(figuresCollectionRef, where("status", "==", "approved"), orderBy('name'), limit(batchSize));
-      if (lastVisible) {
-        q = query(figuresCollectionRef, where("status", "==", "approved"), orderBy('name'), firestoreStartAfter(lastVisible), limit(batchSize));
-      }
+    // This query is intentionally simple to avoid needing a composite index.
+    // It fetches all documents, and we filter them client-side.
+    const q = query(figuresCollectionRef, orderBy('name'));
+    const querySnapshot = await getDocs(q);
 
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        break; 
-      }
-
-      querySnapshot.forEach((docSnap) => {
-        try {
-          allFigures.push(mapDocToFigure(docSnap));
-        } catch (e) {
-            console.error(`Error mapping document ${docSnap.id}, skipping.`, e)
+    querySnapshot.forEach((docSnap) => {
+        const figure = mapDocToFigure(docSnap);
+        // We manually filter here to only include 'approved' figures.
+        if (figure.status === 'approved') {
+            allFigures.push(figure);
         }
-      });
-
-      lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
-      
-      if (querySnapshot.docs.length < batchSize) {
-        break;
-      }
-    }
+    });
     
     return allFigures;
 
