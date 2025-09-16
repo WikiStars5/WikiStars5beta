@@ -34,7 +34,7 @@ const defaultPerceptionCountsData: Record<EmotionKey, number> = {
 };
 
 export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId, figureName, perceptionCounts }) => {
-  const { firebaseUser, isLoading } = useAuth();
+  const { firebaseUser, isLoading: isAuthLoading } = useAuth();
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const { toast } = useToast();
@@ -54,7 +54,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
   }, [figureId, firebaseUser]);
 
   const handleVote = async (newEmotion: EmotionKey) => {
-    if (isVoting || isLoading || !firebaseUser) {
+    if (isVoting || isAuthLoading || !firebaseUser) {
       if (!firebaseUser) toast({ title: "Error", description: "Inicia sesión para votar.", variant: "destructive" });
       return;
     }
@@ -146,7 +146,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {isLoading ? (
+        {isAuthLoading ? (
           <div className="flex justify-center items-center h-48">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
@@ -160,10 +160,10 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ figureId
                   "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 bg-black",
                   colorClass,
                   selectedEmotion === key && selectedClass,
-                  isVoting && selectedEmotion !== key && 'opacity-50 cursor-not-allowed'
+                  (isVoting || isAuthLoading) && selectedEmotion !== key && 'opacity-50 cursor-not-allowed'
                 )}
                 onClick={() => handleVote(key)}
-                disabled={isVoting || isLoading}
+                disabled={isVoting || isAuthLoading}
                 style={{ minHeight: '120px' }}
               >
                 {isVoting && selectedEmotion === key && <Loader2 className="absolute h-5 w-5 animate-spin" />}

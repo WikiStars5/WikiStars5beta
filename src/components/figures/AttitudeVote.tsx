@@ -40,7 +40,7 @@ const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
 };
 
 export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, profileType, attitudeCounts, onVote }) => {
-  const { firebaseUser, isLoading } = useAuth();
+  const { firebaseUser, isLoading: isAuthLoading } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const { toast } = useToast();
@@ -63,7 +63,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   }, [figureId, firebaseUser]);
   
   const handleVote = async (newAttitude: AttitudeKey) => {
-    if (isVoting || isLoading || !firebaseUser) {
+    if (isVoting || isAuthLoading || !firebaseUser) {
         if (!firebaseUser) toast({ title: "Error", description: "Inicia sesión para votar.", variant: "destructive" });
         return;
     }
@@ -156,7 +156,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {isLoading ? (
+        {isAuthLoading ? (
             <div className="flex justify-center items-center h-24">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
@@ -170,10 +170,10 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                   "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 border bg-black",
                   colorClass,
                   selectedAttitude === key && selectedClass,
-                  isVoting && selectedAttitude !== key && 'opacity-50 cursor-not-allowed'
+                  (isVoting || isAuthLoading) && selectedAttitude !== key && 'opacity-50 cursor-not-allowed'
                 )}
                 onClick={() => handleVote(key)}
-                disabled={isVoting || isLoading}
+                disabled={isVoting || isAuthLoading}
                 style={{ minHeight: '100px' }}
               >
                 {isVoting && selectedAttitude === key && <Loader2 className="absolute h-5 w-5 animate-spin" />}
