@@ -257,9 +257,9 @@ export function CommentItem({
         setIsProcessingLike(true);
         try {
             if (isLike) {
-                 await toggleLikeComment(currentPath, userId, comment.authorId, figure.id, figure.name, comment.id);
+                 await toggleLikeComment(currentPath, userId);
             } else {
-                 await toggleDislikeComment(currentPath, userId, comment.authorId, figure.id, figure.name, comment.id);
+                 await toggleDislikeComment(currentPath, userId);
             }
         } catch (error: any) {
             console.error("Error liking/disliking:", error);

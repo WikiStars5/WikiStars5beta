@@ -737,8 +737,8 @@ export async function deleteComment(documentPath: string): Promise<void> {
     if (!commentDoc.exists()) {
       return; // Comment already deleted, nothing to do.
     }
-    const commentData = commentDoc.data();
     
+    const commentData = commentDoc.data();
     const pathParts = documentPath.split('/');
     const isReply = pathParts.length > 4 && pathParts[pathParts.length - 2] === 'replies';
     
@@ -748,33 +748,41 @@ export async function deleteComment(documentPath: string): Promise<void> {
       parentRef = doc(db, pathParts.slice(0, -2).join('/'));
       parentDoc = await transaction.get(parentRef);
     }
+    
+    const rating = commentData.rating as RatingValue | undefined;
+    const authorId = commentData.authorId as string | undefined;
+    const figureId = commentData.figureId as string | undefined;
+    
+    let userRatingDocRef: any;
+    if (authorId && figureId) {
+        userRatingDocRef = doc(db, 'userRatings', `${authorId}_${figureId}`);
+        userRatingDoc = await transaction.get(userRatingDocRef);
+    }
 
-    const rating = commentData.rating as RatingValue;
-    const authorId = commentData.authorId as string;
-    const figureId = commentData.figureId as string;
-    
-    const userRatingDocRef = doc(db, 'userRatings', `${authorId}_${figureId}`);
-    userRatingDoc = await transaction.get(userRatingDocRef);
-    
-    const figureRef = doc(db, 'figures', figureId);
-    figureDoc = await transaction.get(figureRef);
+    let figureRef: any;
+    if (figureId) {
+        figureRef = doc(db, 'figures', figureId);
+        figureDoc = await transaction.get(figureRef);
+    }
     
     // --- Phase 2: Writes ---
     
-    // Adjust rating counts if applicable
-    if (userRatingDoc.exists() && userRatingDoc.data().rating === rating) {
-      if (figureDoc.exists()) {
+    // Adjust rating counts if applicable (and if it's not a reply)
+    if (!isReply && rating !== undefined && userRatingDoc?.exists() && userRatingDoc.data().rating === rating) {
+      if (figureDoc?.exists()) {
         const figureData = figureDoc.data();
         const currentCounts = figureData.ratingCounts || { ...defaultRatingCounts };
         const newCount = Math.max(0, (currentCounts[rating] || 0) - 1);
         const newRatingCounts = { ...currentCounts, [rating]: newCount };
         transaction.update(figureRef, { ratingCounts: newRatingCounts });
       }
-      transaction.delete(userRatingDocRef);
+      if (userRatingDocRef) {
+          transaction.delete(userRatingDocRef);
+      }
     }
     
     // Decrement parent's reply count if this is a reply
-    if (isReply && parentDoc.exists()) {
+    if (isReply && parentDoc?.exists()) {
       const newReplyCount = Math.max(0, (parentDoc.data().replyCount || 0) - 1);
       transaction.update(parentRef, { replyCount: newReplyCount });
     }
@@ -783,7 +791,7 @@ export async function deleteComment(documentPath: string): Promise<void> {
     transaction.delete(commentRef);
   });
 
-  // After the transaction, recursively delete sub-collections
+  // After the transaction, recursively delete sub-collections of the deleted comment
   const batch = writeBatch(db);
   await deleteRepliesRecursive(`${documentPath}/replies`, batch);
   await batch.commit();
