@@ -8,8 +8,10 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 
-import type { UserProfile } from "./types";
+
+import type { UserProfile, Figure } from "./types";
 import { COUNTRIES } from "./countries";
 import type { DocumentData, Query } from "firebase-admin/firestore";
 
@@ -27,6 +29,68 @@ const db = admin.firestore();
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
+
+// This function runs automatically every 5 minutes.
+export const communityVerificationJob = onSchedule("every 5 minutes", async (event) => {
+  console.log("Running community verification job...");
+  const now = admin.firestore.Timestamp.now();
+  const figuresRef = db.collection("figures");
+
+  let deletedCount = 0;
+  let verifiedCount = 0;
+
+  // --- Step 1: Delete expired profiles ---
+  const expiredQuery = figuresRef
+    .where("creationMethod", "==", "manual")
+    .where("isCommunityVerified", "==", false)
+    .where("manualVerificationExpiresAt", "<=", now);
+
+  const expiredSnapshot = await expiredQuery.get();
+
+  if (!expiredSnapshot.empty) {
+    const deleteBatch = db.batch();
+    expiredSnapshot.docs.forEach(doc => {
+      console.log(`Profile ${doc.data().name} (${doc.id}) has expired. Deleting.`);
+      deleteBatch.delete(doc.ref);
+    });
+    await deleteBatch.commit();
+    deletedCount = expiredSnapshot.size;
+  } else {
+    console.log("No expired profiles to delete.");
+  }
+  
+  // --- Step 2: Verify profiles that reached the vote threshold ---
+  const pendingVerificationQuery = figuresRef
+    .where("creationMethod", "==", "manual")
+    .where("isCommunityVerified", "==", false);
+    // Note: We don't check for expiration here, as expired ones are already deleted.
+
+  const pendingSnapshot = await pendingVerificationQuery.get();
+
+  if (!pendingSnapshot.empty) {
+      const verifyBatch = db.batch();
+      pendingSnapshot.forEach(doc => {
+          const figure = doc.data() as Figure;
+          const attitudeCounts = figure.attitudeCounts || {};
+          const totalVotes = Object.values(attitudeCounts).reduce((sum, count) => sum + count, 0);
+
+          if (totalVotes >= 1000) {
+              console.log(`Profile ${figure.name} (${doc.id}) reached 1000 votes. Marking as verified.`);
+              verifyBatch.update(doc.ref, { isCommunityVerified: true });
+              verifiedCount++;
+          }
+      });
+      if (verifiedCount > 0) {
+        await verifyBatch.commit();
+      }
+  } else {
+      console.log("No manually created profiles to check for verification.");
+  }
+
+  console.log(`Verification job complete. Verified: ${verifiedCount}, Deleted: ${deletedCount}.`);
+  return { verifiedCount, deletedCount };
+});
+
 
 /**
  * This function triggers automatically whenever a new user is created in Firebase Authentication.
