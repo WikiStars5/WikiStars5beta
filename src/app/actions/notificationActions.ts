@@ -2,14 +2,25 @@
 "use server";
 
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, query, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { auth } from '@/lib/firebase';
 
 export async function markNotificationAsRead(notificationId: string): Promise<{ success: boolean; message?: string }> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return { success: false, message: 'Usuario no autenticado.' };
   if (!notificationId) return { success: false, message: 'ID de notificación no proporcionado.' };
   
   try {
     const notificationRef = doc(db, 'notifications', notificationId);
-    await updateDoc(notificationRef, { isRead: true });
+    
+    // Al actualizar, incluimos el userId para que las reglas de seguridad puedan validarlo.
+    // La regla `allow update: if request.auth.uid == request.resource.data.userId;`
+    // ahora tendrá acceso a este campo en `request.resource.data`.
+    await updateDoc(notificationRef, { 
+      isRead: true,
+      userId: currentUser.uid 
+    });
+
     return { success: true };
   } catch (error: any) {
     console.error('Error marcando notificación como leída:', error);
@@ -31,7 +42,11 @@ export async function markAllNotificationsAsRead(userId: string): Promise<{ succ
 
     const batch = writeBatch(db);
     querySnapshot.forEach(doc => {
-      batch.update(doc.ref, { isRead: true });
+      // También incluimos el userId en la actualización por lotes.
+      batch.update(doc.ref, { 
+        isRead: true,
+        userId: userId
+      });
     });
 
     await batch.commit();

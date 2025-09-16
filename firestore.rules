@@ -1,49 +1,42 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Regla de Perfiles de Usuario
+    // Permite la lectura de perfiles de usuario, figuras y hashtags por cualquier persona.
     match /users/{userId} {
-      // Cualquiera puede leer perfiles (para avatares, nombres, etc.)
-      allow read: if true;
-      // Solo el dueño del perfil puede actualizar su propia información.
-      allow write: if request.auth.uid == userId;
+      allow read, create; 
+      allow update: if request.auth.uid == userId;
     }
-
-    // Regla de Figuras Públicas
     match /figures/{figureId} {
-      // Cualquiera puede leer la información de las figuras.
-      allow read: if true;
-      // La escritura (crear, editar) en figuras ahora se maneja principalmente a través de Cloud Functions
-      // seguras que verifican el rol de administrador. Esta regla es un respaldo.
-      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-
-      // Cualquiera puede leer y escribir en las subcolecciones (votos, comentarios, etc.)
-      // Las transacciones y la lógica del cliente se encargan de la consistencia.
-      match /{allPaths=**} {
-        allow read, write: if true;
-      }
+      allow read, list;
+      allow write: if request.auth != null && request.auth.token.role == 'admin';
+    }
+     match /figures/{figureId}/{subcollection}/{documentId} {
+      allow read, list;
+      allow write: if request.auth != null;
+    }
+    match /hashtags/{hashtagId} {
+      allow read, list;
+       allow write: if request.auth != null; // Allow logged-in users to create hashtags
     }
     
-    // Reglas para Hashtags
-    match /hashtags/{hashtag} {
-      // Cualquiera puede leer la lista de hashtags.
-      allow read: if true;
-      // La escritura se maneja desde el backend (al crear/actualizar figuras).
-      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    // Reglas para Calificaciones de Usuarios (para evitar duplicados)
-    match /userRatings/{ratingId} {
-        allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-    }
-
     // Reglas para Notificaciones
     match /notifications/{notificationId} {
-      // Un usuario solo puede leer y escribir (actualizar) sus propias notificaciones.
-      allow read, update: if request.auth != null && request.auth.uid == resource.data.userId;
-      // Nadie puede crear o borrar notificaciones directamente desde el cliente,
-      // esto se maneja desde el servidor (Cloud Functions) para seguridad.
-      allow create, delete: if false;
+      // Las funciones de backend pueden crear notificaciones.
+      // Los usuarios autenticados pueden leer sus propias notificaciones.
+      allow read: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null;
+
+      // Un usuario solo puede actualizar un documento si el `userId` del documento
+      // coincide con su propio ID de autenticación.
+      // Usamos request.resource.data en lugar de resource.data para mayor robustez.
+      allow update: if request.auth.uid == request.resource.data.userId;
+    }
+
+    // Reglas para Calificaciones de Estrellas (userRatings)
+    match /userRatings/{ratingId} {
+      // Un usuario puede crear, leer o actualizar su propia calificación
+      allow read, write: if request.auth.uid == request.resource.data.userId;
     }
   }
 }
