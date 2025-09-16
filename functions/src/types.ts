@@ -1,11 +1,12 @@
 
+
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
+export type CreationMethod = 'manual' | 'wikipedia';
 
 export interface Figure {
   id: string;
   name: string;
-  nameLower: string;
   photoUrl: string;
   description?: string;
   
@@ -15,16 +16,19 @@ export interface Figure {
   gender?: string;
   category?: string;
   sportSubcategory?: string; 
-  tags?: string[]; // New field for tags
+  hashtags?: string[];
+  hashtagsLower?: string[];
 
   alias?: string;
   species?: string; 
   firstAppearance?: string; 
   birthDateOrAge?: string; 
+  age?: number;
   birthPlace?: string;
   statusLiveOrDead?: string; 
   maritalStatus?: string; 
   height?: string;
+  heightCm?: number;
   weight?: string; 
   hairColor?: string;
   eyeColor?: string; 
@@ -46,6 +50,10 @@ export interface Figure {
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
+
+  creationMethod?: CreationMethod;
+  manualVerificationExpiresAt?: any; // Using 'any' for Timestamp compatibility in functions
+  isCommunityVerified?: boolean;
 }
 
 export interface UserProfile {

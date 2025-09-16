@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -10,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Sparkles, Loader2, CalendarIcon, X, Plus } from 'lucide-react';
-import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, writeBatch, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag } from '@/lib/types';
 import slugify from 'slugify'; 
@@ -22,7 +21,7 @@ import { CountryCombobox } from '../shared/CountryCombobox';
 import { countryCodeToNameMap } from '@/config/countries';
 import { DatePicker } from '../shared/DatePicker';
 import { Badge } from '../ui/badge';
-import { differenceInYears } from 'date-fns';
+import { differenceInYears, addDays } from 'date-fns';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import Image from 'next/image';
 import { correctMalformedUrl } from '@/lib/utils';
@@ -75,6 +74,7 @@ const generateHashtagKeywords = (hashtags: string[]): string[] => {
 
 interface FigureFormProps {
   initialData?: Figure;
+  mode?: 'admin' | 'manual';
 }
 
 const MEDIA_SUBCATEGORIES: { value: MediaSubcategory, label: string }[] = [
@@ -108,7 +108,7 @@ const MARITAL_STATUS_OPTIONS = [
     { value: 'Conviviente / En unión de hecho', label: 'Conviviente / En unión de hecho' },
 ];
 
-const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
+const FigureForm: React.FC<FigureFormProps> = ({ initialData, mode = 'admin' }) => {
   const router = useRouter();
   const [name, setName] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
@@ -370,10 +370,21 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       if(profileType === 'media') {
         delete (attitudeCounts as Partial<typeof attitudeCounts>).simp;
       }
+      
+      let manualCreationData: Partial<Figure> = {};
+      if (mode === 'manual' && !initialData) {
+        const expirationDate = addDays(new Date(), 5);
+        manualCreationData = {
+          creationMethod: 'manual',
+          manualVerificationExpiresAt: Timestamp.fromDate(expirationDate),
+          isCommunityVerified: false,
+        };
+      }
 
       const figureData: Partial<Figure> & { createdAt?: any } = {
         ...baseData,
         ...profileSpecificData,
+        ...manualCreationData,
         ...(initialData ? {} : {
             perceptionCounts: { ...defaultPerceptionCounts },
             attitudeCounts: attitudeCounts,
@@ -407,10 +418,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setSuccess(`Perfil "${name}" guardado exitosamente.`);
       
       setTimeout(() => {
-        if (!initialData?.id) { 
-          router.push(`/admin/figures`); 
-        } else { 
-          router.push('/admin/figures');
+        if (mode === 'manual') {
+            router.push(`/figures/${figureDocId}`);
+        } else {
+            router.push(`/admin/figures`);
         }
         router.refresh(); 
       }, 1500);
@@ -673,12 +684,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           </div>
       </div>
       
-      <div className="mt-6 border-t pt-4 border-border">
-        <div className="flex items-center space-x-2">
-          <Checkbox id="isFeatured" checked={isFeatured} onCheckedChange={(checked) => setIsFeatured(checked as boolean)} disabled={isSaving} />
-          <Label htmlFor="isFeatured">Marcar como Perfil Destacado</Label>
+      {mode === 'admin' && (
+        <div className="mt-6 border-t pt-4 border-border">
+          <div className="flex items-center space-x-2">
+            <Checkbox id="isFeatured" checked={isFeatured} onCheckedChange={(checked) => setIsFeatured(checked as boolean)} disabled={isSaving} />
+            <Label htmlFor="isFeatured">Marcar como Perfil Destacado</Label>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex justify-end gap-2 mt-6">
         <Button type="submit" disabled={isSaving}>

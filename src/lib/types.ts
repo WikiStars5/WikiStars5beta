@@ -6,6 +6,7 @@ export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagra
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 export type RatingValue = 0 | 1 | 2 | 3 | 4 | 5;
 export type ProfileType = 'character' | 'media';
+export type CreationMethod = 'manual' | 'wikipedia';
 
 // Define specific media sub-categories
 export type MediaSubcategory = 
@@ -108,6 +109,11 @@ export interface Figure {
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
+
+  // --- Manual Creation Fields ---
+  creationMethod?: CreationMethod;
+  manualVerificationExpiresAt?: Timestamp;
+  isCommunityVerified?: boolean;
 }
 
 

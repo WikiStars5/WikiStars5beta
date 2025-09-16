@@ -8,9 +8,12 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
+import { onSchedule } from "firebase-functions/v2/scheduler";
+
 
 import type { UserProfile, Figure } from "./types";
 import { COUNTRIES } from "./countries";
+import type { DocumentData, Query } from "firebase-admin/firestore";
 
 // Centralized Admin UID for security checks.
 const ADMIN_UID = '252qq3sz2fWwHjQTF9JQWG65aiC2';
@@ -21,40 +24,90 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-const auth = admin.auth();
+
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
+
+// This function runs automatically every 24 hours.
+export const communityVerificationJob = onSchedule("every 24 hours", async (event) => {
+  console.log("Running community verification job...");
+  const now = admin.firestore.Timestamp.now();
+  
+  const figuresRef = db.collection("figures");
+  const query = figuresRef.where("creationMethod", "==", "manual").where("isCommunityVerified", "==", false);
+  
+  const snapshot = await query.get();
+  
+  if (snapshot.empty) {
+    console.log("No manually created profiles to verify.");
+    return null;
+  }
+
+  const batch = db.batch();
+  let verifiedCount = 0;
+  let deletedCount = 0;
+
+  for (const doc of snapshot.docs) {
+    const figure = doc.data() as Figure;
+    
+    const attitudeCounts = figure.attitudeCounts || {};
+    const totalVotes = Object.values(attitudeCounts).reduce((sum, count) => sum + count, 0);
+
+    // Condition 1: Profile reached the vote threshold
+    if (totalVotes >= 1000) {
+      console.log(`Profile ${figure.name} (${doc.id}) reached 1000 votes. Marking as verified.`);
+      batch.update(doc.ref, { isCommunityVerified: true });
+      verifiedCount++;
+    } 
+    // Condition 2: Profile's verification period has expired
+    else if (figure.manualVerificationExpiresAt && now > figure.manualVerificationExpiresAt) {
+       console.log(`Profile ${figure.name} (${doc.id}) expired without enough votes. Deleting.`);
+       batch.delete(doc.ref);
+       deletedCount++;
+    }
+  }
+
+  await batch.commit();
+
+  console.log(`Verification job complete. Verified: ${verifiedCount}, Deleted: ${deletedCount}.`);
+  return { verifiedCount, deletedCount };
+});
+
 
 /**
  * This function triggers automatically whenever a new user is created in Firebase Authentication.
  * Its purpose is to create a corresponding user profile document in Firestore.
  */
 export const createProfileOnRegister = onUserCreate(async (event) => {
-  const user = event.data; // The user record created in Firebase Auth
+  const user = event.data;
   const { uid, email, displayName, photoURL } = user;
-  const isAnonymous = !email; // A simple check for anonymous users
+  
+  // A more reliable way to check for anonymity
+  const isAnonymous = user.providerData.length === 0;
+
+  // Prioritize displayName (from Google), then email, then a generic one.
+  const initialUsername = displayName || (email ? email.split('@')[0] : `invitado_${uid.substring(0, 5)}`);
 
   const userProfile: UserProfile = {
     uid: uid,
     email: email || null,
-    username: isAnonymous ? "Invitado" : (displayName || email?.split('@')[0] || `user_${uid.substring(0, 5)}`),
+    username: initialUsername,
     country: '',
     countryCode: '',
     gender: '',
-    photoURL: photoURL || null, // Ensure photoURL is always defined as string or null
-    role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role if UID matches
+    photoURL: photoURL || null,
+    role: uid === ADMIN_UID ? 'admin' : 'user', // Assign admin role only if UID matches
     createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(), // Set initial login time
+    lastLoginAt: new Date().toISOString(),
     achievements: [],
     isAnonymous: isAnonymous,
   };
 
   try {
-    // Set the document in the 'users' collection with the user's UID as the document ID.
     await db.collection('users').doc(uid).set(userProfile);
-    console.log(`Successfully created profile for user: ${uid}`);
+    console.log(`Successfully created profile for user: ${uid} (Anonymous: ${isAnonymous})`);
   } catch (error) {
     console.error(`Error creating user profile for ${uid}:`, error);
   }
@@ -81,153 +134,19 @@ export const updateUserProfile = onCall(async (request) => {
         country: countryName,
         countryCode: safeCountryCode,
         gender: gender || '',
-        lastLoginAt: new Date().toISOString(),
     };
 
     try {
-        await auth.updateUser(uid, { displayName: username });
         await userRef.set(updateData, { merge: true });
-        
-        return { success: true, message: 'Profile updated successfully.' };
+        return { success: true, message: 'Profile updated successfully in Firestore.' };
     } catch (error) {
-        console.error("Error updating user profile:", error);
-        throw new HttpsError('internal', 'Could not update profile.');
+        console.error("Error updating user profile in Firestore:", error);
+        throw new HttpsError('internal', 'Could not update profile in Firestore.');
     }
 });
 
-// A robust and simplified function to get all users for the admin panel.
-export const getAllUsers = onCall(async (request) => {
-    const callingUid = request.auth?.uid;
-    if (!callingUid) {
-        throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
-    }
+// All user-related functions have been removed as the authentication system
+// has been disabled per user request.
 
-    // Verify the caller is an admin by checking their custom claims or Firestore role.
-    const userDoc = await db.collection('users').doc(callingUid).get();
-    if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
-        throw new HttpsError('permission-denied', 'Only admins can call this function.');
-    }
-
-    try {
-        const listUsersResult = await auth.listUsers(1000); // Get up to 1000 users
-        const allFirestoreUsers = await db.collection('users').get();
-        const firestoreUsersMap = new Map(allFirestoreUsers.docs.map(doc => [doc.id, doc.data()]));
-        
-        const users = listUsersResult.users
-            // Filter out anonymous users which don't have an email
-            .filter(userRecord => userRecord.email)
-            .map(userRecord => {
-                const firestoreProfile = firestoreUsersMap.get(userRecord.uid);
-                return {
-                    uid: userRecord.uid,
-                    email: userRecord.email || null,
-                    username: firestoreProfile?.username || userRecord.displayName || 'N/A',
-                    photoURL: firestoreProfile?.photoURL || userRecord.photoURL || null,
-                    role: firestoreProfile?.role || 'user',
-                    country: firestoreProfile?.country || '',
-                    countryCode: firestoreProfile?.countryCode || '',
-                    gender: firestoreProfile?.gender || '',
-                    createdAt: userRecord.metadata.creationTime,
-                    lastLoginAt: userRecord.metadata.lastSignInTime,
-                    isAnonymous: false,
-                };
-            });
-
-        // Sort by creation date, newest first
-        users.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-        return { success: true, users: users };
-
-    } catch (error: any) {
-        console.error("Error fetching all users from Cloud Function:", error);
-        throw new HttpsError('internal', `An unexpected error occurred: ${error.message}`);
-    }
-});
-
-
-/**
- * Deletes a figure and all its associated subcollection data recursively.
- * This is a critical and destructive operation, now made robust.
- */
-export const deleteFigure = onCall(async (request) => {
-    // 1. Authentication and Authorization
-    const callingUid = request.auth?.uid;
-    if (!callingUid) {
-        throw new HttpsError('unauthenticated', 'You must be logged in to perform this action.');
-    }
-    const userDoc = await db.collection('users').doc(callingUid).get();
-    if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
-        throw new HttpsError('permission-denied', 'Only admins can delete figures.');
-    }
-
-    // 2. Input Validation
-    const { figureId } = request.data;
-    if (!figureId || typeof figureId !== 'string') {
-        throw new HttpsError('invalid-argument', 'A valid figureId must be provided.');
-    }
-
-    const figureRef = db.collection('figures').doc(figureId);
-
-    try {
-        console.log(`Starting recursive deletion for figure ${figureId}`);
-
-        // Firestore's `delete` method with the `recursive` option handles everything.
-        await db.recursiveDelete(figureRef);
-        
-        console.log(`Successfully deleted figure document ${figureId} and all subcollections.`);
-
-        return { success: true, message: `Successfully deleted figure ${figureId} and all associated data.` };
-
-    } catch (error: any) {
-        console.error(`Error deleting figure ${figureId}:`, error);
-        throw new HttpsError('internal', `An error occurred while trying to delete the figure: ${error.message}`);
-    }
-});
-
-
-/**
- * Toggles the 'isFeatured' status of a figure.
- * This is a secure 'onCall' function, callable only by authenticated admins.
- */
-export const toggleFeaturedStatus = onCall(async (request) => {
-    // 1. Authentication and Authorization
-    const callingUid = request.auth?.uid;
-    if (!callingUid) {
-        throw new HttpsError('unauthenticated', 'You must be logged in to perform this action.');
-    }
-    const userDoc = await db.collection('users').doc(callingUid).get();
-    if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
-        throw new HttpsError('permission-denied', 'Only admins can perform this action.');
-    }
-
-    // 2. Input Validation
-    const { figureId } = request.data;
-    if (!figureId || typeof figureId !== 'string') {
-        throw new HttpsError('invalid-argument', 'A valid figureId must be provided.');
-    }
-
-    const figureRef = db.collection('figures').doc(figureId);
-
-    try {
-        // Use a transaction to safely read and write
-        const newStatus = await db.runTransaction(async (transaction) => {
-            const figureSnap = await transaction.get(figureRef);
-            if (!figureSnap.exists) {
-                throw new HttpsError('not-found', 'Figure not found.');
-            }
-            const currentStatus = figureSnap.data()?.isFeatured || false;
-            const updatedStatus = !currentStatus;
-            transaction.update(figureRef, { isFeatured: updatedStatus });
-            return updatedStatus;
-        });
-
-        return { success: true, newStatus, message: `Figura ${newStatus ? 'marcada como destacada' : 'desmarcada como destacada'}.` };
-    
-    } catch (error: any) {
-        console.error(`Error toggling featured status for figure ${figureId}:`, error);
-        if (error instanceof HttpsError) {
-            throw error; // Re-throw HttpsError directly
-        }
-        throw new HttpsError('internal', `An error occurred while changing the status: ${error.message}`);
-    }
-});
+// All notification and trigger logic has been removed as the associated features
+// (comments, likes) have been disabled.

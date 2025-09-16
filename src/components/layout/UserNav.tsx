@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
-import { LogOut, User, ShieldCheck, Loader2, Globe, UserPlus } from 'lucide-react';
+import { LogOut, User, ShieldCheck, Loader2, Globe, UserPlus, Pencil } from 'lucide-react';
 import { correctMalformedUrl } from "@/lib/utils";
 import { CreateWebsiteProfile } from "../admin/CreateWebsiteProfile";
 import React from "react";
@@ -93,9 +93,15 @@ export function UserNav() {
              <DialogTrigger asChild>
                 <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setIsCharacterDialogOpen(true); }}>
                   <UserPlus className="mr-2 h-4 w-4" />
-                  <span>Crear Perfil de Personaje</span>
+                  <span>Crear Perfil (Wikipedia)</span>
                 </DropdownMenuItem>
               </DialogTrigger>
+             <DropdownMenuItem asChild>
+                <Link href="/figures/new-manual">
+                  <Pencil className="mr-2 h-4 w-4" />
+                  <span>Crear Perfil (Manual)</span>
+                </Link>
+              </DropdownMenuItem>
              <DialogTrigger asChild>
                 <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setIsWebsiteDialogOpen(true); }}>
                   <Globe className="mr-2 h-4 w-4" />
@@ -138,7 +144,7 @@ export function UserNav() {
       <Dialog open={isCharacterDialogOpen} onOpenChange={setIsCharacterDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Crear Perfil de Personaje</DialogTitle>
+            <DialogTitle>Crear Perfil de Personaje (vía Wikipedia)</DialogTitle>
             <DialogDescription>
               Busca una figura pública en Wikipedia para crear su perfil. Te recomendamos poner el nombre tal y como está en Wikipedia.
             </DialogDescription>
