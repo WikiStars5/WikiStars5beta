@@ -76,9 +76,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
   }, [figure.id]);
 
   React.useEffect(() => {
-    // When videos or viewMode change, tell the TikTok script to re-render.
     if (videos.length > 0 && typeof window.tiktok?.embed?.render === 'function') {
-      // A small delay can help ensure the DOM is ready for the script.
       setTimeout(() => window.tiktok.embed.render(), 100);
     }
   }, [videos, viewMode]);
@@ -235,10 +233,9 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                             viewMode === 'grid' ? 'aspect-[9/16]' : 'h-[80vh]'
                         )}>
                            <blockquote 
-                                className="tiktok-embed" 
+                                className="tiktok-embed w-full h-full" 
                                 cite={video.url} 
                                 data-video-id={videoId || undefined}
-                                style={{width: '100%', height: '100%'}}
                             > 
                             </blockquote>
                         </div>
