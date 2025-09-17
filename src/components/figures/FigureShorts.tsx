@@ -227,12 +227,13 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                const reportCount = short.reportedBy?.length || 0;
                const hasReachedThreshold = reportCount >= REPORT_THRESHOLD;
                const videoUrl = `https://www.youtube.com/shorts/${short.videoId}`;
+               const embedUrl = `https://www.youtube.com/embed/${short.videoId}?showinfo=0&modestbranding=1&controls=1&rel=0`;
                
                return (
                   <div key={index} className="group flex flex-col gap-2">
                     <div className="relative w-full overflow-hidden rounded-lg border-2 border-transparent group-hover:border-primary transition-colors" style={{aspectRatio: '9/16'}}>
                         <iframe
-                            src={`https://www.youtube.com/embed/${short.videoId}?showinfo=0&modestbranding=1&controls=1`}
+                            src={embedUrl}
                             title={short.title}
                             frameBorder="0"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
