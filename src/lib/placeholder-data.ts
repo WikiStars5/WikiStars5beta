@@ -32,21 +32,6 @@ const defaultRatingCounts: Record<string, number> = {
 export const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data() as DocumentData;
   const createdAtTimestamp = data.createdAt;
-  
-  // Safely convert Timestamps to strings for client-side use
-  const youtubeShorts = (data.youtubeShorts || []).map((short: any) => {
-    if (short.submittedAt && typeof short.submittedAt.toDate === 'function') {
-      return { ...short, submittedAt: short.submittedAt.toDate().toISOString() };
-    }
-    return short;
-  });
-
-  const tiktokVideos = (data.tiktokVideos || []).map((video: any) => {
-    if (video.submittedAt && typeof video.submittedAt.toDate === 'function') {
-      return { ...video, submittedAt: video.submittedAt.toDate().toISOString() };
-    }
-    return video;
-  });
 
   const figureData: Figure = {
     id: docSnap.id,
@@ -81,8 +66,6 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     distinctiveFeatures: data.distinctiveFeatures || "",
     socialLinks: data.socialLinks || {},
     relatedFigureIds: data.relatedFigureIds || [],
-    youtubeShorts: youtubeShorts,
-    tiktokVideos: tiktokVideos,
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
     ratingCounts: data.ratingCounts || { ...defaultRatingCounts },
@@ -331,7 +314,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
           name, profileType, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, age, birthPlace, statusLiveOrDead, maritalStatus,
           height, heightCm, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
-          category, sportSubcategory, relatedFigureIds, socialLinks, hashtags, hashtagsLower: hashtagsLowerInput, youtubeShorts, tiktokVideos, ...rest
+          category, sportSubcategory, relatedFigureIds, socialLinks, hashtags, hashtagsLower: hashtagsLowerInput, ...rest
       } = figure;
 
       const updatePayload: { [key: string]: any } = {};
@@ -380,8 +363,6 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
         }
       }
 
-      if (youtubeShorts !== undefined) updatePayload.youtubeShorts = youtubeShorts;
-      if (tiktokVideos !== undefined) updatePayload.tiktokVideos = tiktokVideos;
       if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
       if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
       if (ratingCounts) updatePayload.ratingCounts = ratingCounts;
@@ -1127,5 +1108,3 @@ export async function submitStarRating(
         }
     });
 }
-
-    

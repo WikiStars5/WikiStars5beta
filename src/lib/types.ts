@@ -29,6 +29,7 @@ export interface Hashtag {
 }
 
 export interface YoutubeShort {
+  id: string; // Document ID from Firestore
   title: string;
   videoId: string;
   submittedBy: string; // User ID of the submitter
@@ -37,6 +38,7 @@ export interface YoutubeShort {
 }
   
 export interface TiktokVideo {
+  id: string; // Document ID from Firestore
   title: string;
   url: string;
   submittedBy: string;
@@ -73,8 +75,6 @@ export interface Figure {
   relatedFigureIds?: string[];
   nationality?: string; // Moved to shared
   nationalityCode?: string; // Moved to shared
-  youtubeShorts?: YoutubeShort[];
-  tiktokVideos?: TiktokVideo[];
   
   // --- Character-specific fields ---
   category?: string;

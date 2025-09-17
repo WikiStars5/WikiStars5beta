@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -11,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction, onSnapshot, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -51,6 +52,8 @@ interface FigureShortsProps {
 export function FigureShorts({ figure }: FigureShortsProps) {
   const { firebaseUser, isAdmin, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
+  const [shorts, setShorts] = React.useState<YoutubeShort[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [isSuggestDialogOpen, setIsSuggestDialogOpen] = React.useState(false);
   const [newShortUrl, setNewShortUrl] = React.useState('');
   const [newShortTitle, setNewShortTitle] = React.useState('');
@@ -58,7 +61,20 @@ export function FigureShorts({ figure }: FigureShortsProps) {
   const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
   const [unavailableVideos, setUnavailableVideos] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
+  const feedContainerRef = React.useRef<HTMLDivElement>(null);
 
+  React.useEffect(() => {
+    const shortsRef = collection(db, `figures/${figure.id}/youtubeShorts`);
+    const unsubscribe = onSnapshot(shortsRef, (snapshot) => {
+      const fetchedShorts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as YoutubeShort));
+      setShorts(fetchedShorts);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching shorts:", error);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, [figure.id]);
 
   const handleSuggestShort = async () => {
     if (!newShortTitle.trim() || !newShortUrl.trim() || !firebaseUser) {
@@ -75,12 +91,8 @@ export function FigureShorts({ figure }: FigureShortsProps) {
     setIsSubmitting(true);
 
     try {
-        const figureRef = doc(db, 'figures', figure.id);
-        const figureSnap = await getDoc(figureRef);
-        if (!figureSnap.exists()) throw new Error("Figura no encontrada");
-        
-        const currentShorts: YoutubeShort[] = figureSnap.data().youtubeShorts || [];
-        const isDuplicate = currentShorts.some(s => s.videoId === videoId);
+        const shortsRef = collection(db, `figures/${figure.id}/youtubeShorts`);
+        const isDuplicate = shorts.some(s => s.videoId === videoId);
 
         if(isDuplicate) {
             toast({ title: "Video Duplicado", description: "Este video ya ha sido añadido a este perfil.", variant: "default" });
@@ -88,17 +100,14 @@ export function FigureShorts({ figure }: FigureShortsProps) {
             return;
         }
         
-        const newShort: Omit<YoutubeShort, 'submittedAt'> & { submittedAt: Timestamp } = {
+        const newShortData = {
             title: newShortTitle.trim(),
             videoId: videoId,
             submittedBy: firebaseUser.uid,
-            submittedAt: Timestamp.now(),
+            submittedAt: serverTimestamp(),
             reportedBy: [],
         };
-
-        await updateDoc(figureRef, {
-            youtubeShorts: arrayUnion(newShort)
-        });
+        await addDoc(shortsRef, newShortData);
 
         toast({
             title: "¡Video añadido!",
@@ -117,24 +126,19 @@ export function FigureShorts({ figure }: FigureShortsProps) {
     }
   };
   
-  const handleReportShort = async (videoId: string) => {
-    if (!firebaseUser || isProcessing === videoId) return;
+  const handleReportShort = async (shortId: string) => {
+    if (!firebaseUser || isProcessing === shortId) return;
 
-    setIsProcessing(videoId);
+    setIsProcessing(shortId);
     
     try {
-        const figureRef = doc(db, 'figures', figure.id);
+        const shortDocRef = doc(db, `figures/${figure.id}/youtubeShorts`, shortId);
         
         await runTransaction(db, async (transaction) => {
-            const figureSnap = await transaction.get(figureRef);
-            if (!figureSnap.exists()) throw new Error("Figure not found");
+            const shortSnap = await transaction.get(shortDocRef);
+            if (!shortSnap.exists()) throw new Error("Short not found");
 
-            const currentShorts: YoutubeShort[] = figureSnap.data().youtubeShorts || [];
-            const shortIndex = currentShorts.findIndex(s => s.videoId === videoId);
-            
-            if (shortIndex === -1) throw new Error("Short not found");
-            
-            const shortToUpdate = currentShorts[shortIndex];
+            const shortToUpdate = shortSnap.data() as YoutubeShort;
             
             if (shortToUpdate.reportedBy?.includes(firebaseUser.uid)) {
                 toast({ title: "Ya has reportado este video", variant: "default" });
@@ -142,12 +146,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
             }
 
             const updatedReportedBy = [...(shortToUpdate.reportedBy || []), firebaseUser.uid];
-            const updatedShort = { ...shortToUpdate, reportedBy: updatedReportedBy };
-            
-            const updatedShorts = [...currentShorts];
-            updatedShorts[shortIndex] = updatedShort;
-
-            transaction.update(figureRef, { youtubeShorts: updatedShorts });
+            transaction.update(shortDocRef, { reportedBy: updatedReportedBy });
             toast({ title: "Reporte enviado", description: "Gracias por ayudar a mantener la comunidad." });
         });
 
@@ -159,21 +158,14 @@ export function FigureShorts({ figure }: FigureShortsProps) {
     }
   };
 
-  const handleDeleteShort = async (videoId: string) => {
-    if (isProcessing === videoId) return;
-    setIsProcessing(videoId);
+  const handleDeleteShort = async (shortId: string) => {
+    if (isProcessing === shortId) return;
+    setIsProcessing(shortId);
 
     try {
-        const figureRef = doc(db, 'figures', figure.id);
-        const figureSnap = await getDoc(figureRef);
-        if (!figureSnap.exists()) throw new Error("Figure not found");
-        
-        const currentShorts: YoutubeShort[] = figureSnap.data().youtubeShorts || [];
-        const updatedShorts = currentShorts.filter(s => s.videoId !== videoId);
-        
-        await updateDoc(figureRef, { youtubeShorts: updatedShorts });
+        const shortDocRef = doc(db, `figures/${figure.id}/youtubeShorts`, shortId);
+        await deleteDoc(shortDocRef);
         toast({ title: "Video Eliminado", description: "El video ha sido eliminado." });
-
     } catch (error: any) {
         console.error("Error deleting short:", error);
         toast({ title: "Error", description: `No se pudo eliminar el video. ${error.message}`, variant: "destructive" });
@@ -246,13 +238,20 @@ export function FigureShorts({ figure }: FigureShortsProps) {
           </div>
         </CardHeader>
         <CardContent>
-          {figure.youtubeShorts && figure.youtubeShorts.length > 0 ? (
-            <div className={cn(
+          {isLoading ? (
+             <div className="flex justify-center items-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             </div>
+          ) : shorts.length > 0 ? (
+            <div
+              ref={feedContainerRef}
+              className={cn(
+                "no-scrollbar",
                 viewMode === 'grid' 
                 ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-                : "w-full max-w-md mx-auto flex flex-col gap-8 no-scrollbar"
+                : "w-full max-w-md mx-auto flex flex-col gap-8"
             )}>
-              {figure.youtubeShorts.map((short) => {
+              {shorts.map((short) => {
                 const hasReported = firebaseUser && short.reportedBy?.includes(firebaseUser.uid);
                 const reportCount = short.reportedBy?.length || 0;
                 const hasReachedThreshold = reportCount >= REPORT_THRESHOLD;
@@ -261,7 +260,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                 const isUnavailable = unavailableVideos.has(short.videoId);
 
                 return (
-                    <div key={short.videoId} className={cn("group flex flex-col", viewMode === 'feed' && "w-full h-[80vh]")}>
+                    <div key={short.id} className={cn("group flex flex-col", viewMode === 'feed' && "w-full h-[80vh]")}>
                         <div className={cn(
                             "relative w-full flex-grow overflow-hidden rounded-lg bg-black",
                             viewMode === 'grid' ? 'aspect-video' : ''
@@ -299,8 +298,8 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                       {isAdmin ? (
                           <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === short.videoId}>
-                                    {isProcessing === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
+                                <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === short.id}>
+                                    {isProcessing === short.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
                                     Eliminar (Admin)
                                   </Button>
                               </AlertDialogTrigger>
@@ -313,15 +312,15 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                    <AlertDialogAction onClick={() => handleDeleteShort(short.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
                                   </AlertDialogFooter>
                               </AlertDialogContent>
                           </AlertDialog>
                       ) : hasReachedThreshold ? (
                           <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === short.videoId}>
-                                    {isProcessing === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
+                                <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === short.id}>
+                                    {isProcessing === short.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
                                     Eliminar Video
                                   </Button>
                               </AlertDialogTrigger>
@@ -334,7 +333,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                    <AlertDialogAction onClick={() => handleDeleteShort(short.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
                                   </AlertDialogFooter>
                               </AlertDialogContent>
                           </AlertDialog>
@@ -345,9 +344,9 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                                       variant={hasReported ? "secondary" : "destructive"} 
                                       size="sm" 
                                       className="w-full text-xs" 
-                                      disabled={isAuthLoading || isProcessing === short.videoId || hasReported}
+                                      disabled={isAuthLoading || isProcessing === short.id || hasReported}
                                   >
-                                      {isProcessing === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : hasReported ? <Check className="mr-2 h-3 w-3"/> : <Flag className="mr-2 h-3 w-3" />}
+                                      {isProcessing === short.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : hasReported ? <Check className="mr-2 h-3 w-3"/> : <Flag className="mr-2 h-3 w-3" />}
                                       {hasReported ? "Reportado" : "Reportar"}
                                       {!hasReported && ` (${reportCount}/${REPORT_THRESHOLD})`}
                                   </Button>
@@ -361,7 +360,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleReportShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Reportar</AlertDialogAction>
+                                  <AlertDialogAction onClick={() => handleReportShort(short.id)} className="bg-destructive hover:bg-destructive/90">Reportar</AlertDialogAction>
                                   </AlertDialogFooter>
                               </AlertDialogContent>
                           </AlertDialog>

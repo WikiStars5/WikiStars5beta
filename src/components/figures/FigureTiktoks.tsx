@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -11,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction, onSnapshot, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -39,6 +40,8 @@ interface FigureTiktoksProps {
 export function FigureTiktoks({ figure }: FigureTiktoksProps) {
   const { firebaseUser, isAdmin, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
+  const [videos, setVideos] = React.useState<TiktokVideo[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [isSuggestDialogOpen, setIsSuggestDialogOpen] = React.useState(false);
   const [newVideoUrl, setNewVideoUrl] = React.useState('');
   const [newVideoTitle, setNewVideoTitle] = React.useState('');
@@ -53,10 +56,21 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
     script.async = true;
     document.body.appendChild(script);
 
+    const tiktoksRef = collection(db, `figures/${figure.id}/tiktokVideos`);
+    const unsubscribe = onSnapshot(tiktoksRef, (snapshot) => {
+        const fetchedVideos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TiktokVideo));
+        setVideos(fetchedVideos);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching tiktoks:", error);
+        setIsLoading(false);
+    });
+
     return () => {
         document.body.removeChild(script);
+        unsubscribe();
     }
-  }, []);
+  }, [figure.id]);
 
   const handleSuggestVideo = async () => {
     if (!newVideoTitle.trim() || !newVideoUrl.trim() || !firebaseUser) {
@@ -73,12 +87,8 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
     setIsSubmitting(true);
 
     try {
-        const figureRef = doc(db, 'figures', figure.id);
-        const figureSnap = await getDoc(figureRef);
-        if (!figureSnap.exists()) throw new Error("Figura no encontrada");
-        
-        const currentVideos: TiktokVideo[] = figureSnap.data().tiktokVideos || [];
-        const isDuplicate = currentVideos.some(v => getTikTokVideoIdFromUrl(v.url) === videoId);
+        const videosRef = collection(db, `figures/${figure.id}/tiktokVideos`);
+        const isDuplicate = videos.some(v => getTikTokVideoIdFromUrl(v.url) === videoId);
 
         if(isDuplicate) {
             toast({ title: "Video Duplicado", description: "Este video ya ha sido añadido a este perfil.", variant: "default" });
@@ -86,17 +96,14 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
             return;
         }
         
-        const newVideo: Omit<TiktokVideo, 'submittedAt'> & { submittedAt: Timestamp } = {
+        const newVideoData = {
             title: newVideoTitle.trim(),
             url: newVideoUrl.trim(),
             submittedBy: firebaseUser.uid,
-            submittedAt: Timestamp.now(),
+            submittedAt: serverTimestamp(),
             reportedBy: [],
         };
-
-        await updateDoc(figureRef, {
-            tiktokVideos: arrayUnion(newVideo)
-        });
+        await addDoc(videosRef, newVideoData);
 
         toast({
             title: "¡TikTok añadido!",
@@ -115,21 +122,14 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
     }
   };
   
-  const handleDeleteVideo = async (videoUrl: string) => {
-    if (isProcessing === videoUrl) return;
-    setIsProcessing(videoUrl);
+  const handleDeleteVideo = async (videoId: string) => {
+    if (isProcessing === videoId) return;
+    setIsProcessing(videoId);
 
     try {
-        const figureRef = doc(db, 'figures', figure.id);
-        const figureSnap = await getDoc(figureRef);
-        if (!figureSnap.exists()) throw new Error("Figure not found");
-        
-        const currentVideos: TiktokVideo[] = figureSnap.data().tiktokVideos || [];
-        const updatedVideos = currentVideos.filter(v => v.url !== videoUrl);
-        
-        await updateDoc(figureRef, { tiktokVideos: updatedVideos });
+        const videoDocRef = doc(db, `figures/${figure.id}/tiktokVideos`, videoId);
+        await deleteDoc(videoDocRef);
         toast({ title: "Video Eliminado", description: "El video ha sido eliminado." });
-
     } catch (error: any) {
         console.error("Error deleting video:", error);
         toast({ title: "Error", description: `No se pudo eliminar el video. ${error.message}`, variant: "destructive" });
@@ -140,20 +140,6 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
   
   const toggleViewMode = () => {
     setViewMode(prev => prev === 'grid' ? 'feed' : 'grid');
-  };
-
-  const handleWheel = (e: React.WheelEvent) => {
-    if (feedContainerRef.current) {
-      // Prevent default to stop page scroll, but allow iframe scroll
-      if (e.target !== feedContainerRef.current) {
-        return;
-      }
-      e.preventDefault();
-      feedContainerRef.current.scrollBy({
-        top: e.deltaY,
-        behavior: 'smooth'
-      });
-    }
   };
 
   return (
@@ -216,19 +202,23 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
           </div>
         </CardHeader>
         <CardContent>
-          {figure.tiktokVideos && figure.tiktokVideos.length > 0 ? (
+          {isLoading ? (
+             <div className="flex justify-center items-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             </div>
+          ) : videos.length > 0 ? (
             <div
               ref={feedContainerRef}
-              onWheel={viewMode === 'feed' ? handleWheel : undefined}
               className={cn(
+                "no-scrollbar",
                 viewMode === 'grid' 
                 ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-                : "w-full max-w-md mx-auto flex flex-col gap-8 no-scrollbar"
+                : "w-full max-w-md mx-auto flex flex-col gap-8"
             )}>
-              {figure.tiktokVideos.map((video) => {
+              {videos.map((video) => {
                 const videoId = getTikTokVideoIdFromUrl(video.url);
                 return (
-                    <div key={video.url} className={cn("group flex flex-col", viewMode === 'feed' && "w-full h-[80vh]")}>
+                    <div key={video.id} className={cn("group flex flex-col", viewMode === 'feed' && "w-full h-[80vh]")}>
                         <div className={cn("relative w-full flex-grow overflow-hidden rounded-lg bg-black", viewMode === 'grid' ? 'aspect-[9/16]' : '')}>
                            <blockquote 
                                 className="tiktok-embed" 
@@ -251,8 +241,8 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                         {isAdmin && (
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === video.url}>
-                                      {isProcessing === video.url ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
+                                  <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === video.id}>
+                                      {isProcessing === video.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
                                       Eliminar (Admin)
                                     </Button>
                                 </AlertDialogTrigger>
@@ -265,7 +255,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => handleDeleteVideo(video.url)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                      <AlertDialogAction onClick={() => handleDeleteVideo(video.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
