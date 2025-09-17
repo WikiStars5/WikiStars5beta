@@ -18,6 +18,17 @@ import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
+declare global {
+  interface Window {
+    tiktok: {
+      embed: {
+        render: () => void;
+      };
+    };
+  }
+}
+
+
 const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2859 3333" {...props} shapeRendering="geometricPrecision" textRendering="geometricPrecision" imageRendering="optimizeQuality" fillRule="evenodd" clipRule="evenodd">
         <path d="M2081 0c55 473 319 755 778 785v532c-266 26-499-61-770-225v995c0 1264-1378 1659-1932 753-356-583-138-1606 1004-1647v561c-87 14-180 36-265 65-254 86-458 249-458 522 0 314 252 566 566 566 314 0 566-252 566-566v-1040h550v-550h-550z" fill="currentColor"/>
@@ -51,11 +62,6 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
   const feedContainerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    const script = document.createElement('script');
-    script.src = "https://www.tiktok.com/embed.js";
-    script.async = true;
-    document.body.appendChild(script);
-
     const tiktoksRef = collection(db, `figures/${figure.id}/tiktokVideos`);
     const unsubscribe = onSnapshot(tiktoksRef, (snapshot) => {
         const fetchedVideos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TiktokVideo));
@@ -66,11 +72,16 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
         setIsLoading(false);
     });
 
-    return () => {
-        document.body.removeChild(script);
-        unsubscribe();
-    }
+    return () => unsubscribe();
   }, [figure.id]);
+
+  React.useEffect(() => {
+    // When videos or viewMode change, tell the TikTok script to re-render.
+    if (videos.length > 0 && typeof window.tiktok?.embed?.render === 'function') {
+      // A small delay can help ensure the DOM is ready for the script.
+      setTimeout(() => window.tiktok.embed.render(), 100);
+    }
+  }, [videos, viewMode]);
 
   const handleSuggestVideo = async () => {
     if (!newVideoTitle.trim() || !newVideoUrl.trim() || !firebaseUser) {
@@ -218,7 +229,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
               {videos.map((video) => {
                 const videoId = getTikTokVideoIdFromUrl(video.url);
                 return (
-                    <div key={video.id} className={cn("group flex flex-col", viewMode === 'feed' && "w-full max-w-md mx-auto")}>
+                    <div key={video.id} className={cn("group flex flex-col", viewMode === 'feed' && "w-full max-w-sm mx-auto")}>
                         <div className={cn(
                             "relative w-full flex-grow overflow-hidden rounded-lg bg-black",
                             viewMode === 'grid' ? 'aspect-[9/16]' : 'h-[80vh]'
@@ -226,7 +237,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                            <blockquote 
                                 className="tiktok-embed" 
                                 cite={video.url} 
-                                data-video-id={videoId}
+                                data-video-id={videoId || undefined}
                                 style={{width: '100%', height: '100%'}}
                             > 
                             </blockquote>
