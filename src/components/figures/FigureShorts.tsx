@@ -1,10 +1,9 @@
 
-
 "use client";
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff, Grid3x3, RectangleHorizontal } from 'lucide-react';
+import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff, Grid3x3, RectangleHorizontal, Maximize } from 'lucide-react';
 import type { Figure, YoutubeShort } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
@@ -16,6 +15,7 @@ import { doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction } from 'f
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { ShortsViewer } from './ShortsViewer';
 
 const getYoutubeVideoId = (url: string): string | null => {
     if (!url) return null;
@@ -57,6 +57,16 @@ export function FigureShorts({ figure }: FigureShortsProps) {
   const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
   const [unavailableVideos, setUnavailableVideos] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
+
+  const [viewerState, setViewerState] = React.useState<{isOpen: boolean; startIndex: number}>({ isOpen: false, startIndex: 0 });
+
+  const openViewer = (index: number) => {
+    setViewerState({ isOpen: true, startIndex: index });
+  };
+
+  const closeViewer = () => {
+    setViewerState({ isOpen: false, startIndex: 0 });
+  };
 
 
   const handleSuggestShort = async () => {
@@ -182,192 +192,205 @@ export function FigureShorts({ figure }: FigureShortsProps) {
   }
 
   return (
-    <Card className="border border-white/20 bg-black">
-      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-            <CardTitle className="flex items-center gap-2">
-                <Youtube />
-                Shorts
-            </CardTitle>
-            <CardDescription>
-                Videos cortos relacionados con {figure.name}.
-            </CardDescription>
-        </div>
-        <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-md bg-muted p-0.5">
-                <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('grid')} aria-label="Grid View">
-                    <Grid3x3 className="h-4 w-4"/>
-                </Button>
-                <Button variant={viewMode === 'feed' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('feed')} aria-label="Feed View">
-                    <RectangleHorizontal className="h-4 w-4"/>
-                </Button>
+    <>
+      <Card className="border border-white/20 bg-black">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+              <CardTitle className="flex items-center gap-2">
+                  <Youtube />
+                  Shorts
+              </CardTitle>
+              <CardDescription>
+                  Videos cortos relacionados con {figure.name}.
+              </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+              <div className="flex items-center rounded-md bg-muted p-0.5">
+                  <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('grid')} aria-label="Grid View">
+                      <Grid3x3 className="h-4 w-4"/>
+                  </Button>
+                  <Button variant={viewMode === 'feed' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('feed')} aria-label="Feed View">
+                      <RectangleHorizontal className="h-4 w-4"/>
+                  </Button>
+              </div>
+
+              <Dialog open={isSuggestDialogOpen} onOpenChange={setIsSuggestDialogOpen}>
+                  <Button variant="outline" size="sm" disabled={isAuthLoading} onClick={() => setIsSuggestDialogOpen(true)}>
+                      <PlusCircle className="mr-2 h-4 w-4" /> Sugerir
+                  </Button>
+                  <DialogContent>
+                      <DialogHeader>
+                          <DialogTitle>Sugerir un YouTube Short</DialogTitle>
+                          <DialogDescription>
+                              Añade un video corto relevante para {figure.name}.
+                          </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="short-title" className="text-right">Título</Label>
+                              <Input id="short-title" value={newShortTitle} onChange={(e) => setNewShortTitle(e.target.value)} className="col-span-3" placeholder="Ej: Gol increíble de Messi" />
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="short-url" className="text-right">URL o ID</Label>
+                              <Input id="short-url" value={newShortUrl} onChange={(e) => setNewShortUrl(e.target.value)} className="col-span-3" placeholder="Pega el enlace del video..."/>
+                          </div>
+                      </div>
+                      <DialogFooter>
+                          <DialogClose asChild><Button type="button" variant="secondary">Cancelar</Button></DialogClose>
+                          <Button type="button" onClick={handleSuggestShort} disabled={isSubmitting}>
+                              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
+                              Añadir Video
+                          </Button>
+                      </DialogFooter>
+                  </DialogContent>
+              </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {figure.youtubeShorts && figure.youtubeShorts.length > 0 ? (
+            <div className={cn(
+              viewMode === 'grid' 
+              ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+              : "flex flex-col items-center gap-12"
+            )}>
+              {figure.youtubeShorts.map((short, index) => {
+                const hasReported = firebaseUser && short.reportedBy?.includes(firebaseUser.uid);
+                const reportCount = short.reportedBy?.length || 0;
+                const hasReachedThreshold = reportCount >= REPORT_THRESHOLD;
+                const embedUrl = `https://www.youtube.com/embed/${short.videoId}?rel=0&modestbranding=1&controls=1&showinfo=0`;
+                
+                const isUnavailable = unavailableVideos.has(short.videoId);
+
+                return (
+                    <div key={index} className={cn(
+                      "group flex flex-col gap-2 w-full",
+                      viewMode === 'feed' && 'max-w-md' // Limit width in feed view
+                    )}>
+                      <div className="relative w-full overflow-hidden rounded-lg border-2 border-transparent aspect-video bg-black">
+                          <iframe
+                              id={`ytplayer-${short.videoId}`}
+                              src={embedUrl}
+                              title={short.title}
+                              frameBorder="0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              className="w-full h-full"
+                              onError={() => {
+                                  setUnavailableVideos(prev => new Set(prev.add(short.videoId)));
+                              }}
+                          ></iframe>
+                          {isUnavailable && (
+                            <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-center text-white p-2">
+                                  <VideoOff className="h-8 w-8 mb-2" />
+                                  <p className="text-xs font-semibold">Video no disponible</p>
+                            </div>
+                          )}
+                           <Button onClick={() => openViewer(index)} variant="ghost" size="icon" className="absolute top-1 right-1 z-10 h-8 w-8 text-white bg-black/30 hover:bg-black/60 hover:text-white" aria-label="Ver en pantalla completa">
+                              <Maximize className="h-4 w-4" />
+                          </Button>
+                      </div>
+                      
+                      <div className="flex items-start justify-between gap-2 mt-1">
+                          <p className="text-sm font-semibold truncate flex-grow pr-2">{short.title}</p>
+                          <Button asChild variant="link" size="sm" className="w-auto text-white text-xs font-semibold p-0 h-auto flex-shrink-0">
+                              <a href={`https://www.youtube.com/shorts/${short.videoId}`} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="mr-1 h-3 w-3"/>
+                                  Ver
+                              </a>
+                          </Button>
+                      </div>
+                      
+                      {isAdmin ? (
+                          <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === short.videoId}>
+                                    {isProcessing === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
+                                    Eliminar (Admin)
+                                  </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Confirmar eliminación (Admin)?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Estás a punto de eliminar este video permanentemente. Esta acción no se puede deshacer.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                  </AlertDialogFooter>
+                              </AlertDialogContent>
+                          </AlertDialog>
+                      ) : hasReachedThreshold ? (
+                          <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === short.videoId}>
+                                    {isProcessing === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
+                                    Eliminar Video
+                                  </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Este video ha sido reportado por la comunidad. Al hacer clic en "Eliminar", será borrado permanentemente. Esta acción no se puede deshacer.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                  </AlertDialogFooter>
+                              </AlertDialogContent>
+                          </AlertDialog>
+                      ) : (
+                          <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                  <Button 
+                                      variant={hasReported ? "secondary" : "destructive"} 
+                                      size="sm" 
+                                      className="w-full text-xs" 
+                                      disabled={isAuthLoading || isProcessing === short.videoId || hasReported}
+                                  >
+                                      {isProcessing === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : hasReported ? <Check className="mr-2 h-3 w-3"/> : <Flag className="mr-2 h-3 w-3" />}
+                                      {hasReported ? "Reportado" : "Reportar"}
+                                      {!hasReported && ` (${reportCount}/${REPORT_THRESHOLD})`}
+                                  </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Reportar este video?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                      Estás a punto de reportar este video como "no relacionado con el perfil". Si suficientes usuarios lo hacen, el video podrá ser eliminado por la comunidad.
+                                  </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleReportShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Reportar</AlertDialogAction>
+                                  </AlertDialogFooter>
+                              </AlertDialogContent>
+                          </AlertDialog>
+                      )}
+                    </div>
+                  );
+              })}
             </div>
-
-            <Dialog open={isSuggestDialogOpen} onOpenChange={setIsSuggestDialogOpen}>
-                <Button variant="outline" size="sm" disabled={isAuthLoading} onClick={() => setIsSuggestDialogOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Sugerir
-                </Button>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Sugerir un YouTube Short</DialogTitle>
-                        <DialogDescription>
-                            Añade un video corto relevante para {figure.name}.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="short-title" className="text-right">Título</Label>
-                            <Input id="short-title" value={newShortTitle} onChange={(e) => setNewShortTitle(e.target.value)} className="col-span-3" placeholder="Ej: Gol increíble de Messi" />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="short-url" className="text-right">URL o ID</Label>
-                            <Input id="short-url" value={newShortUrl} onChange={(e) => setNewShortUrl(e.target.value)} className="col-span-3" placeholder="Pega el enlace del video..."/>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild><Button type="button" variant="secondary">Cancelar</Button></DialogClose>
-                        <Button type="button" onClick={handleSuggestShort} disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
-                            Añadir Video
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {figure.youtubeShorts && figure.youtubeShorts.length > 0 ? (
-          <div className={cn(
-            viewMode === 'grid' 
-            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-            : "flex flex-col items-center gap-12"
-          )}>
-            {figure.youtubeShorts.map((short, index) => {
-               const hasReported = firebaseUser && short.reportedBy?.includes(firebaseUser.uid);
-               const reportCount = short.reportedBy?.length || 0;
-               const hasReachedThreshold = reportCount >= REPORT_THRESHOLD;
-               const embedUrl = `https://www.youtube.com/embed/${short.videoId}?rel=0&modestbranding=1&controls=1&showinfo=0`;
-               
-               const isUnavailable = unavailableVideos.has(short.videoId);
-
-               return (
-                  <div key={index} className={cn(
-                    "group flex flex-col gap-2 w-full",
-                    viewMode === 'feed' && 'max-w-sm'
-                  )}>
-                    <div className="relative w-full overflow-hidden rounded-lg border-2 border-transparent" style={{aspectRatio: '9/16'}}>
-                        <iframe
-                            id={`ytplayer-${short.videoId}`}
-                            src={embedUrl}
-                            title={short.title}
-                            frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            className="w-full h-full"
-                            onError={() => {
-                                setUnavailableVideos(prev => new Set(prev.add(short.videoId)));
-                            }}
-                        ></iframe>
-                        {isUnavailable && (
-                           <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-center text-white p-2">
-                                <VideoOff className="h-8 w-8 mb-2" />
-                                <p className="text-xs font-semibold">Video no disponible</p>
-                           </div>
-                        )}
-                    </div>
-                    
-                    <div className="flex items-center justify-between gap-2 mt-1">
-                        <p className="text-sm font-semibold truncate flex-grow">{short.title}</p>
-                        <Button asChild variant="link" size="sm" className="w-auto text-white text-xs font-semibold p-0 h-auto flex-shrink-0">
-                            <a href={`https://www.youtube.com/shorts/${short.videoId}`} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="mr-1 h-3 w-3"/>
-                                Ver
-                            </a>
-                        </Button>
-                    </div>
-                    
-                    {isAdmin ? (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                               <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === short.videoId}>
-                                   {isProcessing === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
-                                   Eliminar (Admin)
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>¿Confirmar eliminación (Admin)?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Estás a punto de eliminar este video permanentemente. Esta acción no se puede deshacer.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    ) : hasReachedThreshold ? (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                               <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === short.videoId}>
-                                   {isProcessing === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
-                                   Eliminar Video
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Este video ha sido reportado por la comunidad. Al hacer clic en "Eliminar", será borrado permanentemente. Esta acción no se puede deshacer.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    ) : (
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button 
-                                    variant={hasReported ? "secondary" : "destructive"} 
-                                    size="sm" 
-                                    className="w-full text-xs" 
-                                    disabled={isAuthLoading || isProcessing === short.videoId || hasReported}
-                                >
-                                    {isProcessing === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : hasReported ? <Check className="mr-2 h-3 w-3"/> : <Flag className="mr-2 h-3 w-3" />}
-                                    {hasReported ? "Reportado" : "Reportar"}
-                                    {!hasReported && ` (${reportCount}/${REPORT_THRESHOLD})`}
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>¿Reportar este video?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Estás a punto de reportar este video como "no relacionado con el perfil". Si suficientes usuarios lo hacen, el video podrá ser eliminado por la comunidad.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleReportShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Reportar</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    )}
-                  </div>
-                );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg">
-            <Youtube className="mx-auto h-12 w-12 mb-4" />
-            <p>Aún no se han añadido videos cortos para este perfil.</p>
-            <p className="text-sm mt-2">¡Sé el primero en sugerir uno!</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          ) : (
+            <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg">
+              <Youtube className="mx-auto h-12 w-12 mb-4" />
+              <p>Aún no se han añadido videos cortos para este perfil.</p>
+              <p className="text-sm mt-2">¡Sé el primero en sugerir uno!</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {viewerState.isOpen && figure.youtubeShorts && (
+        <ShortsViewer
+            shorts={figure.youtubeShorts}
+            startIndex={viewerState.startIndex}
+            onClose={closeViewer}
+        />
+      )}
+    </>
   );
 }
