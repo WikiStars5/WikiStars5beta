@@ -66,6 +66,7 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     distinctiveFeatures: data.distinctiveFeatures || "",
     socialLinks: data.socialLinks || {},
     relatedFigureIds: data.relatedFigureIds || [],
+    youtubeShorts: data.youtubeShorts || [],
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
     ratingCounts: data.ratingCounts || { ...defaultRatingCounts },
@@ -131,10 +132,10 @@ export async function getAdminFiguresList(options: {
   let cursorDoc: QueryDocumentSnapshot | undefined;
 
   // Validate the cursor document exists before using it
-  if (endBefore) {
+  if (isPrev && endBefore) {
     const docSnap = await getDoc(doc(db, 'figures', endBefore));
     if (docSnap.exists()) cursorDoc = docSnap;
-  } else if (startAfter) {
+  } else if (!isPrev && startAfter) {
     const docSnap = await getDoc(doc(db, 'figures', startAfter));
     if (docSnap.exists()) cursorDoc = docSnap;
   }
@@ -157,14 +158,18 @@ export async function getAdminFiguresList(options: {
   
   const hasPrevPage = !!startAfter; 
   
-  // Correct pagination logic for hasNextPage
+  // To determine if there's a next page, fetch one more item than needed.
   let hasNextPage = false;
   if (figures.length === limitSize) {
-      // Create a query to check if there is at least one more document
-      const lastVisible = snapshot.docs[snapshot.docs.length-1];
-      const nextQuery = query(figuresCollectionRef, orderBy("name", "asc"), firestoreStartAfter(lastVisible), limit(1));
-      const nextSnapshot = await getDocs(nextQuery);
-      hasNextPage = !nextSnapshot.empty;
+      const lastVisibleFigure = figures[figures.length - 1];
+      if (lastVisibleFigure) {
+        const lastDocSnap = await getDoc(doc(db, 'figures', lastVisibleFigure.id));
+        if (lastDocSnap.exists()) {
+            const nextQuery = query(figuresCollectionRef, orderBy("name", "asc"), firestoreStartAfter(lastDocSnap), limit(1));
+            const nextSnapshot = await getDocs(nextQuery);
+            hasNextPage = !nextSnapshot.empty;
+        }
+      }
   }
 
   const startCursor = figures.length > 0 ? figures[0].id : null;
@@ -194,10 +199,10 @@ export async function getPublicFiguresList(options: {
 
   try {
     // Validate the cursor document exists before using it
-    if (endBefore) {
+    if (isPrev && endBefore) {
         const docSnap = await getDoc(doc(db, 'figures', endBefore));
         if (docSnap.exists()) cursorDoc = docSnap;
-    } else if (startAfter) {
+    } else if (!isPrev && startAfter) {
         const docSnap = await getDoc(doc(db, 'figures', startAfter));
         if (docSnap.exists()) cursorDoc = docSnap;
     }
@@ -292,7 +297,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
           name, profileType, photoUrl, description, nationality, nationalityCode, occupation, gender, alias, species,
           firstAppearance, birthDateOrAge, age, birthPlace, statusLiveOrDead, maritalStatus,
           height, heightCm, weight, hairColor, eyeColor, distinctiveFeatures, status, isFeatured,
-          category, sportSubcategory, relatedFigureIds, socialLinks, hashtags, hashtagsLower: hashtagsLowerInput, ...rest
+          category, sportSubcategory, relatedFigureIds, socialLinks, hashtags, hashtagsLower: hashtagsLowerInput, youtubeShorts, ...rest
       } = figure;
 
       const updatePayload: { [key: string]: any } = {};
@@ -341,6 +346,7 @@ export const updateFigureInFirestore = async (figure: Partial<Figure> & { id: st
         }
       }
 
+      if (youtubeShorts !== undefined) updatePayload.youtubeShorts = youtubeShorts;
       if (perceptionCounts) updatePayload.perceptionCounts = perceptionCounts;
       if (attitudeCounts) updatePayload.attitudeCounts = attitudeCounts;
       if (ratingCounts) updatePayload.ratingCounts = ratingCounts;

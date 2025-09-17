@@ -27,6 +27,11 @@ export interface Hashtag {
   id: string; // The hashtag itself, e.g., "kpop"
   // You could add more fields here if needed, like a count of how many figures use it.
 }
+
+export interface YoutubeShort {
+  title: string;
+  videoId: string;
+}
   
 export interface Figure {
   id: string;
@@ -57,6 +62,7 @@ export interface Figure {
   relatedFigureIds?: string[];
   nationality?: string; // Moved to shared
   nationalityCode?: string; // Moved to shared
+  youtubeShorts?: YoutubeShort[];
   
   // --- Character-specific fields ---
   category?: string;

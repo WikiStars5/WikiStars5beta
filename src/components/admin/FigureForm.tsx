@@ -9,10 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Sparkles, Loader2, CalendarIcon, X, Plus } from 'lucide-react';
+import { Terminal, Sparkles, Loader2, CalendarIcon, X, Plus, Youtube } from 'lucide-react';
 import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag } from '@/lib/types';
+import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag, YoutubeShort } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -72,6 +72,30 @@ const generateHashtagKeywords = (hashtags: string[]): string[] => {
     return Array.from(keywords);
 };
 
+const getYoutubeVideoId = (url: string): string | null => {
+    if (!url) return null;
+    try {
+        const urlObj = new URL(url);
+        if (urlObj.hostname.includes('youtube.com')) {
+            if (urlObj.pathname.startsWith('/shorts/')) {
+                return urlObj.pathname.split('/shorts/')[1];
+            }
+            if (urlObj.pathname === '/watch') {
+                return urlObj.searchParams.get('v');
+            }
+        } else if (urlObj.hostname === 'youtu.be') {
+            return urlObj.pathname.substring(1);
+        }
+    } catch (e) {
+        // Not a valid URL, but might be just an ID
+    }
+    // Check if the input is just the video ID
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
+        return url;
+    }
+    return null;
+}
+
 
 interface FigureFormProps {
   initialData?: Figure;
@@ -117,6 +141,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   
   const [socialLinks, setSocialLinks] = useState(initialData?.socialLinks || {});
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
+  const [youtubeShorts, setYoutubeShorts] = useState<YoutubeShort[]>(initialData?.youtubeShorts || []);
+  const [newShortUrl, setNewShortUrl] = useState('');
+  const [newShortTitle, setNewShortTitle] = useState('');
   const [isFeatured, setIsFeatured] = useState(false);
   const [nationalityCode, setNationalityCode] = useState('');
 
@@ -188,6 +215,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setIsFeatured(initialData.isFeatured || false);
       setSocialLinks(initialData.socialLinks || {});
       setHashtags(initialData.hashtags || []);
+      setYoutubeShorts(initialData.youtubeShorts || []);
 
       if (initialData.profileType === 'character') {
         setCategory(initialData.category || '');
@@ -227,7 +255,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setName(''); 
       setProfileType('character');
       setDescription(''); setPhotoUrl('');
-      setNationalityCode(''); setIsFeatured(false); setSocialLinks({}); setHashtags([]);
+      setNationalityCode(''); setIsFeatured(false); setSocialLinks({}); setHashtags([]); setYoutubeShorts([]);
       clearCharacterFields();
       clearMediaFields();
     }
@@ -278,6 +306,26 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     }
   };
 
+  const handleAddShort = () => {
+    const videoId = getYoutubeVideoId(newShortUrl);
+    if (!videoId) {
+        setError('URL de YouTube Short no válida. Usa el enlace completo o solo el ID del video.');
+        return;
+    }
+    if (!newShortTitle.trim()) {
+        setError('El título del Short es obligatorio.');
+        return;
+    }
+    setYoutubeShorts([...youtubeShorts, { title: newShortTitle.trim(), videoId }]);
+    setNewShortUrl('');
+    setNewShortTitle('');
+    setError(null);
+  };
+
+  const handleRemoveShort = (videoIdToRemove: string) => {
+    setYoutubeShorts(youtubeShorts.filter(short => short.videoId !== videoIdToRemove));
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -321,6 +369,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         hashtags: hashtags,
         hashtagsLower: hashtagsLower,
         hashtagKeywords: hashtagKeywords,
+        youtubeShorts: youtubeShorts,
         socialLinks: socialLinks,
         isFeatured: isFeatured,
         nationality: countryCodeToNameMap.get(nationalityCode) || '',
@@ -664,6 +713,34 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
                           <X className="h-3 w-3" />
                       </button>
                   </Badge>
+              ))}
+          </div>
+      </div>
+
+       <div className="space-y-4 mt-6 border-t pt-4 border-border">
+          <h3 className="text-lg font-semibold flex items-center gap-2"><Youtube /> YouTube Shorts</h3>
+          <div className="space-y-2">
+              <Label htmlFor="new-short-title">Título del Short</Label>
+              <Input id="new-short-title" value={newShortTitle} onChange={(e) => setNewShortTitle(e.target.value)} placeholder="Ej: Gol increíble de Messi"/>
+          </div>
+           <div className="space-y-2">
+              <Label htmlFor="new-short-url">URL o ID del Short</Label>
+              <div className="flex gap-2">
+                  <Input id="new-short-url" value={newShortUrl} onChange={(e) => setNewShortUrl(e.target.value)} placeholder="Pega el enlace de YouTube Shorts..."/>
+                  <Button type="button" onClick={handleAddShort}>
+                      <Plus className="mr-2 h-4 w-4"/> Añadir
+                  </Button>
+              </div>
+          </div>
+          <div className="space-y-2">
+              {youtubeShorts.map((short, index) => (
+                  <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                      <Image src={`https://i.ytimg.com/vi/${short.videoId}/hqdefault.jpg`} alt={short.title} width={80} height={45} className="rounded object-cover"/>
+                      <p className="flex-grow text-sm font-medium">{short.title}</p>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveShort(short.videoId)}>
+                          <X className="h-4 w-4"/>
+                      </Button>
+                  </div>
               ))}
           </div>
       </div>

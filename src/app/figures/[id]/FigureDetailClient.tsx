@@ -8,7 +8,7 @@ import {
   ImageOff, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
   MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight,
-  Archive, Bike, UserPlus, Flame, BarChart3, CheckSquare
+  Archive, Bike, UserPlus, Flame, BarChart3, CheckSquare, Youtube
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
@@ -38,6 +38,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { isSameDay, isYesterday } from "date-fns";
+import { FigureShorts } from "@/components/figures/FigureShorts";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -157,11 +158,12 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
           <div className="lg:col-span-3 space-y-8">
              <Tabs defaultValue="attitude" className="w-full">
-              <TabsList className="flex w-full justify-start md:justify-center overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20">
+              <TabsList className="flex w-full overflow-x-auto whitespace-nowrap no-scrollbar mb-6 p-1 h-auto rounded-lg bg-black border border-white/20"> 
                 <TabsTrigger value="personal-info" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Info className="h-4 sm:h-5 w-4 sm:w-5" />Información</TabsTrigger>
                 <TabsTrigger value="attitude" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><CheckSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
                 <TabsTrigger value="emotion" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
                 <TabsTrigger value="top-streaks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Flame className="h-4 sm:h-5 w-4 sm:w-5" />Top Rachas</TabsTrigger>
+                <TabsTrigger value="shorts" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Youtube className="h-4 sm:h-5 w-4 sm:w-5" />Shorts</TabsTrigger>
               </TabsList>
 
               <TabsContent value="personal-info">
@@ -188,6 +190,10 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
               <TabsContent value="top-streaks">
                   <TopStreaks figureId={figure.id} />
+              </TabsContent>
+
+              <TabsContent value="shorts">
+                  <FigureShorts figure={figure} />
               </TabsContent>
               
             </Tabs>
