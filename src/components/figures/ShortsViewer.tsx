@@ -66,12 +66,12 @@ export function ShortsViewer({ shorts, startIndex, onClose }: ShortsViewerProps)
             startIndex: startIndex,
           }}
           orientation="vertical"
-          className="w-full h-full max-w-[400px] max-h-[90vh] sm:max-h-[80vh] flex items-center justify-center"
+          className="w-full h-full max-w-[400px] max-h-[90vh] sm:max-h-[80vh]"
         >
-          <CarouselContent className="h-full -mt-0">
+          <CarouselContent className="h-full">
             {shorts.map((short, index) => (
-              <CarouselItem key={index} className="pt-0 basis-full flex items-center justify-center">
-                <div className="relative w-full h-full">
+              <CarouselItem key={index} className="pt-0 basis-full">
+                <div className="w-full h-full flex items-center justify-center">
                    <iframe
                       src={`https://www.youtube.com/embed/${short.videoId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}&rel=0&modestbranding=1&controls=1&showinfo=0`}
                       title={short.title}
@@ -81,10 +81,6 @@ export function ShortsViewer({ shorts, startIndex, onClose }: ShortsViewerProps)
                       className="w-full h-full"
                       style={{ aspectRatio: '9/16' }}
                     ></iframe>
-                   <div 
-                      className="absolute inset-0"
-                      onClick={scrollNext} 
-                    />
                 </div>
               </CarouselItem>
             ))}
