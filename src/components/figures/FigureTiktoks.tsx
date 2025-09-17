@@ -22,7 +22,7 @@ declare global {
   interface Window {
     tiktok: {
       embed: {
-        render: () => void;
+        render: (element?: HTMLElement) => void;
       };
     };
   }
@@ -59,7 +59,9 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
-  const feedContainerRef = React.useRef<HTMLDivElement>(null);
+  
+  // Use a ref to store the DOM nodes of the blockquotes
+  const videoRefs = React.useRef<Record<string, HTMLElement | null>>({});
 
   React.useEffect(() => {
     const tiktoksRef = collection(db, `figures/${figure.id}/tiktokVideos`);
@@ -77,7 +79,13 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
 
   React.useEffect(() => {
     if (videos.length > 0 && typeof window.tiktok?.embed?.render === 'function') {
-      setTimeout(() => window.tiktok.embed.render(), 100);
+      // Instead of a global render, iterate over each video and render its specific element.
+      videos.forEach(video => {
+        const el = videoRefs.current[video.id];
+        if (el) {
+          window.tiktok.embed.render(el);
+        }
+      });
     }
   }, [videos, viewMode]);
 
@@ -217,7 +225,6 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
              </div>
           ) : videos.length > 0 ? (
             <div
-              ref={feedContainerRef}
               className={cn(
                 "no-scrollbar",
                 viewMode === 'grid' 
@@ -233,6 +240,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                              viewMode === 'feed' && "mx-auto w-full max-w-sm"
                         )}>
                            <blockquote 
+                                ref={el => videoRefs.current[video.id] = el}
                                 className="tiktok-embed" 
                                 cite={video.url} 
                                 data-video-id={videoId || undefined}
