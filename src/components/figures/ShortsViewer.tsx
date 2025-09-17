@@ -45,7 +45,6 @@ export function ShortsViewer({ shorts, startIndex, onClose }: ShortsViewerProps)
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="p-0 border-0 bg-black w-screen h-screen max-w-full sm:max-w-full rounded-none flex items-center justify-center">
-        {/* Added hidden title and description for accessibility */}
         <DialogTitle className="sr-only">Visor de YouTube Shorts</DialogTitle>
         <DialogDescription className="sr-only">Desliza hacia arriba o abajo para ver más videos.</DialogDescription>
         
@@ -67,12 +66,12 @@ export function ShortsViewer({ shorts, startIndex, onClose }: ShortsViewerProps)
             startIndex: startIndex,
           }}
           orientation="vertical"
-          className="w-full h-full"
+          className="w-full h-full max-w-[400px] max-h-[90vh] sm:max-h-[80vh] flex items-center justify-center"
         >
-          <CarouselContent className="-mt-0 h-full">
+          <CarouselContent className="h-full -mt-0">
             {shorts.map((short, index) => (
               <CarouselItem key={index} className="pt-0 basis-full flex items-center justify-center">
-                <div className="relative w-full h-full max-w-[400px] max-h-[711px] sm:max-h-[80vh] flex items-center justify-center">
+                <div className="relative w-full h-full">
                    <iframe
                       src={`https://www.youtube.com/embed/${short.videoId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}&rel=0&modestbranding=1&controls=1`}
                       title={short.title}
