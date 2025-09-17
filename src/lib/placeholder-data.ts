@@ -164,18 +164,19 @@ export async function getPublicFiguresList(options: {
 
   const isPrev = !!endBefore;
   const limitSize = options.limit || PUBLIC_FIGURES_PER_PAGE;
-  const order = isPrev ? 'desc' : 'asc';
   const cursorId = isPrev ? endBefore : startAfter;
 
-  let q = query(figuresCollectionRef, orderBy('name', order), limit(limitSize + 1));
-
-  if (cursorId) {
-    const cursorDoc = await getDoc(doc(db, 'figures', cursorId));
-    if (cursorDoc.exists()) {
-      q = isPrev 
-        ? query(figuresCollectionRef, orderBy('name', order), firestoreEndBefore(cursorDoc), limit(limitSize + 1))
-        : query(figuresCollectionRef, orderBy('name', order), firestoreStartAfter(cursorDoc), limit(limitSize + 1));
-    }
+  let q;
+  if (isPrev) {
+    const cursorDoc = cursorId ? await getDoc(doc(db, 'figures', cursorId)) : null;
+    q = cursorDoc
+      ? query(figuresCollectionRef, orderBy('name', 'desc'), firestoreStartAfter(cursorDoc), limit(limitSize + 1))
+      : query(figuresCollectionRef, orderBy('name', 'desc'), limit(limitSize + 1));
+  } else {
+    const cursorDoc = cursorId ? await getDoc(doc(db, 'figures', cursorId)) : null;
+    q = cursorDoc
+      ? query(figuresCollectionRef, orderBy('name', 'asc'), firestoreStartAfter(cursorDoc), limit(limitSize + 1))
+      : query(figuresCollectionRef, orderBy('name', 'asc'), limit(limitSize + 1));
   }
 
   const snapshot = await getDocs(q);
@@ -183,16 +184,16 @@ export async function getPublicFiguresList(options: {
 
   // Filter for approved figures after fetching
   figures = figures.filter(figure => figure.status === 'approved');
-
+  
   const hasMore = figures.length > limitSize;
   if (hasMore) {
     figures.pop();
   }
-
+  
   if (isPrev) {
     figures.reverse();
   }
-
+  
   const hasPrevPage = isPrev ? hasMore : !!startAfter;
   const hasNextPage = isPrev ? !!endBefore : hasMore;
   
