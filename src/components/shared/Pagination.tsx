@@ -64,9 +64,9 @@ export function Pagination({ currentPage, totalPages, endCursor }: PaginationPro
     params.set('page', pageNumber.toString());
 
     // For the next page link, we use the endCursor from the current page's data
-    if (pageNumber > currentPage && endCursor) {
+    if (typeof pageNumber === 'number' && pageNumber > currentPage && endCursor) {
         params.set('startAfter', endCursor);
-    } else if (pageNumber < currentPage) {
+    } else {
         // Going back is complex without tracking all previous cursors.
         // A simple approach is to remove startAfter, which restarts from the beginning for that page number.
         // This is not perfectly efficient but works for "Go to page X".
@@ -104,7 +104,7 @@ export function Pagination({ currentPage, totalPages, endCursor }: PaginationPro
           <PaginationPrevious
             href={prevPageUrl}
             aria-disabled={currentPage <= 1}
-            className={currentPage <= 1 ? "pointer-events-none opacity-50" : undefined}
+            className={cn(currentPage <= 1 && "pointer-events-none opacity-50")}
           />
         </PaginationItem>
         
@@ -117,8 +117,10 @@ export function Pagination({ currentPage, totalPages, endCursor }: PaginationPro
               <PaginationLink
                 href={createPageURL(page)}
                 isActive={currentPage === page}
-                // Disabling direct number links for now as they are not efficient without storing all cursors
-                className={typeof page === 'number' && page > 1 ? "pointer-events-none opacity-50" : ""}
+                // Disabling direct number links as they are not efficient without storing all cursors
+                className={cn(typeof page === 'number' && page > currentPage && "pointer-events-none opacity-50",
+                              typeof page === 'number' && page < currentPage && "pointer-events-none opacity-50"
+                )}
               >
                 {page}
               </PaginationLink>
@@ -130,7 +132,7 @@ export function Pagination({ currentPage, totalPages, endCursor }: PaginationPro
           <PaginationNext
             href={nextPageUrl}
             aria-disabled={currentPage >= totalPages || !endCursor}
-            className={currentPage >= totalPages || !endCursor ? "pointer-events-none opacity-50" : undefined}
+            className={cn((currentPage >= totalPages || !endCursor) && "pointer-events-none opacity-50")}
           />
         </PaginationItem>
       </PaginationContent>
