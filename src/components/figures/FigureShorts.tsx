@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff } from 'lucide-react';
+import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff, Grid3x3, RectangleHorizontal } from 'lucide-react';
 import type { Figure, YoutubeShort } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
@@ -56,6 +56,8 @@ export function FigureShorts({ figure }: FigureShortsProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
   const [unavailableVideos, setUnavailableVideos] = React.useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
+
 
   const handleSuggestShort = async () => {
     if (!newShortTitle.trim() || !newShortUrl.trim() || !firebaseUser) {
@@ -181,64 +183,79 @@ export function FigureShorts({ figure }: FigureShortsProps) {
 
   return (
     <Card className="border border-white/20 bg-black">
-      <CardHeader className="flex flex-row items-start justify-between">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
             <CardTitle className="flex items-center gap-2">
-            <Youtube />
-            Shorts
+                <Youtube />
+                Shorts
             </CardTitle>
             <CardDescription>
-            Videos cortos relacionados con {figure.name}.
+                Videos cortos relacionados con {figure.name}.
             </CardDescription>
         </div>
-        <Dialog open={isSuggestDialogOpen} onOpenChange={setIsSuggestDialogOpen}>
-            <Button variant="outline" size="sm" disabled={isAuthLoading} onClick={() => setIsSuggestDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Sugerir Short
-            </Button>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Sugerir un YouTube Short</DialogTitle>
-                    <DialogDescription>
-                        Añade un video corto relevante para {figure.name}.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="short-title" className="text-right">Título</Label>
-                        <Input id="short-title" value={newShortTitle} onChange={(e) => setNewShortTitle(e.target.value)} className="col-span-3" placeholder="Ej: Gol increíble de Messi" />
+        <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-md bg-muted p-0.5">
+                <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('grid')} aria-label="Grid View">
+                    <Grid3x3 className="h-4 w-4"/>
+                </Button>
+                <Button variant={viewMode === 'feed' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('feed')} aria-label="Feed View">
+                    <RectangleHorizontal className="h-4 w-4"/>
+                </Button>
+            </div>
+
+            <Dialog open={isSuggestDialogOpen} onOpenChange={setIsSuggestDialogOpen}>
+                <Button variant="outline" size="sm" disabled={isAuthLoading} onClick={() => setIsSuggestDialogOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Sugerir
+                </Button>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Sugerir un YouTube Short</DialogTitle>
+                        <DialogDescription>
+                            Añade un video corto relevante para {figure.name}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="short-title" className="text-right">Título</Label>
+                            <Input id="short-title" value={newShortTitle} onChange={(e) => setNewShortTitle(e.target.value)} className="col-span-3" placeholder="Ej: Gol increíble de Messi" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="short-url" className="text-right">URL o ID</Label>
+                            <Input id="short-url" value={newShortUrl} onChange={(e) => setNewShortUrl(e.target.value)} className="col-span-3" placeholder="Pega el enlace del video..."/>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                         <Label htmlFor="short-url" className="text-right">URL o ID</Label>
-                         <Input id="short-url" value={newShortUrl} onChange={(e) => setNewShortUrl(e.target.value)} className="col-span-3" placeholder="Pega el enlace del video..."/>
-                    </div>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild><Button type="button" variant="secondary">Cancelar</Button></DialogClose>
-                    <Button type="button" onClick={handleSuggestShort} disabled={isSubmitting}>
-                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
-                        Añadir Video
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="secondary">Cancelar</Button></DialogClose>
+                        <Button type="button" onClick={handleSuggestShort} disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
+                            Añadir Video
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
       </CardHeader>
       <CardContent>
         {figure.youtubeShorts && figure.youtubeShorts.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className={cn(
+            viewMode === 'grid' 
+            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+            : "flex flex-col items-center gap-12"
+          )}>
             {figure.youtubeShorts.map((short, index) => {
                const hasReported = firebaseUser && short.reportedBy?.includes(firebaseUser.uid);
                const reportCount = short.reportedBy?.length || 0;
                const hasReachedThreshold = reportCount >= REPORT_THRESHOLD;
-               const embedUrl = `https://www.youtube.com/embed/${short.videoId}?enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}&rel=0&modestbranding=1&controls=1&showinfo=0`;
+               const embedUrl = `https://www.youtube.com/embed/${short.videoId}?rel=0&modestbranding=1&controls=1&showinfo=0`;
                
                const isUnavailable = unavailableVideos.has(short.videoId);
 
                return (
-                  <div key={index} className="group flex flex-col gap-2">
-                    <div className={cn(
-                        "relative w-full overflow-hidden rounded-lg border-2 border-transparent transition-colors",
-                         "group-hover:border-primary"
-                    )} style={{aspectRatio: '9/16'}}>
+                  <div key={index} className={cn(
+                    "group flex flex-col gap-2 w-full",
+                    viewMode === 'feed' && 'max-w-sm'
+                  )}>
+                    <div className="relative w-full overflow-hidden rounded-lg border-2 border-transparent" style={{aspectRatio: '9/16'}}>
                         <iframe
                             id={`ytplayer-${short.videoId}`}
                             src={embedUrl}
@@ -258,13 +275,16 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                            </div>
                         )}
                     </div>
-
-                    <Button asChild variant="link" size="sm" className="w-full text-white text-xs font-semibold truncate text-center hover:text-primary p-0 h-auto">
-                        <a href={`https://www.youtube.com/shorts/${short.videoId}`} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="mr-2 h-3 w-3"/>
-                            Ver en YouTube
-                        </a>
-                    </Button>
+                    
+                    <div className="flex items-center justify-between gap-2 mt-1">
+                        <p className="text-sm font-semibold truncate flex-grow">{short.title}</p>
+                        <Button asChild variant="link" size="sm" className="w-auto text-white text-xs font-semibold p-0 h-auto flex-shrink-0">
+                            <a href={`https://www.youtube.com/shorts/${short.videoId}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-1 h-3 w-3"/>
+                                Ver
+                            </a>
+                        </Button>
+                    </div>
                     
                     {isAdmin ? (
                         <AlertDialog>
