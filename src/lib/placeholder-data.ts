@@ -3,7 +3,7 @@
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove,getCountFromServer } from "firebase/firestore";
 import { isSameDay, isYesterday } from 'date-fns';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 
@@ -98,6 +98,19 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
 export const ADMIN_FIGURES_PER_PAGE = 50;
 export const PUBLIC_FIGURES_PER_PAGE = 12;
 
+export async function getFiguresCount(): Promise<number> {
+    try {
+        const figuresCollectionRef = collection(db, 'figures');
+        const q = query(figuresCollectionRef, where('status', '==', 'approved'));
+        const snapshot = await getCountFromServer(q);
+        return snapshot.data().count;
+    } catch (error) {
+        console.error("Error getting figures count:", error);
+        return 0;
+    }
+}
+
+
 export async function getAdminFiguresList(options: {
   startAfter?: string;
   endBefore?: string;
@@ -149,58 +162,31 @@ export async function getAdminFiguresList(options: {
 }
 
 export async function getPublicFiguresList(options: {
-  startAfter?: string;
-  endBefore?: string;
+  page?: number;
   limit?: number;
 }): Promise<{
   figures: Figure[];
-  hasPrevPage: boolean;
-  hasNextPage: boolean;
-  startCursor: string | null;
-  endCursor: string | null;
 }> {
-  const { startAfter, endBefore } = options;
+  const { page = 1, limit: limitSize = PUBLIC_FIGURES_PER_PAGE } = options;
   const figuresCollectionRef = collection(db, 'figures');
+  
+  try {
+    const approvedQuery = query(figuresCollectionRef, where('status', '==', 'approved'), orderBy('name', 'asc'));
+    const snapshot = await getDocs(approvedQuery);
 
-  const isPrev = !!endBefore;
-  const limitSize = options.limit || PUBLIC_FIGURES_PER_PAGE;
-  const cursorId = isPrev ? endBefore : startAfter;
+    const allApprovedFigures = snapshot.docs.map(mapDocToFigure);
+    
+    const startIndex = (page - 1) * limitSize;
+    const endIndex = startIndex + limitSize;
 
-  let q;
-  if (isPrev) {
-    const cursorDoc = cursorId ? await getDoc(doc(db, 'figures', cursorId)) : null;
-    q = cursorDoc
-      ? query(figuresCollectionRef, orderBy('name', 'desc'), firestoreStartAfter(cursorDoc), limit(limitSize + 1))
-      : query(figuresCollectionRef, orderBy('name', 'desc'), limit(limitSize + 1));
-  } else {
-    const cursorDoc = cursorId ? await getDoc(doc(db, 'figures', cursorId)) : null;
-    q = cursorDoc
-      ? query(figuresCollectionRef, orderBy('name', 'asc'), firestoreStartAfter(cursorDoc), limit(limitSize + 1))
-      : query(figuresCollectionRef, orderBy('name', 'asc'), limit(limitSize + 1));
+    const figures = allApprovedFigures.slice(startIndex, endIndex);
+
+    return { figures };
+    
+  } catch (error) {
+    console.error("Error fetching public figures list:", error);
+    return { figures: [] };
   }
-
-  const snapshot = await getDocs(q);
-  let figures = snapshot.docs.map(mapDocToFigure);
-
-  // Filter for approved figures after fetching
-  figures = figures.filter(figure => figure.status === 'approved');
-  
-  const hasMore = figures.length > limitSize;
-  if (hasMore) {
-    figures.pop();
-  }
-  
-  if (isPrev) {
-    figures.reverse();
-  }
-  
-  const hasPrevPage = isPrev ? hasMore : !!startAfter;
-  const hasNextPage = isPrev ? !!endBefore : hasMore;
-  
-  const startCursor = figures.length > 0 ? figures[0].id : null;
-  const endCursor = figures.length > 0 ? figures[figures.length - 1].id : null;
-
-  return { figures, hasPrevPage, hasNextPage, startCursor, endCursor };
 }
 
 

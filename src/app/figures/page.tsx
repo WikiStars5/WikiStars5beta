@@ -1,5 +1,6 @@
 
-import { getPublicFiguresList } from "@/lib/placeholder-data";
+
+import { getPublicFiguresList, getFiguresCount, PUBLIC_FIGURES_PER_PAGE } from "@/lib/placeholder-data";
 import { FiguresPageClient } from "@/app/figures/FiguresPageClient";
 import { Metadata } from "next";
 
@@ -15,24 +16,24 @@ export const revalidate = 60; // Revalidate every 60 seconds
 
 interface BrowseFiguresPageProps {
   searchParams?: {
-    startAfter?: string;
-    endBefore?: string;
+    page?: string;
   };
 }
 
 export default async function BrowseFiguresPage({ searchParams }: BrowseFiguresPageProps) {
-  const { figures, hasPrevPage, hasNextPage, startCursor, endCursor } = await getPublicFiguresList({
-    startAfter: searchParams?.startAfter,
-    endBefore: searchParams?.endBefore,
+  const currentPage = Number(searchParams?.page || '1');
+  const totalFigures = await getFiguresCount();
+  const totalPages = Math.ceil(totalFigures / PUBLIC_FIGURES_PER_PAGE);
+
+  const { figures } = await getPublicFiguresList({
+    page: currentPage,
   });
 
   return (
     <FiguresPageClient
       initialFigures={figures}
-      hasPrevPage={hasPrevPage}
-      hasNextPage={hasNextPage}
-      startCursor={startCursor}
-      endCursor={endCursor}
+      currentPage={currentPage}
+      totalPages={totalPages}
     />
   );
 }

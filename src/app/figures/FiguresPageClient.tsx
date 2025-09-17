@@ -4,31 +4,23 @@
 import { useState } from "react";
 import { FigureListItem } from "@/components/figures/FigureListItem";
 import { SearchBar } from "@/components/shared/SearchBar";
-import { Button } from "@/components/ui/button";
 import type { Figure } from "@/lib/types";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
+import { Pagination } from "@/components/shared/Pagination";
 
 interface FiguresPageClientProps {
   initialFigures: Figure[];
-  hasPrevPage: boolean;
-  hasNextPage: boolean;
-  startCursor: string | null;
-  endCursor: string | null;
+  currentPage: number;
+  totalPages: number;
 }
 
 export function FiguresPageClient({
   initialFigures,
-  hasPrevPage,
-  hasNextPage,
-  startCursor,
-  endCursor,
+  currentPage,
+  totalPages,
 }: FiguresPageClientProps) {
 
   const [figures] = useState<Figure[]>(initialFigures);
-
 
   const renderContent = () => {
     if (figures.length > 0) {
@@ -40,21 +32,11 @@ export function FiguresPageClient({
             ))}
           </div>
 
-          <div className="flex justify-center pt-6 border-t">
-              <div className="flex items-center gap-2">
-                <Button asChild variant="outline" disabled={!hasPrevPage}>
-                    <Link href={`/figures?endBefore=${startCursor}`}>
-                    <ChevronLeft className="mr-2 h-4 w-4" />
-                    Anterior
-                    </Link>
-                </Button>
-                <Button asChild variant="outline" disabled={!hasNextPage}>
-                    <Link href={`/figures?startAfter=${endCursor}`}>
-                    Siguiente
-                    <ChevronRight className="ml-2 h-4 w-4" />
-                    </Link>
-                </Button>
-              </div>
+          <div className="flex justify-center pt-10">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+              />
           </div>
         </>
       );
