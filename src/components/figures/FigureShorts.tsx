@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { collection, doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction, onSnapshot, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction, onSnapshot, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -249,7 +249,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                 "no-scrollbar",
                 viewMode === 'grid' 
                 ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-                : "w-full max-w-md mx-auto flex flex-col gap-8"
+                : "flex flex-col gap-8"
             )}>
               {shorts.map((short) => {
                 const hasReported = firebaseUser && short.reportedBy?.includes(firebaseUser.uid);
@@ -260,10 +260,10 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                 const isUnavailable = unavailableVideos.has(short.videoId);
 
                 return (
-                    <div key={short.id} className={cn("group flex flex-col", viewMode === 'feed' && "w-full h-[80vh]")}>
+                    <div key={short.id} className={cn("group flex flex-col", viewMode === 'feed' && "w-full max-w-md mx-auto")}>
                         <div className={cn(
                             "relative w-full flex-grow overflow-hidden rounded-lg bg-black",
-                            viewMode === 'grid' ? 'aspect-video' : ''
+                            viewMode === 'grid' ? 'aspect-video' : 'h-[80vh]'
                         )}>
                           <iframe
                               id={`ytplayer-${short.videoId}`}
