@@ -1,5 +1,4 @@
 
-
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -160,57 +159,83 @@ export async function getAdminFiguresList(options: {
 }
 
 export async function getPublicFiguresList(options: {
-  limit?: number;
   startAfter?: string;
+  endBefore?: string;
 }): Promise<{
   figures: Figure[];
+  hasPrevPage: boolean;
+  hasNextPage: boolean;
+  startCursor: string | null;
   endCursor: string | null;
 }> {
-  const { limit: limitSize = PUBLIC_FIGURES_PER_PAGE, startAfter } = options;
+  const { startAfter, endBefore } = options;
   const figuresCollectionRef = collection(db, 'figures');
   
+  const isPrev = !!endBefore;
+  const limitSize = PUBLIC_FIGURES_PER_PAGE;
+  
+  let q;
+
   try {
-    let q = query(
-      figuresCollectionRef,
-      where('status', '==', 'approved'),
-      orderBy('name', 'asc'),
-      limit(limitSize)
-    );
-
-    if (startAfter) {
-      const cursorDoc = await getDoc(doc(db, 'figures', startAfter));
-      if (cursorDoc.exists()) {
-        q = query(q, firestoreStartAfter(cursorDoc));
-      }
+    if (isPrev && endBefore) {
+        const cursorDoc = await getDoc(doc(db, 'figures', endBefore));
+        q = query(
+            figuresCollectionRef,
+            where('status', '==', 'approved'),
+            orderBy('name', 'desc'),
+            firestoreStartAfter(cursorDoc),
+            limit(limitSize)
+        );
+    } else if (!isPrev && startAfter) {
+        const cursorDoc = await getDoc(doc(db, 'figures', startAfter));
+        q = query(
+            figuresCollectionRef,
+            where('status', '==', 'approved'),
+            orderBy('name', 'asc'),
+            firestoreStartAfter(cursorDoc),
+            limit(limitSize)
+        );
+    } else {
+        q = query(
+            figuresCollectionRef,
+            where('status', '==', 'approved'),
+            orderBy('name', 'asc'),
+            limit(limitSize)
+        );
     }
-
-    const snapshot = await getDocs(q);
-    const figures = snapshot.docs.map(mapDocToFigure);
-    const endCursor = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1].id : null;
-
-    return { figures, endCursor };
     
-  } catch (error) {
-    console.error("Error fetching public figures list:", error);
-    // As per the user request to fix a specific index error, we remove the status filter
-    // if an index-related error occurs, and filter in-memory.
-    if (String(error).includes('index')) {
-        console.warn("Firestore index error detected. Falling back to in-memory filtering.");
-        let q = query(figuresCollectionRef, orderBy('name', 'asc'), limit(limitSize * 2)); // Fetch more to account for filtering
-         if (startAfter) {
-            const cursorDoc = await getDoc(doc(db, 'figures', startAfter));
-            if (cursorDoc.exists()) {
-                q = query(q, firestoreStartAfter(cursorDoc));
-            }
-        }
-        const snapshot = await getDocs(q);
-        const figures = snapshot.docs.map(mapDocToFigure).filter(f => f.status === 'approved').slice(0, limitSize);
-        const endCursor = figures.length > 0 ? figures[figures.length - 1].id : null;
-        return { figures, endCursor };
+    const snapshot = await getDocs(q);
+    let figures = snapshot.docs.map(mapDocToFigure);
+
+    if (isPrev) {
+        figures.reverse();
     }
-    return { figures: [], endCursor: null };
+    
+    const hasNextPage = figures.length === limitSize;
+    const hasPrevPage = !!startAfter || !!endBefore;
+
+    const startCursor = figures.length > 0 ? figures[0].id : null;
+    const endCursor = figures.length > 0 ? figures[figures.length - 1].id : null;
+
+    return { figures, hasPrevPage, hasNextPage, startCursor, endCursor };
+  } catch (error) {
+    console.error("Error fetching public figures:", error);
+    if (String(error).includes('index')) {
+        console.warn("Firestore index error detected. Falling back to client-side filtering.");
+        const allFigures = await getAllFiguresFromFirestore(); // This is inefficient, but a temporary fallback
+        const figures = allFigures.slice(0, PUBLIC_FIGURES_PER_PAGE);
+        return {
+            figures,
+            hasPrevPage: false,
+            hasNextPage: allFigures.length > PUBLIC_FIGURES_PER_PAGE,
+            startCursor: figures[0]?.id || null,
+            endCursor: figures[figures.length - 1]?.id || null,
+        };
+    }
+    return { figures: [], hasPrevPage: false, hasNextPage: false, startCursor: null, endCursor: null };
   }
 }
+
 
 
 export const addFigureToFirestore = async (figure: Figure): Promise<void> => {
@@ -348,11 +373,13 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
   const allFigures: Figure[] = [];
   
   try {
+    // This query is intentionally simple to avoid needing complex indexes for this specific use case.
     const q = query(figuresCollectionRef, orderBy('name'));
     const querySnapshot = await getDocs(q);
 
     querySnapshot.forEach((docSnap) => {
         const figure = mapDocToFigure(docSnap);
+        // We filter in memory for 'approved' status
         if (figure.status === 'approved') {
             allFigures.push(figure);
         }
@@ -361,7 +388,7 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
     return allFigures;
 
   } catch (error: any) {
-    console.error("Error fetching all figures from Firestore for sitemap. Message:", error.message);
+    console.error("Error fetching all figures from Firestore. Message:", error.message);
     if (String(error.message).toLowerCase().includes("permission")) {
       console.error("Firestore permission error: This usually means your Firestore Security Rules are blocking the 'list' operation on the 'figures' collection.");
       console.error("ACTION: Double-check your Firestore Security Rules to ensure 'allow list: if true;' is correctly set for the '/figures/{figureId}' path.");
@@ -372,6 +399,7 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
     return []; // Return empty on error
   }
 };
+
 
 export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promise<Figure[]> => {
   try {

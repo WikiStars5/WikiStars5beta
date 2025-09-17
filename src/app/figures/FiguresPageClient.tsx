@@ -10,15 +10,17 @@ import { Pagination } from "@/components/shared/Pagination";
 
 interface FiguresPageClientProps {
   initialFigures: Figure[];
-  currentPage: number;
-  totalPages: number;
+  hasPrevPage: boolean;
+  hasNextPage: boolean;
+  startCursor: string | null;
   endCursor: string | null;
 }
 
 export function FiguresPageClient({
   initialFigures,
-  currentPage,
-  totalPages,
+  hasPrevPage,
+  hasNextPage,
+  startCursor,
   endCursor,
 }: FiguresPageClientProps) {
 
@@ -36,8 +38,9 @@ export function FiguresPageClient({
 
           <div className="flex justify-center pt-10">
               <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
+                hasPrevPage={hasPrevPage}
+                hasNextPage={hasNextPage}
+                startCursor={startCursor}
                 endCursor={endCursor}
               />
           </div>
