@@ -26,7 +26,7 @@ const getTikTokVideoIdFromUrl = (url: string): string | null => {
     return match[1];
   }
   // Fallback for simple ID paste
-  const potentialId = url.split('/').pop();
+  const potentialId = url.split('/').pop()?.split('?')[0];
   if (potentialId && /^\d+$/.test(potentialId)) {
     return potentialId;
   }
@@ -214,7 +214,10 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                  if (!videoId) return null;
                     return (
                         <div key={video.id} className={cn("group flex flex-col items-center", viewMode === 'feed' && "w-full")}>
-                            <div className={cn("relative w-full overflow-hidden rounded-lg bg-black", viewMode === 'feed' && "max-w-sm")}>
+                            <div className={cn(
+                                "relative w-full flex-grow overflow-hidden rounded-lg bg-black",
+                                viewMode === 'grid' ? 'aspect-[9/16]' : 'max-w-sm'
+                            )}>
                                <TikTokEmbed videoId={videoId} />
                             </div>
                             <div className={cn("flex items-start justify-between gap-2 mt-2 w-full", viewMode === 'feed' && "max-w-sm")}>
