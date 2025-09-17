@@ -177,11 +177,11 @@ export async function getPublicFiguresList(options: {
   let q;
 
   try {
+    // To avoid the composite index, we will query only by name and filter status on the client.
     if (isPrev && endBefore) {
         const cursorDoc = await getDoc(doc(db, 'figures', endBefore));
         q = query(
             figuresCollectionRef,
-            where('status', '==', 'approved'),
             orderBy('name', 'desc'),
             firestoreStartAfter(cursorDoc),
             limit(limitSize)
@@ -190,7 +190,6 @@ export async function getPublicFiguresList(options: {
         const cursorDoc = await getDoc(doc(db, 'figures', startAfter));
         q = query(
             figuresCollectionRef,
-            where('status', '==', 'approved'),
             orderBy('name', 'asc'),
             firestoreStartAfter(cursorDoc),
             limit(limitSize)
@@ -198,19 +197,20 @@ export async function getPublicFiguresList(options: {
     } else {
         q = query(
             figuresCollectionRef,
-            where('status', '==', 'approved'),
             orderBy('name', 'asc'),
             limit(limitSize)
         );
     }
     
     const snapshot = await getDocs(q);
-    let figures = snapshot.docs.map(mapDocToFigure);
+    let allFetchedFigures = snapshot.docs.map(mapDocToFigure);
 
     if (isPrev) {
-        figures.reverse();
+        allFetchedFigures.reverse();
     }
     
+    const figures = allFetchedFigures.filter(f => f.status === 'approved');
+
     const hasNextPage = figures.length === limitSize;
     const hasPrevPage = !!startAfter || !!endBefore;
 
@@ -220,18 +220,7 @@ export async function getPublicFiguresList(options: {
     return { figures, hasPrevPage, hasNextPage, startCursor, endCursor };
   } catch (error) {
     console.error("Error fetching public figures:", error);
-    if (String(error).includes('index')) {
-        console.warn("Firestore index error detected. Falling back to client-side filtering.");
-        const allFigures = await getAllFiguresFromFirestore(); // This is inefficient, but a temporary fallback
-        const figures = allFigures.slice(0, PUBLIC_FIGURES_PER_PAGE);
-        return {
-            figures,
-            hasPrevPage: false,
-            hasNextPage: allFigures.length > PUBLIC_FIGURES_PER_PAGE,
-            startCursor: figures[0]?.id || null,
-            endCursor: figures[figures.length - 1]?.id || null,
-        };
-    }
+    // If it still fails, return empty
     return { figures: [], hasPrevPage: false, hasNextPage: false, startCursor: null, endCursor: null };
   }
 }
