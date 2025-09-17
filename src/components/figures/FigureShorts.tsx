@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff } from 'lucide-react';
+import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff, Expand } from 'lucide-react';
 import type { Figure, YoutubeShort } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
@@ -16,6 +16,7 @@ import { doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction } from 'f
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { ShortsViewer } from './ShortsViewer';
 
 const getYoutubeVideoId = (url: string): string | null => {
     if (!url) return null;
@@ -34,6 +35,7 @@ const getYoutubeVideoId = (url: string): string | null => {
     } catch (e) {
         // Not a valid URL, but might be just an ID
     }
+    // Regex to check for a valid 11-character YouTube ID
     if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) {
         return url.trim();
     }
@@ -54,6 +56,8 @@ export function FigureShorts({ figure }: FigureShortsProps) {
   const [newShortTitle, setNewShortTitle] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
+  const [unavailableVideos, setUnavailableVideos] = React.useState<Set<string>>(new Set());
+  const [viewerIndex, setViewerIndex] = React.useState<number | null>(null);
 
   const handleSuggestShort = async () => {
     if (!newShortTitle.trim() || !newShortUrl.trim() || !firebaseUser) {
@@ -177,18 +181,16 @@ export function FigureShorts({ figure }: FigureShortsProps) {
     }
   }
 
-  const [unavailableVideos, setUnavailableVideos] = React.useState<Set<string>>(new Set());
+  const handleOpenViewer = (index: number) => {
+    setViewerIndex(index);
+  }
 
-  const onPlayerStateChange = (event: any, videoId: string) => {
-      // YouTube's `onStateChange` event with `data: -1` (unstarted) can indicate an unplayable video.
-      // Additionally, we can check for specific error codes if available.
-      if (event.data === -1 || event.data === 150) { 
-        setUnavailableVideos(prev => new Set(prev).add(videoId));
-      }
-  };
-
+  const handleCloseViewer = () => {
+    setViewerIndex(null);
+  }
 
   return (
+    <>
     <Card className="border border-white/20 bg-black">
       <CardHeader className="flex flex-row items-start justify-between">
         <div>
@@ -238,9 +240,10 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                const hasReported = firebaseUser && short.reportedBy?.includes(firebaseUser.uid);
                const reportCount = short.reportedBy?.length || 0;
                const hasReachedThreshold = reportCount >= REPORT_THRESHOLD;
-               const videoUrl = `https://www.youtube.com/shorts/${short.videoId}`;
-               const embedUrl = `https://www.youtube.com/embed/${short.videoId}?showinfo=0&modestbranding=1&controls=1&rel=0&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`;
+               const embedUrl = `https://www.youtube.com/embed/${short.videoId}?enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}&rel=0&modestbranding=1&controls=1`;
                
+               const isUnavailable = unavailableVideos.has(short.videoId);
+
                return (
                   <div key={index} className="group flex flex-col gap-2">
                     <div className="relative w-full overflow-hidden rounded-lg border-2 border-transparent group-hover:border-primary transition-colors" style={{aspectRatio: '9/16'}}>
@@ -253,16 +256,21 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                             allowFullScreen
                             className="w-full h-full"
                         ></iframe>
+                         <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-1 right-1 z-10 h-8 w-8 text-white bg-black/30 hover:bg-black/60 hover:text-white"
+                            onClick={() => handleOpenViewer(index)}
+                            aria-label="Ver en pantalla completa"
+                        >
+                            <Expand className="h-4 w-4" />
+                        </Button>
                     </div>
-                    <p className="text-white text-xs font-semibold truncate text-center">{short.title}</p>
-                    
-                    <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="w-full">
-                      <Button variant="outline" size="sm" className="w-full text-xs">
-                          <ExternalLink className="mr-2 h-3 w-3" />
-                          Ver en YouTube
-                      </Button>
-                    </a>
 
+                    <a href={`https://www.youtube.com/shorts/${short.videoId}`} target="_blank" rel="noopener noreferrer" className="w-full text-white text-xs font-semibold truncate text-center hover:text-primary">
+                      {short.title}
+                    </a>
+                    
                     {isAdmin ? (
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -346,5 +354,13 @@ export function FigureShorts({ figure }: FigureShortsProps) {
         )}
       </CardContent>
     </Card>
+    {viewerIndex !== null && (
+      <ShortsViewer
+        shorts={figure.youtubeShorts || []}
+        startIndex={viewerIndex}
+        onClose={handleCloseViewer}
+      />
+    )}
+    </>
   );
 }
