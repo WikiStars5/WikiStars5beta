@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff, Expand } from 'lucide-react';
+import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff } from 'lucide-react';
 import type { Figure, YoutubeShort } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
@@ -16,7 +16,6 @@ import { doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction } from 'f
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { ShortsViewer } from './ShortsViewer';
 
 const getYoutubeVideoId = (url: string): string | null => {
     if (!url) return null;
@@ -57,7 +56,6 @@ export function FigureShorts({ figure }: FigureShortsProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
   const [unavailableVideos, setUnavailableVideos] = React.useState<Set<string>>(new Set());
-  const [viewerIndex, setViewerIndex] = React.useState<number | null>(null);
 
   const handleSuggestShort = async () => {
     if (!newShortTitle.trim() || !newShortUrl.trim() || !firebaseUser) {
@@ -181,16 +179,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
     }
   }
 
-  const handleOpenViewer = (index: number) => {
-    setViewerIndex(index);
-  }
-
-  const handleCloseViewer = () => {
-    setViewerIndex(null);
-  }
-
   return (
-    <>
     <Card className="border border-white/20 bg-black">
       <CardHeader className="flex flex-row items-start justify-between">
         <div>
@@ -248,7 +237,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                   <div key={index} className="group flex flex-col gap-2">
                     <div className={cn(
                         "relative w-full overflow-hidden rounded-lg border-2 border-transparent transition-colors",
-                        !isUnavailable && "group-hover:border-primary"
+                         "group-hover:border-primary"
                     )} style={{aspectRatio: '9/16'}}>
                         <iframe
                             id={`ytplayer-${short.videoId}`}
@@ -258,16 +247,10 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowFullScreen
                             className="w-full h-full"
+                            onError={() => {
+                                setUnavailableVideos(prev => new Set(prev.add(short.videoId)));
+                            }}
                         ></iframe>
-                         <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute top-1 right-1 z-10 h-8 w-8 text-white bg-black/30 hover:bg-black/60 hover:text-white"
-                            onClick={() => handleOpenViewer(index)}
-                            aria-label="Ver en pantalla completa"
-                        >
-                            <Expand className="h-4 w-4" />
-                        </Button>
                         {isUnavailable && (
                            <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-center text-white p-2">
                                 <VideoOff className="h-8 w-8 mb-2" />
@@ -276,9 +259,12 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                         )}
                     </div>
 
-                    <a href={`https://www.youtube.com/shorts/${short.videoId}`} target="_blank" rel="noopener noreferrer" className="w-full text-white text-xs font-semibold truncate text-center hover:text-primary">
-                      {short.title}
-                    </a>
+                    <Button asChild variant="link" size="sm" className="w-full text-white text-xs font-semibold truncate text-center hover:text-primary p-0 h-auto">
+                        <a href={`https://www.youtube.com/shorts/${short.videoId}`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="mr-2 h-3 w-3"/>
+                            Ver en YouTube
+                        </a>
+                    </Button>
                     
                     {isAdmin ? (
                         <AlertDialog>
@@ -363,13 +349,5 @@ export function FigureShorts({ figure }: FigureShortsProps) {
         )}
       </CardContent>
     </Card>
-    {viewerIndex !== null && (
-      <ShortsViewer
-        shorts={figure.youtubeShorts || []}
-        startIndex={viewerIndex}
-        onClose={handleCloseViewer}
-      />
-    )}
-    </>
   );
 }
