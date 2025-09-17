@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff, Grid3x3, RectangleHorizontal, Maximize } from 'lucide-react';
+import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff, Grid3x3, RectangleHorizontal } from 'lucide-react';
 import type { Figure, YoutubeShort } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
@@ -15,7 +15,7 @@ import { doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction } from 'f
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { ShortsViewer } from './ShortsViewer';
+
 
 const getYoutubeVideoId = (url: string): string | null => {
     if (!url) return null;
@@ -57,16 +57,6 @@ export function FigureShorts({ figure }: FigureShortsProps) {
   const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
   const [unavailableVideos, setUnavailableVideos] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
-
-  const [viewerState, setViewerState] = React.useState<{isOpen: boolean; startIndex: number}>({ isOpen: false, startIndex: 0 });
-
-  const openViewer = (index: number) => {
-    setViewerState({ isOpen: true, startIndex: index });
-  };
-
-  const closeViewer = () => {
-    setViewerState({ isOpen: false, startIndex: 0 });
-  };
 
 
   const handleSuggestShort = async () => {
@@ -266,7 +256,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                       "group flex flex-col gap-2 w-full",
                       viewMode === 'feed' && 'max-w-md' // Limit width in feed view
                     )}>
-                      <div className="relative w-full overflow-hidden rounded-lg border-2 border-transparent aspect-video bg-black">
+                      <div className="relative w-full overflow-hidden rounded-lg border-2 border-transparent aspect-video bg-black max-h-[80vh]">
                           <iframe
                               id={`ytplayer-${short.videoId}`}
                               src={embedUrl}
@@ -285,9 +275,6 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                                   <p className="text-xs font-semibold">Video no disponible</p>
                             </div>
                           )}
-                           <Button onClick={() => openViewer(index)} variant="ghost" size="icon" className="absolute top-1 right-1 z-10 h-8 w-8 text-white bg-black/30 hover:bg-black/60 hover:text-white" aria-label="Ver en pantalla completa">
-                              <Maximize className="h-4 w-4" />
-                          </Button>
                       </div>
                       
                       <div className="flex items-start justify-between gap-2 mt-1">
@@ -383,14 +370,6 @@ export function FigureShorts({ figure }: FigureShortsProps) {
           )}
         </CardContent>
       </Card>
-      
-      {viewerState.isOpen && figure.youtubeShorts && (
-        <ShortsViewer
-            shorts={figure.youtubeShorts}
-            startIndex={viewerState.startIndex}
-            onClose={closeViewer}
-        />
-      )}
     </>
   );
 }
