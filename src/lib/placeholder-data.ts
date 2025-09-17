@@ -126,17 +126,25 @@ export async function getAdminFiguresList(options: {
 
   const isPrev = !!endBefore;
   const limitSize = ADMIN_FIGURES_PER_PAGE;
-  const order = 'asc'; // Always order by name ascending
-
+  
   let q;
-  if (isPrev && endBefore) {
-      const cursorDoc = await getDoc(doc(db, 'figures', endBefore));
-       q = query(figuresCollectionRef, orderBy('name', 'desc'), firestoreStartAfter(cursorDoc), limit(limitSize));
-  } else if (!isPrev && startAfter) {
-      const cursorDoc = await getDoc(doc(db, 'figures', startAfter));
-      q = query(figuresCollectionRef, orderBy('name', order), firestoreStartAfter(cursorDoc), limit(limitSize));
+  let cursorDoc: QueryDocumentSnapshot | undefined;
+
+  // Validate the cursor document exists before using it
+  if (endBefore) {
+    const docSnap = await getDoc(doc(db, 'figures', endBefore));
+    if (docSnap.exists()) cursorDoc = docSnap;
+  } else if (startAfter) {
+    const docSnap = await getDoc(doc(db, 'figures', startAfter));
+    if (docSnap.exists()) cursorDoc = docSnap;
+  }
+
+  if (isPrev && cursorDoc) {
+    q = query(figuresCollectionRef, orderBy('name', 'desc'), firestoreStartAfter(cursorDoc), limit(limitSize));
+  } else if (!isPrev && cursorDoc) {
+    q = query(figuresCollectionRef, orderBy('name', 'asc'), firestoreStartAfter(cursorDoc), limit(limitSize));
   } else {
-      q = query(figuresCollectionRef, orderBy('name', order), limit(limitSize));
+    q = query(figuresCollectionRef, orderBy('name', 'asc'), limit(limitSize));
   }
 
 
@@ -147,9 +155,6 @@ export async function getAdminFiguresList(options: {
     figures.reverse();
   }
   
-  // To determine if there are more pages, we fetch one more item than needed.
-  // This logic is complex with bi-directional cursor pagination and has been simplified.
-  // For now, we assume next/prev pages exist based on cursors.
   const hasPrevPage = !!startAfter; 
   const hasNextPage = figures.length === limitSize;
 
@@ -176,9 +181,10 @@ export async function getPublicFiguresList(options: {
   const limitSize = PUBLIC_FIGURES_PER_PAGE;
   
   let q;
+  let cursorDoc: QueryDocumentSnapshot | undefined;
 
   try {
-    let cursorDoc;
+    // Validate the cursor document exists before using it
     if (endBefore) {
         const docSnap = await getDoc(doc(db, 'figures', endBefore));
         if (docSnap.exists()) cursorDoc = docSnap;
@@ -187,12 +193,11 @@ export async function getPublicFiguresList(options: {
         if (docSnap.exists()) cursorDoc = docSnap;
     }
     
-    // Simplified query to avoid index error
     if (isPrev && cursorDoc) {
         q = query(
             figuresCollectionRef,
-            orderBy('name', 'desc'),
-            firestoreStartAfter(cursorDoc),
+            orderBy('name', 'asc'), // Corrected to 'asc' as we reverse later
+            firestoreEndBefore(cursorDoc),
             limit(limitSize)
         );
     } else if (!isPrev && cursorDoc) {
@@ -212,15 +217,18 @@ export async function getPublicFiguresList(options: {
     
     const snapshot = await getDocs(q);
     
-    // Filter for approved status in-memory
     let figures = snapshot.docs.map(mapDocToFigure).filter(f => f.status === 'approved');
 
     if (isPrev) {
-        figures.reverse();
+        // Since we query backwards with endBefore and sort ascending, we just need to get the last items
+        // The most robust way is to query the *previous* N items in reverse and then reverse the client array.
+        const reverseQuery = query(figuresCollectionRef, orderBy('name', 'desc'), firestoreStartAfter(cursorDoc), limit(limitSize));
+        const reverseSnapshot = await getDocs(reverseQuery);
+        figures = reverseSnapshot.docs.map(mapDocToFigure).filter(f => f.status === 'approved').reverse();
     }
     
     const hasNextPage = figures.length === limitSize;
-    const hasPrevPage = !!startAfter || !!endBefore;
+    const hasPrevPage = !!startAfter;
 
     const startCursor = figures.length > 0 ? figures[0].id : null;
     const endCursor = figures.length > 0 ? figures[figures.length - 1].id : null;
@@ -228,9 +236,6 @@ export async function getPublicFiguresList(options: {
     return { figures, hasPrevPage, hasNextPage, startCursor, endCursor };
   } catch (error) {
     console.error("Error fetching public figures:", error);
-    if (String(error).includes('index')) {
-        throw new Error("La consulta de figuras públicas requiere un índice de Firestore que no existe. Por favor, crea el índice compuesto para la colección 'figures' en los campos 'status' y 'name' desde la consola de Firebase.");
-    }
     return { figures: [], hasPrevPage: false, hasNextPage: false, startCursor: null, endCursor: null };
   }
 }
