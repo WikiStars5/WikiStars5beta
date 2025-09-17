@@ -7,7 +7,7 @@ export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagra
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 export type RatingValue = 0 | 1 | 2 | 3 | 4 | 5;
 export type ProfileType = 'character' | 'media';
-export type CreationMethod = 'wikipedia' | 'famous_birthdays';
+export type CreationMethod = 'wikipedia' | 'famous_birthdays' | 'manual';
 
 // Define specific media sub-categories
 export type MediaSubcategory = 
@@ -31,9 +31,9 @@ export interface Hashtag {
 export interface YoutubeShort {
   title: string;
   videoId: string;
-  status: 'approved' | 'pending' | 'rejected';
   submittedBy: string; // User ID of the submitter
   submittedAt: Timestamp;
+  reportedBy?: string[]; // Array of user IDs who reported it
 }
   
 export interface Figure {
@@ -117,12 +117,13 @@ export interface Figure {
   ratingCounts?: Record<string, number>;
   
   createdAt?: string; 
-  status?: 'approved' | 'rejected' | 'pending'; 
+  status?: 'approved' | 'rejected' | 'pending' | 'pending_admin_review'; 
   isFeatured?: boolean;
 
   // --- Manual Creation Fields ---
   creationMethod?: CreationMethod;
   isCommunityVerified?: boolean;
+  manualVerificationExpiresAt?: Timestamp | { _seconds: number, _nanoseconds: number };
 }
 
 

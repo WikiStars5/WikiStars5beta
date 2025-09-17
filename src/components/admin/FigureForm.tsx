@@ -283,13 +283,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     }
   };
 
-  const handleYoutubeShortStatusChange = (videoId: string, newStatus: 'approved' | 'rejected') => {
-    const updatedShorts = youtubeShorts.map(short =>
-        short.videoId === videoId ? { ...short, status: newStatus } : short
-    );
-    setYoutubeShorts(updatedShorts);
-  };
-
   const handleYoutubeShortDelete = (videoId: string) => {
     setYoutubeShorts(youtubeShorts.filter(short => short.videoId !== videoId));
   };
@@ -685,52 +678,24 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 
       <div className="space-y-4 mt-6 border-t pt-4 border-border">
           <h3 className="text-lg font-semibold flex items-center gap-2"><Youtube /> Gestión de YouTube Shorts</h3>
-           <Tabs defaultValue="pending" className="w-full">
-            <TabsList>
-                <TabsTrigger value="pending">Pendientes</TabsTrigger>
-                <TabsTrigger value="approved">Aprobados</TabsTrigger>
-            </TabsList>
-            <TabsContent value="pending">
-                <div className="space-y-2 rounded-lg border p-4">
-                    <h4 className="font-medium">Videos Pendientes de Aprobación</h4>
-                    {youtubeShorts.filter(s => s.status === 'pending').length > 0 ? (
-                        youtubeShorts.filter(s => s.status === 'pending').map((short) => (
-                        <div key={short.videoId} className="flex items-center gap-2 p-2 bg-muted rounded-md">
-                            <Image src={`https://i.ytimg.com/vi/${short.videoId}/hqdefault.jpg`} alt={short.title} width={80} height={45} className="rounded object-cover"/>
-                            <div className="flex-grow">
-                                <p className="text-sm font-medium">{short.title}</p>
-                                <p className="text-xs text-muted-foreground">ID: {short.videoId}</p>
-                            </div>
-                            <Button size="icon" variant="ghost" className="text-green-500 hover:text-green-500 hover:bg-green-500/10" onClick={() => handleYoutubeShortStatusChange(short.videoId, 'approved')}><Check /></Button>
-                            <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-500 hover:bg-red-500/10" onClick={() => handleYoutubeShortStatusChange(short.videoId, 'rejected')}><ThumbsDown /></Button>
-                            <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleYoutubeShortDelete(short.videoId)}><X /></Button>
-                        </div>
-                        ))
-                    ) : (
-                        <p className="text-sm text-center text-muted-foreground py-4">No hay videos pendientes.</p>
-                    )}
-                </div>
-            </TabsContent>
-            <TabsContent value="approved">
-                <div className="space-y-2 rounded-lg border p-4">
-                    <h4 className="font-medium">Videos Aprobados</h4>
-                    {youtubeShorts.filter(s => s.status === 'approved').length > 0 ? (
-                        youtubeShorts.filter(s => s.status === 'approved').map((short) => (
-                        <div key={short.videoId} className="flex items-center gap-2 p-2 bg-muted rounded-md">
-                            <Image src={`https://i.ytimg.com/vi/${short.videoId}/hqdefault.jpg`} alt={short.title} width={80} height={45} className="rounded object-cover"/>
-                             <div className="flex-grow">
-                                <p className="text-sm font-medium">{short.title}</p>
-                                <p className="text-xs text-muted-foreground">ID: {short.videoId}</p>
-                            </div>
-                            <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleYoutubeShortDelete(short.videoId)}><X /></Button>
-                        </div>
-                        ))
-                    ) : (
-                         <p className="text-sm text-center text-muted-foreground py-4">No hay videos aprobados.</p>
-                    )}
-                </div>
-            </TabsContent>
-            </Tabs>
+           <div className="space-y-2 rounded-lg border p-4">
+              <h4 className="font-medium">Videos del Perfil</h4>
+              {youtubeShorts.length > 0 ? (
+                  youtubeShorts.map((short) => (
+                  <div key={short.videoId} className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                      <Image src={`https://i.ytimg.com/vi/${short.videoId}/hqdefault.jpg`} alt={short.title} width={80} height={45} className="rounded object-cover"/>
+                      <div className="flex-grow">
+                          <p className="text-sm font-medium">{short.title}</p>
+                          <p className="text-xs text-muted-foreground">ID: {short.videoId}</p>
+                          <p className="text-xs text-muted-foreground">Reportes: {short.reportedBy?.length || 0}</p>
+                      </div>
+                      <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleYoutubeShortDelete(short.videoId)}><X /></Button>
+                  </div>
+                  ))
+              ) : (
+                  <p className="text-sm text-center text-muted-foreground py-4">No hay videos en este perfil.</p>
+              )}
+          </div>
       </div>
       
       <div className="mt-6 border-t pt-4 border-border">
