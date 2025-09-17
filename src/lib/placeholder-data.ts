@@ -167,19 +167,22 @@ export async function getPublicFiguresList(options: {
   const order = isPrev ? 'desc' : 'asc';
   const cursorId = isPrev ? endBefore : startAfter;
 
-  let q = query(figuresCollectionRef, where("status", "==", "approved"), orderBy('name', order), limit(limitSize + 1));
+  let q = query(figuresCollectionRef, orderBy('name', order), limit(limitSize + 1));
 
   if (cursorId) {
     const cursorDoc = await getDoc(doc(db, 'figures', cursorId));
     if (cursorDoc.exists()) {
       q = isPrev 
-        ? query(figuresCollectionRef, where("status", "==", "approved"), orderBy('name', order), firestoreEndBefore(cursorDoc), limit(limitSize + 1))
-        : query(figuresCollectionRef, where("status", "==", "approved"), orderBy('name', order), firestoreStartAfter(cursorDoc), limit(limitSize + 1));
+        ? query(figuresCollectionRef, orderBy('name', order), firestoreEndBefore(cursorDoc), limit(limitSize + 1))
+        : query(figuresCollectionRef, orderBy('name', order), firestoreStartAfter(cursorDoc), limit(limitSize + 1));
     }
   }
 
   const snapshot = await getDocs(q);
-  const figures = snapshot.docs.map(mapDocToFigure);
+  let figures = snapshot.docs.map(mapDocToFigure);
+
+  // Filter for approved figures after fetching
+  figures = figures.filter(figure => figure.status === 'approved');
 
   const hasMore = figures.length > limitSize;
   if (hasMore) {
