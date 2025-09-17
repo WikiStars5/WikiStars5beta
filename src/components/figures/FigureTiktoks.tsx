@@ -42,6 +42,8 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
   const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
   
+  const videoRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+
   React.useEffect(() => {
     const tiktoksRef = collection(db, `figures/${figure.id}/tiktokVideos`);
     const unsubscribe = onSnapshot(tiktoksRef, (snapshot) => {
@@ -58,9 +60,14 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
   
   React.useEffect(() => {
     if (videos.length > 0 && typeof window.tiktok?.embed?.render === 'function') {
-      const timer = setTimeout(() => {
-        window.tiktok.embed.render();
-      }, 500); // Give the DOM a moment to update
+        const timer = setTimeout(() => {
+            videos.forEach(video => {
+                const el = videoRefs.current[video.id];
+                if (el) {
+                    window.tiktok.embed.render(el);
+                }
+            });
+        }, 300);
       return () => clearTimeout(timer);
     }
   }, [videos, viewMode]);
@@ -200,10 +207,11 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
             )}>
               {videos.map((video) => (
                 <div key={video.id} className={cn("group w-full flex flex-col items-center")}>
-                    <div 
+                    <div
+                        ref={el => videoRefs.current[video.id] = el}
                         className={cn(
-                            "relative w-full rounded-lg overflow-hidden",
-                            viewMode === 'feed' && "max-w-sm"
+                            "w-full rounded-lg overflow-hidden",
+                            viewMode === 'feed' && "max-w-sm",
                         )}
                         dangerouslySetInnerHTML={{ __html: video.embedCode }}
                     />
