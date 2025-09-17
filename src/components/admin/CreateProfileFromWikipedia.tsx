@@ -99,6 +99,7 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [profileType, setProfileType] = useState<ProfileType>('character');
   const [showPlanB, setShowPlanB] = useState(false);
+  const [verificationFailed, setVerificationFailed] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -112,19 +113,25 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
     setIsVerifying(true);
     setVerificationResult(null);
     setShowPlanB(false);
+    setVerificationFailed(false);
 
     try {
       const result = await verifyWikipediaCharacter({ name: nameInput.trim() });
       if (result.found) {
         setVerificationResult({ ...result, method: 'wikipedia' });
       } else {
-        toast({ title: "No Encontrado en Wikipedia", description: `Se activó el Plan B para "${nameInput}".`, variant: "default" });
-        setShowPlanB(true);
+        setVerificationFailed(true);
+        if (profileType === 'character') {
+          setShowPlanB(true);
+          toast({ title: "No Encontrado en Wikipedia", description: `Se activó el Plan B para "${nameInput}". Inténtalo con un enlace de FamousBirthdays.`, variant: "default" });
+        } else {
+          toast({ title: "No Encontrado", description: `El perfil para "${nameInput}" no se encontró en Wikipedia.`, variant: "destructive" });
+        }
       }
     } catch (error: any) {
       console.error("Error verifying on Wikipedia:", error);
       toast({ title: "Error de Verificación", description: error.message || "No se pudo contactar con Wikipedia.", variant: "destructive" });
-      setShowPlanB(true); // Show Plan B on error too
+      setVerificationFailed(true);
     } finally {
       setIsVerifying(false);
     }
@@ -140,7 +147,6 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
     try {
         const figureRef = doc(db, 'figures', figureId);
         
-        // Check if figure already exists
         const docSnap = await getDoc(figureRef);
         if (docSnap.exists()) {
             toast({
@@ -176,7 +182,7 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
             hashtagsLower: [],
             hashtagKeywords: [],
             creationMethod: method,
-            isCommunityVerified: false, // All new profiles start as not community verified
+            isCommunityVerified: false,
         };
         
         await setDoc(figureRef, figureData, { merge: true });
@@ -203,6 +209,7 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
     setIsVerifying(false);
     setIsCreating(false);
     setShowPlanB(false);
+    setVerificationFailed(false);
     setProfileType('character');
   }
 
@@ -232,23 +239,6 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
                     <p className="text-sm text-green-500 flex items-center justify-center gap-1"><SourceIcon className="h-4 w-4" /> {sourceText}</p>
                 </div>
             </div>
-            <div className="space-y-3 pt-4 border-t">
-              <Label className="font-semibold">¿Qué tipo de perfil es?</Label>
-              <RadioGroup
-                value={profileType}
-                onValueChange={(value) => setProfileType(value as ProfileType)}
-                className="flex justify-center gap-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="character" id="type-character-confirm" />
-                  <Label htmlFor="type-character-confirm">Personaje</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="media" id="type-media-confirm" />
-                  <Label htmlFor="type-media-confirm">Medio (Película, videojuego, serie, etc)</Label>
-                </div>
-              </RadioGroup>
-            </div>
             <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button variant="outline" onClick={resetForm} disabled={isCreating}>Cancelar</Button>
                 <Button onClick={handleCreate} disabled={isCreating}>
@@ -263,13 +253,31 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
   return (
     <div className="space-y-4">
       <form onSubmit={handleVerifyWikipedia} className="space-y-3">
+          <div className="space-y-3">
+              <Label className="font-semibold">1. ¿Qué tipo de perfil es?</Label>
+              <RadioGroup
+                value={profileType}
+                onValueChange={(value) => setProfileType(value as ProfileType)}
+                className="flex justify-start gap-4"
+                disabled={isVerifying}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="character" id="type-character-create" />
+                  <Label htmlFor="type-character-create">Personaje</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="media" id="type-media-create" />
+                  <Label htmlFor="type-media-create">Medio (Película, videojuego, serie, etc)</Label>
+                </div>
+              </RadioGroup>
+          </div>
           <div>
-              <Label htmlFor="character-name">Nombre del Personaje</Label>
+              <Label htmlFor="character-name" className="font-semibold">2. Nombre del Perfil</Label>
               <Input
                   id="character-name"
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
-                  placeholder="Ej: Lionel Messi, Superman..."
+                  placeholder="Ej: Lionel Messi, Superman, The Matrix..."
                   disabled={isVerifying}
               />
           </div>
@@ -278,12 +286,13 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
               {isVerifying ? 'Verificando...' : 'Verificar en Wikipedia'}
           </Button>
       </form>
+
       {showPlanB && (
         <div className="border-t pt-4">
-            <Alert variant="destructive" className="mb-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Plan B: Verificación Manual</AlertTitle>
-                <AlertDescription>
+            <Alert variant="default" className="mb-4 bg-amber-500/10 border-amber-500/30">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <AlertTitle className="text-amber-400">Plan B: Verificación Manual</AlertTitle>
+                <AlertDescription className="text-amber-400/80">
                     No se encontró en Wikipedia. Pega el enlace de su perfil en <strong>es.famousbirthdays.com</strong> para verificarlo manualmente.
                 </AlertDescription>
             </Alert>
@@ -293,6 +302,17 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
             />
         </div>
       )}
+
+      {verificationFailed && !showPlanB && profileType === 'media' && (
+           <Alert variant="destructive" className="mt-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>No Encontrado</AlertTitle>
+                <AlertDescription>
+                    No se pudo encontrar un perfil de Wikipedia para "{nameInput}".
+                </AlertDescription>
+            </Alert>
+      )}
+
     </div>
   );
 }
