@@ -187,10 +187,10 @@ export async function getPublicFiguresList(options: {
         if (docSnap.exists()) cursorDoc = docSnap;
     }
     
+    // Simplified query to avoid index error
     if (isPrev && cursorDoc) {
         q = query(
             figuresCollectionRef,
-            where('status', '==', 'approved'),
             orderBy('name', 'desc'),
             firestoreStartAfter(cursorDoc),
             limit(limitSize)
@@ -198,7 +198,6 @@ export async function getPublicFiguresList(options: {
     } else if (!isPrev && cursorDoc) {
         q = query(
             figuresCollectionRef,
-            where('status', '==', 'approved'),
             orderBy('name', 'asc'),
             firestoreStartAfter(cursorDoc),
             limit(limitSize)
@@ -206,14 +205,15 @@ export async function getPublicFiguresList(options: {
     } else {
         q = query(
             figuresCollectionRef,
-            where('status', '==', 'approved'),
             orderBy('name', 'asc'),
             limit(limitSize)
         );
     }
     
     const snapshot = await getDocs(q);
-    let figures = snapshot.docs.map(mapDocToFigure);
+    
+    // Filter for approved status in-memory
+    let figures = snapshot.docs.map(mapDocToFigure).filter(f => f.status === 'approved');
 
     if (isPrev) {
         figures.reverse();
