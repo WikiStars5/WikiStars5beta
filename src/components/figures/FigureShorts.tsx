@@ -15,6 +15,7 @@ import { doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction } from 'f
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 
 const getYoutubeVideoId = (url: string): string | null => {
@@ -180,6 +181,10 @@ export function FigureShorts({ figure }: FigureShortsProps) {
         setIsProcessing(null);
     }
   }
+  
+  const toggleViewMode = () => {
+    setViewMode(prev => prev === 'grid' ? 'feed' : 'grid');
+  };
 
   return (
     <>
@@ -195,14 +200,18 @@ export function FigureShorts({ figure }: FigureShortsProps) {
               </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-              <div className="flex items-center rounded-md bg-muted p-0.5">
-                  <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('grid')} aria-label="Grid View">
-                      <Grid3x3 className="h-4 w-4"/>
-                  </Button>
-                  <Button variant={viewMode === 'feed' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setViewMode('feed')} aria-label="Feed View">
-                      <RectangleHorizontal className="h-4 w-4"/>
-                  </Button>
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-9 w-9" onClick={toggleViewMode} aria-label="Cambiar vista">
+                            {viewMode === 'grid' ? <RectangleHorizontal className="h-5 w-5"/> : <Grid3x3 className="h-5 w-5"/>}
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Cambiar a vista de {viewMode === 'grid' ? 'feed' : 'cuadrícula'}</p>
+                    </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
               <Dialog open={isSuggestDialogOpen} onOpenChange={setIsSuggestDialogOpen}>
                   <Button variant="outline" size="sm" disabled={isAuthLoading} onClick={() => setIsSuggestDialogOpen(true)}>
@@ -241,7 +250,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
             <div className={cn(
                 viewMode === 'grid' 
                 ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-                : "w-full max-w-md mx-auto h-[80vh] flex flex-col overflow-y-auto snap-y snap-mandatory rounded-lg no-scrollbar"
+                : "w-full max-w-md mx-auto flex flex-col gap-8 no-scrollbar"
             )}>
               {figure.youtubeShorts.map((short) => {
                 const hasReported = firebaseUser && short.reportedBy?.includes(firebaseUser.uid);
@@ -253,14 +262,11 @@ export function FigureShorts({ figure }: FigureShortsProps) {
 
                 return (
                     <div key={short.videoId} className={cn(
-                      "group flex flex-col",
-                      viewMode === 'grid' 
-                        ? "gap-2"
-                        : "snap-start w-full h-full flex-shrink-0 pt-8 pb-4"
+                      "group flex flex-col gap-2",
+                      viewMode === 'feed' && "w-full"
                     )}>
                       <div className={cn(
-                          "relative w-full overflow-hidden rounded-lg bg-black aspect-video",
-                          viewMode === 'feed' && "flex-grow"
+                          "relative w-full overflow-hidden rounded-lg bg-black aspect-video"
                       )}>
                           <iframe
                               id={`ytplayer-${short.videoId}`}
