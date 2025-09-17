@@ -9,7 +9,7 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { Dialog, DialogContent } from '../ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { X, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -45,6 +45,10 @@ export function ShortsViewer({ shorts, startIndex, onClose }: ShortsViewerProps)
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="p-0 border-0 bg-black w-screen h-screen max-w-full sm:max-w-full rounded-none flex items-center justify-center">
+        {/* Added hidden title and description for accessibility */}
+        <DialogTitle className="sr-only">Visor de YouTube Shorts</DialogTitle>
+        <DialogDescription className="sr-only">Desliza hacia arriba o abajo para ver más videos.</DialogDescription>
+        
         <Button
           variant="ghost"
           size="icon"
