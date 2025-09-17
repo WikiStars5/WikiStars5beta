@@ -198,7 +198,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                 
                 return (
                     <div key={video.id} className="group w-full flex flex-col items-center">
-                        <div className={cn(
+                         <div className={cn(
                             "w-full rounded-lg overflow-hidden bg-black",
                             viewMode === 'grid' ? 'min-h-[400px]' : 'h-[80vh] aspect-[9/16]'
                         )}>
