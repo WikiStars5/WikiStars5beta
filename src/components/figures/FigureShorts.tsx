@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -35,8 +34,8 @@ const getYoutubeVideoId = (url: string): string | null => {
         // Not a valid URL, but might be just an ID
     }
     // Check if the input is just the video ID
-    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
-        return url;
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) {
+        return url.trim();
     }
     return null;
 }
@@ -70,19 +69,35 @@ export function FigureShorts({ figure }: FigureShortsProps) {
 
     setIsSubmitting(true);
 
-    const newShort: Omit<YoutubeShort, 'status'> = {
+    const newShort: YoutubeShort = {
         title: newShortTitle.trim(),
         videoId: videoId,
         submittedBy: firebaseUser.uid,
-        submittedAt: Timestamp.now(),
+        submittedAt: new Date().toISOString(),
         reportedBy: [],
     };
 
     try {
         const figureRef = doc(db, 'figures', figure.id);
-        // We use a custom field `youtubeShorts` in the `Figure` document.
+        const figureSnap = await getDoc(figureRef);
+        if (!figureSnap.exists()) throw new Error("Figura no encontrada");
+        
+        const currentShorts: YoutubeShort[] = figureSnap.data().youtubeShorts || [];
+        const isDuplicate = currentShorts.some(s => s.videoId === videoId);
+
+        if(isDuplicate) {
+            toast({ title: "Video Duplicado", description: "Este video ya ha sido añadido a este perfil.", variant: "destructive" });
+            setIsSubmitting(false);
+            return;
+        }
+
+        const newShortWithTimestamp: Omit<YoutubeShort, 'submittedAt'> & { submittedAt: Timestamp } = {
+            ...newShort,
+            submittedAt: Timestamp.now(),
+        }
+
         await updateDoc(figureRef, {
-            youtubeShorts: arrayUnion(newShort)
+            youtubeShorts: arrayUnion(newShortWithTimestamp)
         });
 
         toast({
@@ -219,7 +234,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                
                return (
                   <div key={index} className="group flex flex-col gap-2">
-                    <a href={`https://www.youtube.com/shorts/${short.videoId}`} target="_blank" rel="noopener noreferrer" className="block w-full aspect-ratio-9/16">
+                    <a href={`https://www.youtube.com/shorts/${short.videoId}`} target="_blank" rel="noopener noreferrer" className="block w-full" style={{aspectRatio: '9/16'}}>
                         <div className="relative w-full h-full rounded-lg overflow-hidden border-2 border-transparent group-hover:border-primary transition-colors">
                             <iframe
                                 src={`https://www.youtube.com/embed/${short.videoId}`}
@@ -299,4 +314,3 @@ export function FigureShorts({ figure }: FigureShortsProps) {
     </Card>
   );
 }
-
