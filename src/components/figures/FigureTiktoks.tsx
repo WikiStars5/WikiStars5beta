@@ -67,8 +67,13 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
   }, [figure.id]);
   
   React.useEffect(() => {
-    if (videos.length > 0 && typeof window.tiktok?.embed?.render === 'function') {
-        window.tiktok.embed.render();
+    // Si la ventana de TikTok está disponible
+    if (typeof window.tiktok?.embed?.render === 'function') {
+        // Usa setTimeout para darle tiempo al DOM para que se actualice
+        setTimeout(() => {
+            // El script renderiza todos los elementos TikTok que encuentra
+            window.tiktok.embed.render(); 
+        }, 500); // 500 milisegundos de espera
     }
   }, [videos, viewMode]);
 
