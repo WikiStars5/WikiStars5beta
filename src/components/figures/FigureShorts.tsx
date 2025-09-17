@@ -1,9 +1,10 @@
 
+
 "use client";
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink } from 'lucide-react';
+import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff } from 'lucide-react';
 import type { Figure, YoutubeShort } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
@@ -11,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, arrayUnion, Timestamp, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -33,7 +34,6 @@ const getYoutubeVideoId = (url: string): string | null => {
     } catch (e) {
         // Not a valid URL, but might be just an ID
     }
-    // Check if the input is just the video ID
     if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) {
         return url.trim();
     }
@@ -78,7 +78,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
         const isDuplicate = currentShorts.some(s => s.videoId === videoId);
 
         if(isDuplicate) {
-            toast({ title: "Video Duplicado", description: "Este video ya ha sido añadido a este perfil.", variant: "destructive" });
+            toast({ title: "Video Duplicado", description: "Este video ya ha sido añadido a este perfil.", variant: "default" });
             setIsSubmitting(false);
             return;
         }
@@ -119,30 +119,32 @@ export function FigureShorts({ figure }: FigureShortsProps) {
     
     try {
         const figureRef = doc(db, 'figures', figure.id);
-        const figureSnap = await getDoc(figureRef);
-        if (!figureSnap.exists()) throw new Error("Figure not found");
+        
+        await runTransaction(db, async (transaction) => {
+            const figureSnap = await transaction.get(figureRef);
+            if (!figureSnap.exists()) throw new Error("Figure not found");
 
-        const currentShorts: YoutubeShort[] = figureSnap.data().youtubeShorts || [];
-        const shortIndex = currentShorts.findIndex(s => s.videoId === videoId);
-        
-        if (shortIndex === -1) throw new Error("Short not found");
-        
-        const shortToUpdate = currentShorts[shortIndex];
-        
-        if (shortToUpdate.reportedBy?.includes(firebaseUser.uid)) {
-            toast({ title: "Ya has reportado este video", variant: "default" });
-            setIsProcessing(null);
-            return;
-        }
+            const currentShorts: YoutubeShort[] = figureSnap.data().youtubeShorts || [];
+            const shortIndex = currentShorts.findIndex(s => s.videoId === videoId);
+            
+            if (shortIndex === -1) throw new Error("Short not found");
+            
+            const shortToUpdate = currentShorts[shortIndex];
+            
+            if (shortToUpdate.reportedBy?.includes(firebaseUser.uid)) {
+                toast({ title: "Ya has reportado este video", variant: "default" });
+                return;
+            }
 
-        const updatedReportedBy = [...(shortToUpdate.reportedBy || []), firebaseUser.uid];
-        const updatedShort = { ...shortToUpdate, reportedBy: updatedReportedBy };
-        
-        const updatedShorts = [...currentShorts];
-        updatedShorts[shortIndex] = updatedShort;
-        
-        await updateDoc(figureRef, { youtubeShorts: updatedShorts });
-        toast({ title: "Reporte enviado", description: "Gracias por ayudar a mantener la comunidad." });
+            const updatedReportedBy = [...(shortToUpdate.reportedBy || []), firebaseUser.uid];
+            const updatedShort = { ...shortToUpdate, reportedBy: updatedReportedBy };
+            
+            const updatedShorts = [...currentShorts];
+            updatedShorts[shortIndex] = updatedShort;
+
+            transaction.update(figureRef, { youtubeShorts: updatedShorts });
+            toast({ title: "Reporte enviado", description: "Gracias por ayudar a mantener la comunidad." });
+        });
 
     } catch (error: any) {
         console.error("Error reporting short:", error);
@@ -174,6 +176,16 @@ export function FigureShorts({ figure }: FigureShortsProps) {
         setIsProcessing(null);
     }
   }
+
+  const [unavailableVideos, setUnavailableVideos] = React.useState<Set<string>>(new Set());
+
+  const onPlayerStateChange = (event: any, videoId: string) => {
+      // YouTube's `onStateChange` event with `data: -1` (unstarted) can indicate an unplayable video.
+      // Additionally, we can check for specific error codes if available.
+      if (event.data === -1 || event.data === 150) { 
+        setUnavailableVideos(prev => new Set(prev).add(videoId));
+      }
+  };
 
 
   return (
@@ -227,12 +239,13 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                const reportCount = short.reportedBy?.length || 0;
                const hasReachedThreshold = reportCount >= REPORT_THRESHOLD;
                const videoUrl = `https://www.youtube.com/shorts/${short.videoId}`;
-               const embedUrl = `https://www.youtube.com/embed/${short.videoId}?showinfo=0&modestbranding=1&controls=1&rel=0`;
+               const embedUrl = `https://www.youtube.com/embed/${short.videoId}?showinfo=0&modestbranding=1&controls=1&rel=0&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`;
                
                return (
                   <div key={index} className="group flex flex-col gap-2">
                     <div className="relative w-full overflow-hidden rounded-lg border-2 border-transparent group-hover:border-primary transition-colors" style={{aspectRatio: '9/16'}}>
                         <iframe
+                            id={`ytplayer-${short.videoId}`}
                             src={embedUrl}
                             title={short.title}
                             frameBorder="0"
