@@ -308,7 +308,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const handleAddShort = () => {
     const videoId = getYoutubeVideoId(newShortUrl);
     if (!videoId) {
-        setError('URL de YouTube Short no válida. Usa el enlace completo o solo el ID del video.');
+        setError('URL de YouTube no válida. Usa el enlace completo o solo el ID del video.');
         return;
     }
     if (!newShortTitle.trim()) {
@@ -561,6 +561,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
               <RadioGroupItem value="character" id="type-character" />
               <Label htmlFor="type-character">Personaje</Label>
           </div>
+          <div className="flex items-center space-x-2">
+              <RadioGroupItem value="media" id="type-media" />
+              <Label htmlFor="type-media">Medio</Label>
+          </div>
           </RadioGroup>
       </div>
 
@@ -725,7 +729,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
            <div className="space-y-2">
               <Label htmlFor="new-short-url">URL o ID del Short</Label>
               <div className="flex gap-2">
-                  <Input id="new-short-url" value={newShortUrl} onChange={(e) => setNewShortUrl(e.target.value)} placeholder="Pega el enlace de YouTube Shorts..."/>
+                  <Input id="new-short-url" value={newShortUrl} onChange={(e) => setNewShortUrl(e.target.value)} placeholder="Pega el enlace de YouTube..."/>
                   <Button type="button" onClick={handleAddShort}>
                       <Plus className="mr-2 h-4 w-4"/> Añadir
                   </Button>
