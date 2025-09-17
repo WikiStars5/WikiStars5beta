@@ -233,6 +233,8 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
             )}>
               {videos.map((video) => {
                 const videoId = getTikTokVideoIdFromUrl(video.url);
+                if (!videoId) return null;
+                
                 return (
                     <div key={video.id} className={cn("group flex flex-col items-center", viewMode === 'feed' && "w-full")}>
                         <div className={cn(
@@ -240,10 +242,10 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                              viewMode === 'feed' && "mx-auto w-full max-w-sm"
                         )}>
                            <blockquote 
-                                ref={el => videoRefs.current[video.id] = el}
+                                ref={el => { if (el) videoRefs.current[video.id] = el; }}
                                 className="tiktok-embed" 
-                                cite={video.url} 
-                                data-video-id={videoId || undefined}
+                                cite={`https://www.tiktok.com/@user/video/${videoId}`}
+                                data-video-id={videoId}
                                 style={{ maxWidth: '605px', minWidth: '325px' }}
                             > 
                                 <a href={video.url} target="_blank" rel="noopener noreferrer">
