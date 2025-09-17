@@ -17,7 +17,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Textarea } from '../ui/textarea';
 import TikTokEmbed from './TikTokEmbed';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../ui/carousel';
 
 const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2859 3333" {...props} shapeRendering="geometricPrecision" textRendering="geometricPrecision" imageRendering="optimizeQuality" fillRule="evenodd" clipRule="evenodd">
@@ -186,91 +185,53 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
              </div>
           ) : videos.length > 0 ? (
-            viewMode === 'grid' ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {videos.map((video) => {
+            <div className={cn(
+                "w-full",
+                viewMode === 'grid'
+                ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+                : "space-y-8"
+            )}>
+              {videos.map((video) => {
                   const videoId = getTikTokVideoIdFromEmbed(video.embedCode);
                   if (!videoId) return null;
                   
                   return (
-                      <div key={video.id} className="group w-full flex flex-col items-center gap-2">
-                           <div className="w-full rounded-lg overflow-hidden bg-black min-h-[400px]">
+                      <div key={video.id} className="group w-full flex flex-col items-center">
+                           <div className={cn(
+                                "w-full rounded-lg overflow-hidden bg-black",
+                                viewMode === 'grid' ? 'min-h-[400px]' : 'max-w-sm aspect-[9/16] mx-auto'
+                            )}>
                               <TikTokEmbed videoId={videoId} />
                          </div>
 
                          {isAdmin && (
-                              <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                  <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === video.id}>
-                                      {isProcessing === video.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
-                                      Eliminar (Admin)
-                                      </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                      <AlertDialogTitle>¿Confirmar eliminación (Admin)?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                          Estás a punto de eliminar este video permanentemente. Esta acción no se puede deshacer.
-                                      </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => handleDeleteVideo(video.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                                      </AlertDialogFooter>
-                                  </AlertDialogContent>
-                              </AlertDialog>
+                              <div className="w-full mt-2 max-w-sm">
+                                  <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                      <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === video.id}>
+                                          {isProcessing === video.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
+                                          Eliminar (Admin)
+                                          </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                          <AlertDialogTitle>¿Confirmar eliminación (Admin)?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                              Estás a punto de eliminar este video permanentemente. Esta acción no se puede deshacer.
+                                          </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => handleDeleteVideo(video.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                          </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                  </AlertDialog>
+                              </div>
                           )}
                       </div>
                   )
                 })}
               </div>
-            ) : (
-                <Carousel
-                    opts={{ align: "start" }}
-                    orientation="vertical"
-                    className="w-full h-[80vh]"
-                >
-                    <CarouselContent className="-mt-4 h-full">
-                        {videos.map((video) => {
-                            const videoId = getTikTokVideoIdFromEmbed(video.embedCode);
-                            if (!videoId) return null;
-                            return (
-                                <CarouselItem key={video.id} className="pt-4 md:basis-full flex flex-col items-center justify-center">
-                                    <div className="w-full h-full aspect-[9/16] max-h-full bg-black rounded-lg overflow-hidden">
-                                        <TikTokEmbed videoId={videoId} />
-                                    </div>
-                                     {isAdmin && (
-                                        <div className="w-full max-w-sm mt-2">
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === video.id}>
-                                                    {isProcessing === video.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
-                                                    Eliminar (Admin)
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                    <AlertDialogTitle>¿Confirmar eliminación (Admin)?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Estás a punto de eliminar este video permanentemente. Esta acción no se puede deshacer.
-                                                    </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteVideo(video.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </div>
-                                    )}
-                                </CarouselItem>
-                            )
-                        })}
-                    </CarouselContent>
-                    <CarouselPrevious className="absolute top-4 left-1/2 -translate-x-1/2 -translate-y-12 rotate-90" />
-                    <CarouselNext className="absolute bottom-4 left-1/2 -translate-x-1/2 translate-y-12 rotate-90" />
-                </Carousel>
-            )
           ) : (
             <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg">
               <TikTokIcon className="mx-auto h-12 w-12 mb-4" />

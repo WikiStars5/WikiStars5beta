@@ -7,10 +7,10 @@ const TikTokEmbed = ({ videoId }: { videoId: string }) => {
   const [embedSrc, setEmbedSrc] = useState('');
 
   useEffect(() => {
-    // This ensures window.location.hostname is only accessed on the client-side
-    // and constructs the URL with the necessary parameters for better embedding.
-    const parentDomain = window.location.hostname;
-    setEmbedSrc(`https://www.tiktok.com/embed/v2/${videoId}?refer=embed&embed_source=121374463&use_clips=false&parent_domain=${parentDomain}`);
+    if (typeof window !== 'undefined') {
+      const parentDomain = window.location.hostname;
+      setEmbedSrc(`https://www.tiktok.com/embed/v2/${videoId}?refer=embed&embed_source=121374463&use_clips=false&parent_domain=${parentDomain}`);
+    }
   }, [videoId]);
 
 
@@ -18,13 +18,12 @@ const TikTokEmbed = ({ videoId }: { videoId: string }) => {
   
   return (
     <iframe
-      key={videoId} // Add key to ensure re-render on videoId change
+      key={videoId}
       src={embedSrc}
       style={{
         width: '100%',
         height: '100%',
         border: 'none',
-        borderRadius: '8px'
       }}
       title={`TikTok video ${videoId}`}
       allowFullScreen
