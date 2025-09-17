@@ -239,14 +239,6 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                             allowFullScreen
                             className="w-full h-full"
                         ></iframe>
-                        {/* Invisible overlay to capture clicks and redirect */}
-                        <a 
-                          href={videoUrl}
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="absolute inset-0 z-10"
-                          aria-label={`Ver short '${short.title}' en YouTube (se abre en una nueva pestaña)`}
-                        ></a>
                     </div>
                     <p className="text-white text-xs font-semibold truncate text-center">{short.title}</p>
                     
@@ -342,5 +334,3 @@ export function FigureShorts({ figure }: FigureShortsProps) {
     </Card>
   );
 }
-
-    
