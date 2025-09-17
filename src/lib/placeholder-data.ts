@@ -172,7 +172,9 @@ export async function getPublicFiguresList(options: {
   if (cursorId) {
     const cursorDoc = await getDoc(doc(db, 'figures', cursorId));
     if (cursorDoc.exists()) {
-      q = query(figuresCollectionRef, where("status", "==", "approved"), orderBy('name', order), firestoreStartAfter(cursorDoc), limit(limitSize + 1));
+      q = isPrev 
+        ? query(figuresCollectionRef, where("status", "==", "approved"), orderBy('name', order), firestoreEndBefore(cursorDoc), limit(limitSize + 1))
+        : query(figuresCollectionRef, where("status", "==", "approved"), orderBy('name', order), firestoreStartAfter(cursorDoc), limit(limitSize + 1));
     }
   }
 
