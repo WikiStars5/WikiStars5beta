@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -17,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Textarea } from '../ui/textarea';
+import TikTokEmbed from './TikTokEmbed'; // Import the custom component
 
 const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2859 3333" {...props} shapeRendering="geometricPrecision" textRendering="geometricPrecision" imageRendering="optimizeQuality" fillRule="evenodd" clipRule="evenodd">
@@ -24,8 +24,11 @@ const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-
-const REPORT_THRESHOLD = 10;
+const getTikTokVideoIdFromEmbed = (embedCode: string): string | null => {
+    if (!embedCode) return null;
+    const match = embedCode.match(/data-video-id="(\d+)"/);
+    return match ? match[1] : null;
+};
 
 interface FigureTiktoksProps {
   figure: Figure;
@@ -41,8 +44,6 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
-  
-  const videoRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
 
   React.useEffect(() => {
     const tiktoksRef = collection(db, `figures/${figure.id}/tiktokVideos`);
@@ -57,21 +58,6 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
 
     return () => unsubscribe();
   }, [figure.id]);
-  
-  React.useEffect(() => {
-    if (videos.length > 0 && typeof window.tiktok?.embed?.render === 'function') {
-        const timer = setTimeout(() => {
-            videos.forEach(video => {
-                const el = videoRefs.current[video.id];
-                if (el) {
-                    window.tiktok.embed.render(el);
-                }
-            });
-        }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [videos, viewMode]);
-
 
   const handleSuggestVideo = async () => {
     if (!newEmbedCode.trim() || !firebaseUser) {
@@ -205,43 +191,46 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                 ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
                 : "flex flex-col gap-8 items-center"
             )}>
-              {videos.map((video) => (
-                <div key={video.id} className={cn("group w-full flex flex-col items-center")}>
-                    <div
-                        ref={el => videoRefs.current[video.id] = el}
-                        className={cn(
-                            "w-full rounded-lg overflow-hidden",
-                            viewMode === 'feed' && "max-w-sm",
-                        )}
-                        dangerouslySetInnerHTML={{ __html: video.embedCode }}
-                    />
+              {videos.map((video) => {
+                const videoId = getTikTokVideoIdFromEmbed(video.embedCode);
+                if (!videoId) return null;
+                
+                return (
+                    <div key={video.id} className="group w-full flex flex-col items-center">
+                       <div className={cn(
+                          "w-full rounded-lg overflow-hidden bg-black",
+                          viewMode === 'grid' ? 'aspect-[9/16]' : 'h-[80vh] max-w-sm'
+                        )}>
+                            <TikTokEmbed videoId={videoId} />
+                       </div>
 
-                    {isAdmin && (
-                        <div className={cn("w-full mt-2", viewMode === 'feed' && "max-w-sm")}>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === video.id}>
-                                    {isProcessing === video.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
-                                    Eliminar (Admin)
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Confirmar eliminación (Admin)?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Estás a punto de eliminar este video permanentemente. Esta acción no se puede deshacer.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteVideo(video.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
-                    )}
-                </div>
-              ))}
+                       {isAdmin && (
+                            <div className={cn("w-full mt-2", viewMode === 'feed' && "max-w-sm")}>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === video.id}>
+                                        {isProcessing === video.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
+                                        Eliminar (Admin)
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Confirmar eliminación (Admin)?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Estás a punto de eliminar este video permanentemente. Esta acción no se puede deshacer.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteVideo(video.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                        )}
+                    </div>
+                )
+              })}
             </div>
           ) : (
             <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg">
