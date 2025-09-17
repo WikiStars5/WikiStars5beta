@@ -296,7 +296,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button 
-                                    variant={hasReported ? "secondary" : "outline"} 
+                                    variant={hasReported ? "secondary" : "destructive"} 
                                     size="sm" 
                                     className="w-full text-xs" 
                                     disabled={isAuthLoading || isProcessing === short.videoId || hasReported}
