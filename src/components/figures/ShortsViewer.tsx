@@ -73,7 +73,7 @@ export function ShortsViewer({ shorts, startIndex, onClose }: ShortsViewerProps)
               <CarouselItem key={index} className="pt-0 basis-full flex items-center justify-center">
                 <div className="relative w-full h-full">
                    <iframe
-                      src={`https://www.youtube.com/embed/${short.videoId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}&rel=0&modestbranding=1&controls=1`}
+                      src={`https://www.youtube.com/embed/${short.videoId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}&rel=0&modestbranding=1&controls=1&showinfo=0`}
                       title={short.title}
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -81,6 +81,10 @@ export function ShortsViewer({ shorts, startIndex, onClose }: ShortsViewerProps)
                       className="w-full h-full"
                       style={{ aspectRatio: '9/16' }}
                     ></iframe>
+                   <div 
+                      className="absolute inset-0"
+                      onClick={scrollNext} 
+                    />
                 </div>
               </CarouselItem>
             ))}
