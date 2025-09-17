@@ -23,6 +23,25 @@ interface ShortsViewerProps {
 export function ShortsViewer({ shorts, startIndex, onClose }: ShortsViewerProps) {
   const [api, setApi] = React.useState<CarouselApi>();
 
+  React.useEffect(() => {
+    if (!api) return;
+    
+    const handleWheel = (event: WheelEvent) => {
+        // event.preventDefault(); // This might be too aggressive, let's see.
+        if (event.deltaY < 0) {
+            api.scrollPrev();
+        } else if (event.deltaY > 0) {
+            api.scrollNext();
+        }
+    };
+
+    const containerNode = api.containerNode();
+    containerNode.addEventListener('wheel', handleWheel);
+
+    return () => containerNode.removeEventListener('wheel', handleWheel);
+
+  }, [api]);
+
   const scrollPrev = React.useCallback(() => {
     api?.scrollPrev();
   }, [api]);

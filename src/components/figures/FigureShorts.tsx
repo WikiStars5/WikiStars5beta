@@ -240,13 +240,16 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                const hasReported = firebaseUser && short.reportedBy?.includes(firebaseUser.uid);
                const reportCount = short.reportedBy?.length || 0;
                const hasReachedThreshold = reportCount >= REPORT_THRESHOLD;
-               const embedUrl = `https://www.youtube.com/embed/${short.videoId}?enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}&rel=0&modestbranding=1&controls=1`;
+               const embedUrl = `https://www.youtube.com/embed/${short.videoId}?enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}&rel=0&modestbranding=1&controls=1&showinfo=0`;
                
                const isUnavailable = unavailableVideos.has(short.videoId);
 
                return (
                   <div key={index} className="group flex flex-col gap-2">
-                    <div className="relative w-full overflow-hidden rounded-lg border-2 border-transparent group-hover:border-primary transition-colors" style={{aspectRatio: '9/16'}}>
+                    <div className={cn(
+                        "relative w-full overflow-hidden rounded-lg border-2 border-transparent transition-colors",
+                        !isUnavailable && "group-hover:border-primary"
+                    )} style={{aspectRatio: '9/16'}}>
                         <iframe
                             id={`ytplayer-${short.videoId}`}
                             src={embedUrl}
@@ -265,6 +268,12 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                         >
                             <Expand className="h-4 w-4" />
                         </Button>
+                        {isUnavailable && (
+                           <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-center text-white p-2">
+                                <VideoOff className="h-8 w-8 mb-2" />
+                                <p className="text-xs font-semibold">Video no disponible</p>
+                           </div>
+                        )}
                     </div>
 
                     <a href={`https://www.youtube.com/shorts/${short.videoId}`} target="_blank" rel="noopener noreferrer" className="w-full text-white text-xs font-semibold truncate text-center hover:text-primary">
