@@ -12,11 +12,12 @@ import { verifyWikipediaCharacter } from '@/ai/flows/verifyWikipediaCharacter';
 import { verifyFamousBirthdaysCharacter } from '@/ai/flows/verifyFamousBirthdaysCharacter';
 import Image from 'next/image';
 import { correctMalformedUrl } from '@/lib/utils';
-import type { Figure, AttitudeKey, EmotionKey, CreationMethod } from '@/lib/types';
+import type { Figure, AttitudeKey, EmotionKey, CreationMethod, ProfileType } from '@/lib/types';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import slugify from 'slugify';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 interface VerificationResult {
   found: boolean;
@@ -96,6 +97,7 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
   const [isVerifying, setIsVerifying] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
+  const [profileType, setProfileType] = useState<ProfileType>('character');
   const [showPlanB, setShowPlanB] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
@@ -152,18 +154,23 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
         }
 
         const nameKeywords = generateNameKeywords(title);
+        
+        const attitudeCounts = { ...defaultAttitudeCounts };
+        if(profileType === 'media') {
+          delete (attitudeCounts as Partial<typeof attitudeCounts>).simp;
+        }
 
         const figureData: Partial<Figure> & { createdAt: any } = {
             name: title,
             nameSearch: title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(),
             nameKeywords: nameKeywords,
-            profileType: 'character',
+            profileType: profileType,
             photoUrl: imageUrl || `https://placehold.co/400x600.png?text=${encodeURIComponent(title)}`,
             description: '',
             isFeatured: false,
             status: 'approved',
             perceptionCounts: defaultPerceptionCounts,
-            attitudeCounts: defaultAttitudeCounts,
+            attitudeCounts: attitudeCounts,
             createdAt: serverTimestamp(),
             hashtags: [],
             hashtagsLower: [],
@@ -196,6 +203,7 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
     setIsVerifying(false);
     setIsCreating(false);
     setShowPlanB(false);
+    setProfileType('character');
   }
 
   if (verificationResult) {
@@ -224,7 +232,24 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
                     <p className="text-sm text-green-500 flex items-center justify-center gap-1"><SourceIcon className="h-4 w-4" /> {sourceText}</p>
                 </div>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="space-y-3 pt-4 border-t">
+              <Label className="font-semibold">¿Qué tipo de perfil es?</Label>
+              <RadioGroup
+                value={profileType}
+                onValueChange={(value) => setProfileType(value as ProfileType)}
+                className="flex justify-center gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="character" id="type-character-confirm" />
+                  <Label htmlFor="type-character-confirm">Personaje</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="media" id="type-media-confirm" />
+                  <Label htmlFor="type-media-confirm">Medio</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button variant="outline" onClick={resetForm} disabled={isCreating}>Cancelar</Button>
                 <Button onClick={handleCreate} disabled={isCreating}>
                     {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
