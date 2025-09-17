@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -717,7 +716,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
           </div>
       </div>
 
-       <div className="space-y-4 mt-6 border-t pt-4 border-border">
+      <div className="space-y-4 mt-6 border-t pt-4 border-border">
           <h3 className="text-lg font-semibold flex items-center gap-2"><Youtube /> YouTube Shorts</h3>
           <div className="space-y-2">
               <Label htmlFor="new-short-title">Título del Short</Label>
