@@ -39,10 +39,18 @@ import {
 } from "@/components/ui/tooltip"
 import { isSameDay, isYesterday } from "date-fns";
 import { FigureShorts } from "@/components/figures/FigureShorts";
+import { FigureTiktoks } from "@/components/figures/FigureTiktoks";
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
 }
+
+const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2859 3333" {...props} shapeRendering="geometricPrecision" textRendering="geometricPrecision" imageRendering="optimizeQuality" fillRule="evenodd" clipRule="evenodd">
+        <path d="M2081 0c55 473 319 755 778 785v532c-266 26-499-61-770-225v995c0 1264-1378 1659-1932 753-356-583-138-1606 1004-1647v561c-87 14-180 36-265 65-254 86-458 249-458 522 0 314 252 566 566 566 314 0 566-252 566-566v-1040h550v-550h-550z" fill="currentColor"/>
+    </svg>
+);
+
 
 export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const routeParams = useParams<{ id:string }>();
@@ -164,6 +172,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
                 <TabsTrigger value="emotion" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
                 <TabsTrigger value="top-streaks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Flame className="h-4 sm:h-5 w-4 sm:w-5" />Top Rachas</TabsTrigger>
                 <TabsTrigger value="shorts" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Youtube className="h-4 sm:h-5 w-4 sm:w-5" />Shorts</TabsTrigger>
+                <TabsTrigger value="tiktoks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><TikTokIcon className="h-4 sm:h-5 w-4 sm:w-5" />TikToks</TabsTrigger>
               </TabsList>
 
               <TabsContent value="personal-info">
@@ -196,6 +205,10 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
                   <FigureShorts figure={figure} />
               </TabsContent>
               
+              <TabsContent value="tiktoks">
+                  <FigureTiktoks figure={figure} />
+              </TabsContent>
+
             </Tabs>
           </div> 
         </div>

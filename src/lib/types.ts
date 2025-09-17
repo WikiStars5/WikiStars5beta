@@ -36,6 +36,14 @@ export interface YoutubeShort {
   reportedBy?: string[]; // Array of user IDs who reported it
 }
   
+export interface TiktokVideo {
+  title: string;
+  url: string;
+  submittedBy: string;
+  submittedAt: string;
+  reportedBy?: string[];
+}
+
 export interface Figure {
   id: string;
   name: string;
@@ -66,6 +74,7 @@ export interface Figure {
   nationality?: string; // Moved to shared
   nationalityCode?: string; // Moved to shared
   youtubeShorts?: YoutubeShort[];
+  tiktokVideos?: TiktokVideo[];
   
   // --- Character-specific fields ---
   category?: string;

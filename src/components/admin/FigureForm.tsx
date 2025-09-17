@@ -12,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Sparkles, Loader2, Check, ShieldAlert, ThumbsDown, Youtube, X, Plus } from 'lucide-react';
 import { doc, setDoc, serverTimestamp, writeBatch, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag, YoutubeShort } from '@/lib/types';
+import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag, YoutubeShort, TiktokVideo } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -79,6 +79,12 @@ interface FigureFormProps {
   initialData?: Figure;
 }
 
+const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2859 3333" {...props} shapeRendering="geometricPrecision" textRendering="geometricPrecision" imageRendering="optimizeQuality" fillRule="evenodd" clipRule="evenodd">
+        <path d="M2081 0c55 473 319 755 778 785v532c-266 26-499-61-770-225v995c0 1264-1378 1659-1932 753-356-583-138-1606 1004-1647v561c-87 14-180 36-265 65-254 86-458 249-458 522 0 314 252 566 566 566 314 0 566-252 566-566v-1040h550v-550h-550z" fill="currentColor"/>
+    </svg>
+);
+
 const MEDIA_SUBCATEGORIES: { value: MediaSubcategory, label: string }[] = [
     { value: 'video_game', label: 'Videojuego' },
     { value: 'movie', label: 'Película' },
@@ -121,6 +127,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [socialLinks, setSocialLinks] = useState(initialData?.socialLinks || {});
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
   const [youtubeShorts, setYoutubeShorts] = useState<YoutubeShort[]>(initialData?.youtubeShorts || []);
+  const [tiktokVideos, setTiktokVideos] = useState<TiktokVideo[]>(initialData?.tiktokVideos || []);
+
 
   const [isFeatured, setIsFeatured] = useState(false);
   const [nationalityCode, setNationalityCode] = useState('');
@@ -194,6 +202,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setSocialLinks(initialData.socialLinks || {});
       setHashtags(initialData.hashtags || []);
       setYoutubeShorts(initialData.youtubeShorts || []);
+      setTiktokVideos(initialData.tiktokVideos || []);
 
       if (initialData.profileType === 'character') {
         setCategory(initialData.category || '');
@@ -233,7 +242,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setName(''); 
       setProfileType('character');
       setDescription(''); setPhotoUrl('');
-      setNationalityCode(''); setIsFeatured(false); setSocialLinks({}); setHashtags([]); setYoutubeShorts([]);
+      setNationalityCode(''); setIsFeatured(false); setSocialLinks({}); setHashtags([]); setYoutubeShorts([]); setTiktokVideos([]);
       clearCharacterFields();
       clearMediaFields();
     }
@@ -287,6 +296,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const handleYoutubeShortDelete = (videoId: string) => {
     setYoutubeShorts(youtubeShorts.filter(short => short.videoId !== videoId));
   };
+  
+  const handleTiktokVideoDelete = (url: string) => {
+    setTiktokVideos(tiktokVideos.filter(video => video.url !== url));
+  };
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -332,6 +345,10 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         hashtagKeywords: hashtagKeywords,
         youtubeShorts: youtubeShorts.map(s => {
             const { submittedAt, ...rest } = s;
+            return { ...rest, submittedAt: Timestamp.fromMillis(Date.parse(submittedAt)) };
+        }),
+        tiktokVideos: tiktokVideos.map(v => {
+            const { submittedAt, ...rest } = v;
             return { ...rest, submittedAt: Timestamp.fromMillis(Date.parse(submittedAt)) };
         }),
         socialLinks: socialLinks,
@@ -698,6 +715,28 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
                   ))
               ) : (
                   <p className="text-sm text-center text-muted-foreground py-4">No hay videos en este perfil.</p>
+              )}
+          </div>
+      </div>
+      
+      <div className="space-y-4 mt-6 border-t pt-4 border-border">
+          <h3 className="text-lg font-semibold flex items-center gap-2"><TikTokIcon className="h-5 w-5" /> Gestión de TikToks</h3>
+           <div className="space-y-2 rounded-lg border p-4">
+              <h4 className="font-medium">Videos de TikTok del Perfil</h4>
+              {tiktokVideos.length > 0 ? (
+                  tiktokVideos.map((video) => (
+                  <div key={video.url} className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                      <TikTokIcon className="h-8 w-8 text-foreground" />
+                      <div className="flex-grow">
+                          <p className="text-sm font-medium">{video.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{video.url}</p>
+                          <p className="text-xs text-muted-foreground">Reportes: {video.reportedBy?.length || 0}</p>
+                      </div>
+                      <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleTiktokVideoDelete(video.url)}><X /></Button>
+                  </div>
+                  ))
+              ) : (
+                  <p className="text-sm text-center text-muted-foreground py-4">No hay videos de TikTok en este perfil.</p>
               )}
           </div>
       </div>
