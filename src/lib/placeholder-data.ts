@@ -1,4 +1,5 @@
 
+
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -177,19 +178,27 @@ export async function getPublicFiguresList(options: {
   let q;
 
   try {
-    // To avoid the composite index, we will query only by name and filter status on the client.
-    if (isPrev && endBefore) {
-        const cursorDoc = await getDoc(doc(db, 'figures', endBefore));
+    let cursorDoc;
+    if (endBefore) {
+        const docSnap = await getDoc(doc(db, 'figures', endBefore));
+        if (docSnap.exists()) cursorDoc = docSnap;
+    } else if (startAfter) {
+        const docSnap = await getDoc(doc(db, 'figures', startAfter));
+        if (docSnap.exists()) cursorDoc = docSnap;
+    }
+    
+    if (isPrev && cursorDoc) {
         q = query(
             figuresCollectionRef,
+            where('status', '==', 'approved'),
             orderBy('name', 'desc'),
             firestoreStartAfter(cursorDoc),
             limit(limitSize)
         );
-    } else if (!isPrev && startAfter) {
-        const cursorDoc = await getDoc(doc(db, 'figures', startAfter));
+    } else if (!isPrev && cursorDoc) {
         q = query(
             figuresCollectionRef,
+            where('status', '==', 'approved'),
             orderBy('name', 'asc'),
             firestoreStartAfter(cursorDoc),
             limit(limitSize)
@@ -197,20 +206,19 @@ export async function getPublicFiguresList(options: {
     } else {
         q = query(
             figuresCollectionRef,
+            where('status', '==', 'approved'),
             orderBy('name', 'asc'),
             limit(limitSize)
         );
     }
     
     const snapshot = await getDocs(q);
-    let allFetchedFigures = snapshot.docs.map(mapDocToFigure);
+    let figures = snapshot.docs.map(mapDocToFigure);
 
     if (isPrev) {
-        allFetchedFigures.reverse();
+        figures.reverse();
     }
     
-    const figures = allFetchedFigures.filter(f => f.status === 'approved');
-
     const hasNextPage = figures.length === limitSize;
     const hasPrevPage = !!startAfter || !!endBefore;
 
@@ -220,7 +228,9 @@ export async function getPublicFiguresList(options: {
     return { figures, hasPrevPage, hasNextPage, startCursor, endCursor };
   } catch (error) {
     console.error("Error fetching public figures:", error);
-    // If it still fails, return empty
+    if (String(error).includes('index')) {
+        throw new Error("La consulta de figuras públicas requiere un índice de Firestore que no existe. Por favor, crea el índice compuesto para la colección 'figures' en los campos 'status' y 'name' desde la consola de Firebase.");
+    }
     return { figures: [], hasPrevPage: false, hasNextPage: false, startCursor: null, endCursor: null };
   }
 }
@@ -1059,3 +1069,5 @@ export async function submitStarRating(
         }
     });
 }
+
+    
