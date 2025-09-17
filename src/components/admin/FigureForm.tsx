@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Sparkles, Loader2, Check, ShieldAlert, ThumbsDown, Youtube, X, Plus } from 'lucide-react';
-import { doc, setDoc, serverTimestamp, writeBatch, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, writeBatch, Timestamp, collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag, YoutubeShort, TiktokVideo } from '@/lib/types';
 import slugify from 'slugify'; 
@@ -116,6 +116,12 @@ const MARITAL_STATUS_OPTIONS = [
     { value: 'Conviviente / En unión de hecho', label: 'Conviviente / En unión de hecho' },
 ];
 
+const getTikTokVideoIdFromUrl = (url: string): string | null => {
+  if (!url) return null;
+  const match = url.match(/video\/(\d+)/);
+  return match ? match[1] : null;
+};
+
 const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
   const { toast } = useToast();
@@ -125,9 +131,9 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [profileType, setProfileType] = useState<ProfileType>('character');
   
   const [socialLinks, setSocialLinks] = useState(initialData?.socialLinks || {});
-  const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
-  const [youtubeShorts, setYoutubeShorts] = useState<YoutubeShort[]>(initialData?.youtubeShorts || []);
-  const [tiktokVideos, setTiktokVideos] = useState<TiktokVideo[]>(initialData?.tiktokVideos || []);
+  const [hashtags, setHashtags] = useState<string[]>([]);
+  const [youtubeShorts, setYoutubeShorts] = useState<YoutubeShort[]>([]);
+  const [tiktokVideos, setTiktokVideos] = useState<TiktokVideo[]>([]);
 
 
   const [isFeatured, setIsFeatured] = useState(false);
@@ -201,8 +207,17 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setIsFeatured(initialData.isFeatured || false);
       setSocialLinks(initialData.socialLinks || {});
       setHashtags(initialData.hashtags || []);
-      setYoutubeShorts(initialData.youtubeShorts || []);
-      setTiktokVideos(initialData.tiktokVideos || []);
+
+      const fetchVideos = async () => {
+        const shortsRef = collection(db, `figures/${initialData.id}/youtubeShorts`);
+        const shortsSnap = await getDocs(shortsRef);
+        setYoutubeShorts(shortsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as YoutubeShort)));
+        
+        const tiktoksRef = collection(db, `figures/${initialData.id}/tiktokVideos`);
+        const tiktoksSnap = await getDocs(tiktoksRef);
+        setTiktokVideos(tiktoksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TiktokVideo)));
+      };
+      fetchVideos();
 
       if (initialData.profileType === 'character') {
         setCategory(initialData.category || '');
@@ -293,12 +308,20 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     }
   };
 
-  const handleYoutubeShortDelete = (videoId: string) => {
-    setYoutubeShorts(youtubeShorts.filter(short => short.videoId !== videoId));
+  const handleYoutubeShortDelete = async (videoId: string) => {
+    if (!initialData) return;
+    const shortDocRef = doc(db, `figures/${initialData.id}/youtubeShorts`, videoId);
+    await deleteDoc(shortDocRef);
+    setYoutubeShorts(youtubeShorts.filter(short => short.id !== videoId));
+    toast({ title: "Short eliminado."});
   };
   
-  const handleTiktokVideoDelete = (url: string) => {
-    setTiktokVideos(tiktokVideos.filter(video => video.url !== url));
+  const handleTiktokVideoDelete = async (videoId: string) => {
+    if (!initialData) return;
+    const tiktokDocRef = doc(db, `figures/${initialData.id}/tiktokVideos`, videoId);
+    await deleteDoc(tiktokDocRef);
+    setTiktokVideos(tiktokVideos.filter(video => video.id !== videoId));
+    toast({ title: "TikTok eliminado."});
   };
 
 
@@ -343,14 +366,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         hashtags: hashtags,
         hashtagsLower: hashtagsLower,
         hashtagKeywords: hashtagKeywords,
-        youtubeShorts: youtubeShorts.map(s => {
-            const { submittedAt, ...rest } = s;
-            return { ...rest, submittedAt: Timestamp.fromMillis(Date.parse(submittedAt)) };
-        }),
-        tiktokVideos: tiktokVideos.map(v => {
-            const { submittedAt, ...rest } = v;
-            return { ...rest, submittedAt: Timestamp.fromMillis(Date.parse(submittedAt)) };
-        }),
         socialLinks: socialLinks,
         isFeatured: isFeatured,
         nationality: countryCodeToNameMap.get(nationalityCode) || '',
@@ -703,14 +718,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
               <h4 className="font-medium">Videos del Perfil</h4>
               {youtubeShorts.length > 0 ? (
                   youtubeShorts.map((short) => (
-                  <div key={short.videoId} className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                  <div key={short.id} className="flex items-center gap-2 p-2 bg-muted rounded-md">
                       <Image src={`https://i.ytimg.com/vi/${short.videoId}/hqdefault.jpg`} alt={short.title} width={80} height={45} className="rounded object-cover"/>
                       <div className="flex-grow">
                           <p className="text-sm font-medium">{short.title}</p>
                           <p className="text-xs text-muted-foreground">ID: {short.videoId}</p>
                           <p className="text-xs text-muted-foreground">Reportes: {short.reportedBy?.length || 0}</p>
                       </div>
-                      <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleYoutubeShortDelete(short.videoId)}><X /></Button>
+                      <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleYoutubeShortDelete(short.id)}><X /></Button>
                   </div>
                   ))
               ) : (
@@ -725,14 +740,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
               <h4 className="font-medium">Videos de TikTok del Perfil</h4>
               {tiktokVideos.length > 0 ? (
                   tiktokVideos.map((video) => (
-                  <div key={video.url} className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                  <div key={video.id} className="flex items-center gap-2 p-2 bg-muted rounded-md">
                       <TikTokIcon className="h-8 w-8 text-foreground" />
                       <div className="flex-grow">
                           <p className="text-sm font-medium">{video.title}</p>
                           <p className="text-xs text-muted-foreground truncate">{video.url}</p>
                           <p className="text-xs text-muted-foreground">Reportes: {video.reportedBy?.length || 0}</p>
                       </div>
-                      <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleTiktokVideoDelete(video.url)}><X /></Button>
+                      <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleTiktokVideoDelete(video.id)}><X /></Button>
                   </div>
                   ))
               ) : (
