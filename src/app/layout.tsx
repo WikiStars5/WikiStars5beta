@@ -1,4 +1,5 @@
 
+
 import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -64,6 +65,10 @@ export default function RootLayout({
         </ClientProviders>
         <Script
             src="https://www.tiktok.com/embed.js"
+            strategy="afterInteractive"
+        />
+        <Script
+            src="//www.instagram.com/embed.js"
             strategy="afterInteractive"
         />
       </body>

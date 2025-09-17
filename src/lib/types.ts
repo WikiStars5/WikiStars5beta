@@ -1,4 +1,5 @@
 
+
 import type { ReactNode } from 'react';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -39,6 +40,14 @@ export interface YoutubeShort {
 export interface TiktokVideo {
   id: string; // Document ID from Firestore
   embedCode: string; // The full embed code from TikTok
+  submittedBy: string;
+  submittedAt: Timestamp;
+  reportedBy?: string[];
+}
+
+export interface InstagramPost {
+  id: string; // Document ID from Firestore
+  embedCode: string; // The full embed code from Instagram
   submittedBy: string;
   submittedAt: Timestamp;
   reportedBy?: string[];

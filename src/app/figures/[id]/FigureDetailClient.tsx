@@ -8,7 +8,7 @@ import {
   ImageOff, Star as StarIcon,
   BookOpen, Cake, MapPin, Activity, HeartHandshake, StretchVertical, Scale, Palette, Eye, Scan, NotepadText, Zap,
   MessagesSquare, Send, Trash2, Images, PlusCircle, Image as ImageIconLucide, ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight,
-  Archive, Bike, UserPlus, Flame, BarChart3, CheckSquare, Youtube
+  Archive, Bike, UserPlus, Flame, BarChart3, CheckSquare, Youtube, Camera
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
@@ -40,6 +40,7 @@ import {
 import { isSameDay, isYesterday } from "date-fns";
 import { FigureShorts } from "@/components/figures/FigureShorts";
 import { FigureTiktoks } from "@/components/figures/FigureTiktoks";
+import { FigureInstagramPosts } from '@/components/figures/FigureInstagramPosts';
 
 interface FigureDetailClientProps {
   initialFigure: Figure;
@@ -173,6 +174,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
                 <TabsTrigger value="top-streaks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Flame className="h-4 sm:h-5 w-4 sm:w-5" />Top Rachas</TabsTrigger>
                 <TabsTrigger value="shorts" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Youtube className="h-4 sm:h-5 w-4 sm:w-5" />Shorts</TabsTrigger>
                 <TabsTrigger value="tiktoks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><TikTokIcon className="h-4 sm:h-5 w-4 sm:w-5" />TikToks</TabsTrigger>
+                <TabsTrigger value="instagram" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Camera className="h-4 sm:h-5 w-4 sm:w-5" />Fotos</TabsTrigger>
               </TabsList>
 
               <TabsContent value="personal-info">
@@ -207,6 +209,10 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
               
               <TabsContent value="tiktoks">
                   <FigureTiktoks figure={figure} />
+              </TabsContent>
+
+              <TabsContent value="instagram">
+                  <FigureInstagramPosts figure={figure} />
               </TabsContent>
 
             </Tabs>

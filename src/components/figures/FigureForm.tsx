@@ -9,10 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Sparkles, Loader2, Check, ShieldAlert, ThumbsDown, Youtube, X, Plus } from 'lucide-react';
+import { Terminal, Sparkles, Loader2, Check, ShieldAlert, ThumbsDown, Youtube, X, Plus, Camera } from 'lucide-react';
 import { doc, setDoc, serverTimestamp, writeBatch, Timestamp, collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag, YoutubeShort, TiktokVideo } from '@/lib/types';
+import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag, YoutubeShort, TiktokVideo, InstagramPost } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -116,12 +116,6 @@ const MARITAL_STATUS_OPTIONS = [
     { value: 'Conviviente / En unión de hecho', label: 'Conviviente / En unión de hecho' },
 ];
 
-const getTikTokVideoIdFromUrl = (url: string): string | null => {
-  if (!url) return null;
-  const match = url.match(/video\/(\d+)/);
-  return match ? match[1] : null;
-};
-
 const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
   const { toast } = useToast();
@@ -134,6 +128,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [youtubeShorts, setYoutubeShorts] = useState<YoutubeShort[]>([]);
   const [tiktokVideos, setTiktokVideos] = useState<TiktokVideo[]>([]);
+  const [instagramPosts, setInstagramPosts] = useState<InstagramPost[]>([]);
 
 
   const [isFeatured, setIsFeatured] = useState(false);
@@ -208,7 +203,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setSocialLinks(initialData.socialLinks || {});
       setHashtags(initialData.hashtags || []);
 
-      const fetchVideos = async () => {
+      const fetchCollections = async () => {
         const shortsRef = collection(db, `figures/${initialData.id}/youtubeShorts`);
         const shortsSnap = await getDocs(shortsRef);
         setYoutubeShorts(shortsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as YoutubeShort)));
@@ -216,8 +211,12 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         const tiktoksRef = collection(db, `figures/${initialData.id}/tiktokVideos`);
         const tiktoksSnap = await getDocs(tiktoksRef);
         setTiktokVideos(tiktoksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TiktokVideo)));
+
+        const instagramRef = collection(db, `figures/${initialData.id}/instagramPosts`);
+        const instagramSnap = await getDocs(instagramRef);
+        setInstagramPosts(instagramSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as InstagramPost)));
       };
-      fetchVideos();
+      fetchCollections();
 
       if (initialData.profileType === 'character') {
         setCategory(initialData.category || '');
@@ -257,7 +256,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       setName(''); 
       setProfileType('character');
       setDescription(''); setPhotoUrl('');
-      setNationalityCode(''); setIsFeatured(false); setSocialLinks({}); setHashtags([]); setYoutubeShorts([]); setTiktokVideos([]);
+      setNationalityCode(''); setIsFeatured(false); setSocialLinks({}); setHashtags([]); setYoutubeShorts([]); setTiktokVideos([]); setInstagramPosts([]);
       clearCharacterFields();
       clearMediaFields();
     }
@@ -322,6 +321,14 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     await deleteDoc(tiktokDocRef);
     setTiktokVideos(tiktokVideos.filter(video => video.id !== videoId));
     toast({ title: "TikTok eliminado."});
+  };
+  
+  const handleInstagramPostDelete = async (postId: string) => {
+    if (!initialData) return;
+    const postDocRef = doc(db, `figures/${initialData.id}/instagramPosts`, postId);
+    await deleteDoc(postDocRef);
+    setInstagramPosts(instagramPosts.filter(post => post.id !== postId));
+    toast({ title: "Foto de Instagram eliminada."});
   };
 
 
@@ -742,9 +749,8 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
                   tiktokVideos.map((video) => (
                   <div key={video.id} className="flex items-center gap-2 p-2 bg-muted rounded-md">
                       <TikTokIcon className="h-8 w-8 text-foreground" />
-                      <div className="flex-grow">
-                          <p className="text-sm font-medium">{video.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">{video.url}</p>
+                      <div className="flex-grow overflow-hidden">
+                          <p className="text-sm font-medium truncate">{video.embedCode}</p>
                           <p className="text-xs text-muted-foreground">Reportes: {video.reportedBy?.length || 0}</p>
                       </div>
                       <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleTiktokVideoDelete(video.id)}><X /></Button>
@@ -752,6 +758,27 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
                   ))
               ) : (
                   <p className="text-sm text-center text-muted-foreground py-4">No hay videos de TikTok en este perfil.</p>
+              )}
+          </div>
+      </div>
+       
+      <div className="space-y-4 mt-6 border-t pt-4 border-border">
+          <h3 className="text-lg font-semibold flex items-center gap-2"><Camera /> Gestión de Fotos de Instagram</h3>
+           <div className="space-y-2 rounded-lg border p-4">
+              <h4 className="font-medium">Publicaciones del Perfil</h4>
+              {instagramPosts.length > 0 ? (
+                  instagramPosts.map((post) => (
+                  <div key={post.id} className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                      <Camera className="h-8 w-8 text-foreground" />
+                      <div className="flex-grow overflow-hidden">
+                          <p className="text-sm font-medium truncate">{post.embedCode}</p>
+                          <p className="text-xs text-muted-foreground">Reportes: {post.reportedBy?.length || 0}</p>
+                      </div>
+                      <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleInstagramPostDelete(post.id)}><X /></Button>
+                  </div>
+                  ))
+              ) : (
+                  <p className="text-sm text-center text-muted-foreground py-4">No hay fotos de Instagram en este perfil.</p>
               )}
           </div>
       </div>
