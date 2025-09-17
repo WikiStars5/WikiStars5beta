@@ -241,7 +241,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
             <div className={cn(
                 viewMode === 'grid' 
                 ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-                : "w-full h-[75vh] overflow-y-auto snap-y snap-mandatory rounded-lg"
+                : "w-full max-w-md mx-auto h-[80vh] flex flex-col overflow-y-auto snap-y snap-mandatory rounded-lg no-scrollbar"
             )}>
               {figure.youtubeShorts.map((short) => {
                 const hasReported = firebaseUser && short.reportedBy?.includes(firebaseUser.uid);
@@ -256,11 +256,11 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                       "group flex flex-col",
                       viewMode === 'grid' 
                         ? "gap-2"
-                        : "snap-start w-full h-full flex-shrink-0 pt-8 pb-4 px-4 sm:px-8 md:px-16 lg:px-32 xl:px-48"
+                        : "snap-start w-full h-full flex-shrink-0 pt-8 pb-4"
                     )}>
                       <div className={cn(
-                          "relative w-full overflow-hidden rounded-lg bg-black",
-                          viewMode === 'grid' ? "aspect-video" : "h-full"
+                          "relative w-full overflow-hidden rounded-lg bg-black aspect-video",
+                          viewMode === 'feed' && "flex-grow"
                       )}>
                           <iframe
                               id={`ytplayer-${short.videoId}`}
