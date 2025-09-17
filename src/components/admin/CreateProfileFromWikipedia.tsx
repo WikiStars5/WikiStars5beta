@@ -245,7 +245,7 @@ export function CreateProfileFromWikipedia({ onProfileCreated }: { onProfileCrea
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="media" id="type-media-confirm" />
-                  <Label htmlFor="type-media-confirm">Medio</Label>
+                  <Label htmlFor="type-media-confirm">Medio (Película, videojuego, serie, etc)</Label>
                 </div>
               </RadioGroup>
             </div>
