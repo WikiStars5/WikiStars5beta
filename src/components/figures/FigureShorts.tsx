@@ -261,13 +261,11 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                 const isUnavailable = unavailableVideos.has(short.videoId);
 
                 return (
-                    <div key={short.videoId} className={cn(
-                      "group flex flex-col gap-2",
-                      viewMode === 'feed' && "w-full"
-                    )}>
-                      <div className={cn(
-                          "relative w-full overflow-hidden rounded-lg bg-black aspect-video"
-                      )}>
+                    <div key={short.videoId} className={cn("group flex flex-col", viewMode === 'feed' && "w-full h-[80vh]")}>
+                        <div className={cn(
+                            "relative w-full flex-grow overflow-hidden rounded-lg bg-black",
+                            viewMode === 'grid' ? 'aspect-video' : ''
+                        )}>
                           <iframe
                               id={`ytplayer-${short.videoId}`}
                               src={embedUrl}
@@ -288,14 +286,14 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                           )}
                       </div>
                       
-                       <div className="flex items-start justify-between gap-2 mt-2">
-                          <p className="text-sm font-semibold truncate flex-grow pr-2">{short.title}</p>
-                          <Button asChild variant="link" size="sm" className="w-auto text-white text-xs font-semibold p-0 h-auto flex-shrink-0">
-                              <a href={`https://www.youtube.com/watch?v=${short.videoId}`} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="mr-1 h-3 w-3"/>
-                                  Ver
-                              </a>
-                          </Button>
+                      <div className="flex items-start justify-between gap-2 mt-2">
+                        <p className="text-sm font-semibold truncate flex-grow pr-2">{short.title}</p>
+                        <Button asChild variant="link" size="sm" className="w-auto text-white text-xs font-semibold p-0 h-auto flex-shrink-0">
+                            <a href={`https://www.youtube.com/watch?v=${short.videoId}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-1 h-3 w-3"/>
+                                Ver
+                            </a>
+                        </Button>
                       </div>
 
                       {isAdmin ? (
