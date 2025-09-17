@@ -47,7 +47,7 @@ interface FigureShortsProps {
 }
 
 export function FigureShorts({ figure }: FigureShortsProps) {
-  const { firebaseUser, isLoading: isAuthLoading } = useAuth();
+  const { firebaseUser, isAdmin, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
   const [isSuggestDialogOpen, setIsSuggestDialogOpen] = React.useState(false);
   const [newShortUrl, setNewShortUrl] = React.useState('');
@@ -170,7 +170,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
         const updatedShorts = currentShorts.filter(s => s.videoId !== videoId);
         
         await updateDoc(figureRef, { youtubeShorts: updatedShorts });
-        toast({ title: "Video Eliminado", description: "El video ha sido eliminado por la comunidad." });
+        toast({ title: "Video Eliminado", description: "El video ha sido eliminado." });
 
     } catch (error: any) {
         console.error("Error deleting short:", error);
@@ -250,7 +250,28 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                         </div>
                     </a>
                     
-                    {hasReachedThreshold ? (
+                    {isAdmin ? (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                               <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === short.videoId}>
+                                   {isProcessing === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
+                                   Eliminar (Admin)
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Confirmar eliminación (Admin)?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Estás a punto de eliminar este video permanentemente. Esta acción no se puede deshacer.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    ) : hasReachedThreshold ? (
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === short.videoId}>
