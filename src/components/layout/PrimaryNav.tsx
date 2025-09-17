@@ -7,8 +7,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 
-const navLinks = [
-  { href: '/', label: 'Inicio', icon: Home },
+const navLinks: { href: string; label: string; icon: React.ElementType }[] = [
+  // { href: '/', label: 'Inicio', icon: Home },
   // { href: '/figures', label: 'Explorar', icon: Search },
 ];
 
@@ -45,6 +45,10 @@ const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; ico
 
 
 export function PrimaryNav() {
+  if (navLinks.length === 0) {
+    return null; // Don't render the nav if there are no links
+  }
+  
   return (
     <nav className="flex items-center gap-1">
       {navLinks.map((link) => (
