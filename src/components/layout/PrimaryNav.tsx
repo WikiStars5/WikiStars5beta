@@ -9,7 +9,7 @@ import { Button } from '../ui/button';
 
 const navLinks = [
   { href: '/', label: 'Inicio', icon: Home },
-  { href: '/figures', label: 'Explorar', icon: Search },
+  // { href: '/figures', label: 'Explorar', icon: Search },
 ];
 
 const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) => {
