@@ -31,6 +31,9 @@ export interface Hashtag {
 export interface YoutubeShort {
   title: string;
   videoId: string;
+  status: 'approved' | 'pending' | 'rejected';
+  submittedBy: string; // User ID of the submitter
+  submittedAt: Timestamp;
 }
   
 export interface Figure {

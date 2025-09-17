@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -8,8 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Sparkles, Loader2, CalendarIcon, X, Plus, Youtube } from 'lucide-react';
-import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { Terminal, Sparkles, Loader2, Check, ShieldAlert, ThumbsDown, Youtube, X, Plus } from 'lucide-react';
+import { doc, setDoc, serverTimestamp, writeBatch, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag, YoutubeShort } from '@/lib/types';
 import slugify from 'slugify'; 
@@ -30,6 +31,8 @@ import { Slider } from '../ui/slider';
 import { VIDEO_GAME_GENRES } from '@/config/genres';
 import { Combobox } from '../shared/Combobox';
 import { searchHashtags } from '@/app/actions/searchHashtagsAction';
+import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
 // Debounce function
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
@@ -71,31 +74,6 @@ const generateHashtagKeywords = (hashtags: string[]): string[] => {
     return Array.from(keywords);
 };
 
-const getYoutubeVideoId = (url: string): string | null => {
-    if (!url) return null;
-    try {
-        const urlObj = new URL(url);
-        if (urlObj.hostname.includes('youtube.com')) {
-            if (urlObj.pathname.startsWith('/shorts/')) {
-                return urlObj.pathname.split('/shorts/')[1];
-            }
-            if (urlObj.pathname === '/watch') {
-                return urlObj.searchParams.get('v');
-            }
-        } else if (urlObj.hostname === 'youtu.be') {
-            return urlObj.pathname.substring(1);
-        }
-    } catch (e) {
-        // Not a valid URL, but might be just an ID
-    }
-    // Check if the input is just the video ID
-    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
-        return url;
-    }
-    return null;
-}
-
-
 interface FigureFormProps {
   initialData?: Figure;
 }
@@ -133,6 +111,7 @@ const MARITAL_STATUS_OPTIONS = [
 
 const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
+  const { toast } = useToast();
   const [name, setName] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [description, setDescription] = useState('');
@@ -141,8 +120,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const [socialLinks, setSocialLinks] = useState(initialData?.socialLinks || {});
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
   const [youtubeShorts, setYoutubeShorts] = useState<YoutubeShort[]>(initialData?.youtubeShorts || []);
-  const [newShortUrl, setNewShortUrl] = useState('');
-  const [newShortTitle, setNewShortTitle] = useState('');
+
   const [isFeatured, setIsFeatured] = useState(false);
   const [nationalityCode, setNationalityCode] = useState('');
 
@@ -305,24 +283,15 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
     }
   };
 
-  const handleAddShort = () => {
-    const videoId = getYoutubeVideoId(newShortUrl);
-    if (!videoId) {
-        setError('URL de YouTube no válida. Usa el enlace completo o solo el ID del video.');
-        return;
-    }
-    if (!newShortTitle.trim()) {
-        setError('El título del Short es obligatorio.');
-        return;
-    }
-    setYoutubeShorts([...youtubeShorts, { title: newShortTitle.trim(), videoId }]);
-    setNewShortUrl('');
-    setNewShortTitle('');
-    setError(null);
+  const handleYoutubeShortStatusChange = (videoId: string, newStatus: 'approved' | 'rejected') => {
+    const updatedShorts = youtubeShorts.map(short =>
+        short.videoId === videoId ? { ...short, status: newStatus } : short
+    );
+    setYoutubeShorts(updatedShorts);
   };
 
-  const handleRemoveShort = (videoIdToRemove: string) => {
-    setYoutubeShorts(youtubeShorts.filter(short => short.videoId !== videoIdToRemove));
+  const handleYoutubeShortDelete = (videoId: string) => {
+    setYoutubeShorts(youtubeShorts.filter(short => short.videoId !== videoId));
   };
 
 
@@ -350,7 +319,6 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       
       const batch = writeBatch(db);
       
-      // 1. Prepare figure data
       const finalPhotoUrlToSave = photoUrl.trim() || 'https://placehold.co/400x600.png';
       const nameTrimmed = name.trim();
       const nameSearch = nameTrimmed.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -431,27 +399,22 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         }),
       };
 
-      // Remove undefined values to prevent Firestore errors
       Object.keys(figureData).forEach(key => {
         if ((figureData as any)[key] === undefined) {
           delete (figureData as any)[key];
         }
       });
       
-      // 2. Set figure document in batch
       const figureRef = doc(db, 'figures', figureDocId);
       batch.set(figureRef, figureData, { merge: true });
 
-      // 3. Sync hashtags with global collection
       for (const tag of hashtagsLower) {
         if (tag) {
           const hashtagRef = doc(db, 'hashtags', tag);
-          // Using an empty object as we only need the document ID for querying
           batch.set(hashtagRef, {});
         }
       }
 
-      // 4. Commit the batch
       await batch.commit();
 
       setSuccess(`Perfil "${name}" guardado exitosamente.`);
@@ -721,31 +684,53 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       </div>
 
       <div className="space-y-4 mt-6 border-t pt-4 border-border">
-          <h3 className="text-lg font-semibold flex items-center gap-2"><Youtube /> YouTube Shorts</h3>
-          <div className="space-y-2">
-              <Label htmlFor="new-short-title">Título del Short</Label>
-              <Input id="new-short-title" value={newShortTitle} onChange={(e) => setNewShortTitle(e.target.value)} placeholder="Ej: Gol increíble de Messi"/>
-          </div>
-           <div className="space-y-2">
-              <Label htmlFor="new-short-url">URL o ID del Short</Label>
-              <div className="flex gap-2">
-                  <Input id="new-short-url" value={newShortUrl} onChange={(e) => setNewShortUrl(e.target.value)} placeholder="Pega el enlace de YouTube..."/>
-                  <Button type="button" onClick={handleAddShort}>
-                      <Plus className="mr-2 h-4 w-4"/> Añadir
-                  </Button>
-              </div>
-          </div>
-          <div className="space-y-2">
-              {youtubeShorts.map((short, index) => (
-                  <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded-md">
-                      <Image src={`https://i.ytimg.com/vi/${short.videoId}/hqdefault.jpg`} alt={short.title} width={80} height={45} className="rounded object-cover"/>
-                      <p className="flex-grow text-sm font-medium">{short.title}</p>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveShort(short.videoId)}>
-                          <X className="h-4 w-4"/>
-                      </Button>
-                  </div>
-              ))}
-          </div>
+          <h3 className="text-lg font-semibold flex items-center gap-2"><Youtube /> Gestión de YouTube Shorts</h3>
+           <Tabs defaultValue="pending" className="w-full">
+            <TabsList>
+                <TabsTrigger value="pending">Pendientes</TabsTrigger>
+                <TabsTrigger value="approved">Aprobados</TabsTrigger>
+            </TabsList>
+            <TabsContent value="pending">
+                <div className="space-y-2 rounded-lg border p-4">
+                    <h4 className="font-medium">Videos Pendientes de Aprobación</h4>
+                    {youtubeShorts.filter(s => s.status === 'pending').length > 0 ? (
+                        youtubeShorts.filter(s => s.status === 'pending').map((short) => (
+                        <div key={short.videoId} className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                            <Image src={`https://i.ytimg.com/vi/${short.videoId}/hqdefault.jpg`} alt={short.title} width={80} height={45} className="rounded object-cover"/>
+                            <div className="flex-grow">
+                                <p className="text-sm font-medium">{short.title}</p>
+                                <p className="text-xs text-muted-foreground">ID: {short.videoId}</p>
+                            </div>
+                            <Button size="icon" variant="ghost" className="text-green-500 hover:text-green-500 hover:bg-green-500/10" onClick={() => handleYoutubeShortStatusChange(short.videoId, 'approved')}><Check /></Button>
+                            <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-500 hover:bg-red-500/10" onClick={() => handleYoutubeShortStatusChange(short.videoId, 'rejected')}><ThumbsDown /></Button>
+                            <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleYoutubeShortDelete(short.videoId)}><X /></Button>
+                        </div>
+                        ))
+                    ) : (
+                        <p className="text-sm text-center text-muted-foreground py-4">No hay videos pendientes.</p>
+                    )}
+                </div>
+            </TabsContent>
+            <TabsContent value="approved">
+                <div className="space-y-2 rounded-lg border p-4">
+                    <h4 className="font-medium">Videos Aprobados</h4>
+                    {youtubeShorts.filter(s => s.status === 'approved').length > 0 ? (
+                        youtubeShorts.filter(s => s.status === 'approved').map((short) => (
+                        <div key={short.videoId} className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                            <Image src={`https://i.ytimg.com/vi/${short.videoId}/hqdefault.jpg`} alt={short.title} width={80} height={45} className="rounded object-cover"/>
+                             <div className="flex-grow">
+                                <p className="text-sm font-medium">{short.title}</p>
+                                <p className="text-xs text-muted-foreground">ID: {short.videoId}</p>
+                            </div>
+                            <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleYoutubeShortDelete(short.videoId)}><X /></Button>
+                        </div>
+                        ))
+                    ) : (
+                         <p className="text-sm text-center text-muted-foreground py-4">No hay videos aprobados.</p>
+                    )}
+                </div>
+            </TabsContent>
+            </Tabs>
       </div>
       
       <div className="mt-6 border-t pt-4 border-border">
