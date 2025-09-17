@@ -227,20 +227,20 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
               {videos.map((video) => {
                 const videoId = getTikTokVideoIdFromUrl(video.url);
                 return (
-                    <div key={video.id} className={cn("group flex flex-col", viewMode === 'feed' && "w-full max-w-sm mx-auto")}>
+                    <div key={video.id} className={cn("group flex flex-col items-center", viewMode === 'feed' && "w-full")}>
                         <div className={cn(
                             "relative w-full flex-grow overflow-hidden rounded-lg bg-black",
-                            viewMode === 'grid' ? 'aspect-[9/16]' : 'h-[80vh]'
+                             viewMode === 'feed' && "max-w-sm"
                         )}>
                            <blockquote 
-                                className="tiktok-embed w-full h-full" 
+                                className="tiktok-embed" 
                                 cite={video.url} 
                                 data-video-id={videoId || undefined}
                             > 
                             </blockquote>
                         </div>
                       
-                        <div className="flex items-start justify-between gap-2 mt-2">
+                        <div className="flex items-start justify-between gap-2 mt-2 w-full max-w-sm">
                           <p className="text-sm font-semibold truncate flex-grow pr-2">{video.title}</p>
                            <Button asChild variant="link" size="sm" className="w-auto text-white text-xs font-semibold p-0 h-auto flex-shrink-0">
                                 <a href={video.url} target="_blank" rel="noopener noreferrer">
@@ -250,26 +250,28 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                             </Button>
                         </div>
                         {isAdmin && (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === video.id}>
-                                      {isProcessing === video.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
-                                      Eliminar (Admin)
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>¿Confirmar eliminación (Admin)?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Estás a punto de eliminar este video permanentemente. Esta acción no se puede deshacer.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => handleDeleteVideo(video.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
+                            <div className="w-full max-w-sm mt-2">
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === video.id}>
+                                        {isProcessing === video.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
+                                        Eliminar (Admin)
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Confirmar eliminación (Admin)?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Estás a punto de eliminar este video permanentemente. Esta acción no se puede deshacer.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteVideo(video.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
                         )}
                     </div>
                   );
