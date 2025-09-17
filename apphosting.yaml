@@ -3,7 +3,7 @@
 
 # The location of your App Hosting backend.
 # This should be the same region as your main services like Firestore.
-location: us-central1
+location: southamerica-west1
 
 runConfig:
   # Increase this value if you'd like to automatically spin up
