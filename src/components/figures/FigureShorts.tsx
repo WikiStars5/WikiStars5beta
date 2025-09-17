@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Youtube, PlusCircle, Send, Loader2, Flag, Check } from 'lucide-react';
+import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2 } from 'lucide-react';
 import type { Figure, YoutubeShort } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
@@ -54,7 +54,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
   const [newShortUrl, setNewShortUrl] = React.useState('');
   const [newShortTitle, setNewShortTitle] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isReporting, setIsReporting] = React.useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
 
   const handleSuggestShort = async () => {
     if (!newShortTitle.trim() || !newShortUrl.trim() || !firebaseUser) {
@@ -80,6 +80,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
 
     try {
         const figureRef = doc(db, 'figures', figure.id);
+        // We use a custom field `youtubeShorts` in the `Figure` document.
         await updateDoc(figureRef, {
             youtubeShorts: arrayUnion(newShort)
         });
@@ -102,9 +103,9 @@ export function FigureShorts({ figure }: FigureShortsProps) {
   };
   
   const handleReportShort = async (videoId: string) => {
-    if (!firebaseUser || isReporting === videoId) return;
+    if (!firebaseUser || isProcessing === videoId) return;
 
-    setIsReporting(videoId);
+    setIsProcessing(videoId);
     
     try {
         const figureRef = doc(db, 'figures', figure.id);
@@ -118,36 +119,51 @@ export function FigureShorts({ figure }: FigureShortsProps) {
         
         const shortToUpdate = currentShorts[shortIndex];
         
-        // Ensure user hasn't reported this video already
         if (shortToUpdate.reportedBy?.includes(firebaseUser.uid)) {
             toast({ title: "Ya has reportado este video", variant: "default" });
-            setIsReporting(null);
+            setIsProcessing(null);
             return;
         }
 
         const updatedReportedBy = [...(shortToUpdate.reportedBy || []), firebaseUser.uid];
+        const updatedShort = { ...shortToUpdate, reportedBy: updatedReportedBy };
         
-        if (updatedReportedBy.length >= REPORT_THRESHOLD) {
-            // Threshold met, remove the short
-            const updatedShorts = currentShorts.filter(s => s.videoId !== videoId);
-            await updateDoc(figureRef, { youtubeShorts: updatedShorts });
-            toast({ title: "Video eliminado", description: "Gracias a los reportes de la comunidad, este video ha sido eliminado." });
-        } else {
-            // Threshold not met, just update the report list
-            const updatedShort = { ...shortToUpdate, reportedBy: updatedReportedBy };
-            const updatedShorts = [...currentShorts];
-            updatedShorts[shortIndex] = updatedShort;
-            await updateDoc(figureRef, { youtubeShorts: updatedShorts });
-            toast({ title: "Reporte enviado", description: "Gracias por ayudar a mantener la comunidad." });
-        }
+        const updatedShorts = [...currentShorts];
+        updatedShorts[shortIndex] = updatedShort;
+        
+        await updateDoc(figureRef, { youtubeShorts: updatedShorts });
+        toast({ title: "Reporte enviado", description: "Gracias por ayudar a mantener la comunidad." });
 
     } catch (error: any) {
         console.error("Error reporting short:", error);
         toast({ title: "Error", description: `No se pudo enviar el reporte. ${error.message}`, variant: "destructive" });
     } finally {
-        setIsReporting(null);
+        setIsProcessing(null);
     }
   };
+
+  const handleDeleteShort = async (videoId: string) => {
+    if (isProcessing === videoId) return;
+    setIsProcessing(videoId);
+
+    try {
+        const figureRef = doc(db, 'figures', figure.id);
+        const figureSnap = await getDoc(figureRef);
+        if (!figureSnap.exists()) throw new Error("Figure not found");
+        
+        const currentShorts: YoutubeShort[] = figureSnap.data().youtubeShorts || [];
+        const updatedShorts = currentShorts.filter(s => s.videoId !== videoId);
+        
+        await updateDoc(figureRef, { youtubeShorts: updatedShorts });
+        toast({ title: "Video Eliminado", description: "El video ha sido eliminado por la comunidad." });
+
+    } catch (error: any) {
+        console.error("Error deleting short:", error);
+        toast({ title: "Error", description: `No se pudo eliminar el video. ${error.message}`, variant: "destructive" });
+    } finally {
+        setIsProcessing(null);
+    }
+  }
 
 
   return (
@@ -199,6 +215,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
             {figure.youtubeShorts.map((short, index) => {
                const hasReported = firebaseUser && short.reportedBy?.includes(firebaseUser.uid);
                const reportCount = short.reportedBy?.length || 0;
+               const hasReachedThreshold = reportCount >= REPORT_THRESHOLD;
                
                return (
                   <div key={index} className="group flex flex-col gap-2">
@@ -217,32 +234,56 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                             </div>
                         </div>
                     </a>
-                    <AlertDialog>
-                       <AlertDialogTrigger asChild>
-                           <Button 
-                              variant={hasReported ? "secondary" : "destructive"} 
-                              size="sm" 
-                              className="w-full text-xs" 
-                              disabled={isAuthLoading || isReporting === short.videoId || hasReported}
-                            >
-                               {isReporting === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : hasReported ? <Check className="mr-2 h-3 w-3"/> : <Flag className="mr-2 h-3 w-3" />}
-                               {hasReported ? "Reportado" : "Reportar"}
-                               {!hasReported && ` (${reportCount}/${REPORT_THRESHOLD})`}
-                           </Button>
-                        </AlertDialogTrigger>
-                         <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>¿Reportar este video?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Estás a punto de reportar este video como "no relacionado con el perfil". Si suficientes usuarios lo hacen, será eliminado.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleReportShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Reportar</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                    
+                    {hasReachedThreshold ? (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                               <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === short.videoId}>
+                                   {isProcessing === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
+                                   Eliminar Video
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Este video ha sido reportado por la comunidad. Al hacer clic en "Eliminar", será borrado permanentemente. Esta acción no se puede deshacer.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    ) : (
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button 
+                                    variant={hasReported ? "secondary" : "outline"} 
+                                    size="sm" 
+                                    className="w-full text-xs" 
+                                    disabled={isAuthLoading || isProcessing === short.videoId || hasReported}
+                                >
+                                    {isProcessing === short.videoId ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : hasReported ? <Check className="mr-2 h-3 w-3"/> : <Flag className="mr-2 h-3 w-3" />}
+                                    {hasReported ? "Reportado" : "Reportar"}
+                                    {!hasReported && ` (${reportCount}/${REPORT_THRESHOLD})`}
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>¿Reportar este video?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Estás a punto de reportar este video como "no relacionado con el perfil". Si suficientes usuarios lo hacen, el video podrá ser eliminado por la comunidad.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleReportShort(short.videoId)} className="bg-destructive hover:bg-destructive/90">Reportar</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
                   </div>
                 );
             })}
@@ -258,3 +299,4 @@ export function FigureShorts({ figure }: FigureShortsProps) {
     </Card>
   );
 }
+
