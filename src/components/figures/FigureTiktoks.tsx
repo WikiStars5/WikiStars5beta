@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -247,10 +246,28 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                                 cite={`https://www.tiktok.com/@user/video/${videoId}`}
                                 data-video-id={videoId}
                                 style={{ maxWidth: '605px', minWidth: '325px' }}
-                            > 
-                                <a href={video.url} target="_blank" rel="noopener noreferrer">
+                            >
+                              <section>
+                                <a
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={video.title}
+                                  href={video.url}
+                                >
                                   {video.title}
                                 </a>
+                                <p>
+                                  {video.title}
+                                </p>
+                                <a
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={video.url}
+                                  href={video.url}
+                                >
+                                  &#9836; original sound - {figure.name}
+                                </a>
+                              </section>
                            </blockquote>
                         </div>
                       
