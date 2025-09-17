@@ -216,7 +216,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                         <div key={video.id} className={cn("group flex flex-col items-center", viewMode === 'feed' && "w-full")}>
                             <div className={cn(
                                 "relative w-full flex-grow overflow-hidden rounded-lg bg-black",
-                                viewMode === 'grid' ? 'aspect-[9/16]' : 'max-w-sm'
+                                viewMode === 'grid' ? "aspect-[9/16] min-h-[320px]" : "max-w-sm"
                             )}>
                                <TikTokEmbed videoId={videoId} />
                             </div>
