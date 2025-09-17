@@ -1,6 +1,6 @@
 
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue, YoutubeShort } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove,getCountFromServer } from "firebase/firestore";
@@ -33,6 +33,14 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
   const data = docSnap.data() as DocumentData;
   const createdAtTimestamp = data.createdAt;
   
+  // Safely convert youtubeShorts Timestamps to strings
+  const youtubeShorts = (data.youtubeShorts || []).map((short: any) => {
+    if (short.submittedAt && typeof short.submittedAt.toDate === 'function') {
+      return { ...short, submittedAt: short.submittedAt.toDate().toISOString() };
+    }
+    return short;
+  });
+
   const figureData: Figure = {
     id: docSnap.id,
     name: data.name || "",
@@ -66,7 +74,7 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     distinctiveFeatures: data.distinctiveFeatures || "",
     socialLinks: data.socialLinks || {},
     relatedFigureIds: data.relatedFigureIds || [],
-    youtubeShorts: data.youtubeShorts || [],
+    youtubeShorts: youtubeShorts,
     perceptionCounts: data.perceptionCounts || { ...defaultPerceptionCounts },
     attitudeCounts: data.attitudeCounts || { ...defaultAttitudeCounts },
     ratingCounts: data.ratingCounts || { ...defaultRatingCounts },
@@ -148,7 +156,7 @@ export async function getAdminFiguresList(options: {
     q = query(figuresCollectionRef, orderBy('name', 'asc'), limit(limitSize));
   }
 
-
+  const allFiguresCount = await getFiguresCount();
   const snapshot = await getDocs(q);
   let figures = snapshot.docs.map(mapDocToFigure);
 
@@ -160,17 +168,35 @@ export async function getAdminFiguresList(options: {
   
   // To determine if there's a next page, fetch one more item than needed.
   let hasNextPage = false;
-  if (figures.length === limitSize) {
-      const lastVisibleFigure = figures[figures.length - 1];
-      if (lastVisibleFigure) {
-        const lastDocSnap = await getDoc(doc(db, 'figures', lastVisibleFigure.id));
-        if (lastDocSnap.exists()) {
-            const nextQuery = query(figuresCollectionRef, orderBy("name", "asc"), firestoreStartAfter(lastDocSnap), limit(1));
-            const nextSnapshot = await getDocs(nextQuery);
-            hasNextPage = !nextSnapshot.empty;
-        }
-      }
+  
+  // Calculate the number of items fetched so far.
+  // This logic is simplified and assumes we can know the "page number" but we can't with cursors.
+  // A better way is to compare against the total count.
+  const currentDocsCount = (await getDocs(query(figuresCollectionRef, orderBy('name', 'asc')))).docs.findIndex(doc => doc.id === (isPrev ? figures[0]?.id : startAfter)) + 1 + figures.length;
+  
+  if (currentDocsCount < allFiguresCount) {
+    hasNextPage = true;
   }
+  
+  // More robust check if count is available
+  if (allFiguresCount > 0) {
+     if (figures.length > 0) {
+        // This is a rough estimation. For precise pagination, offset-based queries would be needed, which are less scalable.
+        // A simpler check: if we fetched a full page, there MIGHT be a next page.
+        if (figures.length === limitSize) {
+           hasNextPage = true; // Assume there is a next page if we got a full batch
+           const lastDocSnap = await getDoc(doc(db, 'figures', figures[figures.length-1].id));
+           const nextQuery = query(figuresCollectionRef, orderBy('name', 'asc'), firestoreStartAfter(lastDocSnap), limit(1));
+           const nextDocs = await getDocs(nextQuery);
+           hasNextPage = !nextDocs.empty; // The definitive check
+        } else {
+           hasNextPage = false;
+        }
+     } else {
+       hasNextPage = false;
+     }
+  }
+
 
   const startCursor = figures.length > 0 ? figures[0].id : null;
   const endCursor = figures.length > 0 ? figures[figures.length - 1].id : null;
@@ -214,9 +240,9 @@ export async function getPublicFiguresList(options: {
     if (isPrev && cursorDoc) {
         q = query(
             figuresCollectionRef,
-            orderBy('name', 'desc'),
+            orderBy('name', 'asc'),
             ...baseQueryConstraints,
-            firestoreStartAfter(cursorDoc),
+            firestoreEndBefore(cursorDoc),
             limit(limitSize)
         );
     } else if (!isPrev && cursorDoc) {

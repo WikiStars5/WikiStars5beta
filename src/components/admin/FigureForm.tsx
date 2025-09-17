@@ -33,6 +33,10 @@ import { Combobox } from '../shared/Combobox';
 import { searchHashtags } from '@/app/actions/searchHashtagsAction';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import {
+  approveYoutubeShort,
+  rejectYoutubeShort,
+} from '@/lib/adminActions'; // Assuming you have these actions
 
 // Debounce function
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
@@ -329,7 +333,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         hashtags: hashtags,
         hashtagsLower: hashtagsLower,
         hashtagKeywords: hashtagKeywords,
-        youtubeShorts: youtubeShorts,
+        youtubeShorts: youtubeShorts.map(s => ({...s, submittedAt: Timestamp.fromMillis(Date.parse(s.submittedAt))})), // Convert back to timestamp
         socialLinks: socialLinks,
         isFeatured: isFeatured,
         nationality: countryCodeToNameMap.get(nationalityCode) || '',
@@ -716,3 +720,4 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 };
 
 export default FigureForm;
+

@@ -32,7 +32,7 @@ export interface YoutubeShort {
   title: string;
   videoId: string;
   submittedBy: string; // User ID of the submitter
-  submittedAt: Timestamp;
+  submittedAt: string; // Changed from Timestamp to string for client-side safety
   reportedBy?: string[]; // Array of user IDs who reported it
 }
   
