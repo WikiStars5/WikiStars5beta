@@ -17,16 +17,19 @@ export const revalidate = 60; // Revalidate every 60 seconds
 interface BrowseFiguresPageProps {
   searchParams?: {
     page?: string;
+    startAfter?: string;
   };
 }
 
 export default async function BrowseFiguresPage({ searchParams }: BrowseFiguresPageProps) {
   const currentPage = Number(searchParams?.page || '1');
+  const startAfter = searchParams?.startAfter;
+
   const totalFigures = await getFiguresCount();
   const totalPages = Math.ceil(totalFigures / PUBLIC_FIGURES_PER_PAGE);
 
-  const { figures } = await getPublicFiguresList({
-    page: currentPage,
+  const { figures, endCursor } = await getPublicFiguresList({
+    startAfter,
   });
 
   return (
@@ -34,6 +37,7 @@ export default async function BrowseFiguresPage({ searchParams }: BrowseFiguresP
       initialFigures={figures}
       currentPage={currentPage}
       totalPages={totalPages}
+      endCursor={endCursor}
     />
   );
 }

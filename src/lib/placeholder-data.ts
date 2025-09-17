@@ -162,30 +162,39 @@ export async function getAdminFiguresList(options: {
 }
 
 export async function getPublicFiguresList(options: {
-  page?: number;
   limit?: number;
+  startAfter?: string;
 }): Promise<{
   figures: Figure[];
+  endCursor: string | null;
 }> {
-  const { page = 1, limit: limitSize = PUBLIC_FIGURES_PER_PAGE } = options;
+  const { limit: limitSize = PUBLIC_FIGURES_PER_PAGE, startAfter } = options;
   const figuresCollectionRef = collection(db, 'figures');
   
   try {
-    const approvedQuery = query(figuresCollectionRef, where('status', '==', 'approved'), orderBy('name', 'asc'));
-    const snapshot = await getDocs(approvedQuery);
+    let q = query(
+      figuresCollectionRef,
+      where('status', '==', 'approved'),
+      orderBy('name', 'asc'),
+      limit(limitSize)
+    );
 
-    const allApprovedFigures = snapshot.docs.map(mapDocToFigure);
-    
-    const startIndex = (page - 1) * limitSize;
-    const endIndex = startIndex + limitSize;
+    if (startAfter) {
+      const cursorDoc = await getDoc(doc(db, 'figures', startAfter));
+      if (cursorDoc.exists()) {
+        q = query(q, firestoreStartAfter(cursorDoc));
+      }
+    }
 
-    const figures = allApprovedFigures.slice(startIndex, endIndex);
+    const snapshot = await getDocs(q);
+    const figures = snapshot.docs.map(mapDocToFigure);
+    const endCursor = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1].id : null;
 
-    return { figures };
+    return { figures, endCursor };
     
   } catch (error) {
     console.error("Error fetching public figures list:", error);
-    return { figures: [] };
+    return { figures: [], endCursor: null };
   }
 }
 

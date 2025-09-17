@@ -12,12 +12,14 @@ interface FiguresPageClientProps {
   initialFigures: Figure[];
   currentPage: number;
   totalPages: number;
+  endCursor: string | null;
 }
 
 export function FiguresPageClient({
   initialFigures,
   currentPage,
   totalPages,
+  endCursor,
 }: FiguresPageClientProps) {
 
   const [figures] = useState<Figure[]>(initialFigures);
@@ -36,6 +38,7 @@ export function FiguresPageClient({
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
+                endCursor={endCursor}
               />
           </div>
         </>
