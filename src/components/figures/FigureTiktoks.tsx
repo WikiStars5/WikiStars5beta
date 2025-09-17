@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Textarea } from '../ui/textarea';
-import TikTokEmbed from './TikTokEmbed'; // Import the custom component
+import TikTokEmbed from './TikTokEmbed'; 
 
 const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2859 3333" {...props} shapeRendering="geometricPrecision" textRendering="geometricPrecision" imageRendering="optimizeQuality" fillRule="evenodd" clipRule="evenodd">
@@ -199,7 +199,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                     <div key={video.id} className="group w-full flex flex-col items-center">
                        <div className={cn(
                           "w-full rounded-lg overflow-hidden bg-black",
-                          viewMode === 'grid' ? 'aspect-[9/16]' : 'h-[80vh] max-w-sm'
+                          viewMode === 'grid' ? "min-h-[400px]" : "h-[80vh] max-w-sm"
                         )}>
                             <TikTokEmbed videoId={videoId} />
                        </div>
