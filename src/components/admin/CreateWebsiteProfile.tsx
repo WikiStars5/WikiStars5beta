@@ -13,6 +13,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure, AttitudeKey, EmotionKey } from '@/lib/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { verifyDomain } from '@/ai/flows/verifyDomain';
 
 const defaultPerceptionCounts: Record<EmotionKey, number> = {
   alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
@@ -79,6 +80,14 @@ export function CreateWebsiteProfile() {
       toast({ title: "Dominio no válido", description: "Por favor, introduce un formato de dominio válido (ej. google.com).", variant: "destructive" });
       setIsProcessing(false);
       return;
+    }
+
+    // Server-side validation
+    const verificationResult = await verifyDomain({ domain: rootDomain });
+    if (!verificationResult.isValid) {
+        toast({ title: "Verificación Fallida", description: verificationResult.error || `El dominio "${rootDomain}" no parece ser válido o está inaccesible.`, variant: "destructive" });
+        setIsProcessing(false);
+        return;
     }
 
     // Check if profile already exists
