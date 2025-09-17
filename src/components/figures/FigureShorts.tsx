@@ -239,24 +239,29 @@ export function FigureShorts({ figure }: FigureShortsProps) {
         <CardContent>
           {figure.youtubeShorts && figure.youtubeShorts.length > 0 ? (
             <div className={cn(
-              viewMode === 'grid' 
-              ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-              : "flex flex-col items-center gap-12"
+                viewMode === 'grid' 
+                ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+                : "w-full h-[75vh] overflow-y-auto snap-y snap-mandatory rounded-lg"
             )}>
-              {figure.youtubeShorts.map((short, index) => {
+              {figure.youtubeShorts.map((short) => {
                 const hasReported = firebaseUser && short.reportedBy?.includes(firebaseUser.uid);
                 const reportCount = short.reportedBy?.length || 0;
                 const hasReachedThreshold = reportCount >= REPORT_THRESHOLD;
-                const embedUrl = `https://www.youtube.com/embed/${short.videoId}?rel=0&modestbranding=1&controls=1&showinfo=0`;
+                const embedUrl = `https://www.youtube.com/embed/${short.videoId}?rel=0&modestbranding=1&controls=1&showinfo=0&autoplay=0`;
                 
                 const isUnavailable = unavailableVideos.has(short.videoId);
 
                 return (
-                    <div key={index} className={cn(
-                      "group flex flex-col gap-2 w-full",
-                      viewMode === 'feed' && 'max-w-md' // Limit width in feed view
+                    <div key={short.videoId} className={cn(
+                      "group flex flex-col",
+                      viewMode === 'grid' 
+                        ? "gap-2"
+                        : "snap-start w-full h-full flex-shrink-0 pt-8 pb-4 px-4 sm:px-8 md:px-16 lg:px-32 xl:px-48"
                     )}>
-                      <div className="relative w-full overflow-hidden rounded-lg border-2 border-transparent aspect-video bg-black max-h-[80vh]">
+                      <div className={cn(
+                          "relative w-full overflow-hidden rounded-lg bg-black",
+                          viewMode === 'grid' ? "aspect-video" : "h-full"
+                      )}>
                           <iframe
                               id={`ytplayer-${short.videoId}`}
                               src={embedUrl}
@@ -277,16 +282,16 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                           )}
                       </div>
                       
-                      <div className="flex items-start justify-between gap-2 mt-1">
+                       <div className="flex items-start justify-between gap-2 mt-2">
                           <p className="text-sm font-semibold truncate flex-grow pr-2">{short.title}</p>
                           <Button asChild variant="link" size="sm" className="w-auto text-white text-xs font-semibold p-0 h-auto flex-shrink-0">
-                              <a href={`https://www.youtube.com/shorts/${short.videoId}`} target="_blank" rel="noopener noreferrer">
+                              <a href={`https://www.youtube.com/watch?v=${short.videoId}`} target="_blank" rel="noopener noreferrer">
                                   <ExternalLink className="mr-1 h-3 w-3"/>
                                   Ver
                               </a>
                           </Button>
                       </div>
-                      
+
                       {isAdmin ? (
                           <AlertDialog>
                               <AlertDialogTrigger asChild>
