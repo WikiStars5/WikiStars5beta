@@ -101,8 +101,8 @@ export const PUBLIC_FIGURES_PER_PAGE = 12;
 export async function getFiguresCount(): Promise<number> {
     try {
         const figuresCollectionRef = collection(db, 'figures');
-        const q = query(figuresCollectionRef, where('status', '==', 'approved'));
-        const snapshot = await getCountFromServer(q);
+        // This query counts all figures, regardless of status, as it's for the admin panel.
+        const snapshot = await getCountFromServer(figuresCollectionRef);
         return snapshot.data().count;
     } catch (error) {
         console.error("Error getting figures count:", error);
@@ -156,7 +156,16 @@ export async function getAdminFiguresList(options: {
   }
   
   const hasPrevPage = !!startAfter; 
-  const hasNextPage = figures.length === limitSize;
+  
+  // Correct pagination logic for hasNextPage
+  let hasNextPage = false;
+  if (figures.length === limitSize) {
+      // Create a query to check if there is at least one more document
+      const lastVisible = snapshot.docs[snapshot.docs.length-1];
+      const nextQuery = query(figuresCollectionRef, orderBy("name", "asc"), firestoreStartAfter(lastVisible), limit(1));
+      const nextSnapshot = await getDocs(nextQuery);
+      hasNextPage = !nextSnapshot.empty;
+  }
 
   const startCursor = figures.length > 0 ? figures[0].id : null;
   const endCursor = figures.length > 0 ? figures[figures.length - 1].id : null;
@@ -193,17 +202,23 @@ export async function getPublicFiguresList(options: {
         if (docSnap.exists()) cursorDoc = docSnap;
     }
     
+    // We filter by 'approved' status to simplify the query and avoid needing a complex index.
+    // The main list of figures for the public should always be approved.
+    const baseQueryConstraints = [where("status", "==", "approved")];
+
     if (isPrev && cursorDoc) {
         q = query(
             figuresCollectionRef,
-            orderBy('name', 'asc'), // Corrected to 'asc' as we reverse later
-            firestoreEndBefore(cursorDoc),
+            orderBy('name', 'desc'),
+            ...baseQueryConstraints,
+            firestoreStartAfter(cursorDoc),
             limit(limitSize)
         );
     } else if (!isPrev && cursorDoc) {
         q = query(
             figuresCollectionRef,
             orderBy('name', 'asc'),
+            ...baseQueryConstraints,
             firestoreStartAfter(cursorDoc),
             limit(limitSize)
         );
@@ -211,20 +226,17 @@ export async function getPublicFiguresList(options: {
         q = query(
             figuresCollectionRef,
             orderBy('name', 'asc'),
+            ...baseQueryConstraints,
             limit(limitSize)
         );
     }
     
     const snapshot = await getDocs(q);
     
-    let figures = snapshot.docs.map(mapDocToFigure).filter(f => f.status === 'approved');
+    let figures = snapshot.docs.map(mapDocToFigure);
 
     if (isPrev) {
-        // Since we query backwards with endBefore and sort ascending, we just need to get the last items
-        // The most robust way is to query the *previous* N items in reverse and then reverse the client array.
-        const reverseQuery = query(figuresCollectionRef, orderBy('name', 'desc'), firestoreStartAfter(cursorDoc), limit(limitSize));
-        const reverseSnapshot = await getDocs(reverseQuery);
-        figures = reverseSnapshot.docs.map(mapDocToFigure).filter(f => f.status === 'approved').reverse();
+        figures.reverse();
     }
     
     const hasNextPage = figures.length === limitSize;
