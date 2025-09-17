@@ -229,18 +229,22 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                 return (
                     <div key={video.id} className={cn("group flex flex-col items-center", viewMode === 'feed' && "w-full")}>
                         <div className={cn(
-                            "relative w-full flex-grow overflow-hidden rounded-lg bg-black",
-                             viewMode === 'feed' && "max-w-sm"
+                             "relative w-full flex-grow overflow-hidden rounded-lg bg-black",
+                             viewMode === 'feed' && "mx-auto w-full max-w-sm"
                         )}>
                            <blockquote 
                                 className="tiktok-embed" 
                                 cite={video.url} 
                                 data-video-id={videoId || undefined}
+                                style={{ maxWidth: '605px', minWidth: '325px' }}
                             > 
-                            </blockquote>
+                                <a href={video.url} target="_blank" rel="noopener noreferrer">
+                                  {video.title}
+                                </a>
+                           </blockquote>
                         </div>
                       
-                        <div className="flex items-start justify-between gap-2 mt-2 w-full max-w-sm">
+                        <div className={cn("flex items-start justify-between gap-2 mt-2 w-full", viewMode === 'feed' && "max-w-sm")}>
                           <p className="text-sm font-semibold truncate flex-grow pr-2">{video.title}</p>
                            <Button asChild variant="link" size="sm" className="w-auto text-white text-xs font-semibold p-0 h-auto flex-shrink-0">
                                 <a href={video.url} target="_blank" rel="noopener noreferrer">
@@ -250,7 +254,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                             </Button>
                         </div>
                         {isAdmin && (
-                            <div className="w-full max-w-sm mt-2">
+                            <div className={cn("w-full mt-2", viewMode === 'feed' && "max-w-sm")}>
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                     <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === video.id}>
