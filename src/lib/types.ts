@@ -39,8 +39,7 @@ export interface YoutubeShort {
   
 export interface TiktokVideo {
   id: string; // Document ID from Firestore
-  title: string;
-  url: string;
+  embedCode: string; // The full embed code from TikTok
   submittedBy: string;
   submittedAt: Timestamp;
   reportedBy?: string[];

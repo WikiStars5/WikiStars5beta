@@ -116,12 +116,6 @@ const MARITAL_STATUS_OPTIONS = [
     { value: 'Conviviente / En unión de hecho', label: 'Conviviente / En unión de hecho' },
 ];
 
-const getTikTokVideoIdFromUrl = (url: string): string | null => {
-  if (!url) return null;
-  const match = url.match(/video\/(\d+)/);
-  return match ? match[1] : null;
-};
-
 const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
   const router = useRouter();
   const { toast } = useToast();
@@ -743,8 +737,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
                   <div key={video.id} className="flex items-center gap-2 p-2 bg-muted rounded-md">
                       <TikTokIcon className="h-8 w-8 text-foreground" />
                       <div className="flex-grow">
-                          <p className="text-sm font-medium">{video.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">{video.url}</p>
+                          <p className="text-sm font-medium truncate">{video.embedCode}</p>
                           <p className="text-xs text-muted-foreground">Reportes: {video.reportedBy?.length || 0}</p>
                       </div>
                       <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleTiktokVideoDelete(video.id)}><X /></Button>

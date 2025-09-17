@@ -16,22 +16,7 @@ import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import TikTokEmbed from './TikTokEmbed';
-import { Input } from '../ui/input';
-
-const getTikTokVideoIdFromUrl = (url: string): string | null => {
-  if (!url) return null;
-  const match = url.match(/video\/(\d+)/);
-  if (match && match[1]) {
-    return match[1];
-  }
-  // Fallback for simple ID paste
-  const potentialId = url.split('/').pop()?.split('?')[0];
-  if (potentialId && /^\d+$/.test(potentialId)) {
-    return potentialId;
-  }
-  return null;
-};
+import { Textarea } from '../ui/textarea';
 
 const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2859 3333" {...props} shapeRendering="geometricPrecision" textRendering="geometricPrecision" imageRendering="optimizeQuality" fillRule="evenodd" clipRule="evenodd">
@@ -52,8 +37,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
   const [videos, setVideos] = React.useState<TiktokVideo[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSuggestDialogOpen, setIsSuggestDialogOpen] = React.useState(false);
-  const [newVideoUrl, setNewVideoUrl] = React.useState('');
-  const [newVideoTitle, setNewVideoTitle] = React.useState('');
+  const [newEmbedCode, setNewEmbedCode] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
@@ -71,18 +55,25 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
 
     return () => unsubscribe();
   }, [figure.id]);
+  
+  React.useEffect(() => {
+    if (videos.length > 0 && typeof window.tiktok?.embed?.render === 'function') {
+      const timer = setTimeout(() => {
+        window.tiktok.embed.render();
+      }, 500); // Give the DOM a moment to update
+      return () => clearTimeout(timer);
+    }
+  }, [videos, viewMode]);
 
 
   const handleSuggestVideo = async () => {
-    if (!newVideoUrl.trim() || !newVideoTitle.trim() || !firebaseUser) {
-        toast({ title: "Datos incompletos", description: "Por favor, introduce un título y una URL de TikTok.", variant: "destructive" });
+    if (!newEmbedCode.trim() || !firebaseUser) {
+        toast({ title: "Datos incompletos", description: "Por favor, pega el código de inserción de TikTok.", variant: "destructive" });
         return;
     }
 
-    const videoId = getTikTokVideoIdFromUrl(newVideoUrl);
-
-    if (!videoId) {
-        toast({ title: "URL no válida", description: "La URL no parece ser un enlace de video de TikTok válido.", variant: "destructive" });
+    if (!newEmbedCode.includes('class="tiktok-embed"')) {
+        toast({ title: "Código no válido", description: "Asegúrate de copiar el código de inserción completo de TikTok.", variant: "destructive" });
         return;
     }
 
@@ -92,8 +83,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
         const videosRef = collection(db, `figures/${figure.id}/tiktokVideos`);
         
         const newVideoData = {
-            title: newVideoTitle.trim(),
-            url: newVideoUrl.trim(),
+            embedCode: newEmbedCode.trim(),
             submittedBy: firebaseUser.uid,
             submittedAt: serverTimestamp(),
             reportedBy: [],
@@ -105,8 +95,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
             description: "Gracias por tu contribución.",
         });
 
-        setNewVideoUrl('');
-        setNewVideoTitle('');
+        setNewEmbedCode('');
         setIsSuggestDialogOpen(false);
 
     } catch (error: any) {
@@ -172,18 +161,18 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                       <DialogHeader>
                           <DialogTitle>Sugerir un TikTok</DialogTitle>
                           <DialogDescription>
-                              Pega el enlace de un video de TikTok para añadirlo.
+                              Ve a TikTok, haz clic en "Compartir" y luego en "Insertar", y pega el código aquí.
                           </DialogDescription>
                       </DialogHeader>
                        <div className="grid gap-4 py-4">
-                          <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="video-title" className="text-right">Título</Label>
-                              <Input id="video-title" value={newVideoTitle} onChange={(e) => setNewVideoTitle(e.target.value)} className="col-span-3" placeholder="Ej: Momentos divertidos" />
-                          </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="video-url" className="text-right">URL</Label>
-                              <Input id="video-url" value={newVideoUrl} onChange={(e) => setNewVideoUrl(e.target.value)} className="col-span-3" placeholder="Pega el enlace del video..."/>
-                          </div>
+                            <Label htmlFor="embed-code">Código de Inserción</Label>
+                            <Textarea 
+                                id="embed-code"
+                                value={newEmbedCode}
+                                onChange={(e) => setNewEmbedCode(e.target.value)}
+                                placeholder='<blockquote class="tiktok-embed" ...> ... </blockquote>'
+                                rows={6}
+                            />
                       </div>
                       <DialogFooter>
                           <DialogClose asChild><Button type="button" variant="secondary">Cancelar</Button></DialogClose>
@@ -209,53 +198,42 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                 ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
                 : "flex flex-col gap-8 items-center"
             )}>
-              {videos.map((video) => {
-                 const videoId = getTikTokVideoIdFromUrl(video.url);
-                 if (!videoId) return null;
-                    return (
-                        <div key={video.id} className={cn("group flex flex-col items-center", viewMode === 'feed' && "w-full")}>
-                            <div className={cn(
-                                "relative w-full flex-grow overflow-hidden rounded-lg bg-black",
-                                viewMode === 'grid' ? "aspect-[9/16] min-h-[320px]" : "max-w-sm"
-                            )}>
-                               <TikTokEmbed videoId={videoId} />
-                            </div>
-                            <div className={cn("flex items-start justify-between gap-2 mt-2 w-full", viewMode === 'feed' && "max-w-sm")}>
-                                <p className="text-sm font-semibold truncate flex-grow pr-2">{video.title}</p>
-                                <Button asChild variant="link" size="sm" className="w-auto text-white text-xs font-semibold p-0 h-auto flex-shrink-0">
-                                    <a href={video.url} target="_blank" rel="noopener noreferrer">
-                                        <ExternalLink className="mr-1 h-3 w-3"/>
-                                        Ver
-                                    </a>
-                                </Button>
-                            </div>
-                            {isAdmin && (
-                                <div className={cn("w-full mt-2", viewMode === 'feed' && "max-w-sm")}>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                        <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === video.id}>
-                                            {isProcessing === video.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
-                                            Eliminar (Admin)
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                            <AlertDialogTitle>¿Confirmar eliminación (Admin)?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Estás a punto de eliminar este video permanentemente. Esta acción no se puede deshacer.
-                                            </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDeleteVideo(video.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </div>
-                            )}
+              {videos.map((video) => (
+                <div key={video.id} className={cn("group w-full flex flex-col items-center")}>
+                    <div 
+                        className={cn(
+                            "relative w-full rounded-lg overflow-hidden",
+                            viewMode === 'feed' && "max-w-sm"
+                        )}
+                        dangerouslySetInnerHTML={{ __html: video.embedCode }}
+                    />
+
+                    {isAdmin && (
+                        <div className={cn("w-full mt-2", viewMode === 'feed' && "max-w-sm")}>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm" className="w-full text-xs" disabled={isProcessing === video.id}>
+                                    {isProcessing === video.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Trash2 className="mr-2 h-3 w-3" />}
+                                    Eliminar (Admin)
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Confirmar eliminación (Admin)?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Estás a punto de eliminar este video permanentemente. Esta acción no se puede deshacer.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteVideo(video.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </div>
-                    );
-                })}
+                    )}
+                </div>
+              ))}
             </div>
           ) : (
             <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg">
