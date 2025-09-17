@@ -33,16 +33,15 @@ export interface YoutubeShort {
   title: string;
   videoId: string;
   submittedBy: string; // User ID of the submitter
-  submittedAt: string; // Changed from Timestamp to string for client-side safety
+  submittedAt: Timestamp;
   reportedBy?: string[]; // Array of user IDs who reported it
 }
   
 export interface TiktokVideo {
   id: string; // Document ID from Firestore
-  title: string;
-  url: string;
+  embedCode: string;
   submittedBy: string;
-  submittedAt: string;
+  submittedAt: Timestamp;
   reportedBy?: string[];
 }
 

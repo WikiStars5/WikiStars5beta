@@ -8,10 +8,10 @@ import type { Figure, TiktokVideo } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
-import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { collection, doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction, onSnapshot, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, runTransaction, onSnapshot, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -35,12 +35,6 @@ const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 
-const getTikTokVideoIdFromUrl = (url: string): string | null => {
-  if (!url) return null;
-  const match = url.match(/video\/(\d+)/);
-  return match ? match[1] : null;
-};
-
 const REPORT_THRESHOLD = 10;
 
 interface FigureTiktoksProps {
@@ -53,15 +47,11 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
   const [videos, setVideos] = React.useState<TiktokVideo[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSuggestDialogOpen, setIsSuggestDialogOpen] = React.useState(false);
-  const [newVideoUrl, setNewVideoUrl] = React.useState('');
-  const [newVideoTitle, setNewVideoTitle] = React.useState('');
+  const [newVideoEmbedCode, setNewVideoEmbedCode] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
   
-  // Use a ref to store the DOM nodes of the blockquotes
-  const videoRefs = React.useRef<Record<string, HTMLElement | null>>({});
-
   React.useEffect(() => {
     const tiktoksRef = collection(db, `figures/${figure.id}/tiktokVideos`);
     const unsubscribe = onSnapshot(tiktoksRef, (snapshot) => {
@@ -75,28 +65,22 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
 
     return () => unsubscribe();
   }, [figure.id]);
-
+  
   React.useEffect(() => {
     if (videos.length > 0 && typeof window.tiktok?.embed?.render === 'function') {
-      // Instead of a global render, iterate over each video and render its specific element.
-      videos.forEach(video => {
-        const el = videoRefs.current[video.id];
-        if (el) {
-          window.tiktok.embed.render(el);
-        }
-      });
+        window.tiktok.embed.render();
     }
   }, [videos, viewMode]);
 
+
   const handleSuggestVideo = async () => {
-    if (!newVideoTitle.trim() || !newVideoUrl.trim() || !firebaseUser) {
-        toast({ title: "Datos incompletos", description: "Por favor, completa el título y la URL del TikTok.", variant: "destructive" });
+    if (!newVideoEmbedCode.trim() || !firebaseUser) {
+        toast({ title: "Datos incompletos", description: "Por favor, pega el código de inserción de TikTok.", variant: "destructive" });
         return;
     }
 
-    const videoId = getTikTokVideoIdFromUrl(newVideoUrl);
-    if (!videoId) {
-        toast({ title: "URL no válida", description: "Por favor, usa un enlace de TikTok válido (ej: https://www.tiktok.com/@user/video/123...)", variant: "destructive" });
+    if (!newVideoEmbedCode.includes('tiktok-embed')) {
+        toast({ title: "Código no válido", description: "El código proporcionado no parece ser un código de inserción de TikTok válido.", variant: "destructive" });
         return;
     }
 
@@ -104,17 +88,9 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
 
     try {
         const videosRef = collection(db, `figures/${figure.id}/tiktokVideos`);
-        const isDuplicate = videos.some(v => getTikTokVideoIdFromUrl(v.url) === videoId);
-
-        if(isDuplicate) {
-            toast({ title: "Video Duplicado", description: "Este video ya ha sido añadido a este perfil.", variant: "default" });
-            setIsSubmitting(false);
-            return;
-        }
         
         const newVideoData = {
-            title: newVideoTitle.trim(),
-            url: newVideoUrl.trim(),
+            embedCode: newVideoEmbedCode,
             submittedBy: firebaseUser.uid,
             submittedAt: serverTimestamp(),
             reportedBy: [],
@@ -126,8 +102,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
             description: "Gracias por tu contribución.",
         });
 
-        setNewVideoTitle('');
-        setNewVideoUrl('');
+        setNewVideoEmbedCode('');
         setIsSuggestDialogOpen(false);
 
     } catch (error: any) {
@@ -193,17 +168,13 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                       <DialogHeader>
                           <DialogTitle>Sugerir un TikTok</DialogTitle>
                           <DialogDescription>
-                              Añade un video relevante para {figure.name}.
+                              Ve a TikTok, haz clic en "Copiar código de inserción" en un video y pégalo aquí.
                           </DialogDescription>
                       </DialogHeader>
                       <div className="grid gap-4 py-4">
-                          <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="video-title" className="text-right">Título</Label>
-                              <Input id="video-title" value={newVideoTitle} onChange={(e) => setNewVideoTitle(e.target.value)} className="col-span-3" placeholder="Ej: El mejor baile" />
-                          </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="video-url" className="text-right">URL</Label>
-                              <Input id="video-url" value={newVideoUrl} onChange={(e) => setNewVideoUrl(e.target.value)} className="col-span-3" placeholder="Pega el enlace del video..."/>
+                          <div className="space-y-2">
+                              <Label htmlFor="video-embed-code">Código de Inserción de TikTok</Label>
+                              <Textarea id="video-embed-code" value={newVideoEmbedCode} onChange={(e) => setNewVideoEmbedCode(e.target.value)} rows={8} placeholder="<blockquote class='tiktok-embed' ...>...</blockquote>"/>
                           </div>
                       </div>
                       <DialogFooter>
@@ -230,56 +201,9 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                 ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
                 : "flex flex-col gap-8"
             )}>
-              {videos.map((video) => {
-                const videoId = getTikTokVideoIdFromUrl(video.url);
-                if (!videoId) return null;
-                
-                return (
+              {videos.map((video) => (
                     <div key={video.id} className={cn("group flex flex-col items-center", viewMode === 'feed' && "w-full")}>
-                        <div className={cn(
-                             "relative w-full flex-grow overflow-hidden rounded-lg bg-black",
-                             viewMode === 'feed' && "mx-auto w-full max-w-sm"
-                        )}>
-                           <blockquote 
-                                ref={el => { if (el) videoRefs.current[video.id] = el; }}
-                                className="tiktok-embed" 
-                                cite={`https://www.tiktok.com/@user/video/${videoId}`}
-                                data-video-id={videoId}
-                                style={{ maxWidth: '605px', minWidth: '325px' }}
-                            >
-                              <section>
-                                <a
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title={video.title}
-                                  href={video.url}
-                                >
-                                  {video.title}
-                                </a>
-                                <p>
-                                  {video.title}
-                                </p>
-                                <a
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title={video.url}
-                                  href={video.url}
-                                >
-                                  &#9836; original sound - {figure.name}
-                                </a>
-                              </section>
-                           </blockquote>
-                        </div>
-                      
-                        <div className={cn("flex items-start justify-between gap-2 mt-2 w-full", viewMode === 'feed' && "max-w-sm")}>
-                          <p className="text-sm font-semibold truncate flex-grow pr-2">{video.title}</p>
-                           <Button asChild variant="link" size="sm" className="w-auto text-white text-xs font-semibold p-0 h-auto flex-shrink-0">
-                                <a href={video.url} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="mr-1 h-3 w-3"/>
-                                    Ver
-                                </a>
-                            </Button>
-                        </div>
+                        <div dangerouslySetInnerHTML={{ __html: video.embedCode }} />
                         {isAdmin && (
                             <div className={cn("w-full mt-2", viewMode === 'feed' && "max-w-sm")}>
                                 <AlertDialog>
@@ -305,8 +229,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                             </div>
                         )}
                     </div>
-                  );
-              })}
+                  ))}
             </div>
           ) : (
             <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg">
