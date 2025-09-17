@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2 } from 'lucide-react';
+import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink } from 'lucide-react';
 import type { Figure, YoutubeShort } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
@@ -69,14 +69,6 @@ export function FigureShorts({ figure }: FigureShortsProps) {
 
     setIsSubmitting(true);
 
-    const newShort: YoutubeShort = {
-        title: newShortTitle.trim(),
-        videoId: videoId,
-        submittedBy: firebaseUser.uid,
-        submittedAt: new Date().toISOString(),
-        reportedBy: [],
-    };
-
     try {
         const figureRef = doc(db, 'figures', figure.id);
         const figureSnap = await getDoc(figureRef);
@@ -90,14 +82,17 @@ export function FigureShorts({ figure }: FigureShortsProps) {
             setIsSubmitting(false);
             return;
         }
-
-        const newShortWithTimestamp: Omit<YoutubeShort, 'submittedAt'> & { submittedAt: Timestamp } = {
-            ...newShort,
+        
+        const newShort: Omit<YoutubeShort, 'submittedAt'> & { submittedAt: Timestamp } = {
+            title: newShortTitle.trim(),
+            videoId: videoId,
+            submittedBy: firebaseUser.uid,
             submittedAt: Timestamp.now(),
-        }
+            reportedBy: [],
+        };
 
         await updateDoc(figureRef, {
-            youtubeShorts: arrayUnion(newShortWithTimestamp)
+            youtubeShorts: arrayUnion(newShort)
         });
 
         toast({
@@ -231,25 +226,37 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                const hasReported = firebaseUser && short.reportedBy?.includes(firebaseUser.uid);
                const reportCount = short.reportedBy?.length || 0;
                const hasReachedThreshold = reportCount >= REPORT_THRESHOLD;
+               const videoUrl = `https://www.youtube.com/shorts/${short.videoId}`;
                
                return (
                   <div key={index} className="group flex flex-col gap-2">
-                    <a href={`https://www.youtube.com/shorts/${short.videoId}`} target="_blank" rel="noopener noreferrer" className="block w-full" style={{aspectRatio: '9/16'}}>
-                        <div className="relative w-full h-full rounded-lg overflow-hidden border-2 border-transparent group-hover:border-primary transition-colors">
-                            <iframe
-                                src={`https://www.youtube.com/embed/${short.videoId}`}
-                                title={short.title}
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                className="w-full h-full"
-                            ></iframe>
-                             <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                                <p className="text-white text-xs font-semibold truncate">{short.title}</p>
-                            </div>
-                        </div>
-                    </a>
+                    <div className="relative w-full overflow-hidden rounded-lg border-2 border-transparent group-hover:border-primary transition-colors" style={{aspectRatio: '9/16'}}>
+                        <iframe
+                            src={`https://www.youtube.com/embed/${short.videoId}?showinfo=0&modestbranding=1&controls=1`}
+                            title={short.title}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            className="w-full h-full"
+                        ></iframe>
+                        {/* Invisible overlay to capture clicks and redirect */}
+                        <a 
+                          href={videoUrl}
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="absolute inset-0 z-10"
+                          aria-label={`Ver short '${short.title}' en YouTube (se abre en una nueva pestaña)`}
+                        ></a>
+                    </div>
+                    <p className="text-white text-xs font-semibold truncate text-center">{short.title}</p>
                     
+                    <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="w-full">
+                      <Button variant="outline" size="sm" className="w-full text-xs">
+                          <ExternalLink className="mr-2 h-3 w-3" />
+                          Ver en YouTube
+                      </Button>
+                    </a>
+
                     {isAdmin ? (
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -335,3 +342,5 @@ export function FigureShorts({ figure }: FigureShortsProps) {
     </Card>
   );
 }
+
+    
