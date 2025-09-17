@@ -15,7 +15,7 @@ import { doc, updateDoc, arrayUnion, Timestamp, getDoc, runTransaction } from 'f
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 
 const getYoutubeVideoId = (url: string): string | null => {
@@ -200,7 +200,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
               </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-              <TooltipProvider>
+               <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button variant="outline" size="icon" className="h-9 w-9" onClick={toggleViewMode} aria-label="Cambiar vista">
