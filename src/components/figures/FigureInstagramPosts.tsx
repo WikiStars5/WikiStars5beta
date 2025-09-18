@@ -1,8 +1,9 @@
+
 "use client";
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, PlusCircle, Send, Loader2, Grid3x3, RectangleHorizontal } from 'lucide-react';
+import { Camera, PlusCircle, Send, Loader2, Grid3x3, RectangleHorizontal, Settings2 } from 'lucide-react';
 import type { Figure, InstagramPost } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
@@ -17,6 +18,7 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DatePicker } from '../shared/DatePicker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Slider } from '../ui/slider';
 
 declare global {
     interface Window {
@@ -61,6 +63,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const [newPostDate, setNewPostDate] = React.useState<Date | undefined>();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
+  const [feedItemHeight, setFeedItemHeight] = React.useState(600); // Default height
 
   React.useEffect(() => {
     const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
@@ -240,6 +243,22 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
           </div>
         </CardHeader>
         <CardContent>
+            {isAdmin && viewMode === 'feed' && (
+                <div className="mb-6 p-4 border rounded-lg bg-muted/20">
+                    <Label className="flex items-center gap-2 mb-2 text-xs font-semibold"><Settings2 className="h-4 w-4"/> Control de Altura (Admin)</Label>
+                    <div className="flex items-center gap-4">
+                        <Slider
+                            defaultValue={[feedItemHeight]}
+                            min={200}
+                            max={800}
+                            step={10}
+                            onValueChange={(value) => setFeedItemHeight(value[0])}
+                            className="flex-grow"
+                        />
+                        <span className="text-sm font-mono w-16 text-center">{feedItemHeight}px</span>
+                    </div>
+                </div>
+            )}
           {isLoading ? (
              <div className="flex justify-center items-center py-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -254,12 +273,16 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                     <div 
                       key={post.id} 
                       className={cn(
-                        "relative group w-full bg-black",
-                        viewMode === 'grid' && "aspect-square rounded-lg overflow-hidden border border-border"
+                        "relative group w-full bg-black overflow-hidden",
+                        viewMode === 'grid' 
+                          ? "aspect-square rounded-lg border border-border"
+                          : "rounded-lg border border-border"
                       )}
+                      style={viewMode === 'feed' ? { height: `${feedItemHeight}px` } : {}}
                     >
                        <div 
-                        dangerouslySetInnerHTML={{ __html: post.embedCode }} 
+                        dangerouslySetInnerHTML={{ __html: post.embedCode }}
+                        className={cn(viewMode === 'feed' && 'h-full w-full flex items-center justify-center')}
                        />
                        {viewMode === 'feed' && post.postDate && (
                            <p className="text-center text-xs text-muted-foreground mt-2 pb-2">
