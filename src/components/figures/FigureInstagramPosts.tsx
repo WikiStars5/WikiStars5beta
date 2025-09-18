@@ -14,6 +14,8 @@ import { collection, onSnapshot, addDoc, serverTimestamp } from 'firebase/firest
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 declare global {
     interface Window {
@@ -28,6 +30,9 @@ declare global {
 interface FigureInstagramPostsProps {
   figure: Figure;
 }
+
+// Regex to extract the datetime from the embed code
+const dateRegex = /<time.*?datetime="(.*?)"/;
 
 export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const { firebaseUser, isAdmin, isLoading: isAuthLoading } = useAuth();
@@ -78,12 +83,19 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
     setIsSubmitting(true);
     try {
         const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
+        
+        // Extract date from embed code
+        const dateMatch = newEmbedCode.match(dateRegex);
+        const postDate = dateMatch ? dateMatch[1] : undefined;
+
         await addDoc(postsRef, {
             embedCode: newEmbedCode.trim(),
+            postDate: postDate,
             submittedBy: firebaseUser.uid,
             submittedAt: serverTimestamp(),
             reportedBy: [],
         });
+
         toast({ title: "¡Publicación añadida!", description: "Gracias por tu contribución." });
         setNewEmbedCode('');
         setIsSuggestDialogOpen(false);
@@ -91,6 +103,16 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         toast({ title: "Error", description: `No se pudo añadir la publicación. ${error.message}`, variant: "destructive" });
     } finally {
         setIsSubmitting(false);
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return null;
+    try {
+      const date = parseISO(dateString);
+      return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
+    } catch (error) {
+      return null;
     }
   };
 
@@ -145,12 +167,18 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
              </div>
           ) : posts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {posts.map((post, index) => (
-                    <div 
-                        key={post.id}
-                        className="w-full"
-                        dangerouslySetInnerHTML={{ __html: post.embedCode }}
-                    />
+                {posts.map((post) => (
+                    <div key={post.id} className="flex flex-col gap-2">
+                        <div
+                            className="w-full bg-black rounded-lg overflow-hidden"
+                            dangerouslySetInnerHTML={{ __html: post.embedCode }}
+                        />
+                        {post.postDate && (
+                            <p className="text-xs text-center text-muted-foreground">
+                                {formatDate(post.postDate)}
+                            </p>
+                        )}
+                    </div>
                 ))}
             </div>
           ) : (
