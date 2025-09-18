@@ -254,14 +254,11 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                     <div 
                       key={post.id} 
                       className={cn(
-                        "relative group w-full bg-black rounded-lg border border-transparent",
-                        viewMode === 'grid' && "aspect-square overflow-hidden"
+                        "relative group w-full bg-black",
+                        viewMode === 'grid' && "aspect-square rounded-lg overflow-hidden border border-border"
                       )}
                     >
                        <div 
-                        className={cn(
-                          viewMode === 'grid' && "transform scale-125 -translate-y-[10%]"
-                        )}
                         dangerouslySetInnerHTML={{ __html: post.embedCode }} 
                        />
                        {viewMode === 'feed' && post.postDate && (
