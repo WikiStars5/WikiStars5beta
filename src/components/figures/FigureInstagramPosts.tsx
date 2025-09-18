@@ -144,17 +144,13 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
              </div>
           ) : posts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {posts.map((post, index) => (
                     <div 
                         key={post.id}
-                        className="group relative w-full overflow-hidden rounded-md bg-black aspect-square"
-                    >
-                      <div 
-                        className="absolute inset-0 transform scale-[1.2] -translate-y-1/4"
+                        className="w-full"
                         dangerouslySetInnerHTML={{ __html: post.embedCode }}
-                      />
-                    </div>
+                    />
                 ))}
             </div>
           ) : (
