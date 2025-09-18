@@ -24,11 +24,11 @@ const nextConfig: NextConfig = {
   }, 
   images: { 
     remotePatterns: [ 
-      { protocol: 'https://', hostname: 'placehold.co', port: '', pathname: '/**', }, 
+      { protocol: 'https', hostname: 'placehold.co', port: '', pathname: '/**', }, 
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com', port: '', pathname: '/**', }, 
       { protocol: 'https', hostname: '**.wikimedia.org', port: '', pathname: '/**', }, 
       { protocol: 'https', hostname: 'static.wikia.nocookie.net', port: '', pathname: '/**', },
-      { protocol: 'https://', hostname: '**.pinimg.com', port: '', pathname: '/**', },
+      { protocol: 'https', hostname: '**.pinimg.com', port: '', pathname: '/**', },
       { protocol: 'https', hostname: 'flagcdn.com', port: '', pathname: '/**', },
       { protocol: 'https', hostname: 'www.google.com', port: '', pathname: '/**', }, // Added for favicons
     ], 
