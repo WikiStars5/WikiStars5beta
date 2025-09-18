@@ -94,15 +94,20 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         
         // Extract date from embed code
         const dateMatch = newEmbedCode.match(dateRegex);
-        const postDate = dateMatch ? dateMatch[1] : undefined;
+        const postDate = dateMatch ? dateMatch[1] : null;
 
-        await addDoc(postsRef, {
+        const newPostData: any = {
             embedCode: newEmbedCode.trim(),
-            postDate: postDate,
             submittedBy: firebaseUser.uid,
             submittedAt: serverTimestamp(),
             reportedBy: [],
-        });
+        };
+        
+        if (postDate) {
+            newPostData.postDate = postDate;
+        }
+
+        await addDoc(postsRef, newPostData);
 
         toast({ title: "¡Publicación añadida!", description: "Gracias por tu contribución." });
         setNewEmbedCode('');
@@ -178,9 +183,12 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                 {posts.map((post) => (
                     <div key={post.id} className="relative group w-full">
                        <div 
-                           className="relative w-full aspect-square overflow-hidden rounded-lg bg-black"
-                           dangerouslySetInnerHTML={{ __html: post.embedCode }}
-                       />
+                           className="relative w-full aspect-[4/5] overflow-hidden rounded-lg bg-black"
+                       >
+                           <div
+                             dangerouslySetInnerHTML={{ __html: post.embedCode }}
+                           />
+                       </div>
                        {post.postDate && (
                            <p className="text-xs text-center text-muted-foreground mt-2">
                                {formatDate(post.postDate)}
