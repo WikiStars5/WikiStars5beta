@@ -55,7 +55,6 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
 
   React.useEffect(() => {
     if (posts.length > 0 && typeof window.instgrm?.Embeds?.process === 'function') {
-        // A small delay helps ensure the elements are in the DOM before the script runs.
         const timer = setTimeout(() => {
             if (window.instgrm) {
                 window.instgrm.Embeds.process();
@@ -149,10 +148,13 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                 {posts.map((post, index) => (
                     <div 
                         key={post.id}
-                        className="group relative w-full overflow-hidden rounded-md bg-black aspect-[4/5]"
-                        ref={el => postRefs.current[index] = el}
+                        className="group relative w-full overflow-hidden rounded-md bg-black aspect-square"
+                    >
+                      <div 
+                        className="absolute inset-0 transform scale-[1.2] -translate-y-1/4"
                         dangerouslySetInnerHTML={{ __html: post.embedCode }}
-                    />
+                      />
+                    </div>
                 ))}
             </div>
           ) : (
