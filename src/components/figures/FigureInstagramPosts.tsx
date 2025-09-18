@@ -87,8 +87,8 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         return;
     }
     
-    // Check if the embed code includes a caption. The "div" with the paragraph is a good indicator.
-    if (newEmbedCode.includes('<div><p>')) {
+    // Updated validation: Check for the 'data-instgrm-captioned' attribute.
+    if (newEmbedCode.includes('data-instgrm-captioned')) {
         toast({
             title: "Publicación con Título no Permitida",
             description: "Por favor, desmarca la opción 'Incluir título' al copiar el código de inserción desde Instagram para añadir solo la foto.",
@@ -102,14 +102,14 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
     try {
         const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
         
-        const newPostData: Omit<InstagramPost, 'id'> = {
+        const newPostData: Partial<InstagramPost> = {
             embedCode: newEmbedCode.trim(),
             postDate: newPostDate.toISOString(),
             submittedBy: firebaseUser.uid,
             submittedAt: serverTimestamp() as Timestamp,
             reportedBy: [],
         };
-
+        
         await addDoc(postsRef, newPostData as any);
 
         toast({ title: "¡Publicación añadida!", description: "Gracias por tu contribución." });
