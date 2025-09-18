@@ -94,12 +94,12 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         
         // Extract date from embed code
         const dateMatch = newEmbedCode.match(dateRegex);
-        const postDate = dateMatch ? dateMatch[1] : null;
+        const postDate = dateMatch ? dateMatch[1] : undefined;
 
-        const newPostData: any = {
+        const newPostData: Omit<InstagramPost, 'id'> = {
             embedCode: newEmbedCode.trim(),
             submittedBy: firebaseUser.uid,
-            submittedAt: serverTimestamp(),
+            submittedAt: serverTimestamp() as Timestamp,
             reportedBy: [],
         };
         
@@ -107,7 +107,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
             newPostData.postDate = postDate;
         }
 
-        await addDoc(postsRef, newPostData);
+        await addDoc(postsRef, newPostData as any);
 
         toast({ title: "¡Publicación añadida!", description: "Gracias por tu contribución." });
         setNewEmbedCode('');
@@ -181,16 +181,10 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
           ) : posts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {posts.map((post) => (
-                    <div key={post.id} className="relative group w-full">
-                       <div 
-                           className="relative w-full aspect-[4/5] overflow-hidden rounded-lg bg-black"
-                       >
-                           <div
-                             dangerouslySetInnerHTML={{ __html: post.embedCode }}
-                           />
-                       </div>
+                    <div key={post.id} className="relative group w-full bg-black rounded-lg overflow-hidden">
+                       <div dangerouslySetInnerHTML={{ __html: post.embedCode }} />
                        {post.postDate && (
-                           <p className="text-xs text-center text-muted-foreground mt-2">
+                           <p className="text-center text-xs text-muted-foreground mt-2 pb-2">
                                {formatDate(post.postDate)}
                            </p>
                        )}
