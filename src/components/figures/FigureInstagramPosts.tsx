@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, PlusCircle, Send, Loader2 } from 'lucide-react';
+import { Camera, PlusCircle, Send, Loader2, Grid3x3, RectangleHorizontal } from 'lucide-react';
 import type { Figure, InstagramPost } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
@@ -16,6 +16,7 @@ import { Textarea } from '../ui/textarea';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DatePicker } from '../shared/DatePicker';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 declare global {
     interface Window {
@@ -34,10 +35,9 @@ interface FigureInstagramPostsProps {
 const getUsernameFromUrl = (url: string): string | null => {
     if (!url) return null;
     try {
-        // Remove trailing slashes and hashtags
         const cleanedUrl = url.trim().replace(/\/+$/, '').replace(/#$/, '');
         const urlParts = cleanedUrl.split('/');
-        const username = urlParts.pop(); // Get the last part
+        const username = urlParts.pop(); 
         return username || null;
     } catch (error) {
         return null;
@@ -60,13 +60,13 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const [newEmbedCode, setNewEmbedCode] = React.useState('');
   const [newPostDate, setNewPostDate] = React.useState<Date | undefined>();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
 
   React.useEffect(() => {
     const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
     const unsubscribe = onSnapshot(postsRef, (snapshot) => {
         const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InstagramPost));
         
-        // Sort posts by postDate in descending order (newest first)
         fetchedPosts.sort((a, b) => {
             const dateA = a.postDate ? new Date(a.postDate).getTime() : 0;
             const dateB = b.postDate ? new Date(b.postDate).getTime() : 0;
@@ -92,7 +92,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         }, 200); 
         return () => clearTimeout(timer);
     }
-  }, [posts]);
+  }, [posts, viewMode]); // Re-run when viewMode changes to reprocess embeds
 
   const handleSuggestPost = async () => {
     if (!newEmbedCode.trim() || !firebaseUser || !newPostDate) {
@@ -110,7 +110,6 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         return;
     }
     
-    // --- VALIDATION LOGIC ---
     const officialInstagramUrl = figure.socialLinks?.instagram;
     if (!officialInstagramUrl) {
       toast({ title: "Falta el Instagram Oficial", description: "Añade el enlace de Instagram del perfil en la sección 'Información' antes de sugerir fotos.", variant: "destructive", duration: 8000 });
@@ -134,7 +133,6 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         toast({ title: "Cuenta Incorrecta", description: `Solo puedes añadir publicaciones de la cuenta oficial: @${officialUsername}`, variant: "destructive", duration: 8000 });
         return;
     }
-    // --- END VALIDATION LOGIC ---
 
 
     setIsSubmitting(true);
@@ -161,6 +159,10 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         setIsSubmitting(false);
     }
   };
+  
+  const toggleViewMode = () => {
+    setViewMode(prev => prev === 'grid' ? 'feed' : 'grid');
+  };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
@@ -185,42 +187,57 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                   Publicaciones de Instagram relacionadas con {figure.name}.
               </CardDescription>
           </div>
-          <Dialog open={isSuggestDialogOpen} onOpenChange={setIsSuggestDialogOpen}>
-              <Button variant="outline" size="sm" disabled={isAuthLoading} onClick={() => setIsSuggestDialogOpen(true)}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Sugerir
-              </Button>
-              <DialogContent>
-                  <DialogHeader>
-                      <DialogTitle>Sugerir una Publicación de Instagram</DialogTitle>
-                      <DialogDescription>
-                          Abre Instagram, ve a la publicación, haz clic en los tres puntos, selecciona "Insertar", desmarca "Incluir título" y copia el código.
-                      </DialogDescription>
-                  </DialogHeader>
-                   <div className="grid gap-4 py-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="post-date">Fecha de Publicación *</Label>
-                          <DatePicker date={newPostDate} onDateChange={setNewPostDate} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="embed-code">Código de Inserción *</Label>
-                          <Textarea 
-                              id="embed-code"
-                              value={newEmbedCode}
-                              onChange={(e) => setNewEmbedCode(e.target.value)}
-                              placeholder='<blockquote class="instagram-media" ...> ... </blockquote>'
-                              rows={8}
-                          />
-                        </div>
-                  </div>
-                  <DialogFooter>
-                      <DialogClose asChild><Button type="button" variant="secondary">Cancelar</Button></DialogClose>
-                      <Button type="button" onClick={handleSuggestPost} disabled={isSubmitting || !newPostDate || !newEmbedCode.trim()}>
-                          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
-                          Añadir Publicación
-                      </Button>
-                  </DialogFooter>
-              </DialogContent>
-          </Dialog>
+          <div className="flex items-center gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                      <TooltipTrigger asChild>
+                          <Button variant="outline" size="icon" className="h-9 w-9" onClick={toggleViewMode} aria-label="Cambiar vista">
+                              {viewMode === 'grid' ? <RectangleHorizontal className="h-5 w-5"/> : <Grid3x3 className="h-5 w-5"/>}
+                          </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                          <p>Cambiar a vista de {viewMode === 'grid' ? 'feed' : 'cuadrícula'}</p>
+                      </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+              <Dialog open={isSuggestDialogOpen} onOpenChange={setIsSuggestDialogOpen}>
+                  <Button variant="outline" size="sm" disabled={isAuthLoading} onClick={() => setIsSuggestDialogOpen(true)}>
+                      <PlusCircle className="mr-2 h-4 w-4" /> Sugerir
+                  </Button>
+                  <DialogContent>
+                      <DialogHeader>
+                          <DialogTitle>Sugerir una Publicación de Instagram</DialogTitle>
+                          <DialogDescription>
+                              Abre Instagram, ve a la publicación, haz clic en los tres puntos, selecciona "Insertar", desmarca "Incluir título" y copia el código.
+                          </DialogDescription>
+                      </DialogHeader>
+                       <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="post-date">Fecha de Publicación *</Label>
+                              <DatePicker date={newPostDate} onDateChange={setNewPostDate} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="embed-code">Código de Inserción *</Label>
+                              <Textarea 
+                                  id="embed-code"
+                                  value={newEmbedCode}
+                                  onChange={(e) => setNewEmbedCode(e.target.value)}
+                                  placeholder='<blockquote class="instagram-media" ...> ... </blockquote>'
+                                  rows={8}
+                              />
+                            </div>
+                      </div>
+                      <DialogFooter>
+                          <DialogClose asChild><Button type="button" variant="secondary">Cancelar</Button></DialogClose>
+                          <Button type="button" onClick={handleSuggestPost} disabled={isSubmitting || !newPostDate || !newEmbedCode.trim()}>
+                              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
+                              Añadir Publicación
+                          </Button>
+                      </DialogFooter>
+                  </DialogContent>
+              </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -228,7 +245,11 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
              </div>
           ) : posts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className={cn(
+                viewMode === 'grid' 
+                ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
+                : "w-full max-w-md mx-auto space-y-8"
+            )}>
                 {posts.map((post) => (
                     <div key={post.id} className="relative group w-full bg-black rounded-lg overflow-hidden border border-border">
                        <div dangerouslySetInnerHTML={{ __html: post.embedCode }} />
