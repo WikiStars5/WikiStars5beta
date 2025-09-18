@@ -247,13 +247,24 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
           ) : posts.length > 0 ? (
             <div className={cn(
                 viewMode === 'grid' 
-                ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
+                ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1"
                 : "w-full max-w-md mx-auto space-y-8"
             )}>
                 {posts.map((post) => (
-                    <div key={post.id} className="relative group w-full bg-black rounded-lg overflow-hidden border border-border">
-                       <div dangerouslySetInnerHTML={{ __html: post.embedCode }} />
-                       {post.postDate && (
+                    <div 
+                      key={post.id} 
+                      className={cn(
+                        "relative group w-full bg-black rounded-lg border border-transparent",
+                        viewMode === 'grid' && "aspect-square overflow-hidden"
+                      )}
+                    >
+                       <div 
+                        className={cn(
+                          viewMode === 'grid' && "transform scale-125 -translate-y-[10%]"
+                        )}
+                        dangerouslySetInnerHTML={{ __html: post.embedCode }} 
+                       />
+                       {viewMode === 'feed' && post.postDate && (
                            <p className="text-center text-xs text-muted-foreground mt-2 pb-2">
                                {formatDate(post.postDate)}
                            </p>
