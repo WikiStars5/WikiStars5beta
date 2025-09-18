@@ -10,12 +10,13 @@ import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { collection, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, serverTimestamp, type Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { DatePicker } from '../shared/DatePicker';
 
 declare global {
     interface Window {
@@ -31,8 +32,6 @@ interface FigureInstagramPostsProps {
   figure: Figure;
 }
 
-// Regex to extract the datetime from the embed code
-const dateRegex = /<time.*?datetime="(.*?)"/;
 
 export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const { firebaseUser, isAdmin, isLoading: isAuthLoading } = useAuth();
@@ -41,8 +40,8 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSuggestDialogOpen, setIsSuggestDialogOpen] = React.useState(false);
   const [newEmbedCode, setNewEmbedCode] = React.useState('');
+  const [newPostDate, setNewPostDate] = React.useState<Date | undefined>();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const postRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
   React.useEffect(() => {
     const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
@@ -78,8 +77,8 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   }, [posts]);
 
   const handleSuggestPost = async () => {
-    if (!newEmbedCode.trim() || !firebaseUser) {
-        toast({ title: "Datos incompletos", description: "Por favor, pega el código de inserción de Instagram.", variant: "destructive" });
+    if (!newEmbedCode.trim() || !firebaseUser || !newPostDate) {
+        toast({ title: "Datos incompletos", description: "Por favor, selecciona una fecha y pega el código de inserción de Instagram.", variant: "destructive" });
         return;
     }
 
@@ -92,25 +91,19 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
     try {
         const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
         
-        // Extract date from embed code
-        const dateMatch = newEmbedCode.match(dateRegex);
-        const postDate = dateMatch ? dateMatch[1] : undefined;
-
         const newPostData: Omit<InstagramPost, 'id'> = {
             embedCode: newEmbedCode.trim(),
+            postDate: newPostDate.toISOString(),
             submittedBy: firebaseUser.uid,
             submittedAt: serverTimestamp() as Timestamp,
             reportedBy: [],
         };
-        
-        if (postDate) {
-            newPostData.postDate = postDate;
-        }
 
         await addDoc(postsRef, newPostData as any);
 
         toast({ title: "¡Publicación añadida!", description: "Gracias por tu contribución." });
         setNewEmbedCode('');
+        setNewPostDate(undefined);
         setIsSuggestDialogOpen(false);
     } catch (error: any) {
         toast({ title: "Error", description: `No se pudo añadir la publicación. ${error.message}`, variant: "destructive" });
@@ -150,22 +143,28 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                   <DialogHeader>
                       <DialogTitle>Sugerir una Publicación de Instagram</DialogTitle>
                       <DialogDescription>
-                          Ve a la publicación en Instagram, haz clic en los tres puntos (...) y luego en "Insertar", y pega el código aquí.
+                          Selecciona la fecha de la publicación y luego pega el código de inserción.
                       </DialogDescription>
                   </DialogHeader>
                    <div className="grid gap-4 py-4">
-                        <Label htmlFor="embed-code">Código de Inserción</Label>
-                        <Textarea 
-                            id="embed-code"
-                            value={newEmbedCode}
-                            onChange={(e) => setNewEmbedCode(e.target.value)}
-                            placeholder='<blockquote class="instagram-media" ...> ... </blockquote>'
-                            rows={8}
-                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="post-date">Fecha de Publicación *</Label>
+                          <DatePicker date={newPostDate} onDateChange={setNewPostDate} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="embed-code">Código de Inserción *</Label>
+                          <Textarea 
+                              id="embed-code"
+                              value={newEmbedCode}
+                              onChange={(e) => setNewEmbedCode(e.target.value)}
+                              placeholder='<blockquote class="instagram-media" ...> ... </blockquote>'
+                              rows={8}
+                          />
+                        </div>
                   </div>
                   <DialogFooter>
                       <DialogClose asChild><Button type="button" variant="secondary">Cancelar</Button></DialogClose>
-                      <Button type="button" onClick={handleSuggestPost} disabled={isSubmitting}>
+                      <Button type="button" onClick={handleSuggestPost} disabled={isSubmitting || !newPostDate || !newEmbedCode.trim()}>
                           {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
                           Añadir Publicación
                       </Button>

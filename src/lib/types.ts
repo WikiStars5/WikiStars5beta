@@ -48,7 +48,7 @@ export interface TiktokVideo {
 export interface InstagramPost {
   id: string; // Document ID from Firestore
   embedCode: string; // The full embed code from Instagram
-  postDate?: string; // ISO string format of the post date
+  postDate: string; // ISO string format of the post date
   submittedBy: string;
   submittedAt: Timestamp;
   reportedBy?: string[];
