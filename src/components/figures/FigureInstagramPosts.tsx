@@ -48,6 +48,14 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
     const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
     const unsubscribe = onSnapshot(postsRef, (snapshot) => {
         const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InstagramPost));
+        
+        // Sort posts by postDate in descending order (newest first)
+        fetchedPosts.sort((a, b) => {
+            if (!a.postDate) return 1;
+            if (!b.postDate) return -1;
+            return new Date(b.postDate).getTime() - new Date(a.postDate).getTime();
+        });
+
         setPosts(fetchedPosts);
         setIsLoading(false);
     }, (error) => {
@@ -168,17 +176,17 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
           ) : posts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {posts.map((post) => (
-                    <div key={post.id} className="flex flex-col gap-2">
-                        <div
-                            className="w-full bg-black rounded-lg overflow-hidden"
-                            dangerouslySetInnerHTML={{ __html: post.embedCode }}
-                        />
-                        {post.postDate && (
-                            <p className="text-xs text-center text-muted-foreground">
-                                {formatDate(post.postDate)}
-                            </p>
-                        )}
-                    </div>
+                    <div key={post.id} className="relative group w-full">
+                       <div 
+                           className="relative w-full aspect-square overflow-hidden rounded-lg bg-black"
+                           dangerouslySetInnerHTML={{ __html: post.embedCode }}
+                       />
+                       {post.postDate && (
+                           <p className="text-xs text-center text-muted-foreground mt-2">
+                               {formatDate(post.postDate)}
+                           </p>
+                       )}
+                   </div>
                 ))}
             </div>
           ) : (
