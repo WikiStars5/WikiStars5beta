@@ -87,6 +87,17 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         return;
     }
     
+    // Check if the embed code includes a caption. The "div" with the paragraph is a good indicator.
+    if (newEmbedCode.includes('<div><p>')) {
+        toast({
+            title: "Publicación con Título no Permitida",
+            description: "Por favor, desmarca la opción 'Incluir título' al copiar el código de inserción desde Instagram para añadir solo la foto.",
+            variant: "destructive",
+            duration: 8000,
+        });
+        return;
+    }
+
     setIsSubmitting(true);
     try {
         const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
@@ -143,7 +154,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                   <DialogHeader>
                       <DialogTitle>Sugerir una Publicación de Instagram</DialogTitle>
                       <DialogDescription>
-                          Selecciona la fecha de la publicación y luego pega el código de inserción.
+                          Abre Instagram, ve a la publicación, haz clic en los tres puntos, selecciona "Insertar", desmarca "Incluir título" y copia el código.
                       </DialogDescription>
                   </DialogHeader>
                    <div className="grid gap-4 py-4">
@@ -180,7 +191,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
           ) : posts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {posts.map((post) => (
-                    <div key={post.id} className="relative group w-full bg-black rounded-lg overflow-hidden">
+                    <div key={post.id} className="relative group w-full bg-black rounded-lg overflow-hidden border border-border">
                        <div dangerouslySetInnerHTML={{ __html: post.embedCode }} />
                        {post.postDate && (
                            <p className="text-center text-xs text-muted-foreground mt-2 pb-2">
