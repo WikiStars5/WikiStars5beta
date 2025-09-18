@@ -54,10 +54,12 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   }, [figure.id]);
 
   React.useEffect(() => {
-    // This effect runs whenever `posts` changes to re-process the embeds.
     if (posts.length > 0 && typeof window.instgrm?.Embeds?.process === 'function') {
-        // A small delay can help ensure the DOM is ready.
-        setTimeout(() => window.instgrm?.Embeds.process(), 500);
+        setTimeout(() => {
+            if (window.instgrm) {
+                window.instgrm.Embeds.process();
+            }
+        }, 100);
     }
   }, [posts]);
 
@@ -145,13 +147,18 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                 {posts.map((post, index) => (
                     <div 
                         key={post.id}
-                        className="group relative aspect-square w-full overflow-hidden rounded-md bg-black"
+                        className="group relative w-full overflow-hidden rounded-md bg-black"
                     >
-                        <div 
-                            ref={el => postRefs.current[index] = el}
+                         <div
+                            ref={el => {
+                                postRefs.current[index] = el;
+                                if (el && typeof window.instgrm?.Embeds?.process === 'function') {
+                                    window.instgrm.Embeds.process();
+                                }
+                            }}
                             dangerouslySetInnerHTML={{ __html: post.embedCode }}
-                            className="absolute inset-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
-                        />
+                            className="absolute inset-0"
+                         />
                     </div>
                 ))}
             </div>
