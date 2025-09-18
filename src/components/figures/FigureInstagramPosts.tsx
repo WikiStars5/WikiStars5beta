@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -32,6 +31,25 @@ interface FigureInstagramPostsProps {
   figure: Figure;
 }
 
+const getUsernameFromUrl = (url: string): string | null => {
+    if (!url) return null;
+    try {
+        // Remove trailing slashes and hashtags
+        const cleanedUrl = url.trim().replace(/\/+$/, '').replace(/#$/, '');
+        const urlParts = cleanedUrl.split('/');
+        const username = urlParts.pop(); // Get the last part
+        return username || null;
+    } catch (error) {
+        return null;
+    }
+};
+
+const getUsernameFromEmbed = (embedCode: string): string | null => {
+    if (!embedCode) return null;
+    const match = embedCode.match(/<a [^>]+>Una publicación compartida de [^<]+ \(@([^)]+)\)<\/a>/);
+    return match ? match[1] : null;
+};
+
 
 export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const { firebaseUser, isAdmin, isLoading: isAuthLoading } = useAuth();
@@ -50,9 +68,9 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         
         // Sort posts by postDate in descending order (newest first)
         fetchedPosts.sort((a, b) => {
-            if (!a.postDate) return 1;
-            if (!b.postDate) return -1;
-            return new Date(b.postDate).getTime() - new Date(a.postDate).getTime();
+            const dateA = a.postDate ? new Date(a.postDate).getTime() : 0;
+            const dateB = b.postDate ? new Date(b.postDate).getTime() : 0;
+            return dateB - dateA;
         });
 
         setPosts(fetchedPosts);
@@ -82,12 +100,6 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         return;
     }
 
-    if (!newEmbedCode.includes('class="instagram-media"')) {
-        toast({ title: "Código no válido", description: "Asegúrate de copiar el código de inserción completo de Instagram.", variant: "destructive" });
-        return;
-    }
-    
-    // Updated validation: Check for the 'data-instgrm-captioned' attribute.
     if (newEmbedCode.includes('data-instgrm-captioned')) {
         toast({
             title: "Publicación con Título no Permitida",
@@ -97,6 +109,33 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         });
         return;
     }
+    
+    // --- VALIDATION LOGIC ---
+    const officialInstagramUrl = figure.socialLinks?.instagram;
+    if (!officialInstagramUrl) {
+      toast({ title: "Falta el Instagram Oficial", description: "Añade el enlace de Instagram del perfil en la sección 'Información' antes de sugerir fotos.", variant: "destructive", duration: 8000 });
+      return;
+    }
+
+    const officialUsername = getUsernameFromUrl(officialInstagramUrl);
+    const embedUsername = getUsernameFromEmbed(newEmbedCode);
+
+    if (!officialUsername) {
+       toast({ title: "URL de Instagram no válida", description: "El enlace guardado en el perfil no es válido. Edítalo en la sección 'Información'.", variant: "destructive", duration: 8000 });
+       return;
+    }
+
+    if (!embedUsername) {
+       toast({ title: "No se pudo verificar el autor", description: "No se pudo encontrar el nombre de usuario en el código de inserción.", variant: "destructive", duration: 8000 });
+       return;
+    }
+    
+    if (officialUsername.toLowerCase() !== embedUsername.toLowerCase()) {
+        toast({ title: "Cuenta Incorrecta", description: `Solo puedes añadir publicaciones de la cuenta oficial: @${officialUsername}`, variant: "destructive", duration: 8000 });
+        return;
+    }
+    // --- END VALIDATION LOGIC ---
+
 
     setIsSubmitting(true);
     try {
