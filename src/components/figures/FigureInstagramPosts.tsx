@@ -55,11 +55,13 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
 
   React.useEffect(() => {
     if (posts.length > 0 && typeof window.instgrm?.Embeds?.process === 'function') {
-        setTimeout(() => {
+        // A small delay helps ensure the elements are in the DOM before the script runs.
+        const timer = setTimeout(() => {
             if (window.instgrm) {
                 window.instgrm.Embeds.process();
             }
-        }, 100);
+        }, 200); 
+        return () => clearTimeout(timer);
     }
   }, [posts]);
 
@@ -147,19 +149,10 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                 {posts.map((post, index) => (
                     <div 
                         key={post.id}
-                        className="group relative w-full overflow-hidden rounded-md bg-black"
-                    >
-                         <div
-                            ref={el => {
-                                postRefs.current[index] = el;
-                                if (el && typeof window.instgrm?.Embeds?.process === 'function') {
-                                    window.instgrm.Embeds.process();
-                                }
-                            }}
-                            dangerouslySetInnerHTML={{ __html: post.embedCode }}
-                            className="absolute inset-0"
-                         />
-                    </div>
+                        className="group relative w-full overflow-hidden rounded-md bg-black aspect-[4/5]"
+                        ref={el => postRefs.current[index] = el}
+                        dangerouslySetInnerHTML={{ __html: post.embedCode }}
+                    />
                 ))}
             </div>
           ) : (
