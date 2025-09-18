@@ -7,10 +7,11 @@ const withPWA = require('next-pwa')({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
-  // By injecting the Firebase script into the PWA's service worker,
-  // we ensure both functionalities coexist without conflict.
-  // This is the standard and recommended approach to fix messaging registration errors.
-  importScripts: ['/firebase-messaging-sw.js'],
+  // swSrc is the modern and recommended way to extend the service worker.
+  // It allows for more complex logic, like importing Firebase scripts
+  // without conflicting with Next.js's own chunk loading.
+  swSrc: 'extend-sw.js',
+  sw: 'sw.js', // This is the name of the output service worker file.
 });
 
 const nextConfig: NextConfig = { 
@@ -23,11 +24,11 @@ const nextConfig: NextConfig = {
   }, 
   images: { 
     remotePatterns: [ 
-      { protocol: 'https', hostname: 'placehold.co', port: '', pathname: '/**', }, 
+      { protocol: 'https://', hostname: 'placehold.co', port: '', pathname: '/**', }, 
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com', port: '', pathname: '/**', }, 
       { protocol: 'https', hostname: '**.wikimedia.org', port: '', pathname: '/**', }, 
       { protocol: 'https', hostname: 'static.wikia.nocookie.net', port: '', pathname: '/**', },
-      { protocol: 'https', hostname: '**.pinimg.com', port: '', pathname: '/**', },
+      { protocol: 'https://', hostname: '**.pinimg.com', port: '', pathname: '/**', },
       { protocol: 'https', hostname: 'flagcdn.com', port: '', pathname: '/**', },
       { protocol: 'https', hostname: 'www.google.com', port: '', pathname: '/**', }, // Added for favicons
     ], 
