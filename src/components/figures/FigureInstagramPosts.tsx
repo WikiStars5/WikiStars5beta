@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -63,7 +62,6 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const [newPostDate, setNewPostDate] = React.useState<Date | undefined>();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
-  const [feedItemHeight, setFeedItemHeight] = React.useState(600); // Default height
 
   React.useEffect(() => {
     const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
@@ -243,22 +241,6 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
           </div>
         </CardHeader>
         <CardContent>
-            {isAdmin && viewMode === 'feed' && (
-                <div className="mb-6 p-4 border rounded-lg bg-muted/20">
-                    <Label className="flex items-center gap-2 mb-2 text-xs font-semibold"><Settings2 className="h-4 w-4"/> Control de Altura (Admin)</Label>
-                    <div className="flex items-center gap-4">
-                        <Slider
-                            defaultValue={[feedItemHeight]}
-                            min={200}
-                            max={800}
-                            step={10}
-                            onValueChange={(value) => setFeedItemHeight(value[0])}
-                            className="flex-grow"
-                        />
-                        <span className="text-sm font-mono w-16 text-center">{feedItemHeight}px</span>
-                    </div>
-                </div>
-            )}
           {isLoading ? (
              <div className="flex justify-center items-center py-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -273,20 +255,18 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                     <div
                       key={post.id}
                       className={cn(
-                        "relative group w-full bg-black overflow-hidden",
-                        viewMode === 'grid' ? "aspect-square" : "rounded-lg border border-border"
+                        "relative group w-full bg-black",
+                        viewMode === 'grid' ? "aspect-square overflow-hidden" : "rounded-lg border border-border"
                       )}
-                      style={viewMode === 'feed' ? { height: `${feedItemHeight}px` } : {}}
                     >
                       <div
-                        className="absolute inset-0 w-full h-full"
-                        style={{ height: '600px' }} // Give the inner container a fixed, large height
-                      >
-                        <div
-                          dangerouslySetInnerHTML={{ __html: post.embedCode }}
-                          className="w-full h-full flex items-center justify-center"
-                        />
-                      </div>
+                        className={cn(
+                          "flex items-center justify-center",
+                           viewMode === 'grid' && "transform scale-125 translate-y-[-10%]"
+                        )}
+                        dangerouslySetInnerHTML={{ __html: post.embedCode }}
+                      />
+
                       {viewMode === 'feed' && post.postDate && (
                         <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-muted-foreground bg-black/50 px-2 py-0.5 rounded">
                           {formatDate(post.postDate)}
