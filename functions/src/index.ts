@@ -28,7 +28,7 @@ const db = admin.firestore();
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
-setGlobalOptions({ maxInstances: 100, region: "southamerica-west1" });
+setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
 // This function runs automatically every 24 hours.
 export const communityVerificationJob = onSchedule("every 24 hours", async (event) => {

@@ -3,8 +3,8 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, PlusCircle, Send, Loader2, Grid3x3, RectangleHorizontal, Settings2 } from 'lucide-react';
-import type { Figure, InstagramPost, GlobalSettings } from '@/lib/types';
+import { Camera, PlusCircle, Send, Loader2, Grid3x3, RectangleHorizontal } from 'lucide-react';
+import type { Figure, InstagramPost } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
@@ -18,8 +18,6 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DatePicker } from '../shared/DatePicker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { Slider } from '../ui/slider';
-import { getGlobalSettings } from '@/lib/placeholder-data';
 
 declare global {
     interface Window {
@@ -53,10 +51,8 @@ const getUsernameFromEmbed = (embedCode: string): string | null => {
     return match ? match[1] : null;
 };
 
-const DEFAULT_HEIGHT = 450;
-
 export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
-  const { firebaseUser, isAdmin, isLoading: isAuthLoading } = useAuth();
+  const { firebaseUser, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
   const [posts, setPosts] = React.useState<InstagramPost[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -65,42 +61,25 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const [newPostDate, setNewPostDate] = React.useState<Date | undefined>();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
-  const [embedHeight, setEmbedHeight] = React.useState(DEFAULT_HEIGHT);
 
   React.useEffect(() => {
-    const fetchSettingsAndPosts = async () => {
-        setIsLoading(true);
-        try {
-            const settings = await getGlobalSettings();
-            setEmbedHeight(settings?.instagramEmbedHeight ?? DEFAULT_HEIGHT);
+    const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
+    const unsubscribe = onSnapshot(postsRef, (snapshot) => {
+        const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InstagramPost));
+        
+        fetchedPosts.sort((a, b) => {
+            const dateA = a.postDate ? new Date(a.postDate).getTime() : 0;
+            const dateB = b.postDate ? new Date(b.postDate).getTime() : 0;
+            return dateB - dateA;
+        });
 
-            const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
-            const unsubscribe = onSnapshot(postsRef, (snapshot) => {
-                const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InstagramPost));
-                
-                fetchedPosts.sort((a, b) => {
-                    const dateA = a.postDate ? new Date(a.postDate).getTime() : 0;
-                    const dateB = b.postDate ? new Date(b.postDate).getTime() : 0;
-                    return dateB - dateA;
-                });
-
-                setPosts(fetchedPosts);
-                setIsLoading(false);
-            }, (error) => {
-                console.error("Error fetching Instagram posts:", error);
-                setIsLoading(false);
-            });
-            return unsubscribe;
-        } catch (error) {
-            console.error("Error fetching initial data:", error);
-            setIsLoading(false);
-        }
-    };
-    
-    const unsubscribePromise = fetchSettingsAndPosts();
-    return () => {
-        unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
-    };
+        setPosts(fetchedPosts);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching Instagram posts:", error);
+        setIsLoading(false);
+    });
+    return () => unsubscribe();
   }, [figure.id]);
 
 
@@ -113,7 +92,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         }, 200); 
         return () => clearTimeout(timer);
     }
-  }, [posts, viewMode]); // Re-run when viewMode changes to reprocess embeds
+  }, [posts, viewMode]);
 
   const handleSuggestPost = async () => {
     if (!newEmbedCode.trim() || !firebaseUser || !newPostDate) {
@@ -121,16 +100,6 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         return;
     }
 
-    if (newEmbedCode.includes('data-instgrm-captioned')) {
-        toast({
-            title: "Publicación con Título no Permitida",
-            description: "Por favor, desmarca la opción 'Incluir título' al copiar el código de inserción desde Instagram para añadir solo la foto.",
-            variant: "destructive",
-            duration: 8000,
-        });
-        return;
-    }
-    
     const officialInstagramUrl = figure.socialLinks?.instagram;
     if (!officialInstagramUrl) {
       toast({ title: "Falta el Instagram Oficial", description: "Añade el enlace de Instagram del perfil en la sección 'Información' antes de sugerir fotos.", variant: "destructive", duration: 8000 });
@@ -230,7 +199,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                       <DialogHeader>
                           <DialogTitle>Sugerir una Publicación de Instagram</DialogTitle>
                           <DialogDescription>
-                              Abre Instagram, ve a la publicación, haz clic en los tres puntos, selecciona "Insertar", desmarca "Incluir título" y copia el código.
+                              Abre Instagram, ve a la publicación, haz clic en los tres puntos, selecciona "Insertar" y copia el código.
                           </DialogDescription>
                       </DialogHeader>
                        <div className="grid gap-4 py-4">
@@ -275,15 +244,19 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                     <div
                       key={post.id}
                       className={cn(
-                        "relative group w-full bg-black overflow-hidden",
-                        viewMode === 'grid' ? "aspect-square" : "rounded-lg border border-border"
+                        "relative group w-full bg-black",
+                        viewMode === 'grid' ? "aspect-square overflow-hidden" : "rounded-lg border border-border"
                       )}
-                      style={viewMode === 'grid' ? { height: `${embedHeight}px` } : {}}
                     >
-                      <div
-                        className={cn("instagram-post-container w-full h-full flex items-center justify-center")}
-                        dangerouslySetInnerHTML={{ __html: post.embedCode }}
-                      />
+                      <div className="flex items-center justify-center h-full">
+                        <div
+                          className="instagram-post-container"
+                          dangerouslySetInnerHTML={{ __html: post.embedCode }}
+                        />
+                      </div>
+                       {viewMode === 'feed' && post.postDate && (
+                           <p className="text-xs text-muted-foreground px-4 pb-3">{formatDate(post.postDate)}</p>
+                       )}
                     </div>
                 ))}
             </div>

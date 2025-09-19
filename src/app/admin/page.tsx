@@ -12,7 +12,6 @@ import { BatchUpdateTagsButton } from "@/components/admin/BatchUpdateTagsButton"
 import { BatchCreateFigures } from "@/components/admin/BatchCreateFigures";
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { BatchUpdateSearchButton } from "@/components/admin/BatchUpdateSearchButton";
-import { GlobalSettingsManager } from "@/components/admin/GlobalSettingsManager";
 
 export default function AdminDashboardPage() {
   const [totalFigures, setTotalFigures] = useState(0);
@@ -87,8 +86,6 @@ export default function AdminDashboardPage() {
           </Button>
         </CardContent>
       </Card>
-
-      <GlobalSettingsManager />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <BatchCreateFigures profileType="character" />

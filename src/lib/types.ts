@@ -246,7 +246,3 @@ export interface StreakWithProfile extends Streak {
     figureId?: string;
     userProfile: UserProfile | null;
 }
-
-export interface GlobalSettings {
-    instagramEmbedHeight?: number;
-}

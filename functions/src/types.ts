@@ -2,7 +2,6 @@
 
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
-export type CreationMethod = 'wikipedia';
 
 export interface Figure {
   id: string;
@@ -50,9 +49,6 @@ export interface Figure {
   createdAt?: string; 
   status?: 'approved' | 'rejected' | 'pending'; 
   isFeatured?: boolean;
-
-  creationMethod?: CreationMethod;
-  isCommunityVerified?: boolean;
 }
 
 export interface UserProfile {
@@ -76,5 +72,3 @@ export interface Country {
   code: string;
   emoji: string;
 }
-
-    

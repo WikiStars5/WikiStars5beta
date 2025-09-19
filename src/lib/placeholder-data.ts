@@ -1,6 +1,6 @@
 
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue, YoutubeShort, TiktokVideo, GlobalSettings } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue, YoutubeShort, TiktokVideo } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db, callFirebaseFunction } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove,getCountFromServer } from "firebase/firestore";
@@ -1107,36 +1107,4 @@ export async function submitStarRating(
             transaction.delete(userRatingDocRef);
         }
     });
-}
-
-// --- Global Settings ---
-
-/**
- * Fetches the global settings from Firestore by calling a Cloud Function.
- */
-export async function getGlobalSettings(): Promise<GlobalSettings> {
-  try {
-    const settings = await callFirebaseFunction('getGlobalSettings');
-    return settings as GlobalSettings;
-  } catch (error) {
-    console.error("Error fetching global settings via Cloud Function:", error);
-    // Return default settings on error to prevent crashes
-    return { instagramEmbedHeight: 500 }; 
-  }
-}
-
-/**
- * Updates the global settings in Firestore by calling a Cloud Function.
- * This is an admin-only operation.
- */
-export async function updateGlobalSettings(settings: GlobalSettings): Promise<void> {
-  try {
-    const result = await callFirebaseFunction('updateGlobalSettings', settings);
-    if (!result.success) {
-      throw new Error(result.message || 'Failed to update settings.');
-    }
-  } catch (error) {
-    console.error("Error updating global settings via Cloud Function:", error);
-    throw error;
-  }
 }
