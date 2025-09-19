@@ -78,6 +78,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
   const [userVotes, setUserVotes] = React.useState<Map<string, EmotionKey>>(new Map());
+  const [openCollapsibleId, setOpenCollapsibleId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
       const storageKey = `instagramPosts-emotions-${firebaseUser?.uid}`;
@@ -200,6 +201,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         }
         return newMap;
     });
+    setOpenCollapsibleId(null);
   }
 
   const renderReactionButton = (post: InstagramPost) => {
@@ -296,7 +298,12 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                 : "w-full max-w-sm mx-auto space-y-8"
             )}>
                 {posts.map((post) => (
-                    <Collapsible key={post.id} className="border border-border rounded-lg overflow-hidden bg-black">
+                    <Collapsible 
+                        key={post.id}
+                        open={openCollapsibleId === post.id}
+                        onOpenChange={(isOpen) => setOpenCollapsibleId(isOpen ? post.id : null)}
+                        className="border border-border rounded-lg overflow-hidden bg-black"
+                    >
                         <div
                             className={cn(
                                 "instagram-post-container",
