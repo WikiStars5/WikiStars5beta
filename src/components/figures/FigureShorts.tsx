@@ -46,24 +46,6 @@ const getYoutubeVideoId = (url: string): string | null => {
     return null;
 }
 
-const getYoutubeChannelIdFromUrl = (url: string): string | null => {
-    if (!url) return null;
-    try {
-        const urlObj = new URL(url);
-        const pathParts = urlObj.pathname.split('/');
-        const channelIdIndex = pathParts.indexOf('channel');
-        if (channelIdIndex !== -1 && pathParts.length > channelIdIndex + 1) {
-            return pathParts[channelIdIndex + 1];
-        }
-        if (pathParts[1]?.startsWith('@')) {
-             return pathParts[1];
-        }
-    } catch (e) {
-        console.error("Could not parse YouTube URL for channel ID", e);
-    }
-    return null;
-};
-
 
 const REPORT_THRESHOLD = 10;
 
@@ -98,19 +80,6 @@ export function FigureShorts({ figure }: FigureShortsProps) {
     return () => unsubscribe();
   }, [figure.id]);
 
-  const handleOpenSuggestDialog = () => {
-    if (!figure.socialLinks?.youtube) {
-        toast({
-            title: "Falta el Canal de YouTube Oficial",
-            description: "Para sugerir un Short, primero debe añadirse el enlace del canal de YouTube oficial en la sección 'Información' del perfil.",
-            variant: "destructive",
-            duration: 8000,
-        });
-        return;
-    }
-    setIsSuggestDialogOpen(true);
-  };
-
   const handleSuggestShort = async () => {
     if (!newShortTitle.trim() || !newShortUrl.trim() || !firebaseUser) {
         toast({ title: "Datos incompletos", description: "Por favor, completa el título y la URL.", variant: "destructive" });
@@ -123,9 +92,6 @@ export function FigureShorts({ figure }: FigureShortsProps) {
         return;
     }
     
-    // This is a placeholder for a more complex validation that would require a server-side call to YouTube API
-    // For now, we will trust the user input but this is where channel validation would happen.
-
     setIsSubmitting(true);
 
     try {
@@ -245,7 +211,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
               </TooltipProvider>
 
               <Dialog open={isSuggestDialogOpen} onOpenChange={setIsSuggestDialogOpen}>
-                  <Button variant="outline" size="sm" disabled={isAuthLoading} onClick={handleOpenSuggestDialog}>
+                  <Button variant="outline" size="sm" disabled={isAuthLoading} onClick={() => setIsSuggestDialogOpen(true)}>
                       <PlusCircle className="mr-2 h-4 w-4" /> Sugerir
                   </Button>
                   <DialogContent>
