@@ -1115,8 +1115,9 @@ const voteForContentEmotion = async (
   path: 'youtubeShorts' | 'instagramPosts',
   figureId: string,
   contentId: string,
-  newEmotion: EmotionKey,
-  userId: string
+  newEmotion: EmotionKey | null,
+  userId: string,
+  previousEmotion: EmotionKey | null
 ): Promise<void> => {
   const contentDocRef = doc(db, `figures/${figureId}/${path}`, contentId);
 
@@ -1126,25 +1127,51 @@ const voteForContentEmotion = async (
 
     const contentData = contentDoc.data() as YoutubeShort | InstagramPost;
     const currentCounts = contentData.perceptionCounts || {};
-    
-    const newCounts = { ...currentCounts, [newEmotion]: (currentCounts[newEmotion] || 0) + 1 };
+    const newCounts = { ...currentCounts };
+
+    // Decrement the count for the previous emotion, if one existed
+    if (previousEmotion) {
+        newCounts[previousEmotion] = Math.max(0, (newCounts[previousEmotion] || 0) - 1);
+    }
+    // Increment the count for the new emotion, if one is selected
+    if (newEmotion) {
+        newCounts[newEmotion] = (newCounts[newEmotion] || 0) + 1;
+    }
     
     transaction.update(contentDocRef, { perceptionCounts: newCounts });
   });
 
   const storageKey = `${path}-emotions-${userId}`;
-  let storedVotes: { contentId: string, emotion: EmotionKey }[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-  const voteIndex = storedVotes.findIndex(v => v.contentId === contentId);
-  if (voteIndex > -1) {
-    storedVotes[voteIndex].emotion = newEmotion;
-  } else {
-    storedVotes.push({ contentId, emotion: newEmotion });
+  let storedVotes: { itemId: string, emotion: EmotionKey }[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  const voteIndex = storedVotes.findIndex(v => v.itemId === contentId);
+
+  if (newEmotion === null) { // Deselecting
+    if (voteIndex > -1) {
+      storedVotes.splice(voteIndex, 1);
+    }
+  } else { // Selecting or changing
+    if (voteIndex > -1) {
+      storedVotes[voteIndex].emotion = newEmotion;
+    } else {
+      storedVotes.push({ itemId: contentId, emotion: newEmotion });
+    }
   }
+  
   localStorage.setItem(storageKey, JSON.stringify(storedVotes));
 };
 
-export const voteForShortEmotion = (figureId: string, shortId: string, newEmotion: EmotionKey, userId: string) => 
-  voteForContentEmotion('youtubeShorts', figureId, shortId, newEmotion, userId);
+export const voteForShortEmotion = (figureId: string, shortId: string, newEmotion: EmotionKey | null, userId: string, previousEmotion: EmotionKey | null) => 
+  voteForContentEmotion('youtubeShorts', figureId, shortId, newEmotion, userId, previousEmotion);
 
-export const voteForInstagramPostEmotion = (figureId: string, postId: string, newEmotion: EmotionKey, userId: string) =>
-  voteForContentEmotion('instagramPosts', figureId, postId, newEmotion, userId);
+export const voteForInstagramPostEmotion = (figureId: string, postId: string, newEmotion: EmotionKey | null, userId: string, previousEmotion: EmotionKey | null) =>
+  voteForContentEmotion('instagramPosts', figureId, postId, newEmotion, userId, previousEmotion);
+
+
+// ---- Global Settings ----
+export async function getGlobalSettings() {
+    return callFirebaseFunction('getGlobalSettings');
+}
+
+export async function updateGlobalSettings(settings: any) {
+    return callFirebaseFunction('updateGlobalSettings', settings);
+}

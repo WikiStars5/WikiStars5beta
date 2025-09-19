@@ -138,22 +138,21 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
 
         if (newEmotion === null) { // Deselecting
           if (existingVoteIndex > -1) storedEmotions.splice(existingVoteIndex, 1);
-          setSelectedEmotion(null);
         } else { // Selecting or changing vote
           if (existingVoteIndex > -1) {
             storedEmotions[existingVoteIndex].emotion = newEmotion;
           } else {
             storedEmotions.push({ itemId, emotion: newEmotion });
           }
-          setSelectedEmotion(newEmotion);
           
-          if (!firebaseUser?.isAnonymous) {
+          if (!firebaseUser?.isAnonymous && targetType === 'figure') {
             grantEmocionAlDescubiertoAchievement(userId).then(result => {
               if (result.unlocked) toast({ title: "¡Logro Desbloqueado!", description: result.message });
             });
           }
         }
         localStorage.setItem(storageKey, JSON.stringify(storedEmotions));
+        setSelectedEmotion(newEmotion);
       }
   };
 
@@ -194,7 +193,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
               </div>
               <span className="text-xs font-medium text-center block">{label}</span>
               <span className="text-sm font-bold">
-                {(perceptionCounts[key] || 0).toLocaleString()}
+                {(perceptionCounts?.[key] || 0).toLocaleString()}
               </span>
             </Button>
           ))}
