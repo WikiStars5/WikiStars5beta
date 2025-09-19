@@ -245,7 +245,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                       key={post.id}
                       className={cn(
                         "relative group w-full bg-black",
-                        viewMode === 'grid' ? "aspect-square overflow-hidden" : "rounded-lg border border-border"
+                        viewMode === 'grid' ? "border" : "rounded-lg border border-border"
                       )}
                     >
                       <div className="flex items-center justify-center h-full">
