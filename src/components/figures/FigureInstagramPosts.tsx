@@ -41,9 +41,11 @@ interface FigureInstagramPostsProps {
 const getUsernameFromUrl = (url: string): string | null => {
     if (!url) return null;
     try {
-        const cleanedUrl = url.trim().replace(/\/+$/, '');
+        // Clean the URL from fragments like '#'
+        const cleanedUrl = url.trim().split('#')[0].replace(/\/+$/, '');
         const urlObj = new URL(cleanedUrl);
         const pathParts = urlObj.pathname.split('/');
+        
         // The first part of the path after the domain is usually the username.
         if (pathParts.length > 1 && pathParts[1]) {
             return pathParts[1];
@@ -57,17 +59,27 @@ const getUsernameFromUrl = (url: string): string | null => {
 
 const getUsernameFromEmbedCode = (embedCode: string): string | null => {
     if (!embedCode) return null;
-    // New Regex: Look for the username inside the `cite` attribute of the blockquote tag.
-    // This is more reliable for modern embed codes.
-    const match = embedCode.match(/<blockquote class="instagram-media"[^>]*data-instgrm-permalink="https?:\/\/www\.instagram\.com\/p\/[^/]+\/\?utm_source=ig_embed[^"]*"[^>]*>.*<a href="https?:\/\/www\.instagram\.com\/([^/]+)\/[^"]*"[^>]*>/s);
+    
+    // Updated Regex: Looks for the author's username in the final link text.
+    // This is the most reliable method for recent embed codes.
+    // Example: <a ...>Una publicación compartida de USERNAME (@username)</a>
+    const match = embedCode.match(/<a [^>]+>Una publicación compartida de [^<]+ \(@([^)]+)\)<\/a>/);
     if (match && match[1]) {
       return match[1];
     }
     
-    // Fallback for older embed code format, just in case.
-    const oldMatch = embedCode.match(/<a [^>]+>Una publicación compartida por [^<]+ \(@([^)]+)\)<\/a>/);
-    return oldMatch ? oldMatch[1] : null;
+    // Fallback Regex: For older or different embed code formats, looks for the permalink.
+    const permalinkMatch = embedCode.match(/data-instgrm-permalink="https?:\/\/www\.instagram\.com\/p\/[^/]+\//);
+    if (permalinkMatch) {
+       const urlPart = permalinkMatch[0];
+       // This is less reliable as it depends on the structure, but a good fallback.
+       const userMatch = embedCode.match(new RegExp(`href="https:\\/\\/www.instagram.com\\/([^/]+)\\/`));
+       if (userMatch && userMatch[1]) return userMatch[1];
+    }
+    
+    return null;
 };
+
 
 const EMOTION_REACTION_CONFIG: Record<EmotionKey, { label: string; imageUrl: string; color: string }> = {
   alegria: { label: 'Alegre', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/gif%2Falegria.gif?alt=media&token=ae532025-03c5-45a9-97d2-d475235bd74e', color: 'text-yellow-500' },
@@ -282,7 +294,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                                   id="embed-code"
                                   value={newEmbedCode}
                                   onChange={(e) => setNewEmbedCode(e.target.value)}
-                                  placeholder='&lt;blockquote class="instagram-media" ...&gt; ... &lt;/blockquote&gt;'
+                                  placeholder='<blockquote class="instagram-media" ...> ... </blockquote>'
                                   rows={8}
                               />
                             </div>
