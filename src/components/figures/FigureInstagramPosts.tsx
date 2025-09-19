@@ -22,6 +22,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { PerceptionEmotions } from './PerceptionEmotions';
 import Image from 'next/image';
+import { voteForInstagramPostEmotion } from '@/lib/placeholder-data';
+
 
 declare global {
     interface Window {
@@ -210,7 +212,6 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
       return (
         <span className={cn("flex items-center gap-1.5", color)}>
           <Image src={imageUrl} alt={label} width={20} height={20} className="w-5 h-5" unoptimized />
-          {label}
         </span>
       );
     }
