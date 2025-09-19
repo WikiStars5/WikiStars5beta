@@ -73,4 +73,6 @@ export interface Country {
   emoji: string;
 }
 
-    
+export interface GlobalSettings {
+    instagramEmbedHeight?: number;
+}

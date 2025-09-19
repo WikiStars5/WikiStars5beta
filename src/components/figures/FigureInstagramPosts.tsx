@@ -1,9 +1,10 @@
+
 "use client";
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Camera, PlusCircle, Send, Loader2, Grid3x3, RectangleHorizontal, Settings2 } from 'lucide-react';
-import type { Figure, InstagramPost } from '@/lib/types';
+import type { Figure, InstagramPost, GlobalSettings } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
@@ -18,6 +19,7 @@ import { es } from 'date-fns/locale';
 import { DatePicker } from '../shared/DatePicker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Slider } from '../ui/slider';
+import { getGlobalSettings } from '@/lib/placeholder-data';
 
 declare global {
     interface Window {
@@ -51,6 +53,7 @@ const getUsernameFromEmbed = (embedCode: string): string | null => {
     return match ? match[1] : null;
 };
 
+const DEFAULT_HEIGHT = 450;
 
 export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const { firebaseUser, isAdmin, isLoading: isAuthLoading } = useAuth();
@@ -62,27 +65,44 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const [newPostDate, setNewPostDate] = React.useState<Date | undefined>();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
+  const [embedHeight, setEmbedHeight] = React.useState(DEFAULT_HEIGHT);
 
   React.useEffect(() => {
-    const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
-    const unsubscribe = onSnapshot(postsRef, (snapshot) => {
-        const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InstagramPost));
-        
-        fetchedPosts.sort((a, b) => {
-            const dateA = a.postDate ? new Date(a.postDate).getTime() : 0;
-            const dateB = b.postDate ? new Date(b.postDate).getTime() : 0;
-            return dateB - dateA;
-        });
+    const fetchSettingsAndPosts = async () => {
+        setIsLoading(true);
+        try {
+            const settings = await getGlobalSettings();
+            setEmbedHeight(settings?.instagramEmbedHeight ?? DEFAULT_HEIGHT);
 
-        setPosts(fetchedPosts);
-        setIsLoading(false);
-    }, (error) => {
-        console.error("Error fetching Instagram posts:", error);
-        setIsLoading(false);
-    });
+            const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
+            const unsubscribe = onSnapshot(postsRef, (snapshot) => {
+                const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InstagramPost));
+                
+                fetchedPosts.sort((a, b) => {
+                    const dateA = a.postDate ? new Date(a.postDate).getTime() : 0;
+                    const dateB = b.postDate ? new Date(b.postDate).getTime() : 0;
+                    return dateB - dateA;
+                });
 
-    return () => unsubscribe();
+                setPosts(fetchedPosts);
+                setIsLoading(false);
+            }, (error) => {
+                console.error("Error fetching Instagram posts:", error);
+                setIsLoading(false);
+            });
+            return unsubscribe;
+        } catch (error) {
+            console.error("Error fetching initial data:", error);
+            setIsLoading(false);
+        }
+    };
+    
+    const unsubscribePromise = fetchSettingsAndPosts();
+    return () => {
+        unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
+    };
   }, [figure.id]);
+
 
   React.useEffect(() => {
     if (posts.length > 0 && typeof window.instgrm?.Embeds?.process === 'function') {
@@ -255,23 +275,15 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                     <div
                       key={post.id}
                       className={cn(
-                        "relative group w-full bg-black",
-                        viewMode === 'grid' ? "aspect-square overflow-hidden" : "rounded-lg border border-border"
+                        "relative group w-full bg-black overflow-hidden",
+                        viewMode === 'grid' ? "aspect-square" : "rounded-lg border border-border"
                       )}
+                      style={viewMode === 'grid' ? { height: `${embedHeight}px` } : {}}
                     >
                       <div
-                        className={cn(
-                          "flex items-center justify-center",
-                           viewMode === 'grid' && "transform scale-125 translate-y-[-10%]"
-                        )}
+                        className={cn("instagram-post-container w-full h-full flex items-center justify-center")}
                         dangerouslySetInnerHTML={{ __html: post.embedCode }}
                       />
-
-                      {viewMode === 'feed' && post.postDate && (
-                        <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-muted-foreground bg-black/50 px-2 py-0.5 rounded">
-                          {formatDate(post.postDate)}
-                        </p>
-                      )}
                     </div>
                 ))}
             </div>

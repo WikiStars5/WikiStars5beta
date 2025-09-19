@@ -11,7 +11,7 @@ import { onUserCreate } from "firebase-functions/v2/auth";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 
 
-import type { UserProfile, Figure } from "./types";
+import type { UserProfile, Figure, GlobalSettings } from "./types";
 import { COUNTRIES } from "./countries";
 import type { DocumentData, Query } from "firebase-admin/firestore";
 
@@ -160,6 +160,40 @@ export const updateUserProfile = onCall(async (request) => {
     } catch (error) {
         console.error("Error updating user profile in Firestore:", error);
         throw new HttpsError('internal', 'Could not update profile in Firestore.');
+    }
+});
+
+
+// ---- Settings Functions ----
+
+export const getGlobalSettings = onCall(async (request) => {
+    const settingsRef = db.collection('settings').doc('global');
+    try {
+        const docSnap = await settingsRef.get();
+        if (docSnap.exists()) {
+            return docSnap.data() as GlobalSettings;
+        }
+        return {}; // Return empty object if no settings are found
+    } catch (error) {
+        console.error("Error getting global settings:", error);
+        throw new HttpsError('internal', 'Could not retrieve global settings.');
+    }
+});
+
+export const updateGlobalSettings = onCall(async (request) => {
+    if (request.auth?.uid !== ADMIN_UID) {
+        throw new HttpsError('permission-denied', 'You must be an admin to update settings.');
+    }
+    
+    const settingsData = request.data as GlobalSettings;
+    const settingsRef = db.collection('settings').doc('global');
+
+    try {
+        await settingsRef.set(settingsData, { merge: true });
+        return { success: true, message: 'Global settings updated successfully.' };
+    } catch (error) {
+        console.error("Error updating global settings:", error);
+        throw new HttpsError('internal', 'Could not update global settings.');
     }
 });
 
