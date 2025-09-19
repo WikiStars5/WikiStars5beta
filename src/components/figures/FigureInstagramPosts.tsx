@@ -21,6 +21,7 @@ import { DatePicker } from '../shared/DatePicker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { PerceptionEmotions } from './PerceptionEmotions';
+import Image from 'next/image';
 
 declare global {
     interface Window {
@@ -54,13 +55,13 @@ const getUsernameFromEmbed = (embedCode: string): string | null => {
     return match ? match[1] : null;
 };
 
-const EMOTION_REACTION_CONFIG: Record<EmotionKey, { label: string, icon: React.ElementType, color: string }> = {
-  alegria: { label: 'Alegre', icon: Smile, color: 'text-yellow-500' },
-  envidia: { label: 'Envidia', icon: Smile, color: 'text-green-500' },
-  tristeza: { label: 'Triste', icon: Smile, color: 'text-blue-500' },
-  miedo: { label: 'Miedo', icon: Smile, color: 'text-purple-500' },
-  desagrado: { label: 'Desagrado', icon: Smile, color: 'text-lime-500' },
-  furia: { label: 'Enfadado', icon: Smile, color: 'text-red-500' },
+const EMOTION_REACTION_CONFIG: Record<EmotionKey, { label: string, imageUrl: string, color: string }> = {
+  alegria: { label: 'Alegre', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/gif%2Falegria.gif?alt=media&token=ae532025-03c5-45a9-97d2-d475235bd74e', color: 'text-yellow-500' },
+  envidia: { label: 'Envidia', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fenvidia.png?alt=media&token=940aa136-2235-48db-84d6-2c461730fde5', color: 'text-green-500' },
+  tristeza: { label: 'Triste', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/gif%2Ftrizteza-min.gif?alt=media&token=f9bc3bbf-eba1-4249-8c4b-128d56e4a6f0', color: 'text-blue-500' },
+  miedo: { label: 'Miedo', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985', color: 'text-purple-500' },
+  desagrado: { label: 'Desagrado', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb', color: 'text-lime-500' },
+  furia: { label: 'Enfadado', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/gif%2Ffuria.gif?alt=media&token=18d1c677-2291-45b0-8001-99a1e5df6859', color: 'text-red-500' },
 };
 
 
@@ -205,10 +206,10 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const renderReactionButton = (post: InstagramPost) => {
     const userVote = userVotes.get(post.id);
     if (userVote) {
-      const { label, icon: Icon, color } = EMOTION_REACTION_CONFIG[userVote];
+      const { label, imageUrl, color } = EMOTION_REACTION_CONFIG[userVote];
       return (
         <span className={cn("flex items-center gap-1.5", color)}>
-          <Icon className="h-4 w-4" />
+          <Image src={imageUrl} alt={label} width={20} height={20} className="w-5 h-5" unoptimized />
           {label}
         </span>
       );
