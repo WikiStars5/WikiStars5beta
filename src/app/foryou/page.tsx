@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { collectionGroup, getDocs, query, collection, doc, getDoc } from 'firebase/firestore';
+import { collectionGroup, getDocs, query, collection, doc, getDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Figure, TiktokVideo } from '@/lib/types';
 import TikTokEmbed from '@/components/figures/TikTokEmbed';
@@ -72,7 +72,6 @@ export default function ForYouPage() {
                 // 3. Fetch all required figures in one go
                 const figuresData = new Map<string, Figure>();
                 if (figureIds.size > 0) {
-                    const figuresRef = collection(db, 'figures');
                     // Firestore 'in' query is limited to 30 items
                     const figureIdChunks = Array.from(figureIds).reduce((acc, item, i) => {
                         const chunkIndex = Math.floor(i / 30);
@@ -82,7 +81,6 @@ export default function ForYouPage() {
                     }, [] as string[][]);
                     
                     for (const chunk of figureIdChunks) {
-                         const figuresQuery = query(figuresRef, doc(db, 'figures', ...chunk).id, 'in', chunk);
                          const figureSnapshots = await getDocs(query(collection(db, 'figures'), where('__name__', 'in', chunk)));
                          figureSnapshots.forEach(doc => figuresData.set(doc.id, { id: doc.id, ...doc.data() } as Figure));
                     }
