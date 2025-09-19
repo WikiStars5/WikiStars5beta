@@ -270,26 +270,29 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                 : "w-full max-w-md mx-auto space-y-8"
             )}>
                 {posts.map((post) => (
-                    <div 
-                      key={post.id} 
+                    <div
+                      key={post.id}
                       className={cn(
                         "relative group w-full bg-black overflow-hidden",
-                        viewMode === 'grid' 
-                          ? "aspect-square rounded-lg border border-border"
-                          : "rounded-lg border border-border"
+                        viewMode === 'grid' ? "aspect-square" : "rounded-lg border border-border"
                       )}
                       style={viewMode === 'feed' ? { height: `${feedItemHeight}px` } : {}}
                     >
-                       <div 
-                        dangerouslySetInnerHTML={{ __html: post.embedCode }}
-                        className={cn(viewMode === 'feed' && 'h-full w-full flex items-center justify-center')}
-                       />
-                       {viewMode === 'feed' && post.postDate && (
-                           <p className="text-center text-xs text-muted-foreground mt-2 pb-2">
-                               {formatDate(post.postDate)}
-                           </p>
-                       )}
-                   </div>
+                      <div
+                        className="absolute inset-0 w-full h-full"
+                        style={{ height: '600px' }} // Give the inner container a fixed, large height
+                      >
+                        <div
+                          dangerouslySetInnerHTML={{ __html: post.embedCode }}
+                          className="w-full h-full flex items-center justify-center"
+                        />
+                      </div>
+                      {viewMode === 'feed' && post.postDate && (
+                        <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-muted-foreground bg-black/50 px-2 py-0.5 rounded">
+                          {formatDate(post.postDate)}
+                        </p>
+                      )}
+                    </div>
                 ))}
             </div>
           ) : (
