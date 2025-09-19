@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import type { Figure, EmotionKey, EmotionVote, YoutubeShort, InstagramPost } from '@/lib/types';
+import type { Figure, EmotionKey, GenericEmotionVote, YoutubeShort, InstagramPost } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, runTransaction } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ interface PerceptionEmotionsProps {
   perceptionCounts: Record<EmotionKey, number>;
   targetType?: 'figure' | 'short' | 'instagram';
   targetId?: string;
+  onVote?: (emotion: EmotionKey | null) => void;
 }
 
 const EMOTIONS_CONFIG: { key: EmotionKey; label: string; imageUrl: string; colorClass: string, selectedClass: string }[] = [
@@ -37,17 +38,13 @@ const defaultPerceptionCountsData: Record<EmotionKey, number> = {
   alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
 };
 
-type GenericEmotionVote = {
-    itemId: string;
-    emotion: EmotionKey;
-};
-
 export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ 
   figureId,
   figureName,
   perceptionCounts,
   targetType = 'figure',
   targetId,
+  onVote
 }) => {
   const { firebaseUser, isLoading: isAuthLoading } = useAuth();
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
@@ -55,7 +52,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   const { toast } = useToast();
   
   const id = targetId || figureId;
-  const storageKey = `${targetType}-emotions-${firebaseUser?.uid}`;
+  const storageKey = `${targetType}s-emotions-${firebaseUser?.uid}`;
 
   const totalVotes = React.useMemo(() => {
       return Object.values(perceptionCounts || defaultPerceptionCountsData).reduce((sum, count) => sum + count, 0);
@@ -80,13 +77,25 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
     setIsVoting(true);
 
     try {
+      const isDeselecting = selectedEmotion === newEmotion;
+      const finalEmotion = isDeselecting ? null : newEmotion;
+      
+      let voteFn;
       if (targetType === 'short' && targetId) {
-        await voteForShortEmotion(figureId, targetId, newEmotion, firebaseUser.uid);
+        voteFn = voteForShortEmotion;
       } else if (targetType === 'instagram' && targetId) {
-        await voteForInstagramPostEmotion(figureId, targetId, newEmotion, firebaseUser.uid);
+        voteFn = voteForInstagramPostEmotion;
       } else {
-        await voteForFigureEmotion(newEmotion, firebaseUser.uid);
+        voteFn = voteForFigureEmotion;
       }
+      
+      await voteFn(figureId, id, finalEmotion, firebaseUser.uid, selectedEmotion);
+      handleLocalStorageUpdate(id, finalEmotion, firebaseUser.uid);
+      
+      if (onVote) {
+        onVote(finalEmotion);
+      }
+
     } catch (error: any) {
       console.error("Error al votar por emoción:", error);
       toast({
@@ -99,17 +108,15 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
     }
   };
   
-  const voteForFigureEmotion = async (newEmotion: EmotionKey, userId: string) => {
-      let previousVote: EmotionKey | null = null;
-      if (typeof window !== 'undefined') {
-        const storedEmotions: GenericEmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        previousVote = storedEmotions.find(e => e.itemId === figureId)?.emotion || null;
-      }
-      
-      const isDeselecting = previousVote === newEmotion;
-
+  const voteForFigureEmotion = async (
+    figId: string, 
+    itemId: string, 
+    newEmotion: EmotionKey | null, 
+    userId: string,
+    previousEmotion: EmotionKey | null
+  ) => {
       await runTransaction(db, async (transaction) => {
-        const figureRef = doc(db, 'figures', figureId);
+        const figureRef = doc(db, 'figures', figId);
         const figureDoc = await transaction.get(figureRef);
         
         if (!figureDoc.exists()) throw new Error("Figura no encontrada.");
@@ -117,13 +124,11 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
         const currentCounts = figureDoc.data().perceptionCounts || defaultPerceptionCountsData;
         const newCounts = { ...currentCounts };
         
-        if (previousVote) newCounts[previousVote] = Math.max(0, (newCounts[previousVote] || 0) - 1);
-        if (!isDeselecting) newCounts[newEmotion] = (newCounts[newEmotion] || 0) + 1;
+        if (previousEmotion) newCounts[previousEmotion] = Math.max(0, (newCounts[previousEmotion] || 0) - 1);
+        if (newEmotion) newCounts[newEmotion] = (newCounts[newEmotion] || 0) + 1;
 
         transaction.update(figureRef, { perceptionCounts: newCounts });
       });
-      
-      handleLocalStorageUpdate(figureId, isDeselecting ? null : newEmotion, userId);
   };
   
   const handleLocalStorageUpdate = (itemId: string, newEmotion: EmotionKey | null, userId: string) => {
@@ -138,7 +143,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
           if (existingVoteIndex > -1) {
             storedEmotions[existingVoteIndex].emotion = newEmotion;
           } else {
-            storedEmotions.push({ itemId: itemId, emotion: newEmotion });
+            storedEmotions.push({ itemId, emotion: newEmotion });
           }
           setSelectedEmotion(newEmotion);
           
@@ -152,7 +157,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
       }
   };
 
-  const isCollapsible = targetType === 'short' || targetType === 'instagram';
+  const isPopover = targetType === 'short' || targetType === 'instagram';
 
   const content = (
     <div className="space-y-4">
@@ -170,14 +175,14 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
                 "flex flex-col items-center justify-start p-2 h-auto space-y-1 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 bg-black",
                 colorClass,
                 selectedEmotion === key && selectedClass,
-                isCollapsible ? "min-h-[90px]" : "min-h-[120px]", // Smaller buttons for collapsible version
+                isPopover ? "min-h-[90px]" : "min-h-[120px]", // Smaller buttons for popover version
                 (isVoting || isAuthLoading) && selectedEmotion !== key && 'opacity-50 cursor-not-allowed'
               )}
               onClick={() => handleVote(key)}
               disabled={isVoting || isAuthLoading}
             >
               {isVoting && selectedEmotion === key && <Loader2 className="absolute h-5 w-5 animate-spin" />}
-              <div className={cn("relative mb-1", isCollapsible ? "w-10 h-10" : "w-16 h-16")} data-ai-hint={`emoji ${label}`}>
+              <div className={cn("relative mb-1", isPopover ? "w-10 h-10" : "w-16 h-16")} data-ai-hint={`emoji ${label}`}>
                 <Image
                   src={imageUrl}
                   alt={label}
@@ -201,8 +206,13 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
     </div>
   );
 
-  if (isCollapsible) {
-    return content;
+  if (isPopover) {
+    return (
+        <div className="p-2">
+             <p className="text-xs text-center text-muted-foreground mb-2">¿Qué emoción te provoca?</p>
+            {content}
+        </div>
+    );
   }
 
   return (

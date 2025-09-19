@@ -152,6 +152,11 @@ export interface Attitude {
   addedAt: string; 
 }
 
+export interface GenericEmotionVote {
+    itemId: string;
+    emotion: EmotionKey;
+}
+
 export interface EmotionVote {
   figureId: string;
   emotion: EmotionKey;

@@ -5,7 +5,7 @@
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Camera, PlusCircle, Send, Loader2, Grid3x3, RectangleHorizontal, Smile, MessageSquare } from 'lucide-react';
-import type { Figure, InstagramPost } from '@/lib/types';
+import type { Figure, InstagramPost, EmotionKey, GenericEmotionVote } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
@@ -19,7 +19,7 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DatePicker } from '../shared/DatePicker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../ui/collapsible';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { PerceptionEmotions } from './PerceptionEmotions';
 
 declare global {
@@ -54,6 +54,16 @@ const getUsernameFromEmbed = (embedCode: string): string | null => {
     return match ? match[1] : null;
 };
 
+const EMOTION_REACTION_CONFIG: Record<EmotionKey, { label: string, icon: React.ElementType, color: string }> = {
+  alegria: { label: 'Alegre', icon: Smile, color: 'text-yellow-500' },
+  envidia: { label: 'Envidia', icon: Smile, color: 'text-green-500' },
+  tristeza: { label: 'Triste', icon: Smile, color: 'text-blue-500' },
+  miedo: { label: 'Miedo', icon: Smile, color: 'text-purple-500' },
+  desagrado: { label: 'Desagrado', icon: Smile, color: 'text-lime-500' },
+  furia: { label: 'Enfadado', icon: Smile, color: 'text-red-500' },
+};
+
+
 export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const { firebaseUser, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
@@ -64,6 +74,15 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const [newPostDate, setNewPostDate] = React.useState<Date | undefined>();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
+  const [userVotes, setUserVotes] = React.useState<Map<string, EmotionKey>>(new Map());
+
+  React.useEffect(() => {
+      const storageKey = `instagramPosts-emotions-${firebaseUser?.uid}`;
+      if (firebaseUser) {
+          const storedVotes: GenericEmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          setUserVotes(new Map(storedVotes.map(v => [v.itemId, v.emotion])));
+      }
+  }, [firebaseUser]);
 
   React.useEffect(() => {
     const postsRef = collection(db, `figures/${figure.id}/instagramPosts`);
@@ -167,6 +186,36 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
       return null;
     }
   };
+  
+  const handleVoteUpdate = (postId: string, newEmotion: EmotionKey | null) => {
+    setUserVotes(prev => {
+        const newMap = new Map(prev);
+        if (newEmotion) {
+            newMap.set(postId, newEmotion);
+        } else {
+            newMap.delete(postId);
+        }
+        return newMap;
+    });
+  }
+
+  const renderReactionButton = (post: InstagramPost) => {
+    const userVote = userVotes.get(post.id);
+    if (userVote) {
+      const { label, icon: Icon, color } = EMOTION_REACTION_CONFIG[userVote];
+      return (
+        <span className={cn("flex items-center gap-1.5", color)}>
+          <Icon className="h-4 w-4" />
+          {label}
+        </span>
+      );
+    }
+    return (
+      <>
+        <Smile className="mr-2 h-4 w-4" /> Reaccionar
+      </>
+    );
+  };
 
   return (
     <>
@@ -241,44 +290,46 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
           ) : posts.length > 0 ? (
             <div className={cn(
                 viewMode === 'grid' 
-                ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1"
+                ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
                 : "w-full max-w-sm mx-auto space-y-8"
             )}>
                 {posts.map((post) => (
-                    <Collapsible key={post.id} className="border border-border rounded-lg overflow-hidden">
-                      <div className="bg-black">
+                    <div key={post.id} className="border border-border rounded-lg overflow-hidden bg-black">
                         <div
-                          className="instagram-post-container"
-                          dangerouslySetInnerHTML={{ __html: post.embedCode }}
+                            className={cn(
+                                "instagram-post-container overflow-hidden",
+                                viewMode === 'grid' && "aspect-square"
+                            )}
+                            dangerouslySetInnerHTML={{ __html: post.embedCode }}
                         />
-                      </div>
                       <div className="p-2 bg-card">
                          {viewMode === 'feed' && post.postDate && (
                            <p className="text-xs text-muted-foreground px-2 pb-2">{formatDate(post.postDate)}</p>
                          )}
                          <div className="flex items-center gap-2">
-                             <CollapsibleTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="text-xs flex-1 justify-center">
-                                      <Smile className="mr-2 h-4 w-4" /> Reaccionar
-                                  </Button>
-                             </CollapsibleTrigger>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                     <Button variant="ghost" size="sm" className="text-xs flex-1 justify-center">
+                                        {renderReactionButton(post)}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                   <PerceptionEmotions
+                                      figureId={figure.id}
+                                      figureName={figure.name}
+                                      perceptionCounts={post.perceptionCounts || {}}
+                                      targetType="instagram"
+                                      targetId={post.id}
+                                      onVote={(emotion) => handleVoteUpdate(post.id, emotion)}
+                                  />
+                                </PopoverContent>
+                            </Popover>
                              <Button variant="ghost" size="sm" className="text-xs flex-1 justify-center" disabled>
                                   <MessageSquare className="mr-2 h-4 w-4" /> Comentar
                              </Button>
                          </div>
                       </div>
-                      <CollapsibleContent>
-                          <div className="p-2 border-t">
-                               <PerceptionEmotions
-                                  figureId={figure.id}
-                                  figureName={figure.name}
-                                  perceptionCounts={post.perceptionCounts || {}}
-                                  targetType="instagram"
-                                  targetId={post.id}
-                              />
-                          </div>
-                      </CollapsibleContent>
-                    </Collapsible>
+                    </div>
                 ))}
             </div>
           ) : (
