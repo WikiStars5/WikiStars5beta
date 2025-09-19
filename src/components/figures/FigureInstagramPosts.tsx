@@ -42,22 +42,27 @@ interface FigureInstagramPostsProps {
 const getUsernameFromUrl = (url: string): string | null => {
     if (!url) return null;
     try {
-        const cleanedUrl = url.trim().replace(/\/+$/, '').replace(/#$/, '');
-        const urlParts = cleanedUrl.split('/');
-        const username = urlParts.pop(); 
-        return username || null;
+        const cleanedUrl = url.trim().replace(/\/+$/, '');
+        const urlObj = new URL(cleanedUrl);
+        const pathParts = urlObj.pathname.split('/');
+        // The first part of the path after the domain is usually the username.
+        if (pathParts.length > 1 && pathParts[1]) {
+            return pathParts[1];
+        }
+        return null;
     } catch (error) {
+        console.error("Error parsing username from URL:", error);
         return null;
     }
 };
 
 const getUsernameFromEmbed = (embedCode: string): string | null => {
     if (!embedCode) return null;
-    const match = embedCode.match(/<a [^>]+>Una publicación compartida de [^<]+ \(@([^)]+)\)<\/a>/);
+    const match = embedCode.match(/<a [^>]+>Una publicación compartida por [^<]+ \(@([^)]+)\)<\/a>/);
     return match ? match[1] : null;
 };
 
-const EMOTION_REACTION_CONFIG: Record<EmotionKey, { label: string, imageUrl: string, color: string }> = {
+const EMOTION_REACTION_CONFIG: Record<EmotionKey, { label: string; imageUrl: string; color: string }> = {
   alegria: { label: 'Alegre', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/gif%2Falegria.gif?alt=media&token=ae532025-03c5-45a9-97d2-d475235bd74e', color: 'text-yellow-500' },
   envidia: { label: 'Envidia', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fenvidia.png?alt=media&token=940aa136-2235-48db-84d6-2c461730fde5', color: 'text-green-500' },
   tristeza: { label: 'Triste', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/gif%2Ftrizteza-min.gif?alt=media&token=f9bc3bbf-eba1-4249-8c4b-128d56e4a6f0', color: 'text-blue-500' },
@@ -141,7 +146,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
     }
 
     if (!embedUsername) {
-       toast({ title: "No se pudo verificar el autor", description: "No se pudo encontrar el nombre de usuario en el código de inserción.", variant: "destructive", duration: 8000 });
+       toast({ title: "No se pudo verificar el autor", description: "No se pudo encontrar el nombre de usuario en el código de inserción. Asegúrate de que el código sea correcto.", variant: "destructive", duration: 8000 });
        return;
     }
     
