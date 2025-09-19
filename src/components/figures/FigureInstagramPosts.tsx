@@ -19,10 +19,10 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DatePicker } from '../shared/DatePicker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { PerceptionEmotions } from './PerceptionEmotions';
 import Image from 'next/image';
 import { voteForInstagramPostEmotion } from '@/lib/placeholder-data';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 
 
 declare global {
@@ -78,7 +78,6 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
   const [userVotes, setUserVotes] = React.useState<Map<string, EmotionKey>>(new Map());
-  const [activePopover, setActivePopover] = React.useState<string | null>(null);
 
   React.useEffect(() => {
       const storageKey = `instagramPosts-emotions-${firebaseUser?.uid}`;
@@ -201,17 +200,15 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         }
         return newMap;
     });
-    // Close the popover after voting
-    setActivePopover(null);
   }
 
   const renderReactionButton = (post: InstagramPost) => {
     const userVote = userVotes.get(post.id);
     if (userVote) {
-      const { label, imageUrl, color } = EMOTION_REACTION_CONFIG[userVote];
+      const { imageUrl } = EMOTION_REACTION_CONFIG[userVote];
       return (
-        <span className={cn("flex items-center gap-1.5", color)}>
-          <Image src={imageUrl} alt={label} width={20} height={20} className="w-5 h-5" unoptimized />
+        <span className="flex items-center gap-1.5">
+          <Image src={imageUrl} alt="" width={20} height={20} className="w-5 h-5" unoptimized />
         </span>
       );
     }
@@ -299,7 +296,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                 : "w-full max-w-sm mx-auto space-y-8"
             )}>
                 {posts.map((post) => (
-                    <div key={post.id} className="border border-border rounded-lg overflow-hidden bg-black">
+                    <Collapsible key={post.id} className="border border-border rounded-lg overflow-hidden bg-black">
                         <div
                             className={cn(
                                 "instagram-post-container",
@@ -312,29 +309,29 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                            <p className="text-xs text-muted-foreground px-2 pb-2">{formatDate(post.postDate)}</p>
                          )}
                          <div className="flex items-center gap-2">
-                            <Popover open={activePopover === post.id} onOpenChange={(isOpen) => setActivePopover(isOpen ? post.id : null)}>
-                                <PopoverTrigger asChild>
-                                     <Button variant="ghost" size="sm" className="text-xs flex-1 justify-center">
-                                        {renderReactionButton(post)}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                   <PerceptionEmotions
-                                      figureId={figure.id}
-                                      figureName={figure.name}
-                                      perceptionCounts={post.perceptionCounts || {}}
-                                      targetType="instagram"
-                                      targetId={post.id}
-                                      onVote={(emotion) => handleVoteUpdate(post.id, emotion)}
-                                  />
-                                </PopoverContent>
-                            </Popover>
+                            <CollapsibleTrigger asChild>
+                                 <Button variant="ghost" size="sm" className="text-xs flex-1 justify-center">
+                                    {renderReactionButton(post)}
+                                </Button>
+                            </CollapsibleTrigger>
                              <Button variant="ghost" size="sm" className="text-xs flex-1 justify-center" disabled>
                                   <MessageSquare className="mr-2 h-4 w-4" /> Comentar
                              </Button>
                          </div>
                       </div>
-                    </div>
+                      <CollapsibleContent>
+                        <div className="p-2 border-t">
+                             <PerceptionEmotions
+                                figureId={figure.id}
+                                figureName={figure.name}
+                                perceptionCounts={post.perceptionCounts || {}}
+                                targetType="instagram"
+                                targetId={post.id}
+                                onVote={(emotion) => handleVoteUpdate(post.id, emotion)}
+                            />
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                 ))}
             </div>
           ) : (
