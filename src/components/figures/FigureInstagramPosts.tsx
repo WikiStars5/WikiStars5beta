@@ -41,12 +41,10 @@ interface FigureInstagramPostsProps {
 const getUsernameFromUrl = (url: string): string | null => {
     if (!url) return null;
     try {
-        // Clean the URL from fragments like '#'
         const cleanedUrl = url.trim().split('#')[0].replace(/\/+$/, '');
         const urlObj = new URL(cleanedUrl);
         const pathParts = urlObj.pathname.split('/');
         
-        // The first part of the path after the domain is usually the username.
         if (pathParts.length > 1 && pathParts[1]) {
             return pathParts[1];
         }
@@ -61,22 +59,17 @@ const getUsernameFromEmbedCode = (embedCode: string): string | null => {
     if (!embedCode) return null;
     
     // Updated Regex: Looks for the author's username in the final link text.
-    // This is the most reliable method for recent embed codes.
-    // Example: <a ...>Una publicación compartida de USERNAME (@username)</a>
     const match = embedCode.match(/<a [^>]+>Una publicación compartida de [^<]+ \(@([^)]+)\)<\/a>/);
     if (match && match[1]) {
       return match[1];
     }
     
-    // Fallback Regex: For older or different embed code formats, looks for the permalink.
-    const permalinkMatch = embedCode.match(/data-instgrm-permalink="https?:\/\/www\.instagram\.com\/p\/[^/]+\//);
-    if (permalinkMatch) {
-       const urlPart = permalinkMatch[0];
-       // This is less reliable as it depends on the structure, but a good fallback.
-       const userMatch = embedCode.match(new RegExp(`href="https:\\/\\/www.instagram.com\\/([^/]+)\\/`));
-       if (userMatch && userMatch[1]) return userMatch[1];
+    // Fallback Regex: Looks for the permalink's username. This is more reliable for new embeds.
+    const permalinkMatch = embedCode.match(/data-instgrm-permalink="https?:\/\/www\.instagram\.com\/([^/]+)\/p\/[^/]+\//);
+    if (permalinkMatch && permalinkMatch[1]) {
+        return permalinkMatch[1];
     }
-    
+
     return null;
 };
 
@@ -148,6 +141,16 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
     if (!newEmbedCode.trim() || !firebaseUser || !newPostDate) {
         toast({ title: "Datos incompletos", description: "Por favor, selecciona una fecha y pega el código de inserción de Instagram.", variant: "destructive" });
         return;
+    }
+    
+    if (newEmbedCode.includes('data-instgrm-captioned')) {
+      toast({
+        title: 'Título Incluido',
+        description: 'Por favor, asegúrate de desmarcar la casilla "Incluir título" en Instagram antes de copiar el código.',
+        variant: 'destructive',
+        duration: 8000,
+      });
+      return;
     }
 
     const officialInstagramUrl = figure.socialLinks?.instagram;
@@ -280,7 +283,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                       <DialogHeader>
                           <DialogTitle>Sugerir una Publicación de Instagram</DialogTitle>
                           <DialogDescription>
-                              Abre Instagram, ve a la publicación, haz clic en los tres puntos, selecciona "Insertar" y copia el código.
+                              Abre Instagram, ve a la publicación, haz clic en los tres puntos, selecciona "Insertar", desmarca "Incluir título" y copia el código.
                           </DialogDescription>
                       </DialogHeader>
                        <div className="grid gap-4 py-4">
