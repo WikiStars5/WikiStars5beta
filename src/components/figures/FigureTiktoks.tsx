@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -217,7 +216,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
                                 id="embed-code"
                                 value={newEmbedCode}
                                 onChange={(e) => setNewEmbedCode(e.target.value)}
-                                placeholder='<blockquote class="tiktok-embed" ...> ... </blockquote>'
+                                placeholder='&lt;blockquote class="tiktok-embed" ...&gt; ... &lt;/blockquote&gt;'
                                 rows={6}
                             />
                       </div>

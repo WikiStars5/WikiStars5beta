@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -56,10 +55,18 @@ const getUsernameFromUrl = (url: string): string | null => {
     }
 };
 
-const getUsernameFromEmbed = (embedCode: string): string | null => {
+const getUsernameFromEmbedCode = (embedCode: string): string | null => {
     if (!embedCode) return null;
-    const match = embedCode.match(/<a [^>]+>Una publicación compartida por [^<]+ \(@([^)]+)\)<\/a>/);
-    return match ? match[1] : null;
+    // New Regex: Look for the username inside the `cite` attribute of the blockquote tag.
+    // This is more reliable for modern embed codes.
+    const match = embedCode.match(/<blockquote class="instagram-media"[^>]*data-instgrm-permalink="https?:\/\/www\.instagram\.com\/p\/[^/]+\/\?utm_source=ig_embed[^"]*"[^>]*>.*<a href="https?:\/\/www\.instagram\.com\/([^/]+)\/[^"]*"[^>]*>/s);
+    if (match && match[1]) {
+      return match[1];
+    }
+    
+    // Fallback for older embed code format, just in case.
+    const oldMatch = embedCode.match(/<a [^>]+>Una publicación compartida por [^<]+ \(@([^)]+)\)<\/a>/);
+    return oldMatch ? oldMatch[1] : null;
 };
 
 const EMOTION_REACTION_CONFIG: Record<EmotionKey, { label: string; imageUrl: string; color: string }> = {
@@ -138,7 +145,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
     }
 
     const officialUsername = getUsernameFromUrl(officialInstagramUrl);
-    const embedUsername = getUsernameFromEmbed(newEmbedCode);
+    const embedUsername = getUsernameFromEmbedCode(newEmbedCode);
 
     if (!officialUsername) {
        toast({ title: "URL de Instagram no válida", description: "El enlace guardado en el perfil no es válido. Edítalo en la sección 'Información'.", variant: "destructive", duration: 8000 });
@@ -275,7 +282,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                                   id="embed-code"
                                   value={newEmbedCode}
                                   onChange={(e) => setNewEmbedCode(e.target.value)}
-                                  placeholder='<blockquote class="instagram-media" ...> ... </blockquote>'
+                                  placeholder='&lt;blockquote class="instagram-media" ...&gt; ... &lt;/blockquote&gt;'
                                   rows={8}
                               />
                             </div>
