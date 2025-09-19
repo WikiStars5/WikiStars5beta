@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -27,6 +28,26 @@ const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const getTikTokVideoIdFromEmbed = (embedCode: string): string | null => {
     if (!embedCode) return null;
     const match = embedCode.match(/data-video-id="(\d+)"/);
+    return match ? match[1] : null;
+};
+
+const getUsernameFromTikTokUrl = (url: string): string | null => {
+    if (!url) return null;
+    try {
+        const urlObj = new URL(url);
+        const pathParts = urlObj.pathname.split('/');
+        // URL format is tiktok.com/@username
+        const usernamePart = pathParts.find(part => part.startsWith('@'));
+        return usernamePart ? usernamePart.substring(1) : null;
+    } catch (e) {
+        return null;
+    }
+};
+
+const getUsernameFromEmbedCode = (embedCode: string): string | null => {
+    if (!embedCode) return null;
+    // The username is in the `cite` attribute of the blockquote
+    const match = embedCode.match(/cite="https?:\/\/www.tiktok.com\/@([^/]+)\/video\/\d+"/);
     return match ? match[1] : null;
 };
 
@@ -59,6 +80,19 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
 
     return () => unsubscribe();
   }, [figure.id]);
+  
+  const handleOpenSuggestDialog = () => {
+    if (!figure.socialLinks?.tiktok) {
+        toast({
+            title: "Falta la cuenta de TikTok Oficial",
+            description: "Para sugerir un video, primero debe añadirse el enlace del perfil de TikTok oficial en la sección 'Información'.",
+            variant: "destructive",
+            duration: 8000,
+        });
+        return;
+    }
+    setIsSuggestDialogOpen(true);
+  };
 
   const handleSuggestVideo = async () => {
     if (!newEmbedCode.trim() || !firebaseUser) {
@@ -70,6 +104,25 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
         toast({ title: "Código no válido", description: "Asegúrate de copiar el código de inserción completo de TikTok.", variant: "destructive" });
         return;
     }
+
+    const officialUsername = getUsernameFromTikTokUrl(figure.socialLinks?.tiktok || '');
+    const embedUsername = getUsernameFromEmbedCode(newEmbedCode);
+
+    if (!officialUsername) {
+        toast({ title: "URL Oficial no Válida", description: "El enlace de TikTok en el perfil de la figura no es válido. Por favor, edítalo.", variant: "destructive" });
+        return;
+    }
+    
+    if (!embedUsername) {
+        toast({ title: "Verificación Fallida", description: "No se pudo encontrar el nombre de usuario en el código de inserción. Asegúrate de que el código sea correcto.", variant: "destructive" });
+        return;
+    }
+    
+    if (officialUsername.toLowerCase() !== embedUsername.toLowerCase()) {
+        toast({ title: "Cuenta Incorrecta", description: `Solo puedes añadir videos de la cuenta oficial: @${officialUsername}`, variant: "destructive", duration: 8000 });
+        return;
+    }
+
 
     setIsSubmitting(true);
 
@@ -148,7 +201,7 @@ export function FigureTiktoks({ figure }: FigureTiktoksProps) {
               </TooltipProvider>
 
               <Dialog open={isSuggestDialogOpen} onOpenChange={setIsSuggestDialogOpen}>
-                  <Button variant="outline" size="sm" disabled={isAuthLoading} onClick={() => setIsSuggestDialogOpen(true)}>
+                  <Button variant="outline" size="sm" disabled={isAuthLoading} onClick={handleOpenSuggestDialog}>
                       <PlusCircle className="mr-2 h-4 w-4" /> Sugerir
                   </Button>
                   <DialogContent>
