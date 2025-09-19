@@ -35,6 +35,7 @@ export interface YoutubeShort {
   submittedBy: string; // User ID of the submitter
   submittedAt: Timestamp;
   reportedBy?: string[]; // Array of user IDs who reported it
+  perceptionCounts?: Record<EmotionKey, number>;
 }
   
 export interface TiktokVideo {

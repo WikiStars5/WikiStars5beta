@@ -1108,3 +1108,40 @@ export async function submitStarRating(
         }
     });
 }
+
+// --- Specific Content Voting ---
+
+export async function voteForShortEmotion(
+  figureId: string,
+  shortId: string,
+  newEmotion: EmotionKey,
+  userId: string
+): Promise<void> {
+  const shortDocRef = doc(db, `figures/${figureId}/youtubeShorts`, shortId);
+
+  await runTransaction(db, async (transaction) => {
+    const shortDoc = await transaction.get(shortDocRef);
+    if (!shortDoc.exists()) throw new Error("Short not found.");
+
+    const shortData = shortDoc.data() as YoutubeShort;
+    const currentCounts = shortData.perceptionCounts || {};
+    
+    // For shorts, we will assume a simple "add vote" model without tracking previous votes for now
+    // to keep it simple. A user can change their vote, but we won't decrement the old one.
+    // This is different from the main figure vote to simplify the logic.
+    const newCounts = { ...currentCounts, [newEmotion]: (currentCounts[newEmotion] || 0) + 1 };
+    
+    transaction.update(shortDocRef, { perceptionCounts: newCounts });
+  });
+
+  // Local storage update (optional, but good for immediate UI feedback)
+  const storageKey = `short-emotions-${userId}`;
+  let storedVotes: { shortId: string, emotion: EmotionKey }[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  const voteIndex = storedVotes.findIndex(v => v.shortId === shortId);
+  if (voteIndex > -1) {
+    storedVotes[voteIndex].emotion = newEmotion;
+  } else {
+    storedVotes.push({ shortId, emotion: newEmotion });
+  }
+  localStorage.setItem(storageKey, JSON.stringify(storedVotes));
+}

@@ -4,8 +4,8 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff, Grid3x3, RectangleHorizontal } from 'lucide-react';
-import type { Figure, YoutubeShort } from '@/lib/types';
+import { Youtube, PlusCircle, Send, Loader2, Flag, Check, Trash2, ExternalLink, VideoOff, Grid3x3, RectangleHorizontal, Smile } from 'lucide-react';
+import type { Figure, YoutubeShort, EmotionKey } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
@@ -17,6 +17,9 @@ import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { voteForShortEmotion } from '@/lib/placeholder-data';
+import { PerceptionEmotions } from './PerceptionEmotions';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 
 
 const getYoutubeVideoId = (url: string): string | null => {
@@ -106,6 +109,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
             submittedBy: firebaseUser.uid,
             submittedAt: serverTimestamp(),
             reportedBy: [],
+            perceptionCounts: {},
         };
         await addDoc(shortsRef, newShortData);
 
@@ -260,7 +264,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                 const isUnavailable = unavailableVideos.has(short.videoId);
 
                 return (
-                    <div key={short.id} className={cn("group flex flex-col", viewMode === 'feed' && "w-full max-w-md mx-auto")}>
+                    <Collapsible key={short.id} className={cn("group flex flex-col", viewMode === 'feed' && "w-full max-w-md mx-auto")}>
                         <div className={cn(
                             "relative w-full flex-grow overflow-hidden rounded-lg bg-black",
                             viewMode === 'grid' ? 'aspect-video' : 'h-[80vh]'
@@ -287,13 +291,31 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                       
                       <div className="flex items-start justify-between gap-2 mt-2">
                         <p className="text-sm font-semibold truncate flex-grow pr-2">{short.title}</p>
-                        <Button asChild variant="link" size="sm" className="w-auto text-white text-xs font-semibold p-0 h-auto flex-shrink-0">
-                            <a href={`https://www.youtube.com/watch?v=${short.videoId}`} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="mr-1 h-3 w-3"/>
-                                Ver
-                            </a>
-                        </Button>
+                         <div className="flex items-center gap-1">
+                            <CollapsibleTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs">
+                                    <Smile className="mr-1 h-3 w-3" /> Reaccionar
+                                </Button>
+                            </CollapsibleTrigger>
+                            <Button asChild variant="link" size="sm" className="w-auto text-white text-xs font-semibold p-0 h-auto flex-shrink-0">
+                                <a href={`https://www.youtube.com/watch?v=${short.videoId}`} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="mr-1 h-3 w-3"/>
+                                    Ver
+                                </a>
+                            </Button>
+                         </div>
                       </div>
+                      <CollapsibleContent>
+                        <div className="mt-2">
+                            <PerceptionEmotions
+                                figureId={figure.id}
+                                figureName={short.title}
+                                perceptionCounts={short.perceptionCounts || {}}
+                                targetType="short"
+                                targetId={short.id}
+                            />
+                        </div>
+                      </CollapsibleContent>
 
                       {isAdmin ? (
                           <AlertDialog>
@@ -365,7 +387,7 @@ export function FigureShorts({ figure }: FigureShortsProps) {
                               </AlertDialogContent>
                           </AlertDialog>
                       )}
-                    </div>
+                    </Collapsible>
                   );
               })}
             </div>
