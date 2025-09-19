@@ -1,9 +1,10 @@
 
+
 "use client";
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, PlusCircle, Send, Loader2, Grid3x3, RectangleHorizontal } from 'lucide-react';
+import { Camera, PlusCircle, Send, Loader2, Grid3x3, RectangleHorizontal, Smile, MessageSquare } from 'lucide-react';
 import type { Figure, InstagramPost } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
@@ -18,6 +19,8 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DatePicker } from '../shared/DatePicker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../ui/collapsible';
+import { PerceptionEmotions } from './PerceptionEmotions';
 
 declare global {
     interface Window {
@@ -135,6 +138,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
             submittedBy: firebaseUser.uid,
             submittedAt: serverTimestamp() as Timestamp,
             reportedBy: [],
+            perceptionCounts: {},
         };
         
         await addDoc(postsRef, newPostData as any);
@@ -238,26 +242,43 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
             <div className={cn(
                 viewMode === 'grid' 
                 ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1"
-                : "w-full max-w-md mx-auto space-y-8"
+                : "w-full max-w-sm mx-auto space-y-8"
             )}>
                 {posts.map((post) => (
-                    <div
-                      key={post.id}
-                      className={cn(
-                        "relative group w-full bg-black",
-                        viewMode === 'grid' ? "border" : "rounded-lg border border-border"
-                      )}
-                    >
-                      <div className="flex items-center justify-center h-full">
+                    <Collapsible key={post.id} className="border border-border rounded-lg overflow-hidden">
+                      <div className="bg-black">
                         <div
                           className="instagram-post-container"
                           dangerouslySetInnerHTML={{ __html: post.embedCode }}
                         />
                       </div>
-                       {viewMode === 'feed' && post.postDate && (
-                           <p className="text-xs text-muted-foreground px-4 pb-3">{formatDate(post.postDate)}</p>
-                       )}
-                    </div>
+                      <div className="p-2 bg-card">
+                         {viewMode === 'feed' && post.postDate && (
+                           <p className="text-xs text-muted-foreground px-2 pb-2">{formatDate(post.postDate)}</p>
+                         )}
+                         <div className="flex items-center gap-2">
+                             <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="text-xs flex-1 justify-center">
+                                      <Smile className="mr-2 h-4 w-4" /> Reaccionar
+                                  </Button>
+                             </CollapsibleTrigger>
+                             <Button variant="ghost" size="sm" className="text-xs flex-1 justify-center" disabled>
+                                  <MessageSquare className="mr-2 h-4 w-4" /> Comentar
+                             </Button>
+                         </div>
+                      </div>
+                      <CollapsibleContent>
+                          <div className="p-2 border-t">
+                               <PerceptionEmotions
+                                  figureId={figure.id}
+                                  figureName={figure.name}
+                                  perceptionCounts={post.perceptionCounts || {}}
+                                  targetType="instagram"
+                                  targetId={post.id}
+                              />
+                          </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                 ))}
             </div>
           ) : (

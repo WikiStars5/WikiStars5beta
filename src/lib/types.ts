@@ -53,6 +53,7 @@ export interface InstagramPost {
   submittedBy: string;
   submittedAt: Timestamp;
   reportedBy?: string[];
+  perceptionCounts?: Record<EmotionKey, number>; // Added for emotion voting
 }
 
 export interface Figure {

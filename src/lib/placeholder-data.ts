@@ -1,6 +1,6 @@
 
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue, YoutubeShort, TiktokVideo } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue, YoutubeShort, TiktokVideo, InstagramPost } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db, callFirebaseFunction } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove,getCountFromServer } from "firebase/firestore";
@@ -1111,37 +1111,40 @@ export async function submitStarRating(
 
 // --- Specific Content Voting ---
 
-export async function voteForShortEmotion(
+const voteForContentEmotion = async (
+  path: 'youtubeShorts' | 'instagramPosts',
   figureId: string,
-  shortId: string,
+  contentId: string,
   newEmotion: EmotionKey,
   userId: string
-): Promise<void> {
-  const shortDocRef = doc(db, `figures/${figureId}/youtubeShorts`, shortId);
+): Promise<void> => {
+  const contentDocRef = doc(db, `figures/${figureId}/${path}`, contentId);
 
   await runTransaction(db, async (transaction) => {
-    const shortDoc = await transaction.get(shortDocRef);
-    if (!shortDoc.exists()) throw new Error("Short not found.");
+    const contentDoc = await transaction.get(contentDocRef);
+    if (!contentDoc.exists()) throw new Error("Contenido no encontrado.");
 
-    const shortData = shortDoc.data() as YoutubeShort;
-    const currentCounts = shortData.perceptionCounts || {};
+    const contentData = contentDoc.data() as YoutubeShort | InstagramPost;
+    const currentCounts = contentData.perceptionCounts || {};
     
-    // For shorts, we will assume a simple "add vote" model without tracking previous votes for now
-    // to keep it simple. A user can change their vote, but we won't decrement the old one.
-    // This is different from the main figure vote to simplify the logic.
     const newCounts = { ...currentCounts, [newEmotion]: (currentCounts[newEmotion] || 0) + 1 };
     
-    transaction.update(shortDocRef, { perceptionCounts: newCounts });
+    transaction.update(contentDocRef, { perceptionCounts: newCounts });
   });
 
-  // Local storage update (optional, but good for immediate UI feedback)
-  const storageKey = `short-emotions-${userId}`;
-  let storedVotes: { shortId: string, emotion: EmotionKey }[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-  const voteIndex = storedVotes.findIndex(v => v.shortId === shortId);
+  const storageKey = `${path}-emotions-${userId}`;
+  let storedVotes: { contentId: string, emotion: EmotionKey }[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  const voteIndex = storedVotes.findIndex(v => v.contentId === contentId);
   if (voteIndex > -1) {
     storedVotes[voteIndex].emotion = newEmotion;
   } else {
-    storedVotes.push({ shortId, emotion: newEmotion });
+    storedVotes.push({ contentId, emotion: newEmotion });
   }
   localStorage.setItem(storageKey, JSON.stringify(storedVotes));
-}
+};
+
+export const voteForShortEmotion = (figureId: string, shortId: string, newEmotion: EmotionKey, userId: string) => 
+  voteForContentEmotion('youtubeShorts', figureId, shortId, newEmotion, userId);
+
+export const voteForInstagramPostEmotion = (figureId: string, postId: string, newEmotion: EmotionKey, userId: string) =>
+  voteForContentEmotion('instagramPosts', figureId, postId, newEmotion, userId);

@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import type { Figure, EmotionKey, EmotionVote, YoutubeShort } from '@/lib/types';
+import type { Figure, EmotionKey, EmotionVote, YoutubeShort, InstagramPost } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, runTransaction } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -14,13 +14,13 @@ import Image from 'next/image';
 import { grantEmocionAlDescubiertoAchievement } from '@/app/actions/achievementActions';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
-import { voteForShortEmotion } from '@/lib/placeholder-data';
+import { voteForShortEmotion, voteForInstagramPostEmotion } from '@/lib/placeholder-data';
 
 interface PerceptionEmotionsProps {
   figureId: string;
   figureName: string;
   perceptionCounts: Record<EmotionKey, number>;
-  targetType?: 'figure' | 'short';
+  targetType?: 'figure' | 'short' | 'instagram';
   targetId?: string;
 }
 
@@ -37,6 +37,11 @@ const defaultPerceptionCountsData: Record<EmotionKey, number> = {
   alegria: 0, envidia: 0, tristeza: 0, miedo: 0, desagrado: 0, furia: 0,
 };
 
+type GenericEmotionVote = {
+    itemId: string;
+    emotion: EmotionKey;
+};
+
 export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({ 
   figureId,
   figureName,
@@ -49,8 +54,8 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   const [isVoting, setIsVoting] = useState(false);
   const { toast } = useToast();
   
-  const id = targetType === 'short' ? targetId : figureId;
-  const storageKeySuffix = targetType === 'short' ? `short-emotions-${firebaseUser?.uid}` : `emotions-${firebaseUser?.uid}`;
+  const id = targetId || figureId;
+  const storageKey = `${targetType}-emotions-${firebaseUser?.uid}`;
 
   const totalVotes = React.useMemo(() => {
       return Object.values(perceptionCounts || defaultPerceptionCountsData).reduce((sum, count) => sum + count, 0);
@@ -58,13 +63,13 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
 
   useEffect(() => {
     if (typeof window !== 'undefined' && firebaseUser && id) {
-        const storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem(storageKeySuffix) || '[]');
-        const userVote = storedEmotions.find(e => e.figureId === id); // Use generic 'figureId' key for storage
+        const storedEmotions: GenericEmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        const userVote = storedEmotions.find(e => e.itemId === id);
         if (userVote) {
             setSelectedEmotion(userVote.emotion);
         }
     }
-  }, [id, firebaseUser, storageKeySuffix]);
+  }, [id, firebaseUser, storageKey]);
 
   const handleVote = async (newEmotion: EmotionKey) => {
     if (isVoting || isAuthLoading || !firebaseUser || !id) {
@@ -77,6 +82,8 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
     try {
       if (targetType === 'short' && targetId) {
         await voteForShortEmotion(figureId, targetId, newEmotion, firebaseUser.uid);
+      } else if (targetType === 'instagram' && targetId) {
+        await voteForInstagramPostEmotion(figureId, targetId, newEmotion, firebaseUser.uid);
       } else {
         await voteForFigureEmotion(newEmotion, firebaseUser.uid);
       }
@@ -93,11 +100,10 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   };
   
   const voteForFigureEmotion = async (newEmotion: EmotionKey, userId: string) => {
-      const storageKey = `emotions-${userId}`;
       let previousVote: EmotionKey | null = null;
       if (typeof window !== 'undefined') {
-        const storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        previousVote = storedEmotions.find(e => e.figureId === figureId)?.emotion || null;
+        const storedEmotions: GenericEmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        previousVote = storedEmotions.find(e => e.itemId === figureId)?.emotion || null;
       }
       
       const isDeselecting = previousVote === newEmotion;
@@ -117,13 +123,13 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
         transaction.update(figureRef, { perceptionCounts: newCounts });
       });
       
-      handleLocalStorageUpdate(storageKey, figureId, isDeselecting ? null : newEmotion, userId);
+      handleLocalStorageUpdate(figureId, isDeselecting ? null : newEmotion, userId);
   };
   
-  const handleLocalStorageUpdate = (storageKey: string, itemId: string, newEmotion: EmotionKey | null, userId: string) => {
+  const handleLocalStorageUpdate = (itemId: string, newEmotion: EmotionKey | null, userId: string) => {
       if (typeof window !== 'undefined') {
-        let storedEmotions: EmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        const existingVoteIndex = storedEmotions.findIndex(e => e.figureId === itemId);
+        let storedEmotions: GenericEmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        const existingVoteIndex = storedEmotions.findIndex(e => e.itemId === itemId);
 
         if (newEmotion === null) { // Deselecting
           if (existingVoteIndex > -1) storedEmotions.splice(existingVoteIndex, 1);
@@ -132,7 +138,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
           if (existingVoteIndex > -1) {
             storedEmotions[existingVoteIndex].emotion = newEmotion;
           } else {
-            storedEmotions.push({ figureId: itemId, emotion: newEmotion, addedAt: new Date().toISOString() });
+            storedEmotions.push({ itemId: itemId, emotion: newEmotion });
           }
           setSelectedEmotion(newEmotion);
           
@@ -146,33 +152,32 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
       }
   };
 
-
-  const isCollapsible = targetType === 'short';
+  const isCollapsible = targetType === 'short' || targetType === 'instagram';
 
   const content = (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {isAuthLoading ? (
-        <div className="flex justify-center items-center h-48">
+        <div className="flex justify-center items-center h-24">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2">
           {EMOTIONS_CONFIG.map(({ key, label, imageUrl, colorClass, selectedClass }) => (
             <Button
               key={key}
               variant={"outline"}
               className={cn(
-                "flex flex-col items-center justify-center p-3 h-auto space-y-1.5 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 bg-black",
+                "flex flex-col items-center justify-start p-2 h-auto space-y-1 rounded-lg shadow-sm transition-all duration-150 ease-in-out transform hover:scale-105 bg-black",
                 colorClass,
                 selectedEmotion === key && selectedClass,
+                isCollapsible ? "min-h-[90px]" : "min-h-[120px]", // Smaller buttons for collapsible version
                 (isVoting || isAuthLoading) && selectedEmotion !== key && 'opacity-50 cursor-not-allowed'
               )}
               onClick={() => handleVote(key)}
               disabled={isVoting || isAuthLoading}
-              style={{ minHeight: '120px' }}
             >
               {isVoting && selectedEmotion === key && <Loader2 className="absolute h-5 w-5 animate-spin" />}
-              <div className="relative w-16 h-16 mb-1" data-ai-hint={`emoji ${label}`}>
+              <div className={cn("relative mb-1", isCollapsible ? "w-10 h-10" : "w-16 h-16")} data-ai-hint={`emoji ${label}`}>
                 <Image
                   src={imageUrl}
                   alt={label}
@@ -190,7 +195,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
           ))}
         </div>
       )}
-      <div className="text-center text-muted-foreground">
+      <div className="text-center text-xs text-muted-foreground">
         <p>Total de respuestas: <span className="font-bold">{totalVotes.toLocaleString()}</span></p>
       </div>
     </div>
