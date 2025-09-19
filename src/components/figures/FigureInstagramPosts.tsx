@@ -75,6 +75,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'grid' | 'feed'>('grid');
   const [userVotes, setUserVotes] = React.useState<Map<string, EmotionKey>>(new Map());
+  const [activePopover, setActivePopover] = React.useState<string | null>(null);
 
   React.useEffect(() => {
       const storageKey = `instagramPosts-emotions-${firebaseUser?.uid}`;
@@ -197,6 +198,8 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
         }
         return newMap;
     });
+    // Close the popover after voting
+    setActivePopover(null);
   }
 
   const renderReactionButton = (post: InstagramPost) => {
@@ -297,17 +300,17 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                     <div key={post.id} className="border border-border rounded-lg overflow-hidden bg-black">
                         <div
                             className={cn(
-                                "instagram-post-container overflow-hidden",
-                                viewMode === 'grid' && "aspect-square"
+                                "instagram-post-container",
+                                viewMode === 'grid' && "h-[450px]"
                             )}
                             dangerouslySetInnerHTML={{ __html: post.embedCode }}
                         />
-                      <div className="p-2 bg-card">
+                      <div className="p-2 bg-card border-t">
                          {viewMode === 'feed' && post.postDate && (
                            <p className="text-xs text-muted-foreground px-2 pb-2">{formatDate(post.postDate)}</p>
                          )}
                          <div className="flex items-center gap-2">
-                            <Popover>
+                            <Popover open={activePopover === post.id} onOpenChange={(isOpen) => setActivePopover(isOpen ? post.id : null)}>
                                 <PopoverTrigger asChild>
                                      <Button variant="ghost" size="sm" className="text-xs flex-1 justify-center">
                                         {renderReactionButton(post)}
