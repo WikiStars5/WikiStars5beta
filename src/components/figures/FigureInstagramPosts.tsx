@@ -41,10 +41,12 @@ interface FigureInstagramPostsProps {
 const getUsernameFromUrl = (url: string): string | null => {
     if (!url) return null;
     try {
+        // Clean up the URL: remove hash, trailing slashes.
         const cleanedUrl = url.trim().split('#')[0].replace(/\/+$/, '');
         const urlObj = new URL(cleanedUrl);
         const pathParts = urlObj.pathname.split('/');
         
+        // The first part of the path is usually the username (e.g., /username/p/postid)
         if (pathParts.length > 1 && pathParts[1]) {
             return pathParts[1];
         }
@@ -57,19 +59,36 @@ const getUsernameFromUrl = (url: string): string | null => {
 
 const getUsernameFromEmbedCode = (embedCode: string): string | null => {
     if (!embedCode) return null;
-    
-    // Updated Regex: Looks for the author's username in the final link text.
-    const match = embedCode.match(/<a [^>]+>Una publicación compartida de [^<]+ \(@([^)]+)\)<\/a>/);
-    if (match && match[1]) {
-      return match[1];
+
+    // Pattern 1: Look for the username in the final link text `<a>...(@username)</a>`
+    const textMatch = embedCode.match(/<a [^>]+>Una publicación compartida de [^<]+ \((@([^)]+))\)<\/a>/);
+    if (textMatch && textMatch[2]) {
+      return textMatch[2];
     }
     
-    // Fallback Regex: Looks for the permalink's username. This is more reliable for new embeds.
-    const permalinkMatch = embedCode.match(/data-instgrm-permalink="https?:\/\/www\.instagram\.com\/([^/]+)\/p\/[^/]+\//);
-    if (permalinkMatch && permalinkMatch[1]) {
-        return permalinkMatch[1];
+    // Pattern 2: Look for the username in the permalink URL: `data-instgrm-permalink="..."`
+    const permalinkMatch = embedCode.match(/data-instgrm-permalink="https?:\/\/www\.instagram\.com\/p\/[^/]+\/\?utm_source=ig_embed/);
+    if (permalinkMatch) {
+         // This permalink does not contain the username, but the final text link does. Let's try that one again.
+         const lastLinkMatch = embedCode.match(/<a href="https:\/\/www\.instagram\.com\/[^/]+\/[^/]+\/"[^>]+>Una publicación compartida de .* \(@(.*)\)<\/a>/);
+         if (lastLinkMatch && lastLinkMatch[1]) {
+             return lastLinkMatch[1];
+         }
     }
 
+    // Pattern 3: A more direct regex for the final `<a>` tag's content
+    const finalAnchorMatch = embedCode.match(/<a [^>]*target="_blank"[^>]*>Una publicación compartida de .* \(@([^)]+)\)<\/a>/);
+    if (finalAnchorMatch && finalAnchorMatch[1]) {
+        return finalAnchorMatch[1];
+    }
+
+    // Fallback: extract from the `cite` attribute of the blockquote in older embeds.
+    const citeMatch = embedCode.match(/<blockquote class="instagram-media" data-instgrm-permalink="https:\/\/www\.instagram\.com\/([^/]+)\//);
+    if (citeMatch && citeMatch[1]) {
+        return citeMatch[1];
+    }
+
+    console.warn("Could not extract username from Instagram embed code with any known pattern.");
     return null;
 };
 
@@ -297,7 +316,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                                   id="embed-code"
                                   value={newEmbedCode}
                                   onChange={(e) => setNewEmbedCode(e.target.value)}
-                                  placeholder='<blockquote class="instagram-media" ...> ... </blockquote>'
+                                  placeholder='&lt;blockquote class="instagram-media" ...&gt; ... &lt;/blockquote&gt;'
                                   rows={8}
                               />
                             </div>
@@ -380,3 +399,5 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
     </>
   );
 }
+
+    
