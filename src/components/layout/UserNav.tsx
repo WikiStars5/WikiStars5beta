@@ -22,17 +22,42 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
-import { LogOut, User, ShieldCheck, Loader2, Globe, UserPlus, Pencil } from 'lucide-react';
+import { LogOut, User, ShieldCheck, Loader2, Globe, UserPlus, Pencil, Shuffle } from 'lucide-react';
 import { correctMalformedUrl } from "@/lib/utils";
 import { CreateWebsiteProfile } from "../admin/CreateWebsiteProfile";
 import React from "react";
 import { CreateProfileFromWikipedia } from "../admin/CreateProfileFromWikipedia";
+import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from 'next/navigation';
 
 export function UserNav() {
   const { currentUser, firebaseUser, isAdmin, isLoading, logout, localProfile, isAnonymous } = useAuth();
   const [isWebsiteDialogOpen, setIsWebsiteDialogOpen] = React.useState(false);
   const [isCharacterDialogOpen, setIsCharacterDialogOpen] = React.useState(false);
+  const [isFindingRandom, setIsFindingRandom] = React.useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
   
+  const handleRandomProfile = async () => {
+    setIsFindingRandom(true);
+    try {
+        const allFigures = await getAllFiguresFromFirestore();
+        if (allFigures.length === 0) {
+            toast({ title: "No hay perfiles", description: "No se encontraron perfiles para mostrar.", variant: "destructive" });
+            return;
+        }
+        const randomIndex = Math.floor(Math.random() * allFigures.length);
+        const randomFigure = allFigures[randomIndex];
+        router.push(`/figures/${randomFigure.id}`);
+    } catch (error) {
+        toast({ title: "Error", description: "No se pudo encontrar un perfil aleatorio.", variant: "destructive" });
+        console.error("Error fetching random profile:", error);
+    } finally {
+        setIsFindingRandom(false);
+    }
+  };
+
   if (isLoading) {
     return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
   }
@@ -89,6 +114,10 @@ export function UserNav() {
                 <User className="mr-2 h-4 w-4" />
                 <span>Mi Perfil</span>
               </Link>
+            </DropdownMenuItem>
+             <DropdownMenuItem onSelect={handleRandomProfile} disabled={isFindingRandom}>
+                {isFindingRandom ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Shuffle className="mr-2 h-4 w-4" />}
+                <span>Perfil aleatorio</span>
             </DropdownMenuItem>
              <DialogTrigger asChild>
                 <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setIsCharacterDialogOpen(true); }}>
