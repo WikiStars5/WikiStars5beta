@@ -172,9 +172,11 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
                 <TabsTrigger value="attitude" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><CheckSquare className="h-4 sm:h-5 w-4 sm:w-5" />Actitud</TabsTrigger>
                 <TabsTrigger value="emotion" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><SmilePlus className="h-4 sm:h-5 w-4 sm:w-5" />Emoción</TabsTrigger>
                 <TabsTrigger value="top-streaks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Flame className="h-4 sm:h-5 w-4 sm:w-5" />Top Rachas</TabsTrigger>
+                {/*
                 <TabsTrigger value="shorts" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Youtube className="h-4 sm:h-5 w-4 sm:w-5" />Shorts</TabsTrigger>
                 <TabsTrigger value="tiktoks" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><TikTokIcon className="h-4 sm:h-5 w-4 sm:w-5" />TikToks</TabsTrigger>
                 <TabsTrigger value="instagram" className="text-sm sm:text-base py-2 px-3 sm:px-4 flex-shrink-0 flex items-center gap-2 whitespace-nowrap"><Camera className="h-4 sm:h-5 w-4 sm:w-5" />Fotos</TabsTrigger>
+                */}
               </TabsList>
 
               <TabsContent value="personal-info">
