@@ -21,7 +21,7 @@ import {
   type AuthCredential
 } from 'firebase/auth';
 import type { UserProfile, LocalProfile, Comment } from '@/lib/types';
-import { doc, onSnapshot, getDoc, collectionGroup, query, where, Timestamp, onSnapshot as onCollectionSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, collectionGroup, query, where, Timestamp, onSnapshot as onCollectionSnapshot, orderBy } from 'firebase/firestore';
 import { ADMIN_UID } from '@/config/admin';
 import { useRouter } from 'next/navigation';
 import { useLocalProfile } from './use-local-profile';
@@ -60,51 +60,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // Global listener for new replies
   useEffect(() => {
-      if (!firebaseUser) return;
+    if (!firebaseUser || isLoading) return;
 
-      const repliesQuery = query(
-          collectionGroup(db, 'replies'),
-          where('createdAt', '>', Timestamp.now())
-      );
+    // This query now listens for all changes in the 'replies' collection group, ordered by creation date.
+    // By filtering for docChange.type === 'added' in the snapshot listener, we avoid needing a composite index
+    // for a time-based 'where' clause, thus preventing the Firestore precondition error.
+    const repliesQuery = query(
+        collectionGroup(db, 'replies'),
+        orderBy('createdAt', 'desc'),
+        limit(1) // Only interested in the very latest changes to minimize data transfer
+    );
 
-      const unsubscribe = onCollectionSnapshot(repliesQuery, async (snapshot) => {
-          for (const docChange of snapshot.docChanges()) {
-              if (docChange.type === 'added') {
-                  const reply = docChange.doc.data() as Comment;
+    const unsubscribe = onCollectionSnapshot(repliesQuery, async (snapshot) => {
+      // We only care about newly added documents
+      const newReplies = snapshot.docChanges().filter(change => change.type === 'added');
 
-                  // Don't notify if user replies to their own comment
-                  if (reply.authorId === firebaseUser.uid) {
-                      continue;
-                  }
+      for (const docChange of newReplies) {
+        const reply = docChange.doc.data() as Comment;
+        
+        // Ensure reply is recent to avoid notifying for old docs on first load
+        const replyTime = (reply.createdAt as Timestamp)?.toDate();
+        if (!replyTime || (new Date().getTime() - replyTime.getTime()) > 60000) { // Older than 60s
+            continue;
+        }
 
-                  // Path is figures/{figureId}/comments/{commentId}/replies/{replyId}
-                  const parentCommentRef = docChange.doc.ref.parent.parent;
-                  if (parentCommentRef) {
-                      const parentCommentSnap = await getDoc(parentCommentRef);
-                      if (parentCommentSnap.exists()) {
-                          const parentComment = parentCommentSnap.data() as Comment;
-                          if (parentComment.authorId === firebaseUser.uid) {
-                              const figureDoc = await getDoc(parentCommentRef.parent.parent);
-                              const figureName = figureDoc.exists() ? figureDoc.data().name : 'un perfil';
-                              
-                              toast({
-                                title: `💬 Nueva respuesta en ${figureName}`,
-                                description: `${reply.authorName} respondió a tu comentario.`,
-                                action: (
-                                  <Link href={`/figures/${reply.figureId}?comment=${parentCommentRef.id}#comment-${parentCommentRef.id}`}>
-                                    Ver
-                                  </Link>
-                                ),
-                              });
-                          }
-                      }
-                  }
-              }
-          }
-      });
+        // Don't notify if user replies to their own comment
+        if (reply.authorId === firebaseUser.uid) {
+            continue;
+        }
 
-      return () => unsubscribe();
-  }, [firebaseUser, toast]);
+        // Path is figures/{figureId}/comments/{commentId}/replies/{replyId}
+        const parentCommentRef = docChange.doc.ref.parent.parent;
+        if (parentCommentRef) {
+            const parentCommentSnap = await getDoc(parentCommentRef);
+            if (parentCommentSnap.exists()) {
+                const parentComment = parentCommentSnap.data() as Comment;
+                if (parentComment.authorId === firebaseUser.uid) {
+                    const figureDoc = await getDoc(parentCommentRef.parent.parent);
+                    const figureName = figureDoc.exists() ? figureDoc.data().name : 'un perfil';
+                    
+                    toast({
+                      title: `💬 Nueva respuesta en ${figureName}`,
+                      description: `${reply.authorName} respondió a tu comentario.`,
+                      action: (
+                        <Link href={`/figures/${reply.figureId}?comment=${parentCommentRef.id}#comment-${parentCommentRef.id}`}>
+                          Ver
+                        </Link>
+                      ),
+                    });
+                }
+            }
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [firebaseUser, toast, isLoading]);
 
   const handleUser = useCallback(async (user: FirebaseUser | null) => {
     setIsLoading(true);
