@@ -132,32 +132,37 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   };
   
   const handleLocalStorageUpdate = (itemId: string, newEmotion: EmotionKey | null, userId: string) => {
-      if (typeof window !== 'undefined') {
-        const key = storageKey;
-            
+    if (typeof window !== 'undefined' && firebaseUser) {
+        const key = `wikistars5-emotions-${firebaseUser.uid}`;
         let storedVotes: GenericEmotionVote[] = JSON.parse(localStorage.getItem(key) || '[]');
         const voteIndex = storedVotes.findIndex(v => v.itemId === itemId);
 
-        if (newEmotion === null) { // Deselecting
-          if (voteIndex > -1) storedVotes.splice(voteIndex, 1);
-        } else { // Selecting or changing vote
-          if (voteIndex > -1) {
-            storedVotes[voteIndex].emotion = newEmotion;
-            storedVotes[voteIndex].figureId = figureId; // Ensure figureId is present
-          } else {
-            storedVotes.push({ itemId, emotion: newEmotion, figureId: figureId });
-          }
-          
-          if (!firebaseUser?.isAnonymous && targetType === 'figure') {
-            grantEmocionAlDescubiertoAchievement(userId).then(result => {
-              if (result.unlocked) toast({ title: "¡Logro Desbloqueado!", description: result.message });
-            });
-          }
+        if (newEmotion === null) {
+            if (voteIndex > -1) {
+                storedVotes.splice(voteIndex, 1);
+            }
+        } else {
+            const newVote: GenericEmotionVote = { itemId: itemId, emotion: newEmotion, figureId: figureId };
+            if (voteIndex > -1) {
+                storedVotes[voteIndex] = newVote;
+            } else {
+                storedVotes.push(newVote);
+            }
+
+            if (!firebaseUser.isAnonymous && targetType === 'figure') {
+                grantEmocionAlDescubiertoAchievement(userId).then(result => {
+                    if (result.unlocked) {
+                        toast({ title: "¡Logro Desbloqueado!", description: result.message });
+                    }
+                });
+            }
         }
+
         localStorage.setItem(key, JSON.stringify(storedVotes));
         setSelectedEmotion(newEmotion);
-      }
+    }
   };
+
 
   const isPopover = targetType === 'short' || targetType === 'instagram';
 

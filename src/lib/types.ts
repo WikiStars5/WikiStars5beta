@@ -155,6 +155,7 @@ export interface Attitude {
 export interface GenericEmotionVote {
     itemId: string;
     emotion: EmotionKey;
+    figureId: string; // Ensure figureId is always present
 }
 
 export interface EmotionVote {
@@ -241,6 +242,7 @@ export interface Notification {
   text: string; // Snippet of the reply or a generic message
   isRead: boolean;
   createdAt: string; // ISO string date
+  replyId?: string; // The specific ID of the reply itself
 }
 
 export interface LocalUserStreak {
