@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -383,6 +384,67 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
   }, [comments]);
 
 
+  const renderMyOpinionsTab = () => {
+    const answeredComments = sortedComments.filter(c => c.replyCount > 0);
+    const unansweredComments = sortedComments.filter(c => c.replyCount === 0);
+    const hasAnswered = answeredComments.length > 0;
+    const hasUnanswered = unansweredComments.length > 0;
+  
+    if (!hasAnswered && !hasUnanswered) {
+      return (
+        <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
+          Aún no has publicado ninguna opinión.
+        </p>
+      );
+    }
+  
+    return (
+      <Tabs defaultValue={hasUnanswered ? "unanswered" : "answered"} className="w-full mt-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="unanswered" disabled={!hasUnanswered}>No Respondidas</TabsTrigger>
+          <TabsTrigger value="answered" disabled={!hasAnswered}>Respondidas</TabsTrigger>
+        </TabsList>
+        <TabsContent value="unanswered" className="mt-4">
+          {hasUnanswered ? (
+            <div className="space-y-6">
+              {unansweredComments.map((comment) => (
+                <CommentItem 
+                  key={comment.id}
+                  figure={figure}
+                  comment={comment}
+                  parentPath={`figures/${figure.id}/comments`}
+                  highlightedCommentId={highlightedCommentId}
+                  isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">No tienes opiniones sin responder.</p>
+          )}
+        </TabsContent>
+        <TabsContent value="answered" className="mt-4">
+          {hasAnswered ? (
+             <div className="space-y-6">
+              {answeredComments.map((comment) => (
+                <CommentItem 
+                  key={comment.id}
+                  figure={figure}
+                  comment={comment}
+                  parentPath={`figures/${figure.id}/comments`}
+                  highlightedCommentId={highlightedCommentId}
+                  isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
+                />
+              ))}
+            </div>
+          ) : (
+             <p className="text-center text-muted-foreground py-4">No tienes opiniones que hayan sido respondidas.</p>
+          )}
+        </TabsContent>
+      </Tabs>
+    );
+  };
+  
+
   const renderFilteredComments = () => {
     if (isLoadingComments) {
       return (
@@ -394,56 +456,7 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
     }
     
     if (activeFilter === 'mine') {
-        const answeredComments = sortedComments.filter(c => c.replyCount > 0);
-        const unansweredComments = sortedComments.filter(c => c.replyCount === 0);
-        
-        return (
-            <div className="space-y-6">
-                {answeredComments.length > 0 && (
-                    <div>
-                        <h3 className="text-lg font-semibold mb-3">Respondidas</h3>
-                        <div className="space-y-6">
-                            {answeredComments.map((comment) => (
-                              <CommentItem 
-                                key={comment.id}
-                                figure={figure}
-                                comment={comment}
-                                parentPath={`figures/${figure.id}/comments`}
-                                highlightedCommentId={highlightedCommentId}
-                                isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
-                              />
-                            ))}
-                        </div>
-                    </div>
-                )}
-                
-                {answeredComments.length > 0 && unansweredComments.length > 0 && <Separator className="my-6" />}
-                
-                {unansweredComments.length > 0 && (
-                    <div>
-                        <h3 className="text-lg font-semibold mb-3">No Respondidas</h3>
-                         <div className="space-y-6">
-                            {unansweredComments.map((comment) => (
-                              <CommentItem 
-                                key={comment.id}
-                                figure={figure}
-                                comment={comment}
-                                parentPath={`figures/${figure.id}/comments`}
-                                highlightedCommentId={highlightedCommentId}
-                                isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
-                              />
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {answeredComments.length === 0 && unansweredComments.length === 0 && (
-                     <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
-                        Aún no has publicado ninguna opinión.
-                     </p>
-                )}
-            </div>
-        );
+       return renderMyOpinionsTab();
     }
 
     if (sortedComments.length > 0) {
