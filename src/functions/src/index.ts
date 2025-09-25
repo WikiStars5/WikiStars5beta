@@ -31,6 +31,70 @@ const db = admin.firestore();
 // running at the same time.
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
+
+export const createNotificationOnReply = onDocumentWritten("figures/{figureId}/comments/{commentId}/replies/{replyId}", async (event): Promise<void> => {
+    // Exit if there is no data (document was deleted)
+    if (!event.data?.after.exists()) {
+        return;
+    }
+
+    const replyData = event.data.after.data() as Comment;
+    const replierUserId = replyData.authorId;
+    const figureId = event.params.figureId;
+    const commentId = event.params.commentId;
+    const replyId = event.params.replyId;
+    
+    console.log(`Reply created by ${replierUserId} on comment ${commentId}.`);
+
+    try {
+        const parentCommentPath = `figures/${figureId}/comments/${commentId}`;
+        const parentCommentRef = db.doc(parentCommentPath);
+        const parentCommentSnap = await parentCommentRef.get();
+
+        if (!parentCommentSnap.exists) {
+            console.error(`Parent comment at path ${parentCommentPath} does not exist.`);
+            return;
+        }
+
+        const parentCommentData = parentCommentSnap.data() as Comment;
+        const targetUserId = parentCommentData.authorId;
+
+        // Do not notify user if they are replying to themselves
+        if (targetUserId === replierUserId) {
+            console.log("User replied to themselves. No notification sent.");
+            return;
+        }
+
+        // Fetch figure data to get the name for the notification
+        const figureRef = db.doc(`figures/${figureId}`);
+        const figureSnap = await figureRef.get();
+        const figureName = figureSnap.exists() ? (figureSnap.data() as Figure).name : "un perfil";
+
+        const notification: Omit<Notification, 'id'> = {
+            type: 'reply',
+            toUserId: targetUserId,
+            fromUserId: replierUserId,
+            fromUserName: replyData.authorName,
+            fromUserAvatar: replyData.authorPhotoUrl || null,
+            figureId: figureId,
+            figureName: figureName,
+            commentId: commentId,
+            replyId: replyId,
+            textSnippet: replyData.text,
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        await db.collection(`users/${targetUserId}/notifications`).add(notification);
+        
+        console.log(`Successfully created notification for user ${targetUserId}.`);
+
+    } catch (error) {
+        console.error("Error creating notification on reply:", error);
+    }
+});
+
+
 // This function runs automatically every 5 minutes.
 export const communityVerificationJob = onSchedule("every 5 minutes", async (event) => {
   console.log("Running community verification job...");
@@ -197,10 +261,3 @@ export const updateGlobalSettings = onCall(async (request) => {
         throw new HttpsError('internal', 'Could not update global settings.');
     }
 });
-
-// All notification logic has been moved to the client-side to bypass backend permission issues.
-// All user-related functions have been removed as the authentication system
-// has been disabled per user request.
-
-// All notification and trigger logic has been removed as the associated features
-// (comments, likes) have been disabled.
