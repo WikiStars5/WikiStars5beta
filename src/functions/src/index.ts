@@ -32,71 +32,85 @@ const db = admin.firestore();
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
 
-export const createNotificationOnReply = onDocumentWritten("figures/{figureId}/comments/{commentId}/replies/{replyId}", async (event): Promise<void> => {
-    // Exit if there is no data (document was deleted)
-    if (!event.data?.after.exists()) {
-        console.log("Reply document deleted. No notification to create.");
+export const createNotificationOnReaction = onDocumentWritten("figures/{figureId}/comments/{commentId}", async (event): Promise<void> => {
+    // Exit if there is no "after" data (document was deleted) or "before" data (document was created)
+    if (!event.data?.after.exists() || !event.data?.before.exists()) {
+        console.log("Document created or deleted, no reaction notification needed.");
         return;
     }
 
-    const replyData = event.data.after.data() as Comment;
-    const replierUserId = replyData.authorId;
-    const { figureId, commentId, replyId } = event.params;
+    const beforeData = event.data.before.data() as Comment;
+    const afterData = event.data.after.data() as Comment;
+
+    const beforeLikes = new Set(beforeData.likes || []);
+    const afterLikes = new Set(afterData.likes || []);
     
-    console.log(`[START] Reply created by ${replierUserId} in comment ${commentId}. Reply ID: ${replyId}.`);
+    const beforeDislikes = new Set(beforeData.dislikes || []);
+    const afterDislikes = new Set(afterData.dislikes || []);
+
+    const targetUserId = afterData.authorId; // The user to notify
+    let reactorUserId: string | null = null;
+    let reactionType: 'like' | 'dislike' | null = null;
+
+    // Check for a new like
+    if (afterLikes.size > beforeLikes.size) {
+        const newLikers = [...afterLikes].filter(id => !beforeLikes.has(id));
+        if (newLikers.length > 0) {
+            reactorUserId = newLikers[0]; // Assume one reaction at a time
+            reactionType = 'like';
+        }
+    }
+    // Check for a new dislike
+    else if (afterDislikes.size > beforeDislikes.size) {
+        const newDislikers = [...afterDislikes].filter(id => !beforeDislikes.has(id));
+        if (newDislikers.length > 0) {
+            reactorUserId = newDislikers[0];
+            reactionType = 'dislike';
+        }
+    }
+
+    // If no new reaction was found, or if user reacted to their own comment, exit.
+    if (!reactorUserId || !reactionType || reactorUserId === targetUserId) {
+        console.log(`Exiting: No new reaction, or user reacted to their own comment. Reactor: ${reactorUserId}, Target: ${targetUserId}`);
+        return;
+    }
+
+    console.log(`[START] New '${reactionType}' from ${reactorUserId} for user ${targetUserId}.`);
 
     try {
-        const parentCommentPath = `figures/${figureId}/comments/${commentId}`;
-        const parentCommentRef = db.doc(parentCommentPath);
-        
-        console.log(`Fetching parent comment at: ${parentCommentPath}`);
-        const parentCommentSnap = await parentCommentRef.get();
-
-        if (!parentCommentSnap.exists) {
-            console.error(`[ERROR] Parent comment at path ${parentCommentPath} does not exist. Cannot create notification.`);
+        // Fetch reactor's user profile to get their name
+        const reactorProfileSnap = await db.doc(`users/${reactorUserId}`).get();
+        if (!reactorProfileSnap.exists) {
+            console.error(`[ERROR] Reactor's profile (${reactorUserId}) not found.`);
             return;
         }
+        const reactorProfile = reactorProfileSnap.data() as UserProfile;
 
-        const parentCommentData = parentCommentSnap.data() as Comment;
-        const targetUserId = parentCommentData.authorId;
-
-        console.log(`Parent comment author (target): ${targetUserId}. Replier: ${replierUserId}.`);
-
-        // Do not notify user if they are replying to themselves
-        if (targetUserId === replierUserId) {
-            console.log("[END] User replied to themselves. No notification sent.");
-            return;
-        }
-
-        // Fetch figure data to get the name for the notification
-        const figureRef = db.doc(`figures/${figureId}`);
-        const figureSnap = await figureRef.get();
+        // Fetch figure data for context
+        const figureSnap = await db.doc(`figures/${event.params.figureId}`).get();
         const figureName = figureSnap.exists() ? (figureSnap.data() as Figure).name : "un perfil";
-        console.log(`Figure name for notification: ${figureName}`);
-
+        
         const notificationPayload: Omit<Notification, 'id'> = {
-            type: 'reply',
+            type: reactionType,
             toUserId: targetUserId,
-            fromUserId: replierUserId,
-            fromUserName: replyData.authorName,
-            fromUserAvatar: replyData.authorPhotoUrl || null,
-            figureId: figureId,
+            fromUserId: reactorUserId,
+            fromUserName: reactorProfile.isAnonymous ? "Alguien" : reactorProfile.username,
+            fromUserAvatar: reactorProfile.photoURL || null,
+            figureId: event.params.figureId,
             figureName: figureName,
-            commentId: commentId,
-            replyId: replyId,
-            textSnippet: replyData.text,
+            commentId: event.params.commentId,
+            textSnippet: afterData.text, // The text of the comment that was reacted to
             read: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
         const notificationRef = db.collection(`users/${targetUserId}/notifications`);
-        console.log(`[SUCCESS] Creating notification for user ${targetUserId} in collection users/${targetUserId}/notifications.`);
         await notificationRef.add(notificationPayload);
         
-        console.log(`[END] Successfully created notification for user ${targetUserId}.`);
+        console.log(`[END] Successfully created '${reactionType}' notification for user ${targetUserId}.`);
 
     } catch (error) {
-        console.error("[FATAL ERROR] in createNotificationOnReply:", error);
+        console.error("[FATAL ERROR] in createNotificationOnReaction:", error);
     }
 });
 
@@ -267,3 +281,9 @@ export const updateGlobalSettings = onCall(async (request) => {
         throw new HttpsError('internal', 'Could not update global settings.');
     }
 });
+
+// All user-related functions have been removed as the authentication system
+// has been disabled per user request.
+
+// All notification and trigger logic has been removed as the associated features
+// (comments, likes) have been disabled.

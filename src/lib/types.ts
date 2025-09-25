@@ -263,7 +263,7 @@ export interface Notification {
   figureId: string;
   figureName: string;
   commentId: string;
-  replyId?: string;
+  replyId?: string; // Optional, only for reply notifications
   textSnippet?: string; // Snippet of the reply/comment
   read: boolean;
   createdAt: Timestamp;
