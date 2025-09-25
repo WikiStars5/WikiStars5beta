@@ -91,7 +91,7 @@ const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, par
         };
 
         try {
-            await addReply(parentPath, figure.id, authorData, text);
+            await addReply(parentPath, figure, authorData, text);
             toast({ title: "Respuesta enviada" });
             setText('');
             onReplySuccess();

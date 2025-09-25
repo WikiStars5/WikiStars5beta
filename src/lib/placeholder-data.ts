@@ -638,7 +638,7 @@ export async function addComment(
 
 export async function addReply(
   parentPath: string,
-  figureId: string,
+  figure: Figure,
   authorData: {
     id: string;
     name: string;
@@ -649,38 +649,58 @@ export async function addReply(
   },
   text: string
 ): Promise<string> {
-    const parentRef = doc(db, parentPath);
-    const repliesCollectionRef = collection(db, `${parentPath}/replies`);
-    const newReplyRef = doc(repliesCollectionRef);
-  
-    const replyData = {
-      figureId: figureId,
-      authorId: authorData.id,
-      authorName: authorData.name,
-      authorPhotoUrl: authorData.photoUrl || null,
-      authorGender: authorData.gender,
-      authorCountryCode: authorData.countryCode,
-      text: text,
-      createdAt: serverTimestamp(),
-      likes: [],
-      likeCount: 0,
-      dislikes: [],
-      dislikeCount: 0,
-      replyCount: 0,
-      isAnonymous: authorData.isAnonymous,
-    };
-  
-    // Update reply count and create reply doc
-    await runTransaction(db, async (transaction) => {
-      // We read the parent doc again inside the transaction to be safe
-      const freshParentDoc = await transaction.get(parentRef);
-      if (!freshParentDoc.exists()) throw new Error("Parent comment does not exist.");
-      
-      transaction.set(newReplyRef, replyData);
-      transaction.update(parentRef, { replyCount: (freshParentDoc.data().replyCount || 0) + 1 });
-    });
-  
-    return newReplyRef.id;
+  const parentRef = doc(db, parentPath);
+  const repliesCollectionRef = collection(db, `${parentPath}/replies`);
+  const newReplyRef = doc(repliesCollectionRef);
+
+  const replyData = {
+    figureId: figure.id,
+    authorId: authorData.id,
+    authorName: authorData.name,
+    authorPhotoUrl: authorData.photoUrl || null,
+    authorGender: authorData.gender,
+    authorCountryCode: authorData.countryCode,
+    text: text,
+    createdAt: serverTimestamp(),
+    likes: [],
+    likeCount: 0,
+    dislikes: [],
+    dislikeCount: 0,
+    replyCount: 0,
+    isAnonymous: authorData.isAnonymous,
+  };
+
+  await runTransaction(db, async (transaction) => {
+    const parentDoc = await transaction.get(parentRef);
+    if (!parentDoc.exists()) throw new Error("Parent comment does not exist.");
+
+    const parentData = parentDoc.data();
+    const targetUserId = parentData.authorId;
+
+    // 1. Update parent comment's reply count
+    transaction.update(parentRef, { replyCount: (parentData.replyCount || 0) + 1 });
+
+    // 2. Set the new reply document
+    transaction.set(newReplyRef, replyData);
+    
+    // 3. Create notification for the original commenter
+    if (targetUserId && targetUserId !== authorData.id) {
+      const notificationRef = doc(collection(db, `users/${targetUserId}/notifications`));
+      const notificationData: Omit<Notification, 'id'> = {
+        type: 'reply',
+        figureId: figure.id,
+        figureName: figure.name,
+        commentId: parentRef.id,
+        commentText: parentData.text,
+        actorName: authorData.name,
+        createdAt: serverTimestamp() as Timestamp,
+        isRead: false,
+      };
+      transaction.set(notificationRef, notificationData);
+    }
+  });
+
+  return newReplyRef.id;
 }
 
 
