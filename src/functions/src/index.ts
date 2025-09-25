@@ -58,12 +58,7 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
         
         // Don't create a notification if a user replies to their own comment.
         if (targetUserId === replierUserId) {
-            return;
-        }
-
-        // Do not notify anonymous users
-        const targetUserSnap = await db.doc(`users/${targetUserId}`).get();
-        if (!targetUserSnap.exists() || targetUserSnap.data()?.isAnonymous) {
+            console.log(`User ${targetUserId} replied to their own comment. No notification needed.`);
             return;
         }
 
@@ -85,6 +80,7 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
+        // Create the notification in the target user's subcollection, regardless of their status (registered or anonymous).
         await db.collection(`users/${targetUserId}/notifications`).add(notification);
         console.log(`Notification created for user ${targetUserId} for reply by ${replierUserId}`);
 
