@@ -9,8 +9,10 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
 
-import type { UserProfile, Figure, GlobalSettings } from "./types";
+
+import type { UserProfile, Figure, GlobalSettings, Notification } from "./types";
 import { COUNTRIES } from "./countries";
 
 // Centralized Admin UID for security checks.
@@ -27,6 +29,77 @@ const db = admin.firestore();
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
+
+
+export const createNotificationOnReply = onDocumentCreated(
+  "figures/{figureId}/comments/{commentId}/replies/{replyId}",
+  async (event) => {
+    console.log("createNotificationOnReply triggered.");
+
+    const snap = event.data;
+    if (!snap) {
+      console.log("No data associated with the event.");
+      return;
+    }
+    const replyData = snap.data();
+    const params = event.params;
+    
+    console.log(`New reply created by ${replyData.authorName} in figure ${params.figureId}`);
+
+    const parentCommentPath = `figures/${params.figureId}/comments/${params.commentId}`;
+    console.log("Parent comment path:", parentCommentPath);
+
+    try {
+        const parentCommentSnap = await db.doc(parentCommentPath).get();
+        if (!parentCommentSnap.exists) {
+            console.error(`Parent comment at ${parentCommentPath} not found.`);
+            return;
+        }
+
+        const parentCommentData = parentCommentSnap.data();
+        if (!parentCommentData) {
+            console.error("Parent comment has no data.");
+            return;
+        }
+
+        const targetUserId = parentCommentData.authorId;
+        const replierUserId = replyData.authorId;
+
+        console.log(`Target User ID: ${targetUserId}, Replier User ID: ${replierUserId}`);
+
+        // Do not send notification if the user is replying to themselves
+        if (targetUserId === replierUserId) {
+            console.log("User replied to their own comment. No notification sent.");
+            return;
+        }
+        
+        // Fetch figure name
+        const figureSnap = await db.doc(`figures/${params.figureId}`).get();
+        const figureName = figureSnap.exists() ? figureSnap.data()?.name : "un perfil";
+
+        const notification: Omit<Notification, 'id'> = {
+            type: 'reply',
+            figureId: params.figureId,
+            figureName: figureName,
+            commentId: params.commentId,
+            commentText: parentCommentData.text,
+            actorName: replyData.authorName,
+            createdAt: admin.firestore.Timestamp.now(),
+            isRead: false,
+        };
+        
+        const notificationsRef = db.collection(`users/${targetUserId}/notifications`);
+        
+        console.log(`Creating notification for user ${targetUserId}:`, notification);
+        await notificationsRef.add(notification);
+        console.log("Notification successfully created in Firestore.");
+
+    } catch (error) {
+        console.error("Error creating notification on reply:", error);
+    }
+  }
+);
+
 
 // This function runs automatically every 5 minutes.
 export const communityVerificationJob = onSchedule("every 5 minutes", async (event) => {
@@ -194,9 +267,3 @@ export const updateGlobalSettings = onCall(async (request) => {
         throw new HttpsError('internal', 'Could not update global settings.');
     }
 });
-
-// All user-related functions have been removed as the authentication system
-// has been disabled per user request.
-
-// All notification and trigger logic has been removed as the associated features
-// (comments, likes) have been disabled.

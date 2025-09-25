@@ -681,27 +681,6 @@ export async function addReply(
     transaction.set(newReplyRef, replyData);
   });
 
-  // 3. Create notification for the original commenter (outside transaction)
-  const parentDocData = (await getDoc(parentRef)).data();
-  if (parentDocData) {
-      const targetUserId = parentDocData.authorId;
-      if (targetUserId && targetUserId !== authorData.id) {
-          const notificationRef = doc(collection(db, `users/${targetUserId}/notifications`));
-          const notificationData: Omit<Notification, 'id'> = {
-              type: 'reply',
-              figureId: figure.id,
-              figureName: figure.name,
-              commentId: parentRef.id,
-              commentText: parentDocData.text,
-              actorName: authorData.name,
-              createdAt: Timestamp.now(), // Use client-side timestamp for immediate feedback
-              isRead: false,
-          };
-          await setDoc(notificationRef, notificationData);
-      }
-  }
-
-
   return newReplyRef.id;
 }
 
@@ -1182,9 +1161,3 @@ export async function getGlobalSettings() {
 export async function updateGlobalSettings(settings: any) {
     return callFirebaseFunction('updateGlobalSettings', settings);
 }
-
-// All user-related functions have been removed as the authentication system
-// has been disabled per user request.
-
-// All notification and trigger logic has been removed as the associated features
-// (comments, likes) have been disabled.
