@@ -68,12 +68,19 @@ export function NotificationBell() {
     }
     
     const notifsRef = collection(db, `users/${firebaseUser.uid}/notifications`);
-    const q = query(notifsRef, orderBy('createdAt', 'desc'), where('isRead', '==', false));
+    // FIX: Simplified the query to order by creation date only.
+    // The filtering for 'isRead' will be done on the client side.
+    // This avoids the need for a composite index in Firestore.
+    const q = query(notifsRef, orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedNotifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
-      setNotifications(fetchedNotifs);
-      const newUnreadCount = fetchedNotifs.length;
+      const allFetchedNotifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+      
+      // Filter for unread notifications on the client
+      const unreadNotifs = allFetchedNotifs.filter(n => !n.isRead);
+
+      setNotifications(unreadNotifs);
+      const newUnreadCount = unreadNotifs.length;
       setUnreadCount(newUnreadCount);
 
       if (newUnreadCount > unreadCount && hasPlayedSound) {
