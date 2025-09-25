@@ -98,8 +98,9 @@ export interface Notification {
   figureName: string;
   commentId: string;
   replyId?: string;
+  textSnippet?: string;
   read: boolean;
-  createdAt: FieldValue | Timestamp;
+  createdAt: FieldValue;
 }
 
 

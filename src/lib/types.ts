@@ -252,3 +252,19 @@ export interface StreakWithProfile extends Streak {
     figureId?: string;
     userProfile: UserProfile | null;
 }
+
+export interface Notification {
+  id: string;
+  type: 'reply' | 'like' | 'dislike';
+  toUserId: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUserAvatar: string | null;
+  figureId: string;
+  figureName: string;
+  commentId: string;
+  replyId?: string;
+  textSnippet?: string; // Snippet of the reply/comment
+  read: boolean;
+  createdAt: Timestamp;
+}

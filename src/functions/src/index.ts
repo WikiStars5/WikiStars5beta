@@ -75,6 +75,7 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
             figureName: figureName,
             commentId: parentCommentRef.id,
             replyId: event.params.replyId,
+            textSnippet: replyData.text,
             read: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
@@ -254,11 +255,3 @@ export const updateGlobalSettings = onCall(async (request) => {
         throw new HttpsError('internal', 'Could not update global settings.');
     }
 });
-
-// All user-related functions have been removed as the authentication system
-// has been disabled per user request.
-
-// All notification and trigger logic has been removed as the associated features
-// (comments, likes) have been disabled.
-
-    
