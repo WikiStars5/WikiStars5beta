@@ -9,12 +9,9 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import { onDocumentWritten } from "firebase-functions/v2/firestore";
 
-
-import type { UserProfile, Figure, GlobalSettings, Comment, Notification } from "./types";
+import type { UserProfile, Figure, GlobalSettings } from "./types";
 import { COUNTRIES } from "./countries";
-import type { DocumentData, Query } from "firebase-admin/firestore";
 
 // Centralized Admin UID for security checks.
 const ADMIN_UID = '252qq3sz2fWwHjQTF9JQWG65aiC2';
@@ -30,90 +27,6 @@ const db = admin.firestore();
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
-
-
-export const createNotificationOnReaction = onDocumentWritten("figures/{figureId}/comments/{commentId}", async (event): Promise<void> => {
-    // Exit if there is no "after" data (document was deleted) or "before" data (document was created)
-    if (!event.data?.after.exists() || !event.data?.before.exists()) {
-        console.log("Document created or deleted, no reaction notification needed.");
-        return;
-    }
-
-    const beforeData = event.data.before.data() as Comment;
-    const afterData = event.data.after.data() as Comment;
-
-    const beforeLikes = new Set(beforeData.likes || []);
-    const afterLikes = new Set(afterData.likes || []);
-    
-    const beforeDislikes = new Set(beforeData.dislikes || []);
-    const afterDislikes = new Set(afterData.dislikes || []);
-
-    const targetUserId = afterData.authorId; // The user to notify
-    let reactorUserId: string | null = null;
-    let reactionType: 'like' | 'dislike' | null = null;
-
-    // Check for a new like
-    if (afterLikes.size > beforeLikes.size) {
-        const newLikers = [...afterLikes].filter(id => !beforeLikes.has(id));
-        if (newLikers.length > 0) {
-            reactorUserId = newLikers[0]; // Assume one reaction at a time
-            reactionType = 'like';
-        }
-    }
-    // Check for a new dislike
-    else if (afterDislikes.size > beforeDislikes.size) {
-        const newDislikers = [...afterDislikes].filter(id => !beforeDislikes.has(id));
-        if (newDislikers.length > 0) {
-            reactorUserId = newDislikers[0];
-            reactionType = 'dislike';
-        }
-    }
-
-    // If no new reaction was found, or if user reacted to their own comment, exit.
-    if (!reactorUserId || !reactionType || reactorUserId === targetUserId) {
-        console.log(`Exiting: No new reaction, or user reacted to their own comment. Reactor: ${reactorUserId}, Target: ${targetUserId}`);
-        return;
-    }
-
-    console.log(`[START] New '${reactionType}' from ${reactorUserId} for user ${targetUserId}.`);
-
-    try {
-        // Fetch reactor's user profile to get their name
-        const reactorProfileSnap = await db.doc(`users/${reactorUserId}`).get();
-        if (!reactorProfileSnap.exists) {
-            console.error(`[ERROR] Reactor's profile (${reactorUserId}) not found.`);
-            return;
-        }
-        const reactorProfile = reactorProfileSnap.data() as UserProfile;
-
-        // Fetch figure data for context
-        const figureSnap = await db.doc(`figures/${event.params.figureId}`).get();
-        const figureName = figureSnap.exists() ? (figureSnap.data() as Figure).name : "un perfil";
-        
-        const notificationPayload: Omit<Notification, 'id'> = {
-            type: reactionType,
-            toUserId: targetUserId,
-            fromUserId: reactorUserId,
-            fromUserName: reactorProfile.isAnonymous ? "Alguien" : reactorProfile.username,
-            fromUserAvatar: reactorProfile.photoURL || null,
-            figureId: event.params.figureId,
-            figureName: figureName,
-            commentId: event.params.commentId,
-            textSnippet: afterData.text, // The text of the comment that was reacted to
-            read: false,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
-
-        const notificationRef = db.collection(`users/${targetUserId}/notifications`);
-        await notificationRef.add(notificationPayload);
-        
-        console.log(`[END] Successfully created '${reactionType}' notification for user ${targetUserId}.`);
-
-    } catch (error) {
-        console.error("[FATAL ERROR] in createNotificationOnReaction:", error);
-    }
-});
-
 
 // This function runs automatically every 5 minutes.
 export const communityVerificationJob = onSchedule("every 5 minutes", async (event) => {
