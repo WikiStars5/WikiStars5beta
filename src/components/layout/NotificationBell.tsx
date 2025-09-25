@@ -45,30 +45,22 @@ const NOTIFICATION_SOUND_URL = "https://firebasestorage.googleapis.com/v0/b/wiki
 
 
 export function NotificationBell() {
-    const { currentUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
+    const { firebaseUser, isLoading: isAuthLoading } = useAuth();
     const [notifications, setNotifications] = React.useState<Notification[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-    const { toast } = useToast();
     
     const seenNotificationIds = React.useRef(new Set<string>());
 
     React.useEffect(() => {
-        if (isAuthLoading) {
-            setIsLoading(true);
-            return;
-        }
-
-        if (isAnonymous || !currentUser) {
-            // For now, anonymous users have no notifications.
-            // This section can be expanded later to use localStorage.
+        if (!firebaseUser) {
             setIsLoading(false);
             setNotifications([]);
             return;
         }
 
         setIsLoading(true);
-        const notificationsRef = collection(db, `users/${currentUser.uid}/notifications`);
+        const notificationsRef = collection(db, `users/${firebaseUser.uid}/notifications`);
         const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(20));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -84,7 +76,7 @@ export function NotificationBell() {
             });
 
             const newUnseenNotifications = fetchedNotifications.filter(
-                n => !n.read && !seenNotificationIds.current.has(n.id!)
+                n => n.id && !n.read && !seenNotificationIds.current.has(n.id)
             );
 
             if (isMenuOpen === false && newUnseenNotifications.length > 0 && document.hasFocus()) {
@@ -93,7 +85,7 @@ export function NotificationBell() {
             }
 
             if (newUnseenNotifications.length > 0) {
-              newUnseenNotifications.forEach(n => seenNotificationIds.current.add(n.id!));
+              newUnseenNotifications.forEach(n => n.id && seenNotificationIds.current.add(n.id));
             }
 
             setNotifications(fetchedNotifications);
@@ -105,17 +97,17 @@ export function NotificationBell() {
         
         return () => unsubscribe();
         
-    }, [currentUser, isAnonymous, isAuthLoading, isMenuOpen]);
+    }, [firebaseUser, isMenuOpen]);
     
     const unreadCount = notifications.filter(n => !n.read).length;
     
     const markAsRead = async () => {
-        if (unreadCount === 0 || !currentUser) return;
+        if (unreadCount === 0 || !firebaseUser) return;
 
         const batch = writeBatch(db);
         notifications.forEach(notification => {
              if (!notification.read && notification.id) {
-                const notifRef = doc(db, `users/${currentUser.uid}/notifications`, notification.id);
+                const notifRef = doc(db, `users/${firebaseUser.uid}/notifications`, notification.id);
                 batch.update(notifRef, { read: true });
             }
         });
@@ -146,7 +138,7 @@ export function NotificationBell() {
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative text-foreground/70 hover:text-foreground">
                     <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && !isAnonymous && (
+                    {unreadCount > 0 && (
                         <span className="absolute top-1 right-1.5 flex h-3 w-3">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
@@ -178,7 +170,7 @@ export function NotificationBell() {
                                         <p className="text-sm">
                                             <strong>{notif.fromUserName}</strong> respondió a tu comentario en <strong>{notif.figureName}</strong>.
                                         </p>
-                                        <p className="text-xs text-muted-foreground">{timeSince(notif.createdAt)}</p>
+                                        <p className="text-xs text-muted-foreground">{timeSince(new Date(notif.createdAt))}</p>
                                     </div>
                                     {!notif.read && <div className="h-2 w-2 rounded-full bg-primary mt-1 flex-shrink-0"></div>}
                                </div>

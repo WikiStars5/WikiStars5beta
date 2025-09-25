@@ -46,7 +46,7 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
     }
     
     try {
-        const parentCommentSnap = await parentCommentRef.get();
+        const parentCommentSnap = await transaction.get(parentCommentRef);
         if (!parentCommentSnap.exists) {
             console.error("Parent comment does not exist.");
             return;
@@ -58,12 +58,6 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
         
         // Don't create a notification if a user replies to their own comment.
         if (targetUserId === replierUserId) {
-            return;
-        }
-
-        // Do not notify anonymous users
-        const targetUserSnap = await db.doc(`users/${targetUserId}`).get();
-        if (!targetUserSnap.exists() || targetUserSnap.data()?.isAnonymous) {
             return;
         }
 
@@ -266,3 +260,5 @@ export const updateGlobalSettings = onCall(async (request) => {
 
 // All notification and trigger logic has been removed as the associated features
 // (comments, likes) have been disabled.
+
+    
