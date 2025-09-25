@@ -145,21 +145,6 @@ export interface Figure {
   manualVerificationExpiresAt?: Timestamp | { _seconds: number, _nanoseconds: number };
 }
 
-export interface Notification {
-  id: string;
-  type: 'reply' | 'like' | 'dislike';
-  toUserId: string;
-  fromUserId: string;
-  fromUserName: string;
-  fromUserAvatar: string | null;
-  figureId: string;
-  figureName: string;
-  commentId: string;
-  replyId?: string;
-  read: boolean;
-  createdAt: string; // ISO string to be compatible with both server and client
-}
-
 export interface Attitude {
   figureId: string;
   attitude: AttitudeKey;

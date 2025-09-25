@@ -87,22 +87,6 @@ export interface UserProfile {
   isAnonymous?: boolean;
 }
 
-export interface Notification {
-  id?: string;
-  type: 'reply' | 'like' | 'dislike';
-  toUserId: string;
-  fromUserId: string;
-  fromUserName: string;
-  fromUserAvatar: string | null;
-  figureId: string;
-  figureName: string;
-  commentId: string;
-  replyId?: string;
-  read: boolean;
-  createdAt: FieldValue | Timestamp;
-}
-
-
 export interface Country {
   name: string;
   code: string;
