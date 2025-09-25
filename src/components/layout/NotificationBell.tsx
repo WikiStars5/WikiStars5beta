@@ -22,7 +22,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { correctMalformedUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-function timeSince(date: Date): string {
+function timeSince(isoDateString: string): string {
+    const date = new Date(isoDateString);
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
     if (seconds < 5) return "justo ahora";
     let interval = seconds / 31536000;
@@ -44,7 +45,6 @@ const NOTIFICATION_SOUND_URL = "https://firebasestorage.googleapis.com/v0/b/wiki
 export function NotificationBell() {
     const { currentUser, firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
     const [notifications, setNotifications] = React.useState<Notification[]>([]);
-    const [unreadCount, setUnreadCount] = React.useState(0);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
     const { toast } = useToast();
@@ -52,32 +52,45 @@ export function NotificationBell() {
     // Using a ref to track seen notifications to avoid re-playing sound for the same ones.
     const seenNotificationIds = React.useRef(new Set<string>());
 
-    React.useEffect(() => {
-        if (!firebaseUser) {
-            setIsLoading(false);
-            return;
-        }
+    const storageKey = `wikistars5-notifications-${firebaseUser?.uid}`;
 
-        // Logic for registered users (real-time from Firestore)
-        if (!isAnonymous && currentUser) {
-            setIsLoading(true);
+    React.useEffect(() => {
+        if (isAuthLoading) return;
+
+        setIsLoading(true);
+        let unsubscribe: (() => void) | undefined;
+
+        if (isAnonymous && firebaseUser) {
+            // Logic for anonymous users (from localStorage)
+            const localNotifications = JSON.parse(localStorage.getItem(storageKey) || '[]') as Notification[];
+            setNotifications(localNotifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            setIsLoading(false);
+            
+            // Periodically check local storage for updates.
+             const intervalId = setInterval(() => {
+                const updatedNotifications = JSON.parse(localStorage.getItem(storageKey) || '[]') as Notification[];
+                setNotifications(updatedNotifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            }, 5000);
+            
+            unsubscribe = () => clearInterval(intervalId);
+
+        } else if (currentUser) {
+            // Logic for registered users (real-time from Firestore)
             const notificationsRef = collection(db, `users/${currentUser.uid}/notifications`);
             const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(20));
 
-            const unsubscribe = onSnapshot(q, (snapshot) => {
+            unsubscribe = onSnapshot(q, (snapshot) => {
                 const fetchedNotifications: Notification[] = [];
-                let newUnreadCount = 0;
-                
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const notification = { id: doc.id, ...data } as Notification;
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const notification = {
+                        id: docSnap.id,
+                        ...data,
+                        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
+                    } as Notification;
                     fetchedNotifications.push(notification);
-                    if (!notification.read) {
-                        newUnreadCount++;
-                    }
                 });
 
-                // Play sound only for new, unseen notifications
                 const newUnseenNotifications = fetchedNotifications.filter(
                     n => !n.read && !seenNotificationIds.current.has(n.id)
                 );
@@ -85,47 +98,50 @@ export function NotificationBell() {
                 if (newUnseenNotifications.length > 0) {
                     const audio = new Audio(NOTIFICATION_SOUND_URL);
                     audio.play().catch(e => console.error("Error playing notification sound:", e));
-                    newUnseenNotifications.forEach(n => seenNotificationIds.current.add(n.id));
+                    newUnseenNotifications.forEach(n => seenNotificationIds.current.add(n.id!));
                     
-                    const latestNotification = newUnseenNotifications[0];
+                     const latestNotification = newUnseenNotifications[0];
                     toast({
-                        title: `Nueva Notificación: ${latestNotification.type === 'reply' ? 'Respuesta a tu comentario' : 'Nueva Notificación'}`,
-                        description: `${latestNotification.fromUserName} ${latestNotification.type === 'reply' ? 'respondió a tu comentario en el perfil de' : 'ha interactuado contigo en'} ${latestNotification.figureName}.`
+                        title: `Nueva Notificación`,
+                        description: `${latestNotification.fromUserName} respondió a tu comentario en el perfil de ${latestNotification.figureName}.`
                     })
                 }
 
                 setNotifications(fetchedNotifications);
-                setUnreadCount(newUnreadCount);
                 setIsLoading(false);
-
             }, (error) => {
                 console.error("Error fetching notifications:", error);
                 setIsLoading(false);
             });
-
-            return () => unsubscribe();
         } else {
-             // Logic for anonymous users will go here (from localStorage)
-             // For now, just set loading to false.
-            setIsLoading(false);
+             setIsLoading(false);
         }
-    }, [currentUser, firebaseUser, isAnonymous, toast]);
+        
+        return () => unsubscribe && unsubscribe();
+    }, [currentUser, firebaseUser, isAnonymous, isAuthLoading, toast, storageKey]);
+    
+    const unreadCount = notifications.filter(n => !n.read).length;
     
     const markAsRead = async () => {
-        if (isAnonymous || !currentUser || unreadCount === 0) return;
+        if (unreadCount === 0) return;
 
-        const batch = writeBatch(db);
-        const unreadNotifications = notifications.filter(n => !n.read);
-        
-        unreadNotifications.forEach(notification => {
-            const notifRef = doc(db, `users/${currentUser.uid}/notifications`, notification.id);
-            batch.update(notifRef, { read: true });
-        });
-
-        try {
-            await batch.commit();
-        } catch (error) {
-            console.error("Error marking notifications as read:", error);
+        if (isAnonymous) {
+            const updatedNotifications = notifications.map(n => ({...n, read: true}));
+            localStorage.setItem(storageKey, JSON.stringify(updatedNotifications));
+            setNotifications(updatedNotifications);
+        } else if (currentUser) {
+            const batch = writeBatch(db);
+            notifications.forEach(notification => {
+                 if (!notification.read && notification.id) {
+                    const notifRef = doc(db, `users/${currentUser.uid}/notifications`, notification.id);
+                    batch.update(notifRef, { read: true });
+                }
+            });
+            try {
+                await batch.commit();
+            } catch (error) {
+                console.error("Error marking notifications as read:", error);
+            }
         }
     };
     
@@ -167,7 +183,7 @@ export function NotificationBell() {
                     ) : (
                         notifications.map((notif) => (
                            <DropdownMenuItem key={notif.id} asChild className="cursor-pointer">
-                             <Link href={`/figures/${notif.figureId}?comment=${notif.commentId}#comment-${notif.commentId}`}>
+                             <Link href={`/figures/${notif.figureId}?comment=${notif.commentId}#comment-${notif.replyId}`}>
                                <div className="flex items-start gap-3 w-full">
                                     <Avatar className="h-8 w-8 mt-1">
                                         <AvatarImage src={correctMalformedUrl(notif.fromUserAvatar)} />
@@ -177,7 +193,7 @@ export function NotificationBell() {
                                         <p className="text-sm">
                                             <strong>{notif.fromUserName}</strong> respondió a tu comentario en <strong>{notif.figureName}</strong>.
                                         </p>
-                                        <p className="text-xs text-muted-foreground">{notif.createdAt && notif.createdAt.toDate ? timeSince(notif.createdAt.toDate()) : 'hace un momento'}</p>
+                                        <p className="text-xs text-muted-foreground">{timeSince(notif.createdAt)}</p>
                                     </div>
                                     {!notif.read && <div className="h-2 w-2 rounded-full bg-primary mt-1 flex-shrink-0"></div>}
                                </div>
