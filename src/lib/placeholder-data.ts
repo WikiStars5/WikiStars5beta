@@ -651,7 +651,7 @@ export async function addReply(
 ): Promise<string> {
     const parentRef = doc(db, parentPath);
     const repliesCollectionRef = collection(db, `${parentPath}/replies`);
-    const docRef = doc(repliesCollectionRef);
+    const newReplyRef = doc(repliesCollectionRef);
   
     const replyData = {
       figureId: figureId,
@@ -670,16 +670,50 @@ export async function addReply(
       isAnonymous: authorData.isAnonymous,
     };
   
+    const parentDoc = await getDoc(parentRef);
+    if (!parentDoc.exists()) {
+      throw new Error("Parent comment does not exist.");
+    }
+    
+    // Create notification logic starts here
+    const parentCommentData = parentDoc.data() as Comment;
+    const targetUserId = parentCommentData.authorId;
+    
+    if (targetUserId !== authorData.id) {
+        const figureSnap = await getDoc(doc(db, 'figures', figureId));
+        const figureName = figureSnap.exists() ? (figureSnap.data() as Figure).name : "un perfil";
+
+        const notification: Omit<Notification, 'id'> = {
+            type: 'reply',
+            toUserId: targetUserId,
+            fromUserId: authorData.id,
+            fromUserName: authorData.name,
+            fromUserAvatar: authorData.photoUrl || null,
+            figureId: figureId,
+            figureName: figureName,
+            commentId: parentRef.id,
+            replyId: newReplyRef.id,
+            textSnippet: text,
+            read: false,
+            createdAt: serverTimestamp() as Timestamp,
+        };
+
+        const notificationsRef = collection(db, `users/${targetUserId}/notifications`);
+        await addDoc(notificationsRef, notification);
+    }
+    // Create notification logic ends
+
+    // Update reply count and create reply doc
     await runTransaction(db, async (transaction) => {
-      const parentDoc = await transaction.get(parentRef);
-      if (!parentDoc.exists()) {
-        throw new Error("Parent comment does not exist.");
-      }
-      transaction.set(docRef, replyData);
-      transaction.update(parentRef, { replyCount: (parentDoc.data().replyCount || 0) + 1 });
+      // We read the parent doc again inside the transaction to be safe
+      const freshParentDoc = await transaction.get(parentRef);
+      if (!freshParentDoc.exists()) throw new Error("Parent comment does not exist.");
+      
+      transaction.set(newReplyRef, replyData);
+      transaction.update(parentRef, { replyCount: (freshParentDoc.data().replyCount || 0) + 1 });
     });
   
-    return docRef.id;
+    return newReplyRef.id;
 }
 
 
