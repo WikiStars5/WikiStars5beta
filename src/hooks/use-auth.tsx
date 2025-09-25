@@ -21,7 +21,7 @@ import {
   type AuthCredential
 } from 'firebase/auth';
 import type { UserProfile, LocalProfile, Comment } from '@/lib/types';
-import { doc, onSnapshot, getDoc, collectionGroup, query, where, Timestamp, onSnapshot as onCollectionSnapshot, orderBy } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, collectionGroup, query, where, Timestamp, onSnapshot as onCollectionSnapshot, orderBy, limit } from 'firebase/firestore';
 import { ADMIN_UID } from '@/config/admin';
 import { useRouter } from 'next/navigation';
 import { useLocalProfile } from './use-local-profile';
