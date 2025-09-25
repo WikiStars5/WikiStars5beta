@@ -42,7 +42,7 @@ const NOTIFICATION_SOUND_URL = "https://firebasestorage.googleapis.com/v0/b/wiki
 
 
 export function NotificationBell() {
-    const { currentUser, isLoading: isAuthLoading } = useAuth();
+    const { currentUser, firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
     const [notifications, setNotifications] = React.useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = React.useState(0);
     const [isLoading, setIsLoading] = React.useState(true);
@@ -53,59 +53,66 @@ export function NotificationBell() {
     const seenNotificationIds = React.useRef(new Set<string>());
 
     React.useEffect(() => {
-        if (!currentUser || currentUser.isAnonymous) {
+        if (!firebaseUser) {
             setIsLoading(false);
             return;
         }
 
-        setIsLoading(true);
-        const notificationsRef = collection(db, `users/${currentUser.uid}/notifications`);
-        const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(20));
+        // Logic for registered users (real-time from Firestore)
+        if (!isAnonymous && currentUser) {
+            setIsLoading(true);
+            const notificationsRef = collection(db, `users/${currentUser.uid}/notifications`);
+            const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(20));
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedNotifications: Notification[] = [];
-            let newUnreadCount = 0;
-            
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                const notification = { id: doc.id, ...data } as Notification;
-                fetchedNotifications.push(notification);
-                if (!notification.read) {
-                    newUnreadCount++;
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                const fetchedNotifications: Notification[] = [];
+                let newUnreadCount = 0;
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const notification = { id: doc.id, ...data } as Notification;
+                    fetchedNotifications.push(notification);
+                    if (!notification.read) {
+                        newUnreadCount++;
+                    }
+                });
+
+                // Play sound only for new, unseen notifications
+                const newUnseenNotifications = fetchedNotifications.filter(
+                    n => !n.read && !seenNotificationIds.current.has(n.id)
+                );
+
+                if (newUnseenNotifications.length > 0) {
+                    const audio = new Audio(NOTIFICATION_SOUND_URL);
+                    audio.play().catch(e => console.error("Error playing notification sound:", e));
+                    newUnseenNotifications.forEach(n => seenNotificationIds.current.add(n.id));
+                    
+                    const latestNotification = newUnseenNotifications[0];
+                    toast({
+                        title: `Nueva Notificación: ${latestNotification.type === 'reply' ? 'Respuesta a tu comentario' : 'Nueva Notificación'}`,
+                        description: `${latestNotification.fromUserName} ${latestNotification.type === 'reply' ? 'respondió a tu comentario en el perfil de' : 'ha interactuado contigo en'} ${latestNotification.figureName}.`
+                    })
                 }
+
+                setNotifications(fetchedNotifications);
+                setUnreadCount(newUnreadCount);
+                setIsLoading(false);
+
+            }, (error) => {
+                console.error("Error fetching notifications:", error);
+                setIsLoading(false);
             });
 
-            // Play sound only for new, unseen notifications
-            const newUnseenNotifications = fetchedNotifications.filter(
-                n => !n.read && !seenNotificationIds.current.has(n.id)
-            );
-
-            if (newUnseenNotifications.length > 0) {
-                const audio = new Audio(NOTIFICATION_SOUND_URL);
-                audio.play().catch(e => console.error("Error playing notification sound:", e));
-                newUnseenNotifications.forEach(n => seenNotificationIds.current.add(n.id));
-                
-                const latestNotification = newUnseenNotifications[0];
-                toast({
-                    title: `Nueva Notificación: ${latestNotification.type === 'reply' ? 'Respuesta a tu comentario' : 'Nueva Notificación'}`,
-                    description: `${latestNotification.fromUserName} ${latestNotification.type === 'reply' ? 'respondió a tu comentario en el perfil de' : 'ha interactuado contigo en'} ${latestNotification.figureName}.`
-                })
-            }
-
-            setNotifications(fetchedNotifications);
-            setUnreadCount(newUnreadCount);
+            return () => unsubscribe();
+        } else {
+             // Logic for anonymous users will go here (from localStorage)
+             // For now, just set loading to false.
             setIsLoading(false);
-
-        }, (error) => {
-            console.error("Error fetching notifications:", error);
-            setIsLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [currentUser, toast]);
+        }
+    }, [currentUser, firebaseUser, isAnonymous, toast]);
     
     const markAsRead = async () => {
-        if (!currentUser || unreadCount === 0) return;
+        if (isAnonymous || !currentUser || unreadCount === 0) return;
 
         const batch = writeBatch(db);
         const unreadNotifications = notifications.filter(n => !n.read);
@@ -129,8 +136,8 @@ export function NotificationBell() {
         }
     }
 
-    if (isAuthLoading || !currentUser || currentUser.isAnonymous) {
-        return null;
+    if (isAuthLoading) {
+        return null; // Don't show anything while auth state is resolving
     }
 
     return (
