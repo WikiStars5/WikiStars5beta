@@ -52,9 +52,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   const { toast } = useToast();
   
   const id = targetId || figureId;
-  const storageKey = targetType === 'figure'
-    ? `wikistars5-emotions-${firebaseUser?.uid}`
-    : `${targetType}s-emotions-${firebaseUser?.uid}`;
+  const storageKey = `wikistars5-emotions-${firebaseUser?.uid}`;
 
   const totalVotes = React.useMemo(() => {
       return Object.values(perceptionCounts || defaultPerceptionCountsData).reduce((sum, count) => sum + count, 0);
@@ -135,9 +133,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   
   const handleLocalStorageUpdate = (itemId: string, newEmotion: EmotionKey | null, userId: string) => {
       if (typeof window !== 'undefined') {
-        const key = targetType === 'figure'
-            ? `wikistars5-emotions-${userId}`
-            : `${targetType}s-emotions-${userId}`;
+        const key = storageKey;
             
         let storedVotes: GenericEmotionVote[] = JSON.parse(localStorage.getItem(key) || '[]');
         const voteIndex = storedVotes.findIndex(v => v.itemId === itemId);
@@ -147,8 +143,9 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
         } else { // Selecting or changing vote
           if (voteIndex > -1) {
             storedVotes[voteIndex].emotion = newEmotion;
+            storedVotes[voteIndex].figureId = figureId; // Ensure figureId is present
           } else {
-            storedVotes.push({ itemId, emotion: newEmotion });
+            storedVotes.push({ itemId, emotion: newEmotion, figureId: figureId });
           }
           
           if (!firebaseUser?.isAnonymous && targetType === 'figure') {
