@@ -142,6 +142,58 @@ export function NotificationBell() {
         }
     };
     
+    const groupedNotifications = React.useMemo(() => {
+        const groups: Record<Notification['type'], Notification[]> = {
+            reply: [],
+            like: [],
+            dislike: [],
+        };
+
+        notifications.forEach(notif => {
+            if (groups[notif.type]) {
+                groups[notif.type].push(notif);
+            }
+        });
+
+        return groups;
+    }, [notifications]);
+
+    const renderNotificationGroup = (notifs: Notification[]) => {
+        return notifs.map(notif => {
+            const Icon = NOTIFICATION_ICONS[notif.type] || Bell;
+            const iconColor = notif.type === 'like' ? 'text-blue-500' : notif.type === 'dislike' ? 'text-red-500' : 'text-muted-foreground';
+            return (
+                <DropdownMenuItem key={notif.id} asChild>
+                    <Link
+                        href={`/figures/${notif.figureId}?comment=${notif.commentId}#comment-${notif.replyId || notif.commentId}`}
+                        className="flex items-start gap-3 p-2 cursor-pointer w-full text-left"
+                    >
+                        <div className="relative mt-1">
+                            <Avatar className="h-9 w-9">
+                                <AvatarImage src={correctMalformedUrl(notif.fromUserAvatar)} alt={notif.fromUserName} />
+                                <AvatarFallback>{notif.fromUserName?.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                                <div className="absolute -bottom-1 -right-1 bg-background p-0.5 rounded-full">
+                                <Icon className={cn("h-4 w-4", iconColor)} />
+                            </div>
+                        </div>
+                        <div className="flex-grow">
+                            <p className="text-sm">
+                                {getNotificationText(notif)}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {notif.createdAt && timeSince(notif.createdAt.toDate())}
+                            </p>
+                        </div>
+                        {!notif.read && (
+                            <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
+                        )}
+                    </Link>
+                </DropdownMenuItem>
+            );
+        });
+    }
+
     return (
         <DropdownMenu onOpenChange={handleOpenChange}>
             <DropdownMenuTrigger asChild>
@@ -167,37 +219,16 @@ export function NotificationBell() {
                     <p className="text-center text-sm text-muted-foreground p-4">No tienes notificaciones.</p>
                 ) : (
                     <div className="max-h-96 overflow-y-auto">
-                        {notifications.map(notif => {
-                             const Icon = NOTIFICATION_ICONS[notif.type] || Bell;
-                             const iconColor = notif.type === 'like' ? 'text-blue-500' : notif.type === 'dislike' ? 'text-red-500' : 'text-muted-foreground';
-                             return (
-                                <DropdownMenuItem key={notif.id} asChild>
-                                    <Link
-                                        href={`/figures/${notif.figureId}?comment=${notif.commentId}#comment-${notif.replyId || notif.commentId}`}
-                                        className="flex items-start gap-3 p-2 cursor-pointer w-full text-left"
-                                    >
-                                        <div className="relative mt-1">
-                                            <Avatar className="h-9 w-9">
-                                                <AvatarImage src={correctMalformedUrl(notif.fromUserAvatar)} alt={notif.fromUserName} />
-                                                <AvatarFallback>{notif.fromUserName?.charAt(0).toUpperCase()}</AvatarFallback>
-                                            </Avatar>
-                                             <div className="absolute -bottom-1 -right-1 bg-background p-0.5 rounded-full">
-                                                <Icon className={cn("h-4 w-4", iconColor)} />
-                                            </div>
-                                        </div>
-                                        <div className="flex-grow">
-                                            <p className="text-sm">
-                                               {getNotificationText(notif)}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                {notif.createdAt && timeSince(notif.createdAt.toDate())}
-                                            </p>
-                                        </div>
-                                        {!notif.read && (
-                                            <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
-                                        )}
-                                    </Link>
-                                </DropdownMenuItem>
+                        {Object.entries(groupedNotifications).map(([type, notifs], index, arr) => {
+                            if (notifs.length === 0) return null;
+                            
+                            const isLastGroupWithContent = arr.slice(index + 1).every(group => group[1].length === 0);
+
+                            return (
+                                <React.Fragment key={type}>
+                                    {renderNotificationGroup(notifs)}
+                                    {!isLastGroupWithContent && <DropdownMenuSeparator />}
+                                </React.Fragment>
                             );
                         })}
                     </div>
