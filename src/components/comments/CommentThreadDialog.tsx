@@ -95,6 +95,7 @@ export function CommentThreadDialog() {
                     parentPath={commentPath.substring(0, commentPath.lastIndexOf('/'))}
                     highlightedCommentId={highlightedReplyId}
                     isLastCommentFromAuthor={latestCommentId === parentComment.id}
+                    startWithRepliesOpen={true}
                 />
             )}
              {!isLoading && !parentComment && (

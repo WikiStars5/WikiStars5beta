@@ -53,6 +53,7 @@ interface CommentItemProps {
     parentPath: string;
     highlightedCommentId?: string | null;
     isLastCommentFromAuthor: boolean;
+    startWithRepliesOpen?: boolean;
 }
 
 const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, parentPath: string, onReplySuccess: () => void }) => {
@@ -138,13 +139,14 @@ export function CommentItem({
     comment, 
     parentPath,
     highlightedCommentId,
-    isLastCommentFromAuthor
+    isLastCommentFromAuthor,
+    startWithRepliesOpen = false,
 }: CommentItemProps) {
     const { currentUser, firebaseUser, isAdmin, isLoading: isAuthLoading } = useAuth();
     const { toast } = useToast();
     const [replies, setReplies] = React.useState<CommentType[]>([]);
     const [isLoadingReplies, setIsLoadingReplies] = React.useState(false);
-    const [showReplies, setShowReplies] = React.useState(false);
+    const [showReplies, setShowReplies] = React.useState(startWithRepliesOpen);
     const [showReplyForm, setShowReplyForm] = React.useState(false);
     const [isProcessingLike, setIsProcessingLike] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
