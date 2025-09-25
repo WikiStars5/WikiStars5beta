@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -62,7 +61,6 @@ const StarRatingInput = ({ value, onChange, disabled }: { value: RatingValue | n
 
 interface CommentSectionProps {
   figure: Figure;
-  highlightedCommentId?: string | null;
   sortPreference: AttitudeKey | null;
 }
 
@@ -176,7 +174,7 @@ const INITIAL_COMMENTS_TO_SHOW = 5;
 
 type FilterType = 'all' | 'mine' | '5' | '4' | '3' | '2' | '1' | '0';
 
-export function CommentSection({ figure, highlightedCommentId, sortPreference }: CommentSectionProps) {
+export function CommentSection({ figure, sortPreference }: CommentSectionProps) {
   const [comments, setComments] = React.useState<CommentType[]>([]);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [showAllComments, setShowAllComments] = React.useState(false);
@@ -413,7 +411,6 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
                   figure={figure}
                   comment={comment}
                   parentPath={`figures/${figure.id}/comments`}
-                  highlightedCommentId={highlightedCommentId}
                   isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
                 />
               ))}
@@ -431,7 +428,6 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
                   figure={figure}
                   comment={comment}
                   parentPath={`figures/${figure.id}/comments`}
-                  highlightedCommentId={highlightedCommentId}
                   isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
                 />
               ))}
@@ -468,7 +464,6 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
                 figure={figure}
                 comment={comment}
                 parentPath={`figures/${figure.id}/comments`}
-                highlightedCommentId={highlightedCommentId}
                 isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
               />
             ))}

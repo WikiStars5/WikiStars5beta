@@ -14,14 +14,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
 import type { Notification } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
 import { timeSince } from '@/lib/utils';
-import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useCommentThread } from '@/hooks/use-comment-thread';
 
 export function NotificationBell() {
   const { firebaseUser, isLoading: isAuthLoading } = useAuth();
-  const { toast } = useToast();
+  const { openCommentThread } = useCommentThread();
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
   const [hasUnread, setHasUnread] = React.useState(false);
 
@@ -29,7 +28,6 @@ export function NotificationBell() {
     firebaseUser ? `wikistars5-notifications-${firebaseUser.uid}` : '', 
   [firebaseUser]);
 
-  // Load notifications from local storage on mount
   React.useEffect(() => {
     if (!storageKey) return;
     const stored = localStorage.getItem(storageKey);
@@ -40,12 +38,11 @@ export function NotificationBell() {
         setHasUnread(parsed.some(n => !n.isRead));
       } catch (e) {
         console.error("Error parsing notifications from storage:", e);
-        localStorage.removeItem(storageKey); // Clear corrupted data
+        localStorage.removeItem(storageKey);
       }
     }
   }, [storageKey]);
 
-  // Listen for custom event to update notifications in real-time across components
   React.useEffect(() => {
     const handleUpdate = () => {
       if (!storageKey) return;
@@ -83,22 +80,23 @@ export function NotificationBell() {
     setHasUnread(false);
   };
   
-  const handleNotificationClick = (notificationId: string) => {
+  const handleNotificationClick = (notif: Notification, e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    // Mark as read
     const updatedNotifications = notifications.map(n => 
-        n.id === notificationId ? { ...n, isRead: true } : n
+        n.id === notif.id ? { ...n, isRead: true } : n
     );
     setNotifications(updatedNotifications);
     setHasUnread(updatedNotifications.some(n => !n.isRead));
     localStorage.setItem(storageKey, JSON.stringify(updatedNotifications));
+
+    // Open the dialog
+    openCommentThread(`figures/${notif.figureId}/comments/${notif.commentId}`, notif.replyId ?? null);
   };
 
 
-  if (isAuthLoading) {
-    return null;
-  }
-  
-  // Now visible for all users, including anonymous
-  if (!firebaseUser) {
+  if (isAuthLoading || !firebaseUser) {
     return null;
   }
 
@@ -131,11 +129,10 @@ export function NotificationBell() {
         ) : (
           <div className="max-h-80 overflow-y-auto">
             {notifications.map((notif) => (
-              <DropdownMenuItem key={notif.id} asChild className="p-0">
-                <Link
-                  href={`/figures/${notif.figureId}#comment-${notif.replyId || notif.commentId}`}
-                  className="w-full flex items-start gap-3 py-2 px-3 cursor-pointer"
-                  onClick={() => handleNotificationClick(notif.id)}
+              <DropdownMenuItem key={notif.id} onSelect={(e) => e.preventDefault()} asChild className="p-0">
+                <button
+                  onClick={(e) => handleNotificationClick(notif, e)}
+                  className="w-full flex items-start gap-3 py-2 px-3 cursor-pointer text-left hover:bg-accent"
                 >
                     <div className="pt-1.5">
                        {!notif.isRead && <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />}
@@ -149,7 +146,7 @@ export function NotificationBell() {
                             {timeSince(new Date(notif.createdAt))}
                         </p>
                     </div>
-                </Link>
+                </button>
               </DropdownMenuItem>
             ))}
           </div>

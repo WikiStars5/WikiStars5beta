@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -55,17 +54,13 @@ const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const routeParams = useParams<{ id:string }>();
-  const searchParams = useSearchParams();
-  const router = useRouter();
   const id = routeParams?.id;
   const { firebaseUser } = useAuth();
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
-  const [highlightedCommentId, setHighlightedCommentId] = React.useState<string | null>(null);
   const [currentUserStreak, setCurrentUserStreak] = React.useState<number | null>(null);
   const [commentSortPreference, setCommentSortPreference] = React.useState<AttitudeKey | null>(null);
-  const commentSectionRef = React.useRef<HTMLDivElement>(null);
 
 
   // Add a real-time listener to the figure document
@@ -116,40 +111,6 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
       return () => unsubscribeStreak();
 
   }, [id, firebaseUser]);
-
-  // Scroll to hash element when comments are visible
-  React.useEffect(() => {
-    const hash = window.location.hash;
-    if (!hash.startsWith('#comment-') || !commentSectionRef.current) return;
-
-    const scrollToComment = () => {
-        const elementId = hash.substring(1);
-        const element = document.getElementById(elementId);
-        if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setHighlightedCommentId(elementId.replace('comment-', ''));
-        }
-    };
-
-    // Use an IntersectionObserver to wait until the comment section is visible
-    const observer = new IntersectionObserver(
-        (entries) => {
-            const entry = entries[0];
-            if (entry.isIntersecting) {
-                // Use a short timeout to ensure comments inside have rendered
-                setTimeout(scrollToComment, 100);
-                observer.disconnect(); // We only need to do this once
-            }
-        },
-        { threshold: 0.1 } // Trigger when 10% of the element is visible
-    );
-
-    observer.observe(commentSectionRef.current);
-
-    return () => {
-        observer.disconnect();
-    };
-}, [id, searchParams]); // Rerun when navigation changes
 
   const handleOpenProfileImage = (imageUrl: string) => {
     if (imageUrl) {
@@ -228,13 +189,10 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
         
         <StarRatingVote figure={figure} />
         
-        <div ref={commentSectionRef}>
-          <CommentSection 
-            figure={figure} 
-            highlightedCommentId={highlightedCommentId} 
-            sortPreference={commentSortPreference}
-          />
-        </div>
+        <CommentSection 
+          figure={figure} 
+          sortPreference={commentSortPreference}
+        />
         
         <RelatedProfiles figure={figure} />
         

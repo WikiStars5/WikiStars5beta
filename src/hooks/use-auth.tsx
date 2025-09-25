@@ -26,7 +26,7 @@ import { ADMIN_UID } from '@/config/admin';
 import { useRouter } from 'next/navigation';
 import { useLocalProfile } from './use-local-profile';
 import { useToast } from './use-toast';
-import Link from 'next/link';
+import { useCommentThread } from './use-comment-thread';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
+  const { openCommentThread } = useCommentThread();
   
   const { localProfile: initialLocalProfile, saveLocalProfile, clearLocalProfile } = useLocalProfile(firebaseUser?.uid);
   const [localProfile, setLocalProfile] = useState<LocalProfile | null>(initialLocalProfile);
@@ -97,13 +98,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                       title: `💬 Nueva respuesta en ${figureName}`,
                       description: `${reply.authorName} respondió a tu comentario.`,
                       action: (
-                        <Link href={`/figures/${reply.figureId}#comment-${docChange.doc.id}`}>
+                        <button
+                          onClick={() => openCommentThread(parentCommentRef.path, docChange.doc.id)}
+                          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                        >
                           Ver
-                        </Link>
+                        </button>
                       ),
                     });
                     
-                    // --- Local Notification Logic ---
                     const storageKey = `wikistars5-notifications-${firebaseUser.uid}`;
                     const newNotification: Notification = {
                       id: docChange.doc.id,
@@ -111,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                       figureId: reply.figureId,
                       figureName: figureName,
                       commentId: parentCommentRef.id,
-                      replyId: docChange.doc.id, // Store the ID of the reply itself
+                      replyId: docChange.doc.id,
                       replierName: reply.authorName,
                       text: reply.text,
                       isRead: false,
@@ -119,7 +122,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     };
                     const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
                     localStorage.setItem(storageKey, JSON.stringify([newNotification, ...existing]));
-                    // Dispatch custom event so the bell component can update
                     window.dispatchEvent(new CustomEvent('notifications-updated'));
                 }
             }
@@ -128,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [firebaseUser, toast, isLoading]);
+  }, [firebaseUser, toast, isLoading, openCommentThread]);
 
   const handleUser = useCallback(async (user: FirebaseUser | null) => {
     setIsLoading(true);
@@ -211,7 +213,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("No authenticated user found.");
     }
     
-    // For registered users, we update their profile in Firestore.
     const userDocRef = doc(db, 'users', auth.currentUser.uid);
     await setDoc(userDocRef, {
       username: username,
