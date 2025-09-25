@@ -87,31 +87,18 @@ export function NotificationBell() {
     const updatedNotifications = notifications.map(n => 
         n.id === notificationId ? { ...n, isRead: true } : n
     );
-    // No need to update state here, as the useEffect will catch the storage change
-    // when the component re-renders after navigation.
-    localStorage.setItem(storageKey, JSON.stringify(updatedNotifications));
-    // Immediately update hasUnread for a more responsive UI feel
+    setNotifications(updatedNotifications);
     setHasUnread(updatedNotifications.some(n => !n.isRead));
-  };
-
-  const handleOpenChange = (isOpen: boolean) => {
-    if(isOpen) {
-        // Find the first unread notification and mark it as read when opening.
-        const firstUnreadIndex = notifications.findIndex(n => !n.isRead);
-        if (firstUnreadIndex !== -1) {
-            // This is a more gradual way of marking as read.
-            // If you want to mark all as read on open, use handleMarkAllAsRead
-        }
-    }
+    localStorage.setItem(storageKey, JSON.stringify(updatedNotifications));
   };
 
 
-  if (isAuthLoading || !firebaseUser || firebaseUser.isAnonymous) {
+  if (isAuthLoading || !firebaseUser) {
     return null;
   }
 
   return (
-    <DropdownMenu onOpenChange={handleOpenChange}>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative text-foreground/70 hover:text-foreground">
           <Bell className="h-5 w-5" />
