@@ -98,6 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     const figureDoc = await getDoc(parentCommentRef.parent.parent);
                     const figureName = figureDoc.exists() ? figureDoc.data().name : 'un perfil';
                     
+                    const audio = new Audio('https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711');
+                    audio.play().catch(e => console.error("Error playing notification sound:", e));
+
                     toast({
                       title: `💬 Nueva respuesta en ${figureName}`,
                       description: `${reply.authorName} respondió a tu comentario.`,
