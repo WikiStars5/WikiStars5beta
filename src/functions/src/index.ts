@@ -32,8 +32,11 @@ const db = admin.firestore();
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
 export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{commentId}/replies/{replyId}", async (event) => {
-    // We only care about new documents being created.
+    // --- Step 1: Log function trigger ---
+    console.log(`[onReplyCreated] Triggered for replyId: ${event.params.replyId} in figureId: ${event.params.figureId}`);
+
     if (!event.data?.after.exists() || event.data.before.exists()) {
+        console.log("[onReplyCreated] Exiting: Not a new document creation.");
         return null;
     }
     
@@ -41,23 +44,32 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
     const parentCommentRef = event.data.after.ref.parent.parent;
 
     if (!parentCommentRef) {
-        console.error("Could not get parent comment reference.");
+        console.error("[onReplyCreated] FATAL: Could not get parent comment reference.");
         return null;
     }
-    
+
+    // --- Step 2: Log parent comment path ---
+    console.log(`[onReplyCreated] Parent comment path: ${parentCommentRef.path}`);
+
     try {
         const parentCommentSnap = await parentCommentRef.get();
         if (!parentCommentSnap.exists) {
-            console.error("Parent comment does not exist.");
+            console.error(`[onReplyCreated] ERROR: Parent comment at path ${parentCommentRef.path} does not exist.`);
             return null;
         }
         
         const parentCommentData = parentCommentSnap.data() as Comment;
+        // --- Step 3: Log parent comment data ---
+        console.log("[onReplyCreated] Parent comment data retrieved:", { authorId: parentCommentData.authorId, text: parentCommentData.text });
+        
         const targetUserId = parentCommentData.authorId;
         const replierUserId = replyData.authorId;
+
+        // --- Step 4: Log user IDs ---
+        console.log(`[onReplyCreated] Target User (to notify): ${targetUserId}, Replier User: ${replierUserId}`);
         
-        // Don't create a notification if a user replies to their own comment.
         if (targetUserId === replierUserId) {
+            console.log("[onReplyCreated] Exiting: User replied to their own comment.");
             return null;
         }
 
@@ -79,13 +91,17 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
             read: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
+        
+        // --- Step 5: Log before creating notification ---
+        console.log(`[onReplyCreated] Preparing to create notification for user: ${targetUserId}`);
 
         await db.collection(`users/${targetUserId}/notifications`).add(notification);
-        console.log(`Notification created for user ${targetUserId} for reply by ${replierUserId}`);
+        
+        console.log(`[onReplyCreated] SUCCESS: Notification created for user ${targetUserId} for reply by ${replierUserId}`);
         return { success: true };
 
     } catch (error) {
-        console.error("Error creating notification for reply:", error);
+        console.error("[onReplyCreated] CRITICAL ERROR in try-catch block:", error);
         return { success: false, error: (error as Error).message };
     }
 });
@@ -257,3 +273,9 @@ export const updateGlobalSettings = onCall(async (request) => {
         throw new HttpsError('internal', 'Could not update global settings.');
     }
 });
+
+// All user-related functions have been removed as the authentication system
+// has been disabled per user request.
+
+// All notification and trigger logic has been removed as the associated features
+// (comments, likes) have been disabled.
