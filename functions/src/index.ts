@@ -61,6 +61,12 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
             return;
         }
 
+        // Do not notify anonymous users
+        const targetUserSnap = await db.doc(`users/${targetUserId}`).get();
+        if (!targetUserSnap.exists() || targetUserSnap.data()?.isAnonymous) {
+            return;
+        }
+
         const figureId = event.params.figureId;
         const figureSnap = await db.doc(`figures/${figureId}`).get();
         const figureName = figureSnap.exists() ? (figureSnap.data() as Figure).name : "un perfil";

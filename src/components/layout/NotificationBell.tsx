@@ -53,11 +53,12 @@ export function NotificationBell() {
     const seenNotificationIds = React.useRef(new Set<string>());
 
     React.useEffect(() => {
-        if (!currentUser) {
+        if (!currentUser || currentUser.isAnonymous) {
             setIsLoading(false);
             return;
         }
 
+        setIsLoading(true);
         const notificationsRef = collection(db, `users/${currentUser.uid}/notifications`);
         const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(20));
 
@@ -128,7 +129,7 @@ export function NotificationBell() {
         }
     }
 
-    if (isAuthLoading || !currentUser) {
+    if (isAuthLoading || !currentUser || currentUser.isAnonymous) {
         return null;
     }
 
@@ -159,7 +160,7 @@ export function NotificationBell() {
                     ) : (
                         notifications.map((notif) => (
                            <DropdownMenuItem key={notif.id} asChild className="cursor-pointer">
-                             <Link href={`/figures/${notif.figureId}#comment-${notif.commentId}`}>
+                             <Link href={`/figures/${notif.figureId}?comment=${notif.commentId}#comment-${notif.commentId}`}>
                                <div className="flex items-start gap-3 w-full">
                                     <Avatar className="h-8 w-8 mt-1">
                                         <AvatarImage src={correctMalformedUrl(notif.fromUserAvatar)} />
@@ -167,9 +168,9 @@ export function NotificationBell() {
                                     </Avatar>
                                     <div className="flex-grow">
                                         <p className="text-sm">
-                                            <strong>{notif.fromUserName}</strong> respondió a tu comentario en el perfil de <strong>{notif.figureName}</strong>.
+                                            <strong>{notif.fromUserName}</strong> respondió a tu comentario en <strong>{notif.figureName}</strong>.
                                         </p>
-                                        <p className="text-xs text-muted-foreground">{timeSince(notif.createdAt.toDate())}</p>
+                                        <p className="text-xs text-muted-foreground">{notif.createdAt && notif.createdAt.toDate ? timeSince(notif.createdAt.toDate()) : 'hace un momento'}</p>
                                     </div>
                                     {!notif.read && <div className="h-2 w-2 rounded-full bg-primary mt-1 flex-shrink-0"></div>}
                                </div>
