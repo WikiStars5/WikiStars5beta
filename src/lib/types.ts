@@ -146,18 +146,19 @@ export interface Figure {
 }
 
 export interface Notification {
-  id: string; // Unique ID for the notification (e.g., a hash or timestamp)
-  type: 'reply';
+  id: string;
+  type: 'reply' | 'like' | 'dislike';
+  toUserId: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUserAvatar: string | null;
   figureId: string;
   figureName: string;
   commentId: string;
-  replyId: string;
-  fromUserName: string;
-  fromUserAvatar: string | null;
-  createdAt: string; // ISO string for easier handling in localStorage
+  replyId?: string;
   read: boolean;
+  createdAt: string; // ISO string to be compatible with both server and client
 }
-
 
 export interface Attitude {
   figureId: string;

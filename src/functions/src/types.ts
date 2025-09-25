@@ -1,5 +1,7 @@
 
 
+import type { FieldValue, Timestamp } from 'firebase-admin/firestore';
+
 export type EmotionKey = 'alegria' | 'envidia' | 'tristeza' | 'miedo' | 'desagrado' | 'furia';
 export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 
@@ -47,8 +49,26 @@ export interface Figure {
   attitudeCounts: Record<AttitudeKey, number>;
 
   createdAt?: string; 
-  status?: 'approved' | 'rejected' | 'pending'; 
+  status?: 'approved' | 'rejected' | 'pending' | 'pending_admin_review'; 
   isFeatured?: boolean;
+  creationMethod?: 'wikipedia' | 'famous_birthdays' | 'manual';
+  isCommunityVerified?: boolean;
+  manualVerificationExpiresAt?: Timestamp;
+}
+
+export interface Comment {
+  id: string;
+  figureId: string;
+  authorId: string;
+  authorName: string;
+  authorPhotoUrl?: string | null;
+  text: string;
+  createdAt: FieldValue;
+  likes: string[];
+  likeCount: number;
+  dislikes: string[];
+  dislikeCount: number;
+  replyCount: number;
 }
 
 export interface UserProfile {
@@ -66,6 +86,22 @@ export interface UserProfile {
   achievements?: string[];
   isAnonymous?: boolean;
 }
+
+export interface Notification {
+  id?: string;
+  type: 'reply' | 'like' | 'dislike';
+  toUserId: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUserAvatar: string | null;
+  figureId: string;
+  figureName: string;
+  commentId: string;
+  replyId?: string;
+  read: boolean;
+  createdAt: FieldValue | Timestamp;
+}
+
 
 export interface Country {
   name: string;

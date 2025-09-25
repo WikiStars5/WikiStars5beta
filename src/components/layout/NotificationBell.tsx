@@ -23,7 +23,10 @@ import { correctMalformedUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 function timeSince(isoDateString: string): string {
+    if (!isoDateString) return "";
     const date = new Date(isoDateString);
+    if (isNaN(date.getTime())) return "";
+
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
     if (seconds < 5) return "justo ahora";
     let interval = seconds / 31536000;
@@ -43,7 +46,7 @@ const NOTIFICATION_SOUND_URL = "https://firebasestorage.googleapis.com/v0/b/wiki
 
 
 export function NotificationBell() {
-    const { currentUser, firebaseUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
+    const { currentUser, isAnonymous, isLoading: isAuthLoading } = useAuth();
     const [notifications, setNotifications] = React.useState<Notification[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -52,34 +55,19 @@ export function NotificationBell() {
     // Using a ref to track seen notifications to avoid re-playing sound for the same ones.
     const seenNotificationIds = React.useRef(new Set<string>());
 
-    const storageKey = `wikistars5-notifications-${firebaseUser?.uid}`;
-
     React.useEffect(() => {
-        if (isAuthLoading) return;
-
-        setIsLoading(true);
-        let unsubscribe: (() => void) | undefined;
-
-        if (isAnonymous && firebaseUser) {
-            // Logic for anonymous users (from localStorage)
-            const localNotifications = JSON.parse(localStorage.getItem(storageKey) || '[]') as Notification[];
-            setNotifications(localNotifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        if (isAuthLoading || isAnonymous) {
             setIsLoading(false);
-            
-            // Periodically check local storage for updates.
-             const intervalId = setInterval(() => {
-                const updatedNotifications = JSON.parse(localStorage.getItem(storageKey) || '[]') as Notification[];
-                setNotifications(updatedNotifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-            }, 5000);
-            
-            unsubscribe = () => clearInterval(intervalId);
+            setNotifications([]); // Anonymous users don't get notifications from Firestore
+            return;
+        };
 
-        } else if (currentUser) {
-            // Logic for registered users (real-time from Firestore)
+        if (currentUser) {
+            setIsLoading(true);
             const notificationsRef = collection(db, `users/${currentUser.uid}/notifications`);
             const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(20));
 
-            unsubscribe = onSnapshot(q, (snapshot) => {
+            const unsubscribe = onSnapshot(q, (snapshot) => {
                 const fetchedNotifications: Notification[] = [];
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data();
@@ -95,16 +83,13 @@ export function NotificationBell() {
                     n => !n.read && !seenNotificationIds.current.has(n.id)
                 );
 
-                if (newUnseenNotifications.length > 0) {
+                if (isMenuOpen === false && newUnseenNotifications.length > 0 && document.hasFocus()) {
                     const audio = new Audio(NOTIFICATION_SOUND_URL);
                     audio.play().catch(e => console.error("Error playing notification sound:", e));
-                    newUnseenNotifications.forEach(n => seenNotificationIds.current.add(n.id!));
-                    
-                     const latestNotification = newUnseenNotifications[0];
-                    toast({
-                        title: `Nueva Notificación`,
-                        description: `${latestNotification.fromUserName} respondió a tu comentario en el perfil de ${latestNotification.figureName}.`
-                    })
+                }
+
+                if (newUnseenNotifications.length > 0) {
+                  newUnseenNotifications.forEach(n => seenNotificationIds.current.add(n.id!));
                 }
 
                 setNotifications(fetchedNotifications);
@@ -113,47 +98,42 @@ export function NotificationBell() {
                 console.error("Error fetching notifications:", error);
                 setIsLoading(false);
             });
+            
+            return () => unsubscribe();
         } else {
              setIsLoading(false);
+             setNotifications([]);
         }
-        
-        return () => unsubscribe && unsubscribe();
-    }, [currentUser, firebaseUser, isAnonymous, isAuthLoading, toast, storageKey]);
+    }, [currentUser, isAnonymous, isAuthLoading, isMenuOpen]);
     
     const unreadCount = notifications.filter(n => !n.read).length;
     
     const markAsRead = async () => {
-        if (unreadCount === 0) return;
+        if (unreadCount === 0 || !currentUser) return;
 
-        if (isAnonymous) {
-            const updatedNotifications = notifications.map(n => ({...n, read: true}));
-            localStorage.setItem(storageKey, JSON.stringify(updatedNotifications));
-            setNotifications(updatedNotifications);
-        } else if (currentUser) {
-            const batch = writeBatch(db);
-            notifications.forEach(notification => {
-                 if (!notification.read && notification.id) {
-                    const notifRef = doc(db, `users/${currentUser.uid}/notifications`, notification.id);
-                    batch.update(notifRef, { read: true });
-                }
-            });
-            try {
-                await batch.commit();
-            } catch (error) {
-                console.error("Error marking notifications as read:", error);
+        const batch = writeBatch(db);
+        notifications.forEach(notification => {
+             if (!notification.read && notification.id) {
+                const notifRef = doc(db, `users/${currentUser.uid}/notifications`, notification.id);
+                batch.update(notifRef, { read: true });
             }
+        });
+        try {
+            await batch.commit();
+        } catch (error) {
+            console.error("Error marking notifications as read:", error);
         }
     };
     
     const handleOpenChange = (open: boolean) => {
         setIsMenuOpen(open);
-        if (open) {
+        if (open && unreadCount > 0) {
             markAsRead();
         }
     }
 
-    if (isAuthLoading) {
-        return null; // Don't show anything while auth state is resolving
+    if (isAuthLoading || isAnonymous) {
+        return null;
     }
 
     return (

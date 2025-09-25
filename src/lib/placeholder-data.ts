@@ -637,79 +637,48 @@ export async function addComment(
 
 
 export async function addReply(
-  parentPath: string, // e.g., 'figures/some-id/comments/comment-id'
+  parentPath: string,
   figureId: string,
-  figureName: string,
   authorData: {
     id: string;
     name: string;
     photoUrl: string | null;
+    gender: string;
+    countryCode: string;
+    isAnonymous: boolean;
   },
-  text: string,
+  text: string
 ): Promise<string> {
-    let docRef;
-
+    const parentRef = doc(db, parentPath);
+    const repliesCollectionRef = collection(db, `${parentPath}/replies`);
+    const docRef = doc(repliesCollectionRef);
+  
+    const replyData = {
+      figureId: figureId,
+      authorId: authorData.id,
+      authorName: authorData.name,
+      authorPhotoUrl: authorData.photoUrl || null,
+      authorGender: authorData.gender,
+      authorCountryCode: authorData.countryCode,
+      text: text,
+      createdAt: serverTimestamp(),
+      likes: [],
+      likeCount: 0,
+      dislikes: [],
+      dislikeCount: 0,
+      replyCount: 0,
+      isAnonymous: authorData.isAnonymous,
+    };
+  
     await runTransaction(db, async (transaction) => {
-        // --- Phase 1: Read required documents ---
-        const parentRef = doc(db, parentPath);
-        const parentDoc = await transaction.get(parentRef);
-
-        if (!parentDoc.exists()) {
-            throw new Error("Parent document does not exist.");
-        }
-        const parentCommentData = parentDoc.data() as Comment;
-        const targetUserId = parentCommentData.authorId;
-
-        // --- Phase 2: Prepare new documents ---
-        const repliesCollectionRef = collection(db, `${parentPath}/replies`);
-        docRef = doc(repliesCollectionRef); // Create a new doc reference for the reply
-
-        const replyData = {
-            figureId: figureId,
-            authorId: authorData.id,
-            authorName: authorData.name,
-            authorPhotoUrl: authorData.photoUrl || null,
-            text: text,
-            createdAt: serverTimestamp(),
-            likes: [], likeCount: 0,
-            dislikes: [], dislikeCount: 0,
-            replyCount: 0,
-            isAnonymous: authorData.id.length > 20, // Heuristic for anonymous
-        };
-
-        const notification: Omit<Notification, 'id'> = {
-            type: 'reply',
-            figureId: figureId,
-            figureName: figureName,
-            commentId: parentRef.id,
-            replyId: docRef.id,
-            fromUserName: authorData.name,
-            fromUserAvatar: authorData.photoUrl || null,
-            createdAt: new Date().toISOString(),
-            read: false,
-        };
-
-        // --- Phase 3: Perform writes ---
-        transaction.set(docRef, replyData);
-        transaction.update(parentRef, { replyCount: (parentCommentData.replyCount || 0) + 1 });
-        
-        // --- Notification Logic ---
-        const targetUserDoc = await transaction.get(doc(db, 'users', targetUserId));
-        if (targetUserDoc.exists() && !targetUserDoc.data().isAnonymous) {
-            // Target is a registered user, create notification in Firestore
-            const notifRef = doc(collection(db, `users/${targetUserId}/notifications`));
-            transaction.set(notifRef, { ...notification });
-        } else {
-            // Target is anonymous user, notification must be handled on the client
-            // We can add the notification to a temporary client-side store or local storage
-            // This part is handled outside the transaction, by listening to changes
-        }
+      const parentDoc = await transaction.get(parentRef);
+      if (!parentDoc.exists()) {
+        throw new Error("Parent comment does not exist.");
+      }
+      transaction.set(docRef, replyData);
+      transaction.update(parentRef, { replyCount: (parentDoc.data().replyCount || 0) + 1 });
     });
-
-    if (!docRef) {
-        throw new Error("Failed to create reply document reference.");
-    }
-    
+  
     return docRef.id;
 }
 
