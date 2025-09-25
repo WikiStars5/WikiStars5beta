@@ -9,7 +9,7 @@ import {
   type ReactNode,
   useCallback,
 } from 'react';
-import { auth, db, callFirebaseFunction } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword,
@@ -20,11 +20,13 @@ import {
   type User as FirebaseUser,
   type AuthCredential
 } from 'firebase/auth';
-import type { UserProfile, LocalProfile } from '@/lib/types';
-import { doc, onSnapshot } from 'firebase/firestore';
+import type { UserProfile, LocalProfile, Comment } from '@/lib/types';
+import { doc, onSnapshot, getDoc, collectionGroup, query, where, Timestamp, onSnapshot as onCollectionSnapshot } from 'firebase/firestore';
 import { ADMIN_UID } from '@/config/admin';
 import { useRouter } from 'next/navigation';
 import { useLocalProfile } from './use-local-profile';
+import { useToast } from './use-toast';
+import Link from 'next/link';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -47,15 +49,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const { toast } = useToast();
   
-  // Integrate useLocalProfile directly into the AuthProvider
   const { localProfile: initialLocalProfile, saveLocalProfile, clearLocalProfile } = useLocalProfile(firebaseUser?.uid);
   const [localProfile, setLocalProfile] = useState<LocalProfile | null>(initialLocalProfile);
 
   useEffect(() => {
     setLocalProfile(initialLocalProfile);
   }, [initialLocalProfile]);
+  
+  // Global listener for new replies
+  useEffect(() => {
+      if (!firebaseUser) return;
 
+      const repliesQuery = query(
+          collectionGroup(db, 'replies'),
+          where('createdAt', '>', Timestamp.now())
+      );
+
+      const unsubscribe = onCollectionSnapshot(repliesQuery, async (snapshot) => {
+          for (const docChange of snapshot.docChanges()) {
+              if (docChange.type === 'added') {
+                  const reply = docChange.doc.data() as Comment;
+
+                  // Don't notify if user replies to their own comment
+                  if (reply.authorId === firebaseUser.uid) {
+                      continue;
+                  }
+
+                  // Path is figures/{figureId}/comments/{commentId}/replies/{replyId}
+                  const parentCommentRef = docChange.doc.ref.parent.parent;
+                  if (parentCommentRef) {
+                      const parentCommentSnap = await getDoc(parentCommentRef);
+                      if (parentCommentSnap.exists()) {
+                          const parentComment = parentCommentSnap.data() as Comment;
+                          if (parentComment.authorId === firebaseUser.uid) {
+                              const figureDoc = await getDoc(parentCommentRef.parent.parent);
+                              const figureName = figureDoc.exists() ? figureDoc.data().name : 'un perfil';
+                              
+                              toast({
+                                title: `💬 Nueva respuesta en ${figureName}`,
+                                description: `${reply.authorName} respondió a tu comentario.`,
+                                action: (
+                                  <Link href={`/figures/${reply.figureId}?comment=${parentCommentRef.id}#comment-${parentCommentRef.id}`}>
+                                    Ver
+                                  </Link>
+                                ),
+                              });
+                          }
+                      }
+                  }
+              }
+          }
+      });
+
+      return () => unsubscribe();
+  }, [firebaseUser, toast]);
 
   const handleUser = useCallback(async (user: FirebaseUser | null) => {
     setIsLoading(true);
@@ -117,24 +166,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const linkAccount = async (credential: AuthCredential, newUsername: string) => {
     if (!auth.currentUser) throw new Error("No user to link.");
     
-    const result = await linkWithCredential(auth.currentUser, credential);
-    const linkedUser = result.user;
-
-    await updateProfile(linkedUser, { displayName: newUsername });
+    await linkWithCredential(auth.currentUser, credential);
+    await updateProfile(auth.currentUser, { displayName: newUsername });
 
     if (localProfile) {
-        await callFirebaseFunction('updateUserProfile', {
-            username: newUsername,
-            countryCode: localProfile.countryCode,
-            gender: localProfile.gender,
-        });
+        await updateUserProfile(newUsername, localProfile.countryCode, localProfile.gender);
         clearLocalProfile();
-    } else {
-         await callFirebaseFunction('updateUserProfile', {
-            username: newUsername,
-            countryCode: '',
-            gender: '',
-        });
     }
   };
 
@@ -150,13 +187,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("No authenticated user found.");
     }
     
-    await updateProfile(auth.currentUser, { displayName: username });
+    // For registered users, we update their profile in Firestore.
+    const userDocRef = doc(db, 'users', auth.currentUser.uid);
+    await setDoc(userDocRef, {
+      username: username,
+      countryCode: countryCode,
+      gender: gender,
+    }, { merge: true });
     
-    await callFirebaseFunction('updateUserProfile', {
-      username,
-      countryCode,
-      gender
-    });
+    await updateProfile(auth.currentUser, { displayName: username });
   };
 
   const value = {

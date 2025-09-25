@@ -1,8 +1,8 @@
 
 
-import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue, YoutubeShort, TiktokVideo, InstagramPost, Notification } from './types';
+import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue, YoutubeShort, TiktokVideo, InstagramPost } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
-import { db, callFirebaseFunction } from './firebase';
+import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove,getCountFromServer } from "firebase/firestore";
 import { isSameDay, isYesterday } from 'date-fns';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
@@ -638,7 +638,6 @@ export async function addComment(
 
 export async function addReply(
   parentPath: string,
-  figure: Figure,
   authorData: {
     id: string;
     name: string;
@@ -648,13 +647,17 @@ export async function addReply(
     isAnonymous: boolean;
   },
   text: string
-): Promise<string> {
+): Promise<void> {
   const parentRef = doc(db, parentPath);
   const repliesCollectionRef = collection(db, `${parentPath}/replies`);
   const newReplyRef = doc(repliesCollectionRef);
 
-  const replyData = {
-    figureId: figure.id,
+  // Extract figureId from the parent path
+  const pathSegments = parentPath.split('/');
+  const figureId = pathSegments[1];
+
+  const replyData: Omit<Comment, 'id' | 'replies'> & { createdAt: any } = {
+    figureId: figureId,
     authorId: authorData.id,
     authorName: authorData.name,
     authorPhotoUrl: authorData.photoUrl || null,
@@ -668,6 +671,7 @@ export async function addReply(
     dislikeCount: 0,
     replyCount: 0,
     isAnonymous: authorData.isAnonymous,
+    authorCountry: '', // This can be enriched if needed
   };
 
   await runTransaction(db, async (transaction) => {
@@ -680,8 +684,6 @@ export async function addReply(
     // 2. Set the new reply document
     transaction.set(newReplyRef, replyData);
   });
-
-  return newReplyRef.id;
 }
 
 
@@ -1151,13 +1153,3 @@ export const voteForShortEmotion = (figureId: string, shortId: string, newEmotio
 
 export const voteForInstagramPostEmotion = (figureId: string, postId: string, newEmotion: EmotionKey | null, userId: string, previousEmotion: EmotionKey | null) =>
   voteForContentEmotion('instagramPosts', figureId, postId, newEmotion, userId, previousEmotion);
-
-
-// ---- Global Settings ----
-export async function getGlobalSettings() {
-    return callFirebaseFunction('getGlobalSettings');
-}
-
-export async function updateGlobalSettings(settings: any) {
-    return callFirebaseFunction('updateGlobalSettings', settings);
-}

@@ -8,7 +8,6 @@ export type AttitudeKey = 'neutral' | 'fan' | 'simp' | 'hater';
 export type RatingValue = 0 | 1 | 2 | 3 | 4 | 5;
 export type ProfileType = 'character' | 'media';
 export type CreationMethod = 'wikipedia' | 'famous_birthdays' | 'manual';
-export type NotificationType = 'reply' | 'like' | 'dislike';
 
 
 // Define specific media sub-categories
@@ -253,16 +252,4 @@ export interface Streak {
 export interface StreakWithProfile extends Streak {
     figureId?: string;
     userProfile: UserProfile | null;
-}
-
-export interface Notification {
-  id: string;
-  type: NotificationType;
-  figureId: string;
-  figureName: string;
-  commentId: string;
-  commentText: string;
-  actorName: string; // The user who performed the action (e.g., replied or liked)
-  createdAt: Timestamp;
-  isRead: boolean;
 }
