@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -46,6 +47,7 @@ export function NotificationBell() {
     const [unreadCount, setUnreadCount] = React.useState(0);
     const [isLoading, setIsLoading] = React.useState(true);
     const audioRef = React.useRef<HTMLAudioElement | null>(null);
+    const initialLoadDone = React.useRef(false);
 
     React.useEffect(() => {
         if (typeof Audio !== "undefined") {
@@ -71,9 +73,8 @@ export function NotificationBell() {
             let newUnreadCount = 0;
             
             snapshot.docChanges().forEach((change) => {
-                if (change.type === "added" && !change.doc.metadata.hasPendingWrites) {
-                     const isInitialLoad = notifications.length === 0;
-                     if (!isInitialLoad && audioRef.current) {
+                if (change.type === "added" && initialLoadDone.current) {
+                     if (audioRef.current) {
                         audioRef.current.play().catch(e => console.warn("Audio play failed:", e));
                      }
                 }
@@ -94,31 +95,30 @@ export function NotificationBell() {
             setNotifications(newNotifications);
             setUnreadCount(newUnreadCount);
             setIsLoading(false);
+            initialLoadDone.current = true;
         }, (error) => {
             console.error("Error fetching notifications:", error);
             setIsLoading(false);
         });
 
-        return () => unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        return () => {
+            unsubscribe();
+            initialLoadDone.current = false;
+        }
     }, [firebaseUser]);
 
     const handleOpenChange = async (open: boolean) => {
-        if (open && unreadCount > 0) {
+        if (open && unreadCount > 0 && firebaseUser) {
             const batch = writeBatch(db);
             const unreadNotifs = notifications.filter(n => !n.read);
             unreadNotifs.forEach(n => {
-                const notifRef = doc(db, `users/${firebaseUser!.uid}/notifications`, n.id);
+                const notifRef = doc(db, `users/${firebaseUser.uid}/notifications`, n.id);
                 batch.update(notifRef, { read: true });
             });
             await batch.commit();
         }
     };
     
-    if (!firebaseUser) {
-        return null;
-    }
-
     return (
         <DropdownMenu onOpenChange={handleOpenChange}>
             <DropdownMenuTrigger asChild>
@@ -159,7 +159,7 @@ export function NotificationBell() {
                                             <span className="font-semibold">{notif.fromUserName}</span> ha respondido a tu comentario en el perfil de <span className="font-semibold">{notif.figureName}</span>.
                                         </p>
                                         <p className="text-xs text-muted-foreground mt-1">
-                                            {timeSince(notif.createdAt.toDate())}
+                                            {notif.createdAt && timeSince(notif.createdAt.toDate())}
                                         </p>
                                     </div>
                                     {!notif.read && (

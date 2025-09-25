@@ -34,7 +34,7 @@ setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{commentId}/replies/{replyId}", async (event) => {
     // We only care about new documents being created.
     if (!event.data?.after.exists() || event.data.before.exists()) {
-        return;
+        return null;
     }
     
     const replyData = event.data.after.data() as Comment;
@@ -42,14 +42,14 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
 
     if (!parentCommentRef) {
         console.error("Could not get parent comment reference.");
-        return;
+        return null;
     }
     
     try {
         const parentCommentSnap = await parentCommentRef.get();
         if (!parentCommentSnap.exists) {
             console.error("Parent comment does not exist.");
-            return;
+            return null;
         }
         
         const parentCommentData = parentCommentSnap.data() as Comment;
@@ -58,7 +58,7 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
         
         // Don't create a notification if a user replies to their own comment.
         if (targetUserId === replierUserId) {
-            return;
+            return null;
         }
 
         const figureId = event.params.figureId;
@@ -82,9 +82,11 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
 
         await db.collection(`users/${targetUserId}/notifications`).add(notification);
         console.log(`Notification created for user ${targetUserId} for reply by ${replierUserId}`);
+        return { success: true };
 
     } catch (error) {
         console.error("Error creating notification for reply:", error);
+        return { success: false, error: (error as Error).message };
     }
 });
 
