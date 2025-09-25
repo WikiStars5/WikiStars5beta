@@ -674,31 +674,33 @@ export async function addReply(
     const parentDoc = await transaction.get(parentRef);
     if (!parentDoc.exists()) throw new Error("Parent comment does not exist.");
 
-    const parentData = parentDoc.data();
-    const targetUserId = parentData.authorId;
-
     // 1. Update parent comment's reply count
-    transaction.update(parentRef, { replyCount: (parentData.replyCount || 0) + 1 });
+    transaction.update(parentRef, { replyCount: (parentDoc.data().replyCount || 0) + 1 });
 
     // 2. Set the new reply document
     transaction.set(newReplyRef, replyData);
-    
-    // 3. Create notification for the original commenter
-    if (targetUserId && targetUserId !== authorData.id) {
-      const notificationRef = doc(collection(db, `users/${targetUserId}/notifications`));
-      const notificationData: Omit<Notification, 'id'> = {
-        type: 'reply',
-        figureId: figure.id,
-        figureName: figure.name,
-        commentId: parentRef.id,
-        commentText: parentData.text,
-        actorName: authorData.name,
-        createdAt: serverTimestamp() as Timestamp,
-        isRead: false,
-      };
-      transaction.set(notificationRef, notificationData);
-    }
   });
+
+  // 3. Create notification for the original commenter (outside transaction)
+  const parentDocData = (await getDoc(parentRef)).data();
+  if (parentDocData) {
+      const targetUserId = parentDocData.authorId;
+      if (targetUserId && targetUserId !== authorData.id) {
+          const notificationRef = doc(collection(db, `users/${targetUserId}/notifications`));
+          const notificationData: Omit<Notification, 'id'> = {
+              type: 'reply',
+              figureId: figure.id,
+              figureName: figure.name,
+              commentId: parentRef.id,
+              commentText: parentDocData.text,
+              actorName: authorData.name,
+              createdAt: Timestamp.now(), // Use client-side timestamp for immediate feedback
+              isRead: false,
+          };
+          await setDoc(notificationRef, notificationData);
+      }
+  }
+
 
   return newReplyRef.id;
 }

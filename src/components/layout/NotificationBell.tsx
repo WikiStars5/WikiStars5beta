@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -68,41 +69,40 @@ export function NotificationBell() {
     }
     
     const notifsRef = collection(db, `users/${firebaseUser.uid}/notifications`);
-    // FIX: Simplified the query to order by creation date only.
-    // The filtering for 'isRead' will be done on the client side.
-    // This avoids the need for a composite index in Firestore.
     const q = query(notifsRef, orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const allFetchedNotifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
-      
-      // Filter for unread notifications on the client
-      const unreadNotifs = allFetchedNotifs.filter(n => !n.isRead);
+        const newNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+        const newUnreadCount = newNotifications.filter(n => !n.isRead).length;
 
-      setNotifications(unreadNotifs);
-      const newUnreadCount = unreadNotifs.length;
-      setUnreadCount(newUnreadCount);
+        // Play sound only if a new unread notification has arrived
+        if (newUnreadCount > unreadCount && hasPlayedSound) {
+             audioRef.current?.play().catch(e => console.error("Error playing notification sound:", e));
+        }
+        
+        setNotifications(newNotifications);
+        setUnreadCount(newUnreadCount);
 
-      if (newUnreadCount > unreadCount && hasPlayedSound) {
-          audioRef.current?.play().catch(e => console.error("Error playing notification sound:", e));
-      }
-       if (newUnreadCount > 0) {
-        setHasPlayedSound(true);
-      }
+        // Allow sound to be played on subsequent notifications
+        if (!hasPlayedSound) {
+            setHasPlayedSound(true);
+        }
     });
 
     return () => unsubscribe();
-  }, [firebaseUser, unreadCount, hasPlayedSound]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firebaseUser]);
 
   const markAllAsRead = async () => {
     if (!firebaseUser || notifications.length === 0) return;
 
+    const unreadNotifs = notifications.filter(n => !n.isRead);
+    if (unreadNotifs.length === 0) return;
+
     const batch = writeBatch(db);
-    notifications.forEach(notif => {
-      if (!notif.isRead) {
-        const notifRef = doc(db, `users/${firebaseUser.uid}/notifications`, notif.id);
-        batch.update(notifRef, { isRead: true });
-      }
+    unreadNotifs.forEach(notif => {
+      const notifRef = doc(db, `users/${firebaseUser.uid}/notifications`, notif.id);
+      batch.update(notifRef, { isRead: true });
     });
     await batch.commit();
   };
