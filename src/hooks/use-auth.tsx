@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                       title: `💬 Nueva respuesta en ${figureName}`,
                       description: `${reply.authorName} respondió a tu comentario.`,
                       action: (
-                        <Link href={`/figures/${reply.figureId}?comment=${parentCommentRef.id}#comment-${docChange.doc.id}`}>
+                        <Link href={`/figures/${reply.figureId}#comment-${docChange.doc.id}`}>
                           Ver
                         </Link>
                       ),
