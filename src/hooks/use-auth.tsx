@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import {
@@ -62,13 +63,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!firebaseUser || isLoading) return;
 
-    // This query now listens for all changes in the 'replies' collection group, ordered by creation date.
+    // This query now listens for all changes in the 'replies' collection group.
     // By filtering for docChange.type === 'added' in the snapshot listener, we avoid needing a composite index
     // for a time-based 'where' clause, thus preventing the Firestore precondition error.
     const repliesQuery = query(
-        collectionGroup(db, 'replies'),
-        orderBy('createdAt', 'desc'),
-        limit(1) // Only interested in the very latest changes to minimize data transfer
+        collectionGroup(db, 'replies')
     );
 
     const unsubscribe = onCollectionSnapshot(repliesQuery, async (snapshot) => {
