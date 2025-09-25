@@ -22,10 +22,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { correctMalformedUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-function timeSince(isoDateString: string): string {
-    if (!isoDateString) return "";
-    const date = new Date(isoDateString);
-    if (isNaN(date.getTime())) return "";
+function timeSince(date: Date): string {
+    if (!date || isNaN(date.getTime())) return "";
 
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
     if (seconds < 5) return "justo ahora";
@@ -42,6 +40,7 @@ function timeSince(isoDateString: string): string {
     return `hace ${Math.floor(seconds)} seg`;
 }
 
+
 const NOTIFICATION_SOUND_URL = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711";
 
 
@@ -52,58 +51,60 @@ export function NotificationBell() {
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
     const { toast } = useToast();
     
-    // Using a ref to track seen notifications to avoid re-playing sound for the same ones.
     const seenNotificationIds = React.useRef(new Set<string>());
 
     React.useEffect(() => {
-        if (isAuthLoading || isAnonymous) {
-            setIsLoading(false);
-            setNotifications([]); // Anonymous users don't get notifications from Firestore
-            return;
-        };
-
-        if (currentUser) {
+        if (isAuthLoading) {
             setIsLoading(true);
-            const notificationsRef = collection(db, `users/${currentUser.uid}/notifications`);
-            const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(20));
-
-            const unsubscribe = onSnapshot(q, (snapshot) => {
-                const fetchedNotifications: Notification[] = [];
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const notification = {
-                        id: docSnap.id,
-                        ...data,
-                        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
-                    } as Notification;
-                    fetchedNotifications.push(notification);
-                });
-
-                const newUnseenNotifications = fetchedNotifications.filter(
-                    n => !n.read && !seenNotificationIds.current.has(n.id)
-                );
-
-                if (isMenuOpen === false && newUnseenNotifications.length > 0 && document.hasFocus()) {
-                    const audio = new Audio(NOTIFICATION_SOUND_URL);
-                    audio.play().catch(e => console.error("Error playing notification sound:", e));
-                }
-
-                if (newUnseenNotifications.length > 0) {
-                  newUnseenNotifications.forEach(n => seenNotificationIds.current.add(n.id!));
-                }
-
-                setNotifications(fetchedNotifications);
-                setIsLoading(false);
-            }, (error) => {
-                console.error("Error fetching notifications:", error);
-                setIsLoading(false);
-            });
-            
-            return () => unsubscribe();
-        } else {
-             setIsLoading(false);
-             setNotifications([]);
+            return;
         }
+
+        if (isAnonymous || !currentUser) {
+            // For now, anonymous users have no notifications.
+            // This section can be expanded later to use localStorage.
+            setIsLoading(false);
+            setNotifications([]);
+            return;
+        }
+
+        setIsLoading(true);
+        const notificationsRef = collection(db, `users/${currentUser.uid}/notifications`);
+        const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(20));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedNotifications: Notification[] = [];
+            snapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                const notification = {
+                    id: docSnap.id,
+                    ...data,
+                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date()
+                } as Notification;
+                fetchedNotifications.push(notification);
+            });
+
+            const newUnseenNotifications = fetchedNotifications.filter(
+                n => !n.read && !seenNotificationIds.current.has(n.id!)
+            );
+
+            if (isMenuOpen === false && newUnseenNotifications.length > 0 && document.hasFocus()) {
+                const audio = new Audio(NOTIFICATION_SOUND_URL);
+                audio.play().catch(e => console.error("Error playing notification sound:", e));
+            }
+
+            if (newUnseenNotifications.length > 0) {
+              newUnseenNotifications.forEach(n => seenNotificationIds.current.add(n.id!));
+            }
+
+            setNotifications(fetchedNotifications);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching notifications:", error);
+            setIsLoading(false);
+        });
+        
+        return () => unsubscribe();
+        
     }, [currentUser, isAnonymous, isAuthLoading, isMenuOpen]);
     
     const unreadCount = notifications.filter(n => !n.read).length;
@@ -132,8 +133,12 @@ export function NotificationBell() {
         }
     }
 
-    if (isAuthLoading || isAnonymous) {
-        return null;
+    if (isAuthLoading) {
+      return (
+        <Button variant="ghost" size="icon" className="relative text-foreground/70" disabled>
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </Button>
+      )
     }
 
     return (
@@ -141,7 +146,7 @@ export function NotificationBell() {
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative text-foreground/70 hover:text-foreground">
                     <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && (
+                    {unreadCount > 0 && !isAnonymous && (
                         <span className="absolute top-1 right-1.5 flex h-3 w-3">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
@@ -186,3 +191,5 @@ export function NotificationBell() {
         </DropdownMenu>
     );
 }
+
+    
