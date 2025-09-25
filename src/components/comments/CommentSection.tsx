@@ -350,32 +350,25 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
       );
   };
   
-  const filteredAndSortedComments = React.useMemo(() => {
-    let intermediateComments = [...comments];
+  const filteredComments = React.useMemo(() => {
+    if (activeFilter === 'all') return comments;
+    if (activeFilter === 'mine') return comments.filter(c => c.authorId === firebaseUser?.uid);
+    const ratingFilter = parseInt(activeFilter, 10);
+    return comments.filter(c => c.rating === ratingFilter);
+  }, [comments, activeFilter, firebaseUser?.uid]);
 
-    // 1. Filter
-    if (activeFilter !== 'all') {
-      intermediateComments = intermediateComments.filter(comment => {
-        if (activeFilter === 'mine') {
-          return comment.authorId === firebaseUser?.uid;
-        }
-        const ratingFilter = parseInt(activeFilter, 10);
-        return comment.rating === ratingFilter;
-      });
-    }
-
-    // 2. Sort
+  const sortedComments = React.useMemo(() => {
+    let tempComments = [...filteredComments];
     if (sortPreference === 'fan' || sortPreference === 'simp') {
-      return intermediateComments.sort((a, b) => (a.rating ?? 3) - (b.rating ?? 3));
+      return tempComments.sort((a, b) => (b.rating ?? 3) - (a.rating ?? 3));
     }
     if (sortPreference === 'hater') {
-      return intermediateComments.sort((a, b) => (b.rating ?? 3) - (a.rating ?? 3));
+      return tempComments.sort((a, b) => (a.rating ?? 3) - (b.rating ?? 3));
     }
-    // Default: neutral or no vote, sort by newest (already sorted by default)
-    return intermediateComments;
-  }, [comments, sortPreference, activeFilter, firebaseUser]);
+    return tempComments; // Default sort is by date (already done)
+  }, [filteredComments, sortPreference]);
 
-  const commentsToShow = showAllComments ? filteredAndSortedComments : filteredAndSortedComments.slice(0, INITIAL_COMMENTS_TO_SHOW);
+  const commentsToShow = showAllComments ? sortedComments : sortedComments.slice(0, INITIAL_COMMENTS_TO_SHOW);
   
   const latestUserCommentIds = React.useMemo(() => {
     const seenUsers = new Set<string>();
@@ -389,6 +382,100 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
     return latestIds;
   }, [comments]);
 
+
+  const renderFilteredComments = () => {
+    if (isLoadingComments) {
+      return (
+        <div className="flex justify-center items-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="ml-3 text-muted-foreground">Cargando comentarios...</p>
+        </div>
+      );
+    }
+    
+    if (activeFilter === 'mine') {
+        const answeredComments = sortedComments.filter(c => c.replyCount > 0);
+        const unansweredComments = sortedComments.filter(c => c.replyCount === 0);
+        
+        return (
+            <div className="space-y-6">
+                {answeredComments.length > 0 && (
+                    <div>
+                        <h3 className="text-lg font-semibold mb-3">Respondidas</h3>
+                        <div className="space-y-6">
+                            {answeredComments.map((comment) => (
+                              <CommentItem 
+                                key={comment.id}
+                                figure={figure}
+                                comment={comment}
+                                parentPath={`figures/${figure.id}/comments`}
+                                highlightedCommentId={highlightedCommentId}
+                                isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
+                              />
+                            ))}
+                        </div>
+                    </div>
+                )}
+                
+                {answeredComments.length > 0 && unansweredComments.length > 0 && <Separator className="my-6" />}
+                
+                {unansweredComments.length > 0 && (
+                    <div>
+                        <h3 className="text-lg font-semibold mb-3">No Respondidas</h3>
+                         <div className="space-y-6">
+                            {unansweredComments.map((comment) => (
+                              <CommentItem 
+                                key={comment.id}
+                                figure={figure}
+                                comment={comment}
+                                parentPath={`figures/${figure.id}/comments`}
+                                highlightedCommentId={highlightedCommentId}
+                                isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
+                              />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {answeredComments.length === 0 && unansweredComments.length === 0 && (
+                     <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
+                        Aún no has publicado ninguna opinión.
+                     </p>
+                )}
+            </div>
+        );
+    }
+
+    if (sortedComments.length > 0) {
+      return (
+          <>
+            {commentsToShow.map((comment) => (
+              <CommentItem 
+                key={comment.id}
+                figure={figure}
+                comment={comment}
+                parentPath={`figures/${figure.id}/comments`}
+                highlightedCommentId={highlightedCommentId}
+                isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
+              />
+            ))}
+            {sortedComments.length > INITIAL_COMMENTS_TO_SHOW && (
+                <div className="text-center pt-4">
+                  <Button variant="outline" onClick={() => setShowAllComments(!showAllComments)}>
+                      {showAllComments ? 'Mostrar menos comentarios' : `Ver los ${sortedComments.length - INITIAL_COMMENTS_TO_SHOW} comentarios restantes`}
+                  </Button>
+                </div>
+              )}
+          </>
+      );
+    }
+    
+    return (
+        <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
+          No hay opiniones que coincidan con este filtro.
+        </p>
+    );
+  }
 
   return (
     <>
@@ -421,36 +508,7 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
           </Tabs>
 
           <div className="space-y-6 pt-4">
-            {isLoadingComments ? (
-              <div className="flex justify-center items-center py-10">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-3 text-muted-foreground">Cargando comentarios...</p>
-              </div>
-            ) : filteredAndSortedComments.length > 0 ? (
-              <>
-                {commentsToShow.map((comment) => (
-                  <CommentItem 
-                    key={comment.id}
-                    figure={figure}
-                    comment={comment}
-                    parentPath={`figures/${figure.id}/comments`}
-                    highlightedCommentId={highlightedCommentId}
-                    isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
-                  />
-                ))}
-                {filteredAndSortedComments.length > INITIAL_COMMENTS_TO_SHOW && (
-                    <div className="text-center pt-4">
-                      <Button variant="outline" onClick={() => setShowAllComments(!showAllComments)}>
-                          {showAllComments ? 'Mostrar menos comentarios' : `Ver los ${filteredAndSortedComments.length - INITIAL_COMMENTS_TO_SHOW} comentarios restantes`}
-                      </Button>
-                    </div>
-                  )}
-              </>
-            ) : (
-              <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-md">
-                No hay opiniones que coincidan con este filtro.
-              </p>
-            )}
+            {renderFilteredComments()}
           </div>
         </CardContent>
       </Card>
