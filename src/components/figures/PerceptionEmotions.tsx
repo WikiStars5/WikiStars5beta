@@ -52,7 +52,9 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   const { toast } = useToast();
   
   const id = targetId || figureId;
-  const storageKey = `${targetType}s-emotions-${firebaseUser?.uid}`;
+  const storageKey = targetType === 'figure'
+    ? `wikistars5-emotions-${firebaseUser?.uid}`
+    : `${targetType}s-emotions-${firebaseUser?.uid}`;
 
   const totalVotes = React.useMemo(() => {
       return Object.values(perceptionCounts || defaultPerceptionCountsData).reduce((sum, count) => sum + count, 0);
@@ -61,9 +63,9 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   useEffect(() => {
     if (typeof window !== 'undefined' && firebaseUser && id) {
         const storedEmotions: GenericEmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        const userVote = storedEmotions.find(e => e.itemId === id);
-        if (userVote) {
-            setSelectedEmotion(userVote.emotion);
+        const vote = storedEmotions.find(e => e.itemId === id);
+        if (vote) {
+            setSelectedEmotion(vote.emotion);
         }
     }
   }, [id, firebaseUser, storageKey]);
@@ -133,16 +135,20 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   
   const handleLocalStorageUpdate = (itemId: string, newEmotion: EmotionKey | null, userId: string) => {
       if (typeof window !== 'undefined') {
-        let storedEmotions: GenericEmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        const existingVoteIndex = storedEmotions.findIndex(e => e.itemId === itemId);
+        const key = targetType === 'figure'
+            ? `wikistars5-emotions-${userId}`
+            : `${targetType}s-emotions-${userId}`;
+            
+        let storedVotes: GenericEmotionVote[] = JSON.parse(localStorage.getItem(key) || '[]');
+        const voteIndex = storedVotes.findIndex(v => v.itemId === itemId);
 
         if (newEmotion === null) { // Deselecting
-          if (existingVoteIndex > -1) storedEmotions.splice(existingVoteIndex, 1);
+          if (voteIndex > -1) storedVotes.splice(voteIndex, 1);
         } else { // Selecting or changing vote
-          if (existingVoteIndex > -1) {
-            storedEmotions[existingVoteIndex].emotion = newEmotion;
+          if (voteIndex > -1) {
+            storedVotes[voteIndex].emotion = newEmotion;
           } else {
-            storedEmotions.push({ itemId, emotion: newEmotion });
+            storedVotes.push({ itemId, emotion: newEmotion });
           }
           
           if (!firebaseUser?.isAnonymous && targetType === 'figure') {
@@ -151,7 +157,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
             });
           }
         }
-        localStorage.setItem(storageKey, JSON.stringify(storedEmotions));
+        localStorage.setItem(key, JSON.stringify(storedVotes));
         setSelectedEmotion(newEmotion);
       }
   };
