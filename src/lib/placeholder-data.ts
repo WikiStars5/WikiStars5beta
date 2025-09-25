@@ -475,32 +475,36 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
 
 
 export const getFiguresByIds = async (ids: string[]): Promise<Figure[]> => {
-  if (!ids || ids.length === 0) {
+  // Filter out any undefined, null, or empty string IDs before processing.
+  const validIds = ids.filter(id => typeof id === 'string' && id.trim() !== '');
+
+  if (validIds.length === 0) {
     return [];
   }
   
   const figures: Figure[] = [];
   const batches: string[][] = [];
   
-  for (let i = 0; i < ids.length; i += 30) {
-    batches.push(ids.slice(i, i + 30));
+  // Batch the valid IDs
+  for (let i = 0; i < validIds.length; i += 30) {
+    batches.push(validIds.slice(i, i + 30));
   }
 
   try {
     for (const batch of batches) {
-      if (batch.length > 0) {
-        const figuresCollectionRef = collection(db, "figures");
-        const q = query(figuresCollectionRef, where('__name__', 'in', batch));
-        const querySnapshot = await getDocs(q);
+      // The batch is guaranteed to have valid strings here.
+      const figuresCollectionRef = collection(db, "figures");
+      const q = query(figuresCollectionRef, where('__name__', 'in', batch));
+      const querySnapshot = await getDocs(q);
         
-        querySnapshot.forEach((docSnap) => {
-          figures.push(mapDocToFigure(docSnap));
-        });
-      }
+      querySnapshot.forEach((docSnap) => {
+        figures.push(mapDocToFigure(docSnap));
+      });
     }
     
     const figureMap = new Map(figures.map(f => [f.id, f]));
-    const sortedFigures = ids.map(id => figureMap.get(id)).filter((f): f is Figure => !!f);
+    // Sort based on the original validIds array to maintain order
+    const sortedFigures = validIds.map(id => figureMap.get(id)).filter((f): f is Figure => !!f);
 
     return sortedFigures;
   } catch (error) {
@@ -1154,4 +1158,5 @@ export const voteForShortEmotion = (figureId: string, shortId: string, newEmotio
 
 export const voteForInstagramPostEmotion = (figureId: string, postId: string, newEmotion: EmotionKey | null, userId: string, previousEmotion: EmotionKey | null) =>
   voteForContentEmotion('instagramPosts', figureId, postId, newEmotion, userId, previousEmotion);
+
 
