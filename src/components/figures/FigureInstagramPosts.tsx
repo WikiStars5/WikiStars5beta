@@ -1,10 +1,11 @@
 
+
 "use client";
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Camera, PlusCircle, Send, Loader2, Grid3x3, RectangleHorizontal, Smile, MessageSquare } from 'lucide-react';
-import type { Figure, InstagramPost, EmotionKey, GenericEmotionVote } from '@/lib/types';
+import type { Figure, InstagramPost, EmotionKey, GenericEmotionVote, EmotionVote } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../ui/dialog';
@@ -117,10 +118,12 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
   const [openCollapsibleId, setOpenCollapsibleId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-      const storageKey = `instagramPosts-emotions-${firebaseUser?.uid}`;
+      // Standardized storage key for user votes
+      const storageKey = `wikistars5-emotions-${firebaseUser?.uid}`;
       if (firebaseUser) {
-          const storedVotes: GenericEmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-          setUserVotes(new Map(storedVotes.map(v => [v.itemId, v.emotion])));
+          const storedVotes: EmotionVote[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          const itemVotes = storedVotes.filter(v => v.itemId !== undefined);
+          setUserVotes(new Map(itemVotes.map(v => [v.itemId, v.emotion])));
       }
   }, [firebaseUser]);
 
@@ -376,7 +379,7 @@ export function FigureInstagramPosts({ figure }: FigureInstagramPostsProps) {
                         <div className="p-2 border-t">
                              <PerceptionEmotions
                                 figureId={figure.id}
-                                figureName={figure.name}
+                                figureName={figure.name} // Pass figure name for consistency
                                 perceptionCounts={post.perceptionCounts || {}}
                                 targetType="instagram"
                                 targetId={post.id}

@@ -1134,9 +1134,12 @@ const voteForContentEmotion = async (
     transaction.update(contentDocRef, { perceptionCounts: newCounts });
   });
 
-  const storageKey = `${path}-emotions-${userId}`;
-  let storedVotes: { itemId: string, emotion: EmotionKey }[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-  const voteIndex = storedVotes.findIndex(v => v.itemId === contentId);
+  const storageKey = `wikistars5-emotions-${userId}`;
+  let storedVotes: { figureId: string; emotion: EmotionKey }[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  
+  // Find if there's a vote for this specific item (short or post)
+  // We'll use the figureId for simplicity, as we don't store individual item votes in profile activity
+  const voteIndex = storedVotes.findIndex(v => v.figureId === figureId);
 
   if (newEmotion === null) { // Deselecting
     if (voteIndex > -1) {
@@ -1146,7 +1149,7 @@ const voteForContentEmotion = async (
     if (voteIndex > -1) {
       storedVotes[voteIndex].emotion = newEmotion;
     } else {
-      storedVotes.push({ itemId: contentId, emotion: newEmotion });
+      storedVotes.push({ figureId: figureId, emotion: newEmotion });
     }
   }
   
@@ -1158,5 +1161,6 @@ export const voteForShortEmotion = (figureId: string, shortId: string, newEmotio
 
 export const voteForInstagramPostEmotion = (figureId: string, postId: string, newEmotion: EmotionKey | null, userId: string, previousEmotion: EmotionKey | null) =>
   voteForContentEmotion('instagramPosts', figureId, postId, newEmotion, userId, previousEmotion);
+
 
 
