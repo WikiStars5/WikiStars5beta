@@ -643,6 +643,7 @@ export async function addReply(
     name: string;
     photoUrl: string | null;
     gender: string;
+    country: string;
     countryCode: string;
     isAnonymous: boolean;
   },
@@ -661,8 +662,9 @@ export async function addReply(
     authorId: authorData.id,
     authorName: authorData.name,
     authorPhotoUrl: authorData.photoUrl || null,
-    authorGender: authorData.gender,
-    authorCountryCode: authorData.countryCode,
+    authorGender: authorData.gender || '',
+    authorCountry: authorData.country || '',
+    authorCountryCode: authorData.countryCode || '',
     text: text,
     createdAt: serverTimestamp(),
     likes: [],
@@ -671,7 +673,6 @@ export async function addReply(
     dislikeCount: 0,
     replyCount: 0,
     isAnonymous: authorData.isAnonymous,
-    authorCountry: '', // This can be enriched if needed
   };
 
   await runTransaction(db, async (transaction) => {
@@ -1153,3 +1154,4 @@ export const voteForShortEmotion = (figureId: string, shortId: string, newEmotio
 
 export const voteForInstagramPostEmotion = (figureId: string, postId: string, newEmotion: EmotionKey | null, userId: string, previousEmotion: EmotionKey | null) =>
   voteForContentEmotion('instagramPosts', figureId, postId, newEmotion, userId, previousEmotion);
+

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -91,7 +92,7 @@ const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, par
         };
 
         try {
-            await addReply(parentPath, figure, authorData, text);
+            await addReply(parentPath, authorData, text);
             toast({ title: "Respuesta enviada" });
             setText('');
             onReplySuccess();
@@ -480,3 +481,4 @@ export function CommentItem({
         </div>
     );
 }
+
