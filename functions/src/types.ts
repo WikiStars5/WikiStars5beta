@@ -88,6 +88,7 @@ export interface UserProfile {
 }
 
 export interface Notification {
+  id?: string;
   type: 'reply' | 'like' | 'dislike';
   toUserId: string;
   fromUserId: string;
@@ -98,8 +99,9 @@ export interface Notification {
   commentId: string;
   replyId?: string;
   read: boolean;
-  createdAt: FieldValue;
+  createdAt: FieldValue | Timestamp;
 }
+
 
 export interface Country {
   name: string;
