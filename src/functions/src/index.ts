@@ -58,7 +58,6 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
         
         // Don't create a notification if a user replies to their own comment.
         if (targetUserId === replierUserId) {
-            console.log(`User ${targetUserId} replied to their own comment. No notification needed.`);
             return;
         }
 
@@ -80,7 +79,6 @@ export const onReplyCreated = onDocumentWritten("figures/{figureId}/comments/{co
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
-        // Create the notification in the target user's subcollection, regardless of their status (registered or anonymous).
         await db.collection(`users/${targetUserId}/notifications`).add(notification);
         console.log(`Notification created for user ${targetUserId} for reply by ${replierUserId}`);
 
@@ -256,3 +254,11 @@ export const updateGlobalSettings = onCall(async (request) => {
         throw new HttpsError('internal', 'Could not update global settings.');
     }
 });
+
+// All user-related functions have been removed as the authentication system
+// has been disabled per user request.
+
+// All notification and trigger logic has been removed as the associated features
+// (comments, likes) have been disabled.
+
+    
