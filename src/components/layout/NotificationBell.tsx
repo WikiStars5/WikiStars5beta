@@ -17,6 +17,7 @@ import type { Notification } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { timeSince } from '@/lib/utils';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export function NotificationBell() {
   const { firebaseUser, isLoading: isAuthLoading } = useAuth();
@@ -33,9 +34,14 @@ export function NotificationBell() {
     if (!storageKey) return;
     const stored = localStorage.getItem(storageKey);
     if (stored) {
-      const parsed = JSON.parse(stored) as Notification[];
-      setNotifications(parsed);
-      setHasUnread(parsed.some(n => !n.isRead));
+      try {
+        const parsed = JSON.parse(stored) as Notification[];
+        setNotifications(parsed);
+        setHasUnread(parsed.some(n => !n.isRead));
+      } catch (e) {
+        console.error("Error parsing notifications from storage:", e);
+        localStorage.removeItem(storageKey); // Clear corrupted data
+      }
     }
   }, [storageKey]);
 
@@ -45,19 +51,23 @@ export function NotificationBell() {
       if (!storageKey) return;
       const stored = localStorage.getItem(storageKey);
       if (stored) {
-        const parsed = JSON.parse(stored) as Notification[];
-        setNotifications(parsed);
-        setHasUnread(parsed.some(n => !n.isRead));
+        try {
+          const parsed = JSON.parse(stored) as Notification[];
+          setNotifications(parsed);
+          setHasUnread(parsed.some(n => !n.isRead));
+        } catch (e) {
+            console.error("Error parsing notifications from storage on update:", e);
+        }
       }
     };
     window.addEventListener('notifications-updated', handleUpdate);
     return () => window.removeEventListener('notifications-updated', handleUpdate);
   }, [storageKey]);
 
-
   const handleMarkAllAsRead = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!storageKey) return;
+    e.preventDefault();
+    if (!storageKey || notifications.length === 0) return;
     const updated = notifications.map(n => ({ ...n, isRead: true }));
     localStorage.setItem(storageKey, JSON.stringify(updated));
     setNotifications(updated);
@@ -66,18 +76,42 @@ export function NotificationBell() {
 
   const handleClearAll = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     if (!storageKey) return;
     localStorage.removeItem(storageKey);
     setNotifications([]);
     setHasUnread(false);
   };
+  
+  const handleNotificationClick = (notificationId: string) => {
+    const updatedNotifications = notifications.map(n => 
+        n.id === notificationId ? { ...n, isRead: true } : n
+    );
+    // No need to update state here, as the useEffect will catch the storage change
+    // when the component re-renders after navigation.
+    localStorage.setItem(storageKey, JSON.stringify(updatedNotifications));
+    // Immediately update hasUnread for a more responsive UI feel
+    setHasUnread(updatedNotifications.some(n => !n.isRead));
+  };
 
-  if (isAuthLoading || !firebaseUser) {
+  const handleOpenChange = (isOpen: boolean) => {
+    if(isOpen) {
+        // Find the first unread notification and mark it as read when opening.
+        const firstUnreadIndex = notifications.findIndex(n => !n.isRead);
+        if (firstUnreadIndex !== -1) {
+            // This is a more gradual way of marking as read.
+            // If you want to mark all as read on open, use handleMarkAllAsRead
+        }
+    }
+  };
+
+
+  if (isAuthLoading || !firebaseUser || firebaseUser.isAnonymous) {
     return null;
   }
 
   return (
-    <DropdownMenu onOpenChange={(open) => { if(open) setHasUnread(false) }}>
+    <DropdownMenu onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative text-foreground/70 hover:text-foreground">
           <Bell className="h-5 w-5" />
@@ -93,7 +127,7 @@ export function NotificationBell() {
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex justify-between items-center">
           Notificaciones
-          {notifications.length > 0 && (
+          {hasUnread && (
             <Button variant="ghost" size="sm" className="text-xs h-auto py-1 px-2" onClick={handleMarkAllAsRead}>
               Marcar como leído
             </Button>
@@ -105,16 +139,19 @@ export function NotificationBell() {
         ) : (
           <div className="max-h-80 overflow-y-auto">
             {notifications.map((notif) => (
-              <DropdownMenuItem key={notif.id} asChild>
+              <DropdownMenuItem key={notif.id} asChild className="p-0">
                 <Link
-                  href={`/figures/${notif.figureId}?comment=${notif.commentId}#comment-${notif.commentId}`}
-                  className="flex items-start gap-3 py-2 px-3 cursor-pointer"
+                  href={`/figures/${notif.figureId}?comment=${notif.commentId}#comment-${notif.replyId || notif.commentId}`}
+                  className="w-full flex items-start gap-3 py-2 px-3 cursor-pointer"
+                  onClick={() => handleNotificationClick(notif.id)}
                 >
-                    {!notif.isRead && <div className="mt-1 h-2 w-2 rounded-full bg-primary flex-shrink-0" />}
+                    <div className="pt-1.5">
+                       {!notif.isRead && <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />}
+                    </div>
                     <MessageSquare className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
                     <div className="flex-grow">
-                        <p className="text-sm">
-                            <span className="font-semibold">{notif.replierName}</span> respondió a tu comentario en <span className="font-semibold">{notif.figureName}</span>.
+                        <p className={cn("text-sm", !notif.isRead && "font-semibold")}>
+                            <span className="font-bold">{notif.replierName}</span> respondió a tu comentario en <span className="font-bold">{notif.figureName}</span>.
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                             {timeSince(new Date(notif.createdAt))}
@@ -128,7 +165,7 @@ export function NotificationBell() {
         {notifications.length > 0 && (
             <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleClearAll} className="flex justify-center text-destructive focus:text-destructive focus:bg-destructive/10">
+                <DropdownMenuItem onSelect={handleClearAll} className="flex justify-center text-destructive focus:text-destructive focus:bg-destructive/10">
                     <Trash2 className="mr-2 h-4 w-4" /> Borrar Todo
                 </DropdownMenuItem>
             </>
