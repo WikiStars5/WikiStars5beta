@@ -87,7 +87,7 @@ export function CommentThreadDialog() {
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
             )}
-            {!isLoading && parentComment && figure && (
+            {!isLoading && parentComment && figure && commentPath && (
                 <CommentItem 
                     key={parentComment.id}
                     figure={figure}
