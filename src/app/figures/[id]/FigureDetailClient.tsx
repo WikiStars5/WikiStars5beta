@@ -67,20 +67,6 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const [commentSortPreference, setCommentSortPreference] = React.useState<AttitudeKey | null>(null);
 
 
-  // This effect will run once when the component mounts to check the URL.
-  React.useEffect(() => {
-    const commentIdFromUrl = searchParams.get('comment');
-    if (commentIdFromUrl) {
-        setHighlightedCommentId(commentIdFromUrl);
-        
-        // Clean up the URL after grabbing the comment ID.
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.delete('comment');
-        router.replace(newUrl.toString(), { scroll: false });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
-
   // Add a real-time listener to the figure document
   React.useEffect(() => {
     if (!id) return;
@@ -130,9 +116,8 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
   }, [id, firebaseUser]);
 
-  // Scroll to hash element if present in URL
+  // Scroll to hash element if present in URL. Re-runs if the URL changes.
   React.useEffect(() => {
-    // We wrap this in a setTimeout to ensure the DOM has had time to render all comments.
     const timer = setTimeout(() => {
       const hash = window.location.hash;
       if (hash && hash.startsWith('#comment-')) {
@@ -140,14 +125,13 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
         const element = document.getElementById(elementId);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          // Highlight the element (the CommentItem component handles this)
           setHighlightedCommentId(elementId.replace('comment-', ''));
         }
       }
-    }, 500); // 500ms delay to be safe
+    }, 500); 
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [id, searchParams]); // Dependency array ensures this runs on URL changes
 
   const handleOpenProfileImage = (imageUrl: string) => {
     if (imageUrl) {
