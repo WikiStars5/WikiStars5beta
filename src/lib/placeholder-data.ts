@@ -1160,3 +1160,9 @@ export async function getGlobalSettings() {
 export async function updateGlobalSettings(settings: any) {
     return callFirebaseFunction('updateGlobalSettings', settings);
 }
+
+// All user-related functions have been removed as the authentication system
+// has been disabled per user request.
+
+// All notification and trigger logic has been removed as the associated features
+// (comments, likes) have been disabled.

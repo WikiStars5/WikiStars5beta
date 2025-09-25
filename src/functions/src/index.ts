@@ -35,33 +35,36 @@ setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 export const createNotificationOnReply = onDocumentWritten("figures/{figureId}/comments/{commentId}/replies/{replyId}", async (event): Promise<void> => {
     // Exit if there is no data (document was deleted)
     if (!event.data?.after.exists()) {
+        console.log("Reply document deleted. No notification to create.");
         return;
     }
 
     const replyData = event.data.after.data() as Comment;
     const replierUserId = replyData.authorId;
-    const figureId = event.params.figureId;
-    const commentId = event.params.commentId;
-    const replyId = event.params.replyId;
+    const { figureId, commentId, replyId } = event.params;
     
-    console.log(`Reply created by ${replierUserId} on comment ${commentId}.`);
+    console.log(`[START] Reply created by ${replierUserId} in comment ${commentId}. Reply ID: ${replyId}.`);
 
     try {
         const parentCommentPath = `figures/${figureId}/comments/${commentId}`;
         const parentCommentRef = db.doc(parentCommentPath);
+        
+        console.log(`Fetching parent comment at: ${parentCommentPath}`);
         const parentCommentSnap = await parentCommentRef.get();
 
         if (!parentCommentSnap.exists) {
-            console.error(`Parent comment at path ${parentCommentPath} does not exist.`);
+            console.error(`[ERROR] Parent comment at path ${parentCommentPath} does not exist. Cannot create notification.`);
             return;
         }
 
         const parentCommentData = parentCommentSnap.data() as Comment;
         const targetUserId = parentCommentData.authorId;
 
+        console.log(`Parent comment author (target): ${targetUserId}. Replier: ${replierUserId}.`);
+
         // Do not notify user if they are replying to themselves
         if (targetUserId === replierUserId) {
-            console.log("User replied to themselves. No notification sent.");
+            console.log("[END] User replied to themselves. No notification sent.");
             return;
         }
 
@@ -69,8 +72,9 @@ export const createNotificationOnReply = onDocumentWritten("figures/{figureId}/c
         const figureRef = db.doc(`figures/${figureId}`);
         const figureSnap = await figureRef.get();
         const figureName = figureSnap.exists() ? (figureSnap.data() as Figure).name : "un perfil";
+        console.log(`Figure name for notification: ${figureName}`);
 
-        const notification: Omit<Notification, 'id'> = {
+        const notificationPayload: Omit<Notification, 'id'> = {
             type: 'reply',
             toUserId: targetUserId,
             fromUserId: replierUserId,
@@ -85,12 +89,14 @@ export const createNotificationOnReply = onDocumentWritten("figures/{figureId}/c
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
-        await db.collection(`users/${targetUserId}/notifications`).add(notification);
+        const notificationRef = db.collection(`users/${targetUserId}/notifications`);
+        console.log(`[SUCCESS] Creating notification for user ${targetUserId} in collection users/${targetUserId}/notifications.`);
+        await notificationRef.add(notificationPayload);
         
-        console.log(`Successfully created notification for user ${targetUserId}.`);
+        console.log(`[END] Successfully created notification for user ${targetUserId}.`);
 
     } catch (error) {
-        console.error("Error creating notification on reply:", error);
+        console.error("[FATAL ERROR] in createNotificationOnReply:", error);
     }
 });
 
