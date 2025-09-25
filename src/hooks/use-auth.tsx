@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                       title: `💬 Nueva respuesta en ${figureName}`,
                       description: `${reply.authorName} respondió a tu comentario.`,
                       action: (
-                        <Link href={`/figures/${reply.figureId}?comment=${parentCommentRef.id}#comment-${parentCommentRef.id}`}>
+                        <Link href={`/figures/${reply.figureId}?comment=${parentCommentRef.id}#comment-${docChange.doc.id}`}>
                           Ver
                         </Link>
                       ),
@@ -111,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                       figureId: reply.figureId,
                       figureName: figureName,
                       commentId: parentCommentRef.id,
+                      replyId: docChange.doc.id, // Store the ID of the reply itself
                       replierName: reply.authorName,
                       text: reply.text,
                       isRead: false,

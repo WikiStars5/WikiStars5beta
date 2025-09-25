@@ -93,7 +93,12 @@ export function NotificationBell() {
   };
 
 
-  if (isAuthLoading || !firebaseUser) {
+  if (isAuthLoading) {
+    return null;
+  }
+  
+  // Now visible for all users, including anonymous
+  if (!firebaseUser) {
     return null;
   }
 
@@ -128,7 +133,7 @@ export function NotificationBell() {
             {notifications.map((notif) => (
               <DropdownMenuItem key={notif.id} asChild className="p-0">
                 <Link
-                  href={`/figures/${notif.figureId}?comment=${notif.commentId}#comment-${notif.replyId || notif.commentId}`}
+                  href={`/figures/${notif.figureId}#comment-${notif.replyId || notif.commentId}`}
                   className="w-full flex items-start gap-3 py-2 px-3 cursor-pointer"
                   onClick={() => handleNotificationClick(notif.id)}
                 >

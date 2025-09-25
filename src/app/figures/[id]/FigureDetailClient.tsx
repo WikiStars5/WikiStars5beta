@@ -132,13 +132,16 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
   // Scroll to hash element if present in URL
   React.useEffect(() => {
-    // We wrap this in a setTimeout to ensure the DOM has had time to render the comments.
+    // We wrap this in a setTimeout to ensure the DOM has had time to render all comments.
     const timer = setTimeout(() => {
-      if (window.location.hash) {
-        const id = window.location.hash.substring(1); // remove #
-        const element = document.getElementById(id);
+      const hash = window.location.hash;
+      if (hash && hash.startsWith('#comment-')) {
+        const elementId = hash.substring(1);
+        const element = document.getElementById(elementId);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Highlight the element (the CommentItem component handles this)
+          setHighlightedCommentId(elementId.replace('comment-', ''));
         }
       }
     }, 500); // 500ms delay to be safe
