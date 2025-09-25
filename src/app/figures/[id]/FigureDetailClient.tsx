@@ -65,6 +65,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const [highlightedCommentId, setHighlightedCommentId] = React.useState<string | null>(null);
   const [currentUserStreak, setCurrentUserStreak] = React.useState<number | null>(null);
   const [commentSortPreference, setCommentSortPreference] = React.useState<AttitudeKey | null>(null);
+  const commentSectionRef = React.useRef<HTMLDivElement>(null);
 
 
   // Add a real-time listener to the figure document
@@ -116,22 +117,39 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
   }, [id, firebaseUser]);
 
-  // Scroll to hash element if present in URL. Re-runs if the URL changes.
+  // Scroll to hash element when comments are visible
   React.useEffect(() => {
-    const timer = setTimeout(() => {
-      const hash = window.location.hash;
-      if (hash && hash.startsWith('#comment-')) {
+    const hash = window.location.hash;
+    if (!hash.startsWith('#comment-') || !commentSectionRef.current) return;
+
+    const scrollToComment = () => {
         const elementId = hash.substring(1);
         const element = document.getElementById(elementId);
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          setHighlightedCommentId(elementId.replace('comment-', ''));
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setHighlightedCommentId(elementId.replace('comment-', ''));
         }
-      }
-    }, 500); 
+    };
 
-    return () => clearTimeout(timer);
-  }, [id, searchParams]); // Dependency array ensures this runs on URL changes
+    // Use an IntersectionObserver to wait until the comment section is visible
+    const observer = new IntersectionObserver(
+        (entries) => {
+            const entry = entries[0];
+            if (entry.isIntersecting) {
+                // Use a short timeout to ensure comments inside have rendered
+                setTimeout(scrollToComment, 100);
+                observer.disconnect(); // We only need to do this once
+            }
+        },
+        { threshold: 0.1 } // Trigger when 10% of the element is visible
+    );
+
+    observer.observe(commentSectionRef.current);
+
+    return () => {
+        observer.disconnect();
+    };
+}, [id, searchParams]); // Rerun when navigation changes
 
   const handleOpenProfileImage = (imageUrl: string) => {
     if (imageUrl) {
@@ -210,11 +228,13 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
         
         <StarRatingVote figure={figure} />
         
-        <CommentSection 
-          figure={figure} 
-          highlightedCommentId={highlightedCommentId} 
-          sortPreference={commentSortPreference}
-        />
+        <div ref={commentSectionRef}>
+          <CommentSection 
+            figure={figure} 
+            highlightedCommentId={highlightedCommentId} 
+            sortPreference={commentSortPreference}
+          />
+        </div>
         
         <RelatedProfiles figure={figure} />
         
