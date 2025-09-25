@@ -230,6 +230,19 @@ export interface Comment {
   isAnonymous: boolean;
 }
 
+export interface Notification {
+  id: string; // Unique ID for the notification
+  type: 'reply' | 'like' | 'dislike';
+  figureId: string;
+  figureName: string;
+  commentId: string; // The ID of the comment that was replied to/liked
+  replierName?: string; // Who made the reply
+  reactorName?: string; // Who liked/disliked
+  text: string; // Snippet of the reply or a generic message
+  isRead: boolean;
+  createdAt: string; // ISO string date
+}
+
 export interface LocalUserStreak {
     figureId: string;
     currentStreak: number;

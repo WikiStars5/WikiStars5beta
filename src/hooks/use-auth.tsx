@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import {
@@ -21,7 +20,7 @@ import {
   type User as FirebaseUser,
   type AuthCredential
 } from 'firebase/auth';
-import type { UserProfile, LocalProfile, Comment } from '@/lib/types';
+import type { UserProfile, LocalProfile, Comment, Notification } from '@/lib/types';
 import { doc, onSnapshot, getDoc, collectionGroup, query, where, Timestamp, onSnapshot as onCollectionSnapshot, orderBy, limit } from 'firebase/firestore';
 import { ADMIN_UID } from '@/config/admin';
 import { useRouter } from 'next/navigation';
@@ -62,33 +61,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Global listener for new replies
   useEffect(() => {
     if (!firebaseUser || isLoading) return;
-
-    // This query now listens for all changes in the 'replies' collection group.
-    // By filtering for docChange.type === 'added' in the snapshot listener, we avoid needing a composite index
-    // for a time-based 'where' clause, thus preventing the Firestore precondition error.
+    
     const repliesQuery = query(
         collectionGroup(db, 'replies')
     );
 
     const unsubscribe = onCollectionSnapshot(repliesQuery, async (snapshot) => {
-      // We only care about newly added documents
       const newReplies = snapshot.docChanges().filter(change => change.type === 'added');
 
       for (const docChange of newReplies) {
         const reply = docChange.doc.data() as Comment;
         
-        // Ensure reply is recent to avoid notifying for old docs on first load
         const replyTime = (reply.createdAt as Timestamp)?.toDate();
-        if (!replyTime || (new Date().getTime() - replyTime.getTime()) > 60000) { // Older than 60s
+        if (!replyTime || (new Date().getTime() - replyTime.getTime()) > 60000) { 
             continue;
         }
 
-        // Don't notify if user replies to their own comment
         if (reply.authorId === firebaseUser.uid) {
             continue;
         }
 
-        // Path is figures/{figureId}/comments/{commentId}/replies/{replyId}
         const parentCommentRef = docChange.doc.ref.parent.parent;
         if (parentCommentRef) {
             const parentCommentSnap = await getDoc(parentCommentRef);
@@ -110,6 +102,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         </Link>
                       ),
                     });
+                    
+                    // --- Local Notification Logic ---
+                    const storageKey = `wikistars5-notifications-${firebaseUser.uid}`;
+                    const newNotification: Notification = {
+                      id: docChange.doc.id,
+                      type: 'reply',
+                      figureId: reply.figureId,
+                      figureName: figureName,
+                      commentId: parentCommentRef.id,
+                      replierName: reply.authorName,
+                      text: reply.text,
+                      isRead: false,
+                      createdAt: new Date().toISOString(),
+                    };
+                    const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                    localStorage.setItem(storageKey, JSON.stringify([newNotification, ...existing]));
+                    // Dispatch custom event so the bell component can update
+                    window.dispatchEvent(new CustomEvent('notifications-updated'));
                 }
             }
         }
