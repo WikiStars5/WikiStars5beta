@@ -7,6 +7,7 @@ import { SearchBar } from '@/components/shared/SearchBar';
 import { InstallPwaButton } from './InstallPwaButton';
 import { PrimaryNav } from './PrimaryNav';
 import { UserNav } from './UserNav';
+import { NotificationBell } from './NotificationBell';
 
 export function Header() {
 
@@ -28,6 +29,7 @@ export function Header() {
 
         {/* Right Section */}
         <div className="flex items-center gap-1 md:gap-2 lg:gap-3">
+          <NotificationBell />
           <UserNav />
           <div className="hidden md:flex items-center">
             <InstallPwaButton />
