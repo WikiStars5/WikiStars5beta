@@ -79,6 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
   
+  const isAnonymous = firebaseUser ? firebaseUser.isAnonymous : true;
+
   const requestNotificationPermission = useCallback(async () => {
     if (!firebaseUser || isAnonymous || typeof window === 'undefined' || !('Notification' in window)) return;
   
@@ -250,7 +252,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [firebaseUser]);
 
   const isAdmin = currentUser?.role === 'admin' && currentUser?.uid === ADMIN_UID;
-  const isAnonymous = firebaseUser ? firebaseUser.isAnonymous : true;
 
   const signIn = (email: string, pass: string) => {
     return signInWithEmailAndPassword(auth, email, pass);
