@@ -146,8 +146,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               createdAt: new Date().toISOString(),
             };
             const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
-            localStorage.setItem(storageKey, JSON.stringify([newNotification, ...existing]));
-            window.dispatchEvent(new CustomEvent('notifications-updated'));
+            
+            // Prevent adding duplicate notifications
+            if (!existing.some((n: Notification) => n.id === newNotification.id)) {
+                localStorage.setItem(storageKey, JSON.stringify([newNotification, ...existing]));
+                window.dispatchEvent(new CustomEvent('notifications-updated'));
+            }
         }
       }
     });
