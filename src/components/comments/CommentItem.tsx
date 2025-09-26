@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 const TRUNCATE_LENGTH = 280; // Characters to show before truncating
-const MAX_REPLY_DEPTH = 4; // Set a maximum nesting level for replies
+const MAX_REPLY_DEPTH = 3; // Set a maximum nesting level for replies
 
 function timeSince(date: Date): string {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
