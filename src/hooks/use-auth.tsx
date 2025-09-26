@@ -49,6 +49,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const findRootCommentRef = (ref: DocumentReference): DocumentReference | null => {
     // A root comment's path is `figures/{figureId}/comments/{commentId}` which has 4 segments.
     // A reply's path is longer, e.g., `.../comments/{commentId}/replies/{replyId}` (6 segments).
+    if (!ref.parent) return null;
     const segments = ref.path.split('/');
     if (segments.length === 4 && segments[2] === 'comments') {
         return ref;
@@ -117,7 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const figureName = figureDoc.exists() ? figureDoc.data().name : 'un perfil';
             
             const audio = new Audio('https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711');
-            audio.play().catch(e => console.error("Error playing notification sound:", e));
+            // Try to play sound, but catch the "NotAllowedError" silently.
+            audio.play().catch(error => {
+                if (error.name !== 'NotAllowedError') {
+                    console.error("Error playing notification sound:", error);
+                }
+            });
 
             toast({
               title: `💬 Nueva respuesta en ${figureName}`,
@@ -133,8 +139,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
             
             const storageKey = `wikistars5-notifications-${firebaseUser.uid}`;
+            const uniqueId = `${docChange.doc.id}-${new Date().getTime()}`; // Create a truly unique ID
             const newNotification: Notification = {
-              id: `${docChange.doc.id}-${new Date().getTime()}`, // Create a truly unique ID
+              id: uniqueId,
               type: 'reply',
               figureId: reply.figureId,
               figureName: figureName,
