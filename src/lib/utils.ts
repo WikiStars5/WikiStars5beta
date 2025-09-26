@@ -1,6 +1,7 @@
 
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { type DocumentReference } from 'firebase/firestore';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -42,3 +43,19 @@ export function timeSince(date: Date): string {
     if (interval > 1) return `hace ${Math.floor(interval)} min`;
     return `hace ${Math.floor(seconds)} seg`;
 }
+
+// Helper function to recursively find the root comment reference
+export const findRootCommentRef = (ref: DocumentReference): DocumentReference | null => {
+    // A root comment's path is `figures/{figureId}/comments/{commentId}` which has 4 segments.
+    // A reply's path is longer, e.g., `.../comments/{commentId}/replies/{replyId}` (6 segments).
+    if (!ref.parent) return null;
+    const segments = ref.path.split('/');
+    if (segments.length === 4 && segments[2] === 'comments') {
+        return ref;
+    }
+    // If it's a reply or deeper, its parent's parent is the document it's a reply to.
+    if (ref.parent.parent) {
+        return findRootCommentRef(ref.parent.parent);
+    }
+    return null;
+};

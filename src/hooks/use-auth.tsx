@@ -21,13 +21,15 @@ import {
   type User as FirebaseUser,
   type AuthCredential
 } from 'firebase/auth';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import type { UserProfile, LocalProfile, Comment, Notification } from '@/lib/types';
-import { doc, onSnapshot, getDoc, collectionGroup, query, where, Timestamp, onSnapshot as onCollectionSnapshot, orderBy, limit, DocumentReference } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, setDoc, collectionGroup, query, Timestamp, onSnapshot as onCollectionSnapshot, updateDoc } from 'firebase/firestore';
 import { ADMIN_UID } from '@/config/admin';
 import { useRouter } from 'next/navigation';
 import { useLocalProfile } from './use-local-profile';
 import { useToast } from './use-toast';
 import { useCommentThread } from './use-comment-thread';
+import { findRootCommentRef } from '@/lib/utils';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -37,6 +39,8 @@ interface AuthContextType {
   isAdmin: boolean;
   isLoading: boolean;
   isAnonymous: boolean;
+  isNotificationsEnabled: boolean;
+  requestNotificationPermission: () => void;
   signIn: (email: string, pass: string) => Promise<any>;
   logout: () => Promise<void>;
   updateUserProfile: (username: string, countryCode: string, gender: string) => Promise<void>;
@@ -44,23 +48,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Helper function to recursively find the root comment reference
-const findRootCommentRef = (ref: DocumentReference): DocumentReference | null => {
-    // A root comment's path is `figures/{figureId}/comments/{commentId}` which has 4 segments.
-    // A reply's path is longer, e.g., `.../comments/{commentId}/replies/{replyId}` (6 segments).
-    if (!ref.parent) return null;
-    const segments = ref.path.split('/');
-    if (segments.length === 4 && segments[2] === 'comments') {
-        return ref;
-    }
-    // If it's a reply or deeper, its parent's parent is the document it's a reply to.
-    if (ref.parent.parent) {
-        return findRootCommentRef(ref.parent.parent);
-    }
-    return null;
-};
-
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -72,10 +59,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const { localProfile: initialLocalProfile, saveLocalProfile, clearLocalProfile } = useLocalProfile(firebaseUser?.uid);
   const [localProfile, setLocalProfile] = useState<LocalProfile | null>(initialLocalProfile);
+  const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
 
   useEffect(() => {
     setLocalProfile(initialLocalProfile);
   }, [initialLocalProfile]);
+
+  const saveFcmToken = useCallback(async (user: FirebaseUser, token: string) => {
+    if (user) {
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, { fcmToken: token });
+    }
+  }, []);
+
+  const deleteFcmToken = useCallback(async (user: FirebaseUser) => {
+    if (user) {
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, { fcmToken: null });
+    }
+  }, []);
+  
+  const requestNotificationPermission = useCallback(async () => {
+    if (!firebaseUser || isAnonymous || typeof window === 'undefined' || !('Notification' in window)) return;
+  
+    const messaging = getMessaging();
+    
+    if (Notification.permission === 'granted') {
+       // User wants to disable notifications
+      await deleteFcmToken(firebaseUser);
+      setIsNotificationsEnabled(false);
+      toast({ title: 'Notificaciones Desactivadas' });
+    } else {
+      // User wants to enable notifications
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          const vapidKey = 'BFf_ZMM9hrc2XfIfkZg0rGofHZTlH_P2a-Ydi5H_qfXm40q4iV3mFh3h7M9bXo-Y1s-Y3pEIXzVd8T6VpAAn5Wc';
+          const fcmToken = await getToken(messaging, { vapidKey });
+          if (fcmToken) {
+            await saveFcmToken(firebaseUser, fcmToken);
+            setIsNotificationsEnabled(true);
+            toast({ title: '¡Notificaciones Activadas!', description: 'Recibirás alertas importantes.' });
+          }
+        } else {
+          toast({ title: 'Permiso denegado', description: 'No se pudieron activar las notificaciones.', variant: 'destructive' });
+        }
+      } catch (error) {
+        console.error('Error getting notification permission:', error);
+        toast({ title: 'Error', description: 'No se pudo completar la solicitud.', variant: 'destructive' });
+      }
+    }
+  }, [firebaseUser, isAnonymous, saveFcmToken, deleteFcmToken, toast]);
+
+
+  useEffect(() => {
+    if (firebaseUser && currentUser?.fcmToken) {
+        setIsNotificationsEnabled(true);
+    } else {
+        setIsNotificationsEnabled(false);
+    }
+}, [firebaseUser, currentUser]);
+
   
   // Global listener for new replies
   useEffect(() => {
@@ -100,14 +144,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             continue;
         }
         
-        // Find the direct parent of the reply
         const parentCommentRef = docChange.doc.ref.parent.parent;
         if (!parentCommentRef) continue;
 
         const parentCommentSnap = await getDoc(parentCommentRef);
         if (parentCommentSnap.exists() && parentCommentSnap.data().authorId === firebaseUser.uid) {
             
-            // Find the absolute root of the conversation thread
             const rootCommentRef = findRootCommentRef(docChange.doc.ref);
             if (!rootCommentRef) continue;
             
@@ -118,7 +160,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const figureName = figureDoc.exists() ? figureDoc.data().name : 'un perfil';
             
             const audio = new Audio('https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711');
-            // Try to play sound, but catch the "NotAllowedError" silently.
             audio.play().catch(error => {
                 if (error.name !== 'NotAllowedError') {
                     console.error("Error playing notification sound:", error);
@@ -139,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
             
             const storageKey = `wikistars5-notifications-${firebaseUser.uid}`;
-            const uniqueId = `${docChange.doc.id}-${new Date().getTime()}`; // Create a truly unique ID
+            const uniqueId = `${docChange.doc.id}-${new Date().getTime()}`;
             const newNotification: Notification = {
               id: uniqueId,
               type: 'reply',
@@ -266,6 +307,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     updateUserProfile,
     linkAccount,
+    isNotificationsEnabled,
+    requestNotificationPermission
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

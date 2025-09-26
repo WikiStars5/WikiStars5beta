@@ -82,9 +82,15 @@ export interface UserProfile {
   role: 'user' | 'admin';
   createdAt: string; 
   lastLoginAt?: string;
-  fcmToken?: string;
+  fcmToken?: string | null;
   achievements?: string[];
   isAnonymous?: boolean;
+}
+
+export interface Streak {
+    userId: string;
+    currentStreak: number;
+    lastCommentDate: Timestamp;
 }
 
 export interface Country {

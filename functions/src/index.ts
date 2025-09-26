@@ -9,8 +9,9 @@ import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { onUserCreate } from "firebase-functions/v2/auth";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { differenceInHours } from 'date-fns';
 
-import type { UserProfile, Figure, GlobalSettings } from "./types";
+import type { UserProfile, Figure, GlobalSettings, Streak } from "./types";
 import { COUNTRIES } from "./countries";
 
 // Centralized Admin UID for security checks.
@@ -22,73 +23,82 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
+const messaging = admin.messaging();
 
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
-// This function runs automatically every 5 minutes.
-export const communityVerificationJob = onSchedule("every 5 minutes", async (event) => {
-  console.log("Running community verification job...");
-  const now = admin.firestore.Timestamp.now();
-  const figuresRef = db.collection("figures");
 
-  let movedToReviewCount = 0;
-  let verifiedCount = 0;
+export const streakWarningJob = onSchedule("every 24 hours", async (event) => {
+    console.log("Running streak warning job...");
+    const now = new Date();
+    const streaksRef = db.collectionGroup("streaks");
+    
+    let notificationsSent = 0;
+    let candidatesFound = 0;
 
-  // Query for all manual, unverified, and approved profiles.
-  // We will check the expiration date in the code to avoid complex index requirements.
-  const candidatesQuery = figuresRef
-    .where("creationMethod", "==", "manual")
-    .where("isCommunityVerified", "==", false)
-    .where("status", "==", "approved");
+    const snapshot = await streaksRef.get();
+    
+    if (snapshot.empty) {
+        console.log("No streaks found to process.");
+        return { notificationsSent, candidatesFound };
+    }
 
-  const candidatesSnapshot = await candidatesQuery.get();
+    // Process all streaks in parallel
+    const processingPromises = snapshot.docs.map(async (streakDoc) => {
+        const streak = streakDoc.data() as Streak;
+        const lastCommentDate = (streak.lastCommentDate as admin.firestore.Timestamp).toDate();
+        const hoursSinceLastComment = differenceInHours(now, lastCommentDate);
 
-  if (candidatesSnapshot.empty) {
-    console.log("No pending manual profiles found to process.");
-    return { verifiedCount, movedToReviewCount };
-  }
+        // A streak is at risk if the user has not commented for more than 24h but less than 48h.
+        // We add a buffer (e.g., up to 47 hours) to ensure we catch everyone.
+        if (hoursSinceLastComment > 24 && hoursSinceLastComment < 48) {
+            candidatesFound++;
+            
+            // Get user's FCM token
+            const userRef = db.collection("users").doc(streak.userId);
+            const userSnap = await userRef.get();
 
-  const reviewBatch = db.batch();
-  const verifyBatch = db.batch();
+            if (userSnap.exists()) {
+                const user = userSnap.data() as UserProfile;
+                if (user.fcmToken) {
+                    const message: admin.messaging.Message = {
+                        token: user.fcmToken,
+                        notification: {
+                            title: '🔥 ¡Tu racha está en peligro!',
+                            body: `¡No has comentado hoy! Entra y deja tu opinión para no perder tu racha de ${streak.currentStreak} días.`,
+                        },
+                        webpush: {
+                            fcmOptions: {
+                                link: 'https://thewikistars5.com/profile' // Direct link to their profile
+                            },
+                            notification: {
+                                icon: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194'
+                            }
+                        }
+                    };
 
-  candidatesSnapshot.forEach(doc => {
-      const figure = doc.data() as Figure;
-      
-      // --- Logic for Verification ---
-      const attitudeCounts = figure.attitudeCounts || {};
-      const totalVotes = Object.values(attitudeCounts).reduce((sum, count) => sum + count, 0);
-
-      if (totalVotes >= 1000) {
-          console.log(`Profile ${figure.name} (${doc.id}) reached 1000 votes. Marking as verified.`);
-          verifyBatch.update(doc.ref, { isCommunityVerified: true });
-          verifiedCount++;
-          return; // Move to the next document
-      }
-
-      // --- Logic for Expiration ---
-      if (figure.manualVerificationExpiresAt) {
-        const expiresAt = (figure.manualVerificationExpiresAt as admin.firestore.Timestamp).toDate();
-        if (now.toDate() >= expiresAt) {
-          console.log(`Profile ${figure.name} (${doc.id}) has expired. Moving to admin review.`);
-          reviewBatch.update(doc.ref, { status: 'pending_admin_review' });
-          movedToReviewCount++;
+                    try {
+                        await messaging.send(message);
+                        notificationsSent++;
+                    } catch (error) {
+                        console.error(`Failed to send notification to user ${user.uid}:`, error);
+                        // If token is invalid, we should probably remove it from the user's profile
+                        if ((error as any).code === 'messaging/registration-token-not-registered') {
+                            await userRef.update({ fcmToken: null });
+                        }
+                    }
+                }
+            }
         }
-      }
-  });
+    });
 
-  // Commit batches if there are changes
-  if (movedToReviewCount > 0) {
-    await reviewBatch.commit();
-  }
-  if (verifiedCount > 0) {
-    await verifyBatch.commit();
-  }
-  
-  console.log(`Verification job complete. Verified: ${verifiedCount}, Moved to Review: ${movedToReviewCount}.`);
-  return { verifiedCount, movedToReviewCount };
+    await Promise.all(processingPromises);
+
+    console.log(`Streak warning job complete. Candidates found: ${candidatesFound}, Notifications sent: ${notificationsSent}.`);
+    return { notificationsSent, candidatesFound };
 });
 
 
@@ -194,9 +204,3 @@ export const updateGlobalSettings = onCall(async (request) => {
         throw new HttpsError('internal', 'Could not update global settings.');
     }
 });
-
-// All user-related functions have been removed as the authentication system
-// has been disabled per user request.
-
-// All notification and trigger logic has been removed as the associated features
-// (comments, likes) have been disabled.

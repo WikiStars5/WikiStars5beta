@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Save, UserCircle, ShieldAlert, Edit, X } from 'lucide-react';
+import { Loader2, Save, UserCircle, ShieldAlert, Edit, X, Bell, BellOff } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { CountryCombobox } from '@/components/shared/CountryCombobox';
@@ -27,7 +27,15 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
-  const { currentUser, isAnonymous, isLoading, updateUserProfile, localProfile } = useAuth();
+  const { 
+    currentUser, 
+    isAnonymous, 
+    isLoading, 
+    updateUserProfile, 
+    localProfile,
+    isNotificationsEnabled,
+    requestNotificationPermission,
+  } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
 
@@ -113,7 +121,7 @@ export default function ProfilePage() {
         </CardHeader>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 space-y-8">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-xl">Mi Información</CardTitle>
@@ -209,6 +217,38 @@ export default function ProfilePage() {
                       </Form>
                     </CardContent>
                 </Card>
+
+                 {!isAnonymous && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-xl">Notificaciones</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <Button
+                                onClick={requestNotificationPermission}
+                                disabled={isLoading}
+                                className="w-full"
+                                variant={isNotificationsEnabled ? "secondary" : "default"}
+                            >
+                                {isNotificationsEnabled ? (
+                                    <>
+                                        <BellOff className="mr-2 h-4 w-4" />
+                                        Desactivar Notificaciones Push
+                                    </>
+                                ) : (
+                                    <>
+                                        <Bell className="mr-2 h-4 w-4" />
+                                        Activar Notificaciones Push
+                                    </>
+                                )}
+                            </Button>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Recibe un aviso si estás a punto de perder tu racha.
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
+
             </div>
             
             <div className="lg:col-span-2">
