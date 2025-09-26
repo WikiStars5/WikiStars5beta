@@ -10,7 +10,7 @@ import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Loader2, Sta
 import { cn, correctMalformedUrl } from '@/lib/utils';
 import { mapDocToComment, toggleDislikeComment, toggleLikeComment, addReply, deleteComment, updateComment } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
@@ -228,9 +228,40 @@ export function CommentItem({
         if (comment.authorGender === 'Femenino' || comment.authorGender === 'female') return 'text-pink-400';
         return '';
     }, [comment.authorGender]);
+    
+    const [shouldRepliesOpen, setShouldRepliesOpen] = React.useState(startWithRepliesOpen);
+
+    React.useEffect(() => {
+      const checkNestedHighlight = async () => {
+        if (!highlightedCommentId || replies.length === 0 || shouldRepliesOpen) return;
+
+        for (const reply of replies) {
+          const replyPath = `${currentPath}/replies/${reply.id}`;
+          if (highlightedCommentId === reply.id) {
+             setShouldRepliesOpen(true);
+             return;
+          }
+          // Recursively check deeper replies
+          const subReplyDoc = await getDoc(doc(db, `${replyPath}/replies`, highlightedCommentId));
+          if(subReplyDoc.exists()) {
+             setShouldRepliesOpen(true);
+             return;
+          }
+        }
+      };
+      checkNestedHighlight();
+    }, [replies, highlightedCommentId, currentPath, shouldRepliesOpen]);
+    
+    React.useEffect(() => {
+      if (shouldRepliesOpen) {
+          setShowReplies(true);
+      }
+    }, [shouldRepliesOpen]);
+
 
     const fetchReplies = React.useCallback(() => {
-        if (!showReplies) return;
+        // Fetch replies if we need to show them OR if we need to check for nested highlights
+        if (!showReplies && !highlightedCommentId) return;
         setIsLoadingReplies(true);
         const repliesPath = `${currentPath}/replies`;
         const repliesRef = collection(db, repliesPath);
@@ -244,7 +275,7 @@ export function CommentItem({
             setIsLoadingReplies(false);
         });
         return unsubscribe;
-    }, [showReplies, currentPath]);
+    }, [showReplies, currentPath, highlightedCommentId]);
 
     React.useEffect(() => {
         const unsubscribe = fetchReplies();
@@ -475,6 +506,7 @@ export function CommentItem({
                                 parentPath={`${currentPath}/replies`}
                                 highlightedCommentId={highlightedCommentId}
                                 isLastCommentFromAuthor={false} 
+                                startWithRepliesOpen={shouldRepliesOpen && replies.some(r => r.id === highlightedCommentId)}
                             />
                         ))
                     )}
@@ -483,4 +515,3 @@ export function CommentItem({
         </div>
     );
 }
-
