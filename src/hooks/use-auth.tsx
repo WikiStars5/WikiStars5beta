@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import {
@@ -21,7 +22,7 @@ import {
   type AuthCredential
 } from 'firebase/auth';
 import type { UserProfile, LocalProfile, Comment, Notification } from '@/lib/types';
-import { doc, onSnapshot, getDoc, collectionGroup, query, where, Timestamp, onSnapshot as onCollectionSnapshot, orderBy, limit } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, collectionGroup, query, where, Timestamp, onSnapshot as onCollectionSnapshot, orderBy, limit, DocumentReference } from 'firebase/firestore';
 import { ADMIN_UID } from '@/config/admin';
 import { useRouter } from 'next/navigation';
 import { useLocalProfile } from './use-local-profile';
@@ -43,6 +44,22 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Helper function to recursively find the root comment reference
+const findRootCommentRef = (ref: DocumentReference): DocumentReference | null => {
+    // A root comment's path is `figures/{figureId}/comments/{commentId}` which has 4 segments.
+    // A reply's path is longer, e.g., `.../comments/{commentId}/replies/{replyId}` (6 segments).
+    const segments = ref.path.split('/');
+    if (segments.length === 4 && segments[2] === 'comments') {
+        return ref;
+    }
+    // If it's a reply or deeper, its parent's parent is the document it's a reply to.
+    if (ref.parent.parent) {
+        return findRootCommentRef(ref.parent.parent);
+    }
+    return null;
+};
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -81,50 +98,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (reply.authorId === firebaseUser.uid) {
             continue;
         }
-
+        
+        // Find the direct parent of the reply
         const parentCommentRef = docChange.doc.ref.parent.parent;
-        if (parentCommentRef) {
-            const parentCommentSnap = await getDoc(parentCommentRef);
-            if (parentCommentSnap.exists()) {
-                const parentComment = parentCommentSnap.data() as Comment;
-                if (parentComment.authorId === firebaseUser.uid) {
-                    const figureDoc = await getDoc(parentCommentRef.parent.parent);
-                    const figureName = figureDoc.exists() ? figureDoc.data().name : 'un perfil';
-                    
-                    const audio = new Audio('https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711');
-                    audio.play().catch(e => console.error("Error playing notification sound:", e));
+        if (!parentCommentRef) continue;
 
-                    toast({
-                      title: `💬 Nueva respuesta en ${figureName}`,
-                      description: `${reply.authorName} respondió a tu comentario.`,
-                      action: (
-                        <button
-                          onClick={() => openCommentThread(parentCommentRef.path, docChange.doc.id)}
-                          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-                        >
-                          Ver
-                        </button>
-                      ),
-                    });
-                    
-                    const storageKey = `wikistars5-notifications-${firebaseUser.uid}`;
-                    const newNotification: Notification = {
-                      id: docChange.doc.id,
-                      type: 'reply',
-                      figureId: reply.figureId,
-                      figureName: figureName,
-                      commentId: parentCommentRef.id,
-                      replyId: docChange.doc.id,
-                      replierName: reply.authorName,
-                      text: reply.text,
-                      isRead: false,
-                      createdAt: new Date().toISOString(),
-                    };
-                    const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                    localStorage.setItem(storageKey, JSON.stringify([newNotification, ...existing]));
-                    window.dispatchEvent(new CustomEvent('notifications-updated'));
-                }
-            }
+        const parentCommentSnap = await getDoc(parentCommentRef);
+        if (parentCommentSnap.exists() && parentCommentSnap.data().authorId === firebaseUser.uid) {
+            
+            // Find the absolute root of the conversation thread
+            const rootCommentRef = findRootCommentRef(docChange.doc.ref);
+            if (!rootCommentRef) continue;
+            
+            const figureDocRef = rootCommentRef.parent.parent;
+            if (!figureDocRef) continue;
+
+            const figureDoc = await getDoc(figureDocRef);
+            const figureName = figureDoc.exists() ? figureDoc.data().name : 'un perfil';
+            
+            const audio = new Audio('https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711');
+            audio.play().catch(e => console.error("Error playing notification sound:", e));
+
+            toast({
+              title: `💬 Nueva respuesta en ${figureName}`,
+              description: `${reply.authorName} respondió a tu comentario.`,
+              action: (
+                <button
+                  onClick={() => openCommentThread(rootCommentRef.path, docChange.doc.id)}
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                >
+                  Ver
+                </button>
+              ),
+            });
+            
+            const storageKey = `wikistars5-notifications-${firebaseUser.uid}`;
+            const newNotification: Notification = {
+              id: docChange.doc.id,
+              type: 'reply',
+              figureId: reply.figureId,
+              figureName: figureName,
+              commentId: rootCommentRef.id,
+              replyId: docChange.doc.id,
+              replierName: reply.authorName,
+              text: reply.text,
+              isRead: false,
+              createdAt: new Date().toISOString(),
+            };
+            const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            localStorage.setItem(storageKey, JSON.stringify([newNotification, ...existing]));
+            window.dispatchEvent(new CustomEvent('notifications-updated'));
         }
       }
     });
