@@ -95,6 +95,15 @@ export function NotificationBell() {
     openCommentThread(`figures/${notif.figureId}/comments/${notif.commentId}`, notif.replyId ?? null);
   };
 
+  const uniqueNotifications = React.useMemo(() => {
+    const seen = new Set();
+    return notifications.filter(notif => {
+      const duplicate = seen.has(notif.id);
+      seen.add(notif.id);
+      return !duplicate;
+    });
+  }, [notifications]);
+
 
   if (isAuthLoading || !firebaseUser) {
     return null;
@@ -124,11 +133,11 @@ export function NotificationBell() {
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {notifications.length === 0 ? (
+        {uniqueNotifications.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground py-4">No tienes notificaciones.</p>
         ) : (
           <div className="max-h-80 overflow-y-auto">
-            {notifications.map((notif) => (
+            {uniqueNotifications.map((notif) => (
               <DropdownMenuItem key={notif.id} onSelect={(e) => e.preventDefault()} asChild className="p-0">
                 <button
                   onClick={(e) => handleNotificationClick(notif, e)}
@@ -151,7 +160,7 @@ export function NotificationBell() {
             ))}
           </div>
         )}
-        {notifications.length > 0 && (
+        {uniqueNotifications.length > 0 && (
             <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={handleClearAll} className="flex justify-center text-destructive focus:text-destructive focus:bg-destructive/10">

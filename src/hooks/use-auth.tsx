@@ -134,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             const storageKey = `wikistars5-notifications-${firebaseUser.uid}`;
             const newNotification: Notification = {
-              id: docChange.doc.id,
+              id: `${docChange.doc.id}-${new Date().getTime()}`, // Create a truly unique ID
               type: 'reply',
               figureId: reply.figureId,
               figureName: figureName,
@@ -145,13 +145,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               isRead: false,
               createdAt: new Date().toISOString(),
             };
-            const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
             
-            // Prevent adding duplicate notifications
-            if (!existing.some((n: Notification) => n.id === newNotification.id)) {
-                localStorage.setItem(storageKey, JSON.stringify([newNotification, ...existing]));
-                window.dispatchEvent(new CustomEvent('notifications-updated'));
-            }
+            const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            localStorage.setItem(storageKey, JSON.stringify([newNotification, ...existing]));
+            window.dispatchEvent(new CustomEvent('notifications-updated'));
         }
       }
     });
