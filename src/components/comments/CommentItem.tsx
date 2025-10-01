@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from 'react';
@@ -8,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ThumbsUp, ThumbsDown, MessageSquareReply, CornerDownRight, Loader2, Star, StarOff, Trash2, FilePenLine, Save, X } from 'lucide-react';
 import { cn, correctMalformedUrl } from '@/lib/utils';
-import { mapDocToComment, toggleDislikeComment, toggleLikeComment, addReply, deleteComment, updateComment } from '@/lib/placeholder-data';
+import { mapDocToComment, toggleDislikeComment, toggleLikeComment, addReply, deleteComment, updateComment, getReplies } from '@/lib/placeholder-data';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
@@ -54,6 +53,8 @@ interface CommentItemProps {
     highlightedCommentId?: string | null;
     isLastCommentFromAuthor: boolean;
     startWithRepliesOpen?: boolean;
+    expansionPath?: string[];
+    isLastInThread: boolean;
 }
 
 const ReplyForm = ({ figure, parentPath, onReplySuccess }: { figure: Figure, parentPath: string, onReplySuccess: () => void }) => {
@@ -141,6 +142,8 @@ export function CommentItem({
     highlightedCommentId,
     isLastCommentFromAuthor,
     startWithRepliesOpen = false,
+    expansionPath,
+    isLastInThread,
 }: CommentItemProps) {
     const { currentUser, firebaseUser, isAdmin, isLoading: isAuthLoading } = useAuth();
     const { toast } = useToast();
@@ -228,58 +231,24 @@ export function CommentItem({
         if (comment.authorGender === 'Femenino' || comment.authorGender === 'female') return 'text-pink-400';
         return '';
     }, [comment.authorGender]);
-    
-    const [shouldRepliesOpen, setShouldRepliesOpen] = React.useState(startWithRepliesOpen);
 
-    React.useEffect(() => {
-      const checkNestedHighlight = async () => {
-        if (!highlightedCommentId || replies.length === 0 || shouldRepliesOpen) return;
+    const fetchReplies = React.useCallback(async () => {
+      if (!showReplies) return;
 
-        for (const reply of replies) {
-          const replyPath = `${currentPath}/replies/${reply.id}`;
-          if (highlightedCommentId === reply.id) {
-             setShouldRepliesOpen(true);
-             return;
-          }
-          // Recursively check deeper replies
-          const subReplyDoc = await getDoc(doc(db, `${replyPath}/replies`, highlightedCommentId));
-          if(subReplyDoc.exists()) {
-             setShouldRepliesOpen(true);
-             return;
-          }
-        }
-      };
-      checkNestedHighlight();
-    }, [replies, highlightedCommentId, currentPath, shouldRepliesOpen]);
-    
-    React.useEffect(() => {
-      if (shouldRepliesOpen) {
-          setShowReplies(true);
+      setIsLoadingReplies(true);
+      const repliesPath = `${currentPath}/replies`;
+      try {
+        const fetchedReplies = await getReplies(repliesPath);
+        setReplies(fetchedReplies);
+      } catch(error) {
+          console.error("Error fetching replies: ", error);
+      } finally {
+        setIsLoadingReplies(false);
       }
-    }, [shouldRepliesOpen]);
-
-
-    const fetchReplies = React.useCallback(() => {
-        // Fetch replies if we need to show them OR if we need to check for nested highlights
-        if (!showReplies && !highlightedCommentId) return;
-        setIsLoadingReplies(true);
-        const repliesPath = `${currentPath}/replies`;
-        const repliesRef = collection(db, repliesPath);
-        const q = query(repliesRef, orderBy('createdAt', 'asc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedReplies = snapshot.docs.map(mapDocToComment);
-            setReplies(fetchedReplies);
-            setIsLoadingReplies(false);
-        }, (error) => {
-            console.error("Error fetching replies: ", error);
-            setIsLoadingReplies(false);
-        });
-        return unsubscribe;
-    }, [showReplies, currentPath, highlightedCommentId]);
+    }, [showReplies, currentPath]);
 
     React.useEffect(() => {
-        const unsubscribe = fetchReplies();
-        return () => unsubscribe && unsubscribe();
+      fetchReplies();
     }, [fetchReplies]);
 
     const handleLike = async (isLike: boolean) => {
@@ -386,7 +355,7 @@ export function CommentItem({
                     </div>
                      <div className="text-xs text-muted-foreground flex-shrink-0 flex items-center gap-1">
                         {comment.lastEditedAt && <span title={comment.lastEditedAt.toDate().toLocaleString()}>(editado)</span>}
-                        {comment.createdAt && <span>{timeSince(comment.createdAt.toDate())}</span>}
+                        
                     </div>
                 </div>
                 
@@ -498,7 +467,7 @@ export function CommentItem({
                     {isLoadingReplies ? (
                         <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Cargando respuestas...</div>
                     ) : (
-                        replies.map(reply => (
+                        replies.map((reply, index) => (
                             <CommentItem 
                                 key={reply.id} 
                                 figure={figure}
@@ -506,7 +475,11 @@ export function CommentItem({
                                 parentPath={`${currentPath}/replies`}
                                 highlightedCommentId={highlightedCommentId}
                                 isLastCommentFromAuthor={false} 
-                                startWithRepliesOpen={shouldRepliesOpen && replies.some(r => r.id === highlightedCommentId)}
+                                startWithRepliesOpen={
+                                    (expansionPath && expansionPath.includes(reply.id)) || false
+                                  }
+                                  expansionPath={expansionPath}
+                                  isLastInThread={index === replies.length - 1}
                             />
                         ))
                     )}
