@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BatchUpdateImagesButton } from "@/components/admin/BatchUpdateImagesButton";
 import { BatchUpdateTagsButton } from "@/components/admin/BatchUpdateTagsButton";
 import { BatchCreateFigures } from "@/components/admin/BatchCreateFigures";
-import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
+import { getFiguresCount } from "@/lib/placeholder-data";
 import { BatchUpdateSearchButton } from "@/components/admin/BatchUpdateSearchButton";
 
 export default function AdminDashboardPage() {
@@ -23,8 +23,9 @@ export default function AdminDashboardPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const figures = await getAllFiguresFromFirestore();
-        setTotalFigures(figures.length);
+        // Optimized count query
+        const count = await getFiguresCount();
+        setTotalFigures(count);
       } catch (error: any) {
         console.error("Error fetching admin dashboard data:", error);
         setFetchError(error.message || 'Ocurrió un error inesperado al cargar los datos.');

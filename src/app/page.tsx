@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { Figure } from "@/lib/types";
 import { MoveRight, Home, Search as SearchIcon, Lightbulb, Users2, MessageSquare, Share2 } from "lucide-react";
 import Link from "next/link";
-import { getAllFiguresFromFirestore } from '@/lib/placeholder-data';
+import { getFeaturedFiguresFromFirestore } from '@/lib/placeholder-data';
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
@@ -66,8 +66,8 @@ export default function HomePage() {
             setIsLoading(true);
             setError(null);
             try {
-                const figures = await getAllFiguresFromFirestore();
-                const featured = figures.filter(f => f.isFeatured).slice(0, 10);
+                // Optimized query: fetch only featured figures
+                const featured = await getFeaturedFiguresFromFirestore(10);
                 setFeaturedFigures(featured);
             } catch (err: any) {
                 setError("Error al cargar las figuras destacadas. Revisa las reglas de Firestore o la conexión.");
@@ -100,7 +100,7 @@ export default function HomePage() {
       
        {!isLoading && !error && featuredFigures.length === 0 && (
          <div className="text-center py-10">
-            <p className="text-muted-foreground">No hay figuras disponibles en Firestore en este momento.</p>
+            <p className="text-muted-foreground">No hay figuras destacadas disponibles en este momento.</p>
         </div>
       )}
 

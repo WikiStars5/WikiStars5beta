@@ -1,5 +1,4 @@
 
-
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue, YoutubeShort, TiktokVideo, InstagramPost } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
@@ -71,7 +70,7 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     ratingCounts: data.ratingCounts || { ...defaultRatingCounts },
     createdAt: createdAtTimestamp && typeof createdAtTimestamp.toDate === 'function' 
                  ? createdAtTimestamp.toDate().toISOString() 
-                 : undefined,
+                 : (createdAtTimestamp ? new Date(createdAtTimestamp).toISOString() : new Date().toISOString()),
     status: data.status || 'approved',
     isFeatured: data.isFeatured || false,
     deathDate: data.deathDate,
@@ -90,6 +89,7 @@ export const mapDocToFigure = (docSnap: DocumentData): Figure => {
     websiteUrl: data.websiteUrl,
     creationMethod: data.creationMethod,
     isCommunityVerified: data.isCommunityVerified,
+    manualVerificationExpiresAt: data.manualVerificationExpiresAt
   };
 
   return figureData;
@@ -439,7 +439,7 @@ export const getAllFiguresFromFirestore = async (): Promise<Figure[]> => {
 };
 
 
-export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promise<Figure[]> => {
+export const getFeaturedFiguresFromFirestore = async (count: number = 10): Promise<Figure[]> => {
   try {
     const figuresCollectionRef = collection(db, "figures");
     const q = query(
@@ -449,21 +449,8 @@ export const getFeaturedFiguresFromFirestore = async (count: number = 4): Promis
       limit(count)
     );
     const querySnapshot = await getDocs(q);
-    let figures: Figure[] = [];
-    querySnapshot.forEach((docSnap) => {
-      figures.push(mapDocToFigure(docSnap));
-    });
-
-    const uniqueFigureIds = new Set<string>();
-    figures = figures.filter(figure => {
-        if (uniqueFigureIds.has(figure.id)) {
-            return false;
-        }
-        uniqueFigureIds.add(figure.id);
-        return true;
-    });
-    
-    return figures.slice(0, count);
+    const figures = querySnapshot.docs.map(mapDocToFigure);
+    return figures;
   } catch (error) {
     console.error("Error fetching featured figures from Firestore: ", error);
     if (String(error).toLowerCase().includes("index") || String(error).toLowerCase().includes("permission")) {
@@ -1164,3 +1151,9 @@ export const voteForInstagramPostEmotion = (figureId: string, postId: string, ne
 
 
 
+export const getReplies = async (repliesPath: string): Promise<Comment[]> => {
+    const repliesRef = collection(db, repliesPath);
+    const q = query(repliesRef, orderBy('createdAt', 'asc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(mapDocToComment);
+};
