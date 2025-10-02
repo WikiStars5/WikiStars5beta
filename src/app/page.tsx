@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ForYouSection } from "@/components/foryou/ForYouSection";
@@ -104,13 +103,6 @@ export default function HomePage() {
         </div>
       )}
 
-       <div className="text-center py-8">
-            <Button asChild variant="outline">
-                <Link href="/figures">
-                    Explorar Todas las Figuras <MoveRight className="ml-2 h-4 w-4" />
-                </Link>
-            </Button>
-        </div>
     </div>
   );
 }
