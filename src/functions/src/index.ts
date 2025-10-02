@@ -32,63 +32,64 @@ setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
 
 export const streakWarningJob = onSchedule("every 24 hours", async (event) => {
-    console.log("Running streak warning job...");
+    console.log("Running optimized streak warning job...");
     const now = new Date();
+    
+    // Calculate time boundaries for the query
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
     const streaksRef = db.collectionGroup("streaks");
     
-    let notificationsSent = 0;
-    let candidatesFound = 0;
+    // Efficiently query for streaks that are at risk
+    const atRiskStreaksQuery = streaksRef
+        .where('lastCommentDate', '<', admin.firestore.Timestamp.fromDate(twentyFourHoursAgo))
+        .where('lastCommentDate', '>', admin.firestore.Timestamp.fromDate(fortyEightHoursAgo));
 
-    const snapshot = await streaksRef.get();
+    let notificationsSent = 0;
+    
+    const snapshot = await atRiskStreaksQuery.get();
+    const candidatesFound = snapshot.size;
     
     if (snapshot.empty) {
-        console.log("No streaks found to process.");
+        console.log("No at-risk streaks found to process.");
         return { notificationsSent, candidatesFound };
     }
 
-    // Process all streaks in parallel
+    // Process only the at-risk streaks in parallel
     const processingPromises = snapshot.docs.map(async (streakDoc) => {
         const streak = streakDoc.data() as Streak;
-        const lastCommentDate = (streak.lastCommentDate as admin.firestore.Timestamp).toDate();
-        const hoursSinceLastComment = differenceInHours(now, lastCommentDate);
-
-        // A streak is at risk if the user has not commented for more than 24h but less than 48h.
-        // We add a buffer (e.g., up to 47 hours) to ensure we catch everyone.
-        if (hoursSinceLastComment > 24 && hoursSinceLastComment < 48) {
-            candidatesFound++;
             
-            // Get user's FCM token
-            const userRef = db.collection("users").doc(streak.userId);
-            const userSnap = await userRef.get();
+        // Get user's FCM token
+        const userRef = db.collection("users").doc(streak.userId);
+        const userSnap = await userRef.get();
 
-            if (userSnap.exists()) {
-                const user = userSnap.data() as UserProfile;
-                if (user.fcmToken) {
-                    const message: admin.messaging.Message = {
-                        token: user.fcmToken,
-                        notification: {
-                            title: '🔥 ¡Tu racha está en peligro!',
-                            body: `¡No has comentado hoy! Entra y deja tu opinión para no perder tu racha de ${streak.currentStreak} días.`,
+        if (userSnap.exists()) {
+            const user = userSnap.data() as UserProfile;
+            if (user.fcmToken) {
+                const message: admin.messaging.Message = {
+                    token: user.fcmToken,
+                    notification: {
+                        title: '🔥 ¡Tu racha está en peligro!',
+                        body: `¡No has comentado hoy! Entra y deja tu opinión para no perder tu racha de ${streak.currentStreak} días.`,
+                    },
+                    webpush: {
+                        fcmOptions: {
+                            link: 'https://wikistars5.co/profile' // Direct link to their profile
                         },
-                        webpush: {
-                            fcmOptions: {
-                                link: 'https://wikistars5.co/profile' // Direct link to their profile
-                            },
-                            notification: {
-                                icon: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194'
-                            }
+                        notification: {
+                            icon: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194'
                         }
-                    };
+                    }
+                };
 
-                    try {
-                        await messaging.send(message);
-                        notificationsSent++;
-                    } catch (error) {
-                        console.error(`Failed to send notification to user ${user.uid}:`, error);
-                        // If token is invalid, we should probably remove it from the user's profile
-                        if ((error as any).code === 'messaging/registration-token-not-registered') {
-                            await userRef.update({ fcmToken: null });
-                        }
+                try {
+                    await messaging.send(message);
+                    notificationsSent++;
+                } catch (error) {
+                    console.error(`Failed to send notification to user ${user.uid}:`, error);
+                    if ((error as any).code === 'messaging/registration-token-not-registered') {
+                        await userRef.update({ fcmToken: null });
                     }
                 }
             }
@@ -233,3 +234,4 @@ export const updateGlobalSettings = onCall(async (request) => {
         throw new HttpsError('internal', 'Could not update global settings.');
     }
 });
+
