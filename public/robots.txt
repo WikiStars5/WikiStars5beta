@@ -1,0 +1,8 @@
+# robots.txt para WikiStars5
+# Permite a todos los bots de búsqueda rastrear todo el sitio.
+
+User-agent: *
+Allow: /
+
+# Ubicación del sitemap dinámico
+Sitemap: https://thewikistars5.com/sitemap.xml

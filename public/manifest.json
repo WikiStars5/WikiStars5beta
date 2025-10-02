@@ -1,8 +1,7 @@
-
 {
   "name": "WikiStars5",
   "short_name": "WikiStars5",
-  "description": "Califica y discute sobre figuras públicas en WikiStars5.",
+  "description": "Califica y discute sobre figuras públicas en WikiStars5, la enciclopedia de la percepción real.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A0A0A",
@@ -18,6 +17,5 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ],
-  "gcm_sender_id": "939359993461"
+  ]
 }
