@@ -183,6 +183,7 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
   const [streakToAnimate, setStreakToAnimate] = React.useState<number | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = React.useState(false);
   const [activeFilter, setActiveFilter] = React.useState<FilterType>('all');
+  const [streakAnimationHasFinished, setStreakAnimationHasFinished] = React.useState(false);
   
   const { toast } = useToast();
   const { 
@@ -259,7 +260,6 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
     return null;
   }
 
-
   const onCommentSubmit: SubmitHandler<CommentFormData> = async (data) => {
     const authorData = getAuthorData();
     if (!authorData) {
@@ -286,11 +286,19 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
         }
         
         const newStreak = await updateStreak(figure.id, authorData);
+        
         if (newStreak) {
             setStreakToAnimate(newStreak);
-        } else if (isFirstComment && canInstall) {
-            // If there's no streak animation, show the install prompt on first comment
-            setTimeout(() => setShowInstallPrompt(true), 1500);
+            setStreakAnimationHasFinished(false); // Reset for the sequence
+        }
+        
+        if (isFirstComment && canInstall) {
+            if (newStreak) {
+                 // We will trigger the install prompt after the streak animation finishes
+            } else {
+                // If there's no streak, show install prompt immediately
+                setShowInstallPrompt(true);
+            }
         }
 
         toast({ title: "¡Opinión publicada!", description: "Gracias por tu contribución." });
@@ -506,13 +514,23 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
   return (
     <>
       <StreakAnimation
-        isOpen={showInstallPrompt || !!streakToAnimate}
+        isOpen={!!streakToAnimate}
         onClose={() => {
             setStreakToAnimate(null);
-            setShowInstallPrompt(false);
+            // Now that the streak animation is done, check if we should show the install prompt
+            const isFirstComment = !localStorage.getItem('wikistars5-has-commented-ever'); // Use a more permanent flag
+            if(isFirstComment && canInstall) {
+                 setShowInstallPrompt(true);
+                 localStorage.setItem('wikistars5-has-commented-ever', 'true');
+            }
         }}
-        type={showInstallPrompt ? 'install' : 'streak'}
+        type='streak'
         streakCount={streakToAnimate}
+      />
+       <StreakAnimation
+        isOpen={showInstallPrompt}
+        onClose={() => setShowInstallPrompt(false)}
+        type='install'
         onInstallClick={() => {
             triggerInstallPrompt();
             setShowInstallPrompt(false);
