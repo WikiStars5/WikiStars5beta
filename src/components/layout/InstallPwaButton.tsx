@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -10,6 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { DropdownMenuItem } from "../ui/dropdown-menu";
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>;
@@ -20,7 +22,11 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
-export function InstallPwaButton() {
+interface InstallPwaButtonProps {
+  asMenuItem?: boolean;
+}
+
+export function InstallPwaButton({ asMenuItem = false }: InstallPwaButtonProps) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const { toast } = useToast();
 
@@ -79,6 +85,15 @@ export function InstallPwaButton() {
 
   if (!deferredPrompt) {
     return null;
+  }
+
+  if (asMenuItem) {
+    return (
+      <DropdownMenuItem onSelect={handleInstallClick}>
+        <Download className="mr-2 h-4 w-4" />
+        <span>Instalar aplicación</span>
+      </DropdownMenuItem>
+    );
   }
 
   return (

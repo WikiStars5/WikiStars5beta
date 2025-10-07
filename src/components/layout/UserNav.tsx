@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
-import { LogOut, User, ShieldCheck, Loader2, Globe, UserPlus, Pencil, Shuffle } from 'lucide-react';
+import { LogOut, User, ShieldCheck, Loader2, Globe, UserPlus, Pencil, Shuffle, Download } from 'lucide-react';
 import { correctMalformedUrl } from "@/lib/utils";
 import { CreateWebsiteProfile } from "../admin/CreateWebsiteProfile";
 import React from "react";
@@ -30,6 +30,7 @@ import { CreateProfileFromWikipedia } from "../admin/CreateProfileFromWikipedia"
 import { getAllFiguresFromFirestore } from "@/lib/placeholder-data";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from 'next/navigation';
+import { InstallPwaButton } from "./InstallPwaButton";
 
 export function UserNav() {
   const { currentUser, firebaseUser, isAdmin, isLoading, logout, localProfile, isAnonymous } = useAuth();
@@ -131,6 +132,7 @@ export function UserNav() {
                   <span>Crear Perfil Web</span>
                 </DropdownMenuItem>
               </DialogTrigger>
+              <InstallPwaButton asMenuItem />
             {isAdmin && (
               <DropdownMenuItem asChild>
                 <Link href="/admin">
