@@ -31,6 +31,16 @@ import { useToast } from './use-toast';
 import { useCommentThread } from './use-comment-thread';
 import { findRootCommentRef } from '@/lib/utils';
 
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: Array<string>;
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed',
+    platform: string
+  }>;
+  prompt(): Promise<void>;
+}
+
+
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   currentUser: UserProfile | null;
@@ -45,6 +55,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUserProfile: (username: string, countryCode: string, gender: string) => Promise<void>;
   linkAccount: (credential: AuthCredential, newUsername: string) => Promise<void>;
+  canInstall: boolean;
+  triggerInstallPrompt: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { toast } = useToast();
   const { openCommentThread } = useCommentThread();
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   
   const { localProfile: initialLocalProfile, saveLocalProfile, clearLocalProfile } = useLocalProfile(firebaseUser?.uid);
   const [localProfile, setLocalProfile] = useState<LocalProfile | null>(initialLocalProfile);
@@ -64,6 +77,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setLocalProfile(initialLocalProfile);
   }, [initialLocalProfile]);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const triggerInstallPrompt = async () => {
+    if (deferredPrompt) {
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        toast({ title: "¡Aplicación instalada!", description: "Disfruta de la mejor experiencia." });
+      }
+      setDeferredPrompt(null);
+    } else {
+        toast({ title: "Ya instalado o no soportado", description: "La aplicación ya podría estar instalada o tu navegador no es compatible." });
+    }
+  };
 
   const saveFcmToken = useCallback(async (user: FirebaseUser, token: string) => {
     if (user) {
@@ -309,7 +345,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateUserProfile,
     linkAccount,
     isNotificationsEnabled,
-    requestNotificationPermission
+    requestNotificationPermission,
+    canInstall: !!deferredPrompt,
+    triggerInstallPrompt,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

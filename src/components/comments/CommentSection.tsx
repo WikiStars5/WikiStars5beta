@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -61,6 +62,7 @@ const StarRatingInput = ({ value, onChange, disabled }: { value: RatingValue | n
 
 interface CommentSectionProps {
   figure: Figure;
+  highlightedCommentId?: string | null;
   sortPreference: AttitudeKey | null;
 }
 
@@ -174,11 +176,12 @@ const INITIAL_COMMENTS_TO_SHOW = 5;
 
 type FilterType = 'all' | 'mine' | '5' | '4' | '3' | '2' | '1' | '0';
 
-export function CommentSection({ figure, sortPreference }: CommentSectionProps) {
+export function CommentSection({ figure, highlightedCommentId, sortPreference }: CommentSectionProps) {
   const [comments, setComments] = React.useState<CommentType[]>([]);
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [showAllComments, setShowAllComments] = React.useState(false);
   const [streakToAnimate, setStreakToAnimate] = React.useState<number | null>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = React.useState(false);
   const [activeFilter, setActiveFilter] = React.useState<FilterType>('all');
   
   const { toast } = useToast();
@@ -190,6 +193,8 @@ export function CommentSection({ figure, sortPreference }: CommentSectionProps) 
     isLoading: isAuthLoading,
     localProfile,
     updateUserProfile,
+    triggerInstallPrompt,
+    canInstall,
   } = useAuth();
   
   const form = useForm<CommentFormData>({
@@ -268,6 +273,8 @@ export function CommentSection({ figure, sortPreference }: CommentSectionProps) 
     }
 
     try {
+        const isFirstComment = !localStorage.getItem('wikistars5-has-commented');
+        
         await addComment(figure.id, authorData, data.text, data.rating);
         
         if (data.rating > 0) {
@@ -281,10 +288,17 @@ export function CommentSection({ figure, sortPreference }: CommentSectionProps) 
         const newStreak = await updateStreak(figure.id, authorData);
         if (newStreak) {
             setStreakToAnimate(newStreak);
+        } else if (isFirstComment && canInstall) {
+            // If there's no streak animation, show the install prompt on first comment
+            setTimeout(() => setShowInstallPrompt(true), 1500);
         }
 
         toast({ title: "¡Opinión publicada!", description: "Gracias por tu contribución." });
         reset({ text: '', rating: null });
+
+        if (isFirstComment) {
+            localStorage.setItem('wikistars5-has-commented', 'true');
+        }
     } catch (error: any) {
         console.error("Error al publicar comentario:", error);
         toast({ title: "Error", description: "No se pudo publicar tu opinión. " + error.message, variant: "destructive" });
@@ -412,6 +426,7 @@ export function CommentSection({ figure, sortPreference }: CommentSectionProps) 
                   comment={comment}
                   parentPath={`figures/${figure.id}/comments`}
                   isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
+                  isLastInThread={false}
                 />
               ))}
             </div>
@@ -429,6 +444,7 @@ export function CommentSection({ figure, sortPreference }: CommentSectionProps) 
                   comment={comment}
                   parentPath={`figures/${figure.id}/comments`}
                   isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
+                  isLastInThread={false}
                 />
               ))}
             </div>
@@ -458,13 +474,15 @@ export function CommentSection({ figure, sortPreference }: CommentSectionProps) 
     if (sortedComments.length > 0) {
       return (
           <>
-            {commentsToShow.map((comment) => (
+            {commentsToShow.map((comment, index) => (
               <CommentItem 
                 key={comment.id}
                 figure={figure}
                 comment={comment}
                 parentPath={`figures/${figure.id}/comments`}
+                highlightedCommentId={highlightedCommentId}
                 isLastCommentFromAuthor={latestUserCommentIds.has(comment.id)}
+                isLastInThread={index === commentsToShow.length - 1}
               />
             ))}
             {sortedComments.length > INITIAL_COMMENTS_TO_SHOW && (
@@ -487,7 +505,19 @@ export function CommentSection({ figure, sortPreference }: CommentSectionProps) 
 
   return (
     <>
-      <StreakAnimation isOpen={!!streakToAnimate} streakCount={streakToAnimate} onClose={() => setStreakToAnimate(null)} />
+      <StreakAnimation
+        isOpen={showInstallPrompt || !!streakToAnimate}
+        onClose={() => {
+            setStreakToAnimate(null);
+            setShowInstallPrompt(false);
+        }}
+        type={showInstallPrompt ? 'install' : 'streak'}
+        streakCount={streakToAnimate}
+        onInstallClick={() => {
+            triggerInstallPrompt();
+            setShowInstallPrompt(false);
+        }}
+      />
       <Card className="border border-white/20 bg-black">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
