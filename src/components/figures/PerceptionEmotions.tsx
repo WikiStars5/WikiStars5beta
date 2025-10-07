@@ -225,7 +225,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   return (
     <Card className="border border-white/20 bg-black">
       <CardHeader>
-        <CardTitle>¿Qué emoción te provoca {figureName}?</CardTitle>
+        <CardTitle>¿Qué emoción te provoca?</CardTitle>
         <CardDescription>
           Elige la emoción que mejor describe lo que sientes. Tu voto es anónimo.
         </CardDescription>
