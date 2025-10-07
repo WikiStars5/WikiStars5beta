@@ -1,11 +1,10 @@
 
-
 "use client";
 
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, MessagesSquare, Send, Star, User, UserPlus, StarOff, Save, Filter } from 'lucide-react';
+import { Loader2, MessagesSquare, Send, Star, User, UserPlus, StarOff, Save, Filter, Download } from 'lucide-react';
 import type { Figure, Comment as CommentType, RatingValue, LocalProfile, AttitudeKey } from '@/lib/types';
 import { addComment, mapDocToComment, updateStreak } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
@@ -181,9 +180,7 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
   const [isLoadingComments, setIsLoadingComments] = React.useState(true);
   const [showAllComments, setShowAllComments] = React.useState(false);
   const [streakToAnimate, setStreakToAnimate] = React.useState<number | null>(null);
-  const [showInstallPrompt, setShowInstallPrompt] = React.useState(false);
   const [activeFilter, setActiveFilter] = React.useState<FilterType>('all');
-  const [streakAnimationHasFinished, setStreakAnimationHasFinished] = React.useState(false);
   
   const { toast } = useToast();
   const { 
@@ -289,16 +286,19 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
         
         if (newStreak) {
             setStreakToAnimate(newStreak);
-            setStreakAnimationHasFinished(false); // Reset for the sequence
         }
         
         if (isFirstComment && canInstall) {
-            if (newStreak) {
-                 // We will trigger the install prompt after the streak animation finishes
-            } else {
-                // If there's no streak, show install prompt immediately
-                setShowInstallPrompt(true);
-            }
+             setTimeout(() => {
+                toast({
+                    title: "Instala WikiStars5",
+                    description: "¡Añade la aplicación a tu pantalla de inicio para una mejor experiencia!",
+                    duration: 10000,
+                    action: (
+                        <Button onClick={triggerInstallPrompt}><Download className="mr-2 h-4 w-4"/>Instalar</Button>
+                    ),
+                });
+            }, 5500); // Show toast after streak animation
         }
 
         toast({ title: "¡Opinión publicada!", description: "Gracias por tu contribución." });
@@ -515,26 +515,9 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
     <>
       <StreakAnimation
         isOpen={!!streakToAnimate}
-        onClose={() => {
-            setStreakToAnimate(null);
-            // Now that the streak animation is done, check if we should show the install prompt
-            const isFirstComment = !localStorage.getItem('wikistars5-has-commented-ever'); // Use a more permanent flag
-            if(isFirstComment && canInstall) {
-                 setShowInstallPrompt(true);
-                 localStorage.setItem('wikistars5-has-commented-ever', 'true');
-            }
-        }}
+        onClose={() => setStreakToAnimate(null)}
         type='streak'
         streakCount={streakToAnimate}
-      />
-       <StreakAnimation
-        isOpen={showInstallPrompt}
-        onClose={() => setShowInstallPrompt(false)}
-        type='install'
-        onInstallClick={() => {
-            triggerInstallPrompt();
-            setShowInstallPrompt(false);
-        }}
       />
       <Card className="border border-white/20 bg-black">
         <CardHeader>
