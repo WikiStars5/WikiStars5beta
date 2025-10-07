@@ -405,8 +405,9 @@ export function CommentItem({
                     <ThumbsDown className="mr-1 h-3 w-3" /> {comment.dislikeCount}
                 </Button>
                 {canReply && (
-                    <Button variant="ghost" size="sm" onClick={() => setShowReplyForm(!showReplyForm)} disabled={isAuthLoading} className="text-xs h-auto py-1 px-2">
-                        <MessageSquareReply className="mr-1 h-3 w-3" /> Responder
+                    <Button variant="ghost" size="icon" onClick={() => setShowReplyForm(!showReplyForm)} disabled={isAuthLoading} className="text-xs h-8 w-8">
+                        <MessageSquareReply className="h-4 w-4" />
+                        <span className="sr-only">Responder</span>
                     </Button>
                 )}
                  {canEdit && (
