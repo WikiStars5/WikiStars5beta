@@ -79,14 +79,11 @@ export function InstallPwaButton({ asMenuItem = false }: InstallPwaButtonProps) 
     );
   }
 
-  // This structure with a wrapping div for the TooltipTrigger
-  // ensures the tooltip works even when the button is disabled,
-  // without preventing clicks when it's enabled.
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div> {/* This div is the key to the fix */}
+          <div>
             <Button
               variant="ghost"
               size="icon"
@@ -94,7 +91,7 @@ export function InstallPwaButton({ asMenuItem = false }: InstallPwaButtonProps) 
               disabled={!canInstall}
               className={cn(
                   "text-foreground/70 hover:text-foreground",
-                  canInstall && "animate-pulse" // This class will make it pulse/blink
+                  canInstall && "animate-pulse"
               )}
               aria-label="Instalar aplicación"
             >
@@ -103,7 +100,7 @@ export function InstallPwaButton({ asMenuItem = false }: InstallPwaButtonProps) 
           </div>
         </TooltipTrigger>
         <TooltipContent>
-          <p>{canInstall ? 'Instalar aplicación' : 'La app ya está instalada o el navegador no es compatible'}</p>
+          <p>{canInstall ? 'Instalar aplicación' : 'Instalación no disponible en este momento.'}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
