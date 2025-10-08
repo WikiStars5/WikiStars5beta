@@ -96,4 +96,15 @@
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+
+  @keyframes color-pulse {
+    0%, 100% {
+      color: hsl(var(--foreground));
+      opacity: 0.7;
+    }
+    50% {
+      color: hsl(var(--primary));
+      opacity: 1;
+    }
+  }
 }

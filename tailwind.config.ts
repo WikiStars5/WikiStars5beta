@@ -78,10 +78,21 @@ export default {
             height: '0',
           },
         },
+        'color-pulse': {
+          '0%, 100%': {
+            color: 'hsl(var(--foreground))',
+            opacity: '0.7',
+          },
+          '50%': {
+            color: 'hsl(var(--primary))',
+            opacity: '1',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'color-pulse': 'color-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
     },
   },

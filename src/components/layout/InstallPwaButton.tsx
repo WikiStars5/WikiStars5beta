@@ -83,7 +83,7 @@ export function InstallPwaButton({ asMenuItem = false }: InstallPwaButtonProps) 
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div>
+          <div className={cn(!canInstall && "cursor-not-allowed")}>
             <Button
               variant="ghost"
               size="icon"
@@ -91,7 +91,7 @@ export function InstallPwaButton({ asMenuItem = false }: InstallPwaButtonProps) 
               disabled={!canInstall}
               className={cn(
                   "text-foreground/70 hover:text-foreground",
-                  canInstall && "animate-pulse"
+                  canInstall && "animate-color-pulse"
               )}
               aria-label="Instalar aplicación"
             >
