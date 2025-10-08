@@ -52,11 +52,6 @@ export function InstallPwaButton({ asMenuItem = false }: InstallPwaButtonProps) 
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      toast({
-        title: "No se puede instalar",
-        description: "La aplicación ya está instalada o tu navegador no es compatible.",
-        variant: "destructive"
-      });
       return;
     }
     
@@ -84,23 +79,28 @@ export function InstallPwaButton({ asMenuItem = false }: InstallPwaButtonProps) 
     );
   }
 
+  // This structure with a wrapping div for the TooltipTrigger
+  // ensures the tooltip works even when the button is disabled,
+  // without preventing clicks when it's enabled.
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleInstallClick}
-            disabled={!canInstall}
-            className={cn(
-                "text-foreground/70 hover:text-foreground",
-                canInstall && "animate-pulse" // This class will make it pulse/blink
-            )}
-            aria-label="Instalar aplicación"
-          >
-            <Download className="h-5 w-5" />
-          </Button>
+          <div> {/* This div is the key to the fix */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleInstallClick}
+              disabled={!canInstall}
+              className={cn(
+                  "text-foreground/70 hover:text-foreground",
+                  canInstall && "animate-pulse" // This class will make it pulse/blink
+              )}
+              aria-label="Instalar aplicación"
+            >
+              <Download className="h-5 w-5" />
+            </Button>
+          </div>
         </TooltipTrigger>
         <TooltipContent>
           <p>{canInstall ? 'Instalar aplicación' : 'La app ya está instalada o el navegador no es compatible'}</p>
