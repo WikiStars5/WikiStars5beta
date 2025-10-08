@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenuItem } from "../ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>;
@@ -51,43 +52,30 @@ export function InstallPwaButton({ asMenuItem = false }: InstallPwaButtonProps) 
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
+      toast({
+        title: "No se puede instalar",
+        description: "La aplicación ya está instalada o tu navegador no es compatible.",
+        variant: "destructive"
+      });
       return;
     }
     
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    setDeferredPrompt(null);
+    setDeferredPrompt(null); // The prompt can only be used once.
 
     if (outcome === 'accepted') {
       toast({
         title: "¡App Instalada!",
-        description: "Ahora, activa las notificaciones para no perderte nada."
+        description: "Ahora puedes abrir WikiStars5 desde tu pantalla de inicio."
       });
-
-      setTimeout(async () => {
-        if ('Notification' in window && Notification.permission !== 'granted') {
-          const permission = await Notification.requestPermission();
-          if (permission === 'granted') {
-            toast({
-              title: "¡Notificaciones Activadas!",
-              description: "¡Todo listo! Recibirás alertas importantes.",
-            });
-          } else {
-             toast({
-              title: "Permiso de Notificación Opcional",
-              description: "Puedes activar las notificaciones más tarde desde tu perfil.",
-            });
-          }
-        }
-      }, 2000);
     }
   };
 
-  if (!deferredPrompt) {
-    return null;
-  }
+  const canInstall = !!deferredPrompt;
 
   if (asMenuItem) {
+    if (!canInstall) return null; // Don't show in dropdown if not installable
     return (
       <DropdownMenuItem onSelect={handleInstallClick}>
         <Download className="mr-2 h-4 w-4" />
@@ -104,14 +92,18 @@ export function InstallPwaButton({ asMenuItem = false }: InstallPwaButtonProps) 
             variant="ghost"
             size="icon"
             onClick={handleInstallClick}
-            className="text-foreground/70 hover:text-foreground"
+            disabled={!canInstall}
+            className={cn(
+                "text-foreground/70 hover:text-foreground",
+                canInstall && "animate-pulse" // This class will make it pulse/blink
+            )}
             aria-label="Instalar aplicación"
           >
             <Download className="h-5 w-5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Instalar aplicación</p>
+          <p>{canInstall ? 'Instalar aplicación' : 'La app ya está instalada o el navegador no es compatible'}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
