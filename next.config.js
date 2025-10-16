@@ -25,7 +25,7 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.pinimg.com', port: '', pathname: '/**', },
       { protocol: 'https', hostname: 'flagcdn.com', port: '', pathname: '/**', },
       { protocol: 'https', hostname: 'www.google.com', port: '', pathname: '/**', }, // Added for favicons
-      { protocol: 'https', hostname: 'i.ytimg.com', port: '', pathname: '/**', }, // Added for YouTube thumbnails
+      { protocol: 'httpshttps', hostname: 'i.ytimg.com', port: '', pathname: '/**', }, // Added for YouTube thumbnails
     ],
   },
   async redirects() {
