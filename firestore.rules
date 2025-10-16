@@ -1,0 +1,56 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+    // Default permissive rules for development.
+    // These should be progressively locked down.
+
+    // Allow public read access to most collections.
+    match /{document=**} {
+      allow read: if true;
+    }
+    
+    // USERS collection
+    match /users/{userId} {
+      // Any authenticated user can create their own profile.
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Users can only read and update their own profile.
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      // No one can delete user profiles directly.
+      allow delete: if false;
+    }
+
+    // FIGURES collection
+    match /figures/{figureId} {
+        // Anyone can read figures.
+        allow read: if true;
+        
+        // Only admins can create, update, or delete figures.
+        allow create, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        
+        // Allow updates, but protect the attitudeCounts field from direct client modification.
+        allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+                      && !(request.resource.data.diff(resource.data).affectedKeys().hasAny(['attitudeCounts']));
+    }
+    
+    // Sub-collections of figures (comments, streaks, etc.)
+    match /figures/{figureId}/{subcollection}/{document=**} {
+        // Allow authenticated users to write to sub-collections (e.g., add comments).
+        allow write: if request.auth != null;
+        // Anyone can read sub-collections.
+        allow read: if true;
+    }
+
+    // HASHTAGS and other top-level collections
+    match /hashtags/{hashtag} {
+      allow read: if true;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+     match /userRatings/{ratingId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

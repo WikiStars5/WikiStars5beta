@@ -1,0 +1,18 @@
+export const VIDEO_GAME_GENRES: { value: string; label: string }[] = [
+    { value: 'Acción', label: 'Acción' },
+    { value: 'Aventura', label: 'Aventura' },
+    { value: 'Acción-Aventura', label: 'Acción-Aventura' },
+    { value: 'RPG (Rol)', label: 'RPG (Rol)' },
+    { value: 'Estrategia', label: 'Estrategia' },
+    { value: 'Simulación', label: 'Simulación' },
+    { value: 'Deportes', label: 'Deportes' },
+    { value: 'Carreras', label: 'Carreras' },
+    { value: 'Lucha', label: 'Lucha' },
+    { value: 'Disparos (Shooter)', label: 'Disparos (Shooter)' },
+    { value: 'Plataformas', label: 'Plataformas' },
+    { value: 'Rompecabezas (Puzzle)', label: 'Rompecabezas (Puzzle)' },
+    { value: 'Musical', label: 'Musical' },
+    { value: 'Fiesta (Party Games)', label: 'Fiesta (Party Games)' },
+    { value: 'Terror de Supervivencia (Survival Horror)', label: 'Terror de Supervivencia (Survival Horror)' },
+    { value: 'Roguelike/Roguelite', label: 'Roguelike/Roguelite' },
+].sort((a, b) => a.label.localeCompare(b.label));

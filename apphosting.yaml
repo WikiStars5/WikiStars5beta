@@ -1,0 +1,24 @@
+# Settings to manage and configure a Firebase App Hosting backend.
+# https://firebase.google.com/docs/app-hosting/configure
+
+# The location of your App Hosting backend.
+# This should be the same region as your main services like Firestore.
+location: southamerica-west1
+
+# The backend that will handle all requests to your web app.
+backend:
+  # The name of the Cloud Run service that will be created.
+  # This MUST match the serviceId in firebase.json
+  serviceId: ssrwikistars52yctr
+  # The region to deploy the Cloud Run service.
+  # This MUST match the region in firebase.json
+  region: us-central1
+
+# Increase this value if you'd like to automatically spin up
+# more instances in response to increased traffic.
+runConfig:
+  maxInstances: 100
+
+# Set a higher timeout for server-side operations.
+# The default is 60 seconds.
+timeoutSeconds: 300
