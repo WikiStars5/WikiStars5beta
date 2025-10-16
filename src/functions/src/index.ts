@@ -47,7 +47,7 @@ export const saveFigure = onCall(async (request) => {
 export const getAdminFiguresList = onCall(async (request) => {
     // This function's logic has been moved back to the client-side (placeholder-data.ts)
     // to restore the original App Hosting behavior. It is intentionally left empty.
-    return { success-false, message: "This function is deprecated." };
+    return { success: false, message: "This function is deprecated." };
 });
 
 export const deleteAllFigures = onCall(async (request) => {

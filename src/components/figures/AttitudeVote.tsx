@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { Figure, AttitudeKey, Attitude, ProfileType } from '@/lib/types';
-import { db } from '@/lib/firebase';
+import { db, callFirebaseFunction } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -87,26 +87,11 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     const previousVote = selectedAttitude;
     
     try {
-        const idToken = await firebaseUser.getIdToken();
-
-        const response = await fetch('/api/vote', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({
-                figureId,
-                newVote: finalVote,
-                previousVote,
-            }),
+        const result = await callFirebaseFunction('voteOnAttitude', {
+            figureId,
+            newVote: finalVote,
+            previousVote,
         });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.error || 'Falló la llamada a la API');
-        }
 
         // --- Handle local storage and UI state ---
         let updatedAttitudes: Attitude[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
