@@ -45,7 +45,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   targetId,
   onVote
 }) => {
-  const { firebaseUser, currentUser, localProfile, isLoading: isAuthLoading } = useAuth();
+  const { firebaseUser, isLoading: isAuthLoading } = useAuth();
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const { toast } = useToast();
@@ -68,7 +68,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   }, [id, firebaseUser, storageKey]);
 
   const handleVote = async (newEmotion: EmotionKey) => {
-    const canVote = (!isAuthLoading && firebaseUser && ((firebaseUser.isAnonymous && localProfile) || (!firebaseUser.isAnonymous && currentUser)));
+    const canVote = !isAuthLoading && firebaseUser;
 
     if (isVoting || !canVote) {
       if (!isAuthLoading && !firebaseUser) {
@@ -168,7 +168,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
 
 
   const isPopover = targetType === 'short' || targetType === 'instagram';
-  const isReadyToVote = !isAuthLoading && firebaseUser && ((firebaseUser.isAnonymous && localProfile) || (!firebaseUser.isAnonymous && currentUser));
+  const isReadyToVote = !isAuthLoading && firebaseUser;
   const isDisabled = isVoting || isAuthLoading || !isReadyToVote;
 
   const content = (

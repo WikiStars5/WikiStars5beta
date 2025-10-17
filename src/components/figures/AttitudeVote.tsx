@@ -41,7 +41,7 @@ const defaultAttitudeCountsData: Record<AttitudeKey, number> = {
 };
 
 export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, profileType, attitudeCounts: initialAttitudeCounts, onVote }) => {
-  const { firebaseUser, currentUser, localProfile, isLoading: isAuthLoading } = useAuth();
+  const { firebaseUser, isLoading: isAuthLoading } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const { toast } = useToast();
@@ -76,7 +76,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
 
 
   const handleVote = async (newAttitude: AttitudeKey) => {
-    const canVote = (!isAuthLoading && firebaseUser && ((firebaseUser.isAnonymous && localProfile) || (!firebaseUser.isAnonymous && currentUser)));
+    const canVote = !isAuthLoading && firebaseUser;
 
     if (isVoting || !canVote) {
         if (!isAuthLoading && !firebaseUser) {
@@ -133,7 +133,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
     opt.profileType === 'all' || (opt.profileType === 'character' && profileType === 'character')
   );
 
-  const isReadyToVote = !isAuthLoading && firebaseUser && ((firebaseUser.isAnonymous && localProfile) || (!firebaseUser.isAnonymous && currentUser));
+  const isReadyToVote = !isAuthLoading && firebaseUser;
   const isDisabled = isVoting || isAuthLoading || !isReadyToVote;
 
   return (
