@@ -7,7 +7,7 @@
 import { initializeApp, getApp, getApps, type FirebaseApp } from "firebase/app";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { getFirestore, type Firestore } from "firebase/firestore";
-import { getAuth, type Auth } from "firebase/auth";
+import { getAuth, type Auth, browserLocalPersistence, initializeAuth } from "firebase/auth";
 import { getFunctions, httpsCallable, type Functions } from 'firebase/functions';
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
@@ -56,8 +56,13 @@ if (typeof window !== 'undefined') {
 
 const storage: FirebaseStorage = getStorage(app);
 const db: Firestore = getFirestore(app);
-const auth: Auth = getAuth(app);
-const functions: Functions = getFunctions(app, 'us-central1'); // Region corrected to us-central1
+
+// Use initializeAuth for robust persistence handling in the browser.
+const auth: Auth = typeof window !== 'undefined'
+  ? initializeAuth(app, { persistence: browserLocalPersistence })
+  : getAuth(app);
+  
+const functions: Functions = getFunctions(app, 'us-central1');
 
 /**
  * A reusable utility function to call any Firebase Cloud Function.

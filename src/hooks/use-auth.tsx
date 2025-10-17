@@ -10,7 +10,7 @@ import {
   type ReactNode,
   useCallback,
 } from 'react';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, callFirebaseFunction } from '@/lib/firebase';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword,
@@ -260,22 +260,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     if (user) {
       setFirebaseUser(user);
+      // No need to create profile here, `onUserCreate` handles it.
     } else {
       try {
         const userCredential = await signInAnonymously(auth);
         setFirebaseUser(userCredential.user);
       } catch (error: any) {
-        console.error('Anonymous sign-in failed:', error.message);
+        console.error('Anonymous sign-in failed:', error);
         toast({ 
           title: 'Error de Autenticación Crítico', 
-          description: error.message || 'Fallo desconocido de inicio de sesión.', 
+          description: error.message || 'Fallo desconocido de inicio de sesión. Por favor, recarga la página.', 
           variant: 'destructive' 
         });
         setFirebaseUser(null);
         setCurrentUser(null);
-        setIsLoading(false);
       }
     }
+    // Set loading to false after user state is determined and profile listener is set up
   }, [toast]);
   
   useEffect(() => {
@@ -294,6 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (userDocSnap.exists()) {
           setCurrentUser(userDocSnap.data() as UserProfile);
         } else {
+          // Profile is being created by the backend, wait for it.
           setCurrentUser(null);
         }
         setIsLoading(false);
@@ -324,7 +326,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await updateProfile(auth.currentUser, { displayName: newUsername });
 
     if (localProfile) {
-        await updateUserProfile(newUsername, localProfile.countryCode, localProfile.gender);
+        await callFirebaseFunction('updateUserProfile', {
+            username: newUsername,
+            countryCode: localProfile.countryCode,
+            gender: localProfile.gender
+        });
         clearLocalProfile();
     }
   };
@@ -342,14 +348,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("No authenticated user found.");
     }
     
-    const userDocRef = doc(db, 'users', auth.currentUser.uid);
-    await setDoc(userDocRef, {
-      username: username,
-      countryCode: countryCode,
-      gender: gender,
-    }, { merge: true });
-    
-    await updateProfile(auth.currentUser, { displayName: username });
+    // Call the Cloud Function to update the profile
+    await callFirebaseFunction('updateUserProfile', { username, countryCode, gender });
   };
 
   const value = {
