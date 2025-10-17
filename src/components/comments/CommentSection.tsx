@@ -16,10 +16,10 @@ import { Separator } from '../ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Textarea } from '../ui/textarea';
 import { cn } from '@/lib/utils';
-import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
+import { useForm, Controller, type SubmitHandler, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel, FormProvider } from '../ui/form';
+import { FormControl, FormField, FormItem, FormMessage, FormLabel } from '../ui/form';
 import { StreakAnimation } from '../shared/StreakAnimation';
 import { Input } from '../ui/input';
 import { CountryCombobox } from '../shared/CountryCombobox';
@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useRouter } from 'next/navigation';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 const STAR_SOUNDS: Record<string, string> = {
   '1': 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Fstar1.mp3?alt=media&token=a11df570-a6ee-4828-b5a9-81ccbb2c0457',
@@ -67,110 +68,18 @@ interface CommentSectionProps {
   sortPreference: AttitudeKey | null;
 }
 
-const commentSchema = z.object({
+const formSchema = z.object({
   text: z.string().min(3, 'Tu opinión debe tener al menos 3 caracteres.').max(2000, 'Tu opinión no puede exceder los 2000 caracteres.'),
-  rating: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).nullable(),
-});
-
-type CommentFormData = z.infer<typeof commentSchema>;
-
-
-const guestProfileSchema = z.object({
-  username: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.').max(30, 'El nombre no puede tener más de 30 caracteres.'),
+  rating: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)], { required_error: 'Debes seleccionar una calificación.' }).nullable(),
+  username: z.string().optional(),
   countryCode: z.string().optional(),
   gender: z.string().optional(),
+}).refine(data => data.rating !== null, {
+    message: "La calificación es obligatoria para publicar tu opinión.",
+    path: ["rating"],
 });
-type GuestProfileFormData = z.infer<typeof guestProfileSchema>;
 
-
-const GuestProfileForm = ({ onProfileCreated }: { onProfileCreated: (profile: LocalProfile) => void }) => {
-    const { toast } = useToast();
-
-    const form = useForm<GuestProfileFormData>({
-        resolver: zodResolver(guestProfileSchema),
-        defaultValues: {
-            username: '',
-            countryCode: '',
-            gender: '',
-        },
-    });
-
-    const onSubmit: SubmitHandler<GuestProfileFormData> = (data) => {
-        const profile = {
-            username: data.username,
-            countryCode: data.countryCode || '',
-            gender: data.gender || '',
-        };
-        onProfileCreated(profile);
-        toast({
-            title: "¡Perfil de Invitado Creado!",
-            description: "Ahora puedes dejar tu opinión.",
-        });
-    };
-    
-    return (
-        <FormProvider {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4 border rounded-lg bg-muted/20">
-            <h3 className="font-semibold">Crea tu perfil de invitado para participar</h3>
-            <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Nombre de Usuario</FormLabel>
-                        <FormControl>
-                            <Input placeholder="Tu nombre público" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="countryCode"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>País</FormLabel>
-                        <CountryCombobox
-                            value={field.value || ''}
-                            onChange={field.onChange}
-                        />
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="gender"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Sexo</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                                <SelectTrigger>
-                                <SelectValue placeholder="Selecciona tu sexo..." />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {GENDER_OPTIONS.filter(option => option.value === 'male' || option.value === 'female').map(option => (
-                                <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-                <Save className="mr-2 h-4 w-4" />
-                Guardar y Comentar
-            </Button>
-        </form>
-        </FormProvider>
-    );
-};
+type CommentFormData = z.infer<typeof formSchema>;
 
 
 const INITIAL_COMMENTS_TO_SHOW = 5;
@@ -199,15 +108,20 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
   } = useAuth();
   
   const form = useForm<CommentFormData>({
-    resolver: zodResolver(commentSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       text: '',
       rating: null,
+      username: '',
+      countryCode: '',
+      gender: '',
     },
   });
 
-  const { handleSubmit, control, reset, formState: { isSubmitting } } = form;
+  const { handleSubmit, control, reset, formState: { isSubmitting, errors } } = form;
 
+  const showGuestForm = isAnonymous && !localProfile;
+  
   React.useEffect(() => {
     setIsLoadingComments(true);
     const commentsPath = `figures/${figure.id}/comments`;
@@ -230,27 +144,23 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
     return () => unsubscribe();
   }, [figure.id, toast]);
   
-  const handleGuestProfileCreation = (profile: LocalProfile) => {
-    updateUserProfile(profile.username, profile.countryCode, profile.gender);
-    router.refresh(); // Force a refresh to update the UI state
-  };
-  
-  const getAuthorData = () => {
+
+  const getAuthorData = (formData: CommentFormData) => {
     if (!firebaseUser) return null;
 
-    if (isAnonymous && localProfile) {
+    if (isAnonymous) {
        return {
         id: firebaseUser.uid,
-        name: localProfile.username,
+        name: showGuestForm ? formData.username! : localProfile!.username,
         photoUrl: null,
-        gender: localProfile.gender || '',
+        gender: showGuestForm ? formData.gender! : localProfile!.gender,
         country: '',
-        countryCode: localProfile.countryCode || '',
+        countryCode: showGuestForm ? formData.countryCode! : localProfile!.countryCode,
         isAnonymous: true,
       };
     }
     
-    if (!isAnonymous && currentUser) {
+    if (currentUser) {
       return {
         id: currentUser.uid,
         name: currentUser.username,
@@ -266,9 +176,14 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
   }
 
   const onCommentSubmit: SubmitHandler<CommentFormData> = async (data) => {
-    const authorData = getAuthorData();
+    if (showGuestForm && (!data.username || data.username.length < 3)) {
+      form.setError("username", { type: "manual", message: "Tu nombre de usuario es requerido para comentar." });
+      return;
+    }
+    
+    const authorData = getAuthorData(data);
     if (!authorData) {
-      toast({ title: "Error", description: "No se pudo identificar al autor. Por favor, crea un perfil de invitado.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudo identificar al autor.", variant: "destructive" });
       return;
     }
     
@@ -278,6 +193,10 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
     }
 
     try {
+        if (showGuestForm) {
+            await updateUserProfile(data.username!, data.countryCode || '', data.gender || '');
+        }
+
         const isFirstComment = !localStorage.getItem('wikistars5-has-commented');
         
         await addComment(figure.id, authorData, data.text, data.rating);
@@ -326,21 +245,50 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
           return <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>;
       }
       
-      const canComment = (isAnonymous && localProfile) || (!isAnonymous && currentUser);
-      
-      if (!canComment) {
-          return <GuestProfileForm onProfileCreated={handleGuestProfileCreation} />;
-      }
-      
       return (
         <FormProvider {...form}>
             <form onSubmit={handleSubmit(onCommentSubmit)} className="space-y-4">
+                 
+                {showGuestForm && (
+                   <Alert className="bg-muted/30">
+                     <AlertTitle className="font-bold">¡Únete a la conversación!</AlertTitle>
+                     <AlertDescription className="space-y-4 pt-2">
+                        Para comentar, elige un nombre de usuario. Esto también activará tus rachas de comentarios.
+                        <FormField
+                            control={control}
+                            name="username"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Nombre de Usuario *</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Tu nombre público" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField control={control} name="countryCode" render={({ field }) => (
+                                <FormItem><FormLabel>País (Opcional)</FormLabel><CountryCombobox value={field.value || ''} onChange={field.onChange} /><FormMessage /></FormItem>
+                            )}/>
+                            <FormField control={control} name="gender" render={({ field }) => (
+                                <FormItem><FormLabel>Sexo (Opcional)</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger></FormControl>
+                                <SelectContent>{GENDER_OPTIONS.filter(o => o.value === 'male' || o.value === 'female').map(o => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>
+                            )}/>
+                        </div>
+                     </AlertDescription>
+                   </Alert>
+                )}
+
                  <FormField
                     control={control}
                     name="rating"
                     render={({ field }) => (
                       <FormItem className="flex flex-col space-y-2">
-                        <FormLabel>Califica este perfil (0-5 estrellas):</FormLabel>
+                        <FormLabel>
+                          {showGuestForm ? 'Paso 2: Califica este perfil*' : 'Califica este perfil (0-5 estrellas)*'}
+                        </FormLabel>
                         <FormControl>
                            <StarRatingInput 
                                 value={field.value}
@@ -348,7 +296,7 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
                                 disabled={isSubmitting}
                            />
                         </FormControl>
-                        <FormMessage />
+                        {errors.rating && <p className="text-sm font-medium text-destructive">{errors.rating.message}</p>}
                       </FormItem>
                     )}
                   />
@@ -357,6 +305,9 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
                     name="text"
                     render={({ field }) => (
                         <FormItem>
+                           <FormLabel>
+                                {showGuestForm ? 'Paso 3: Escribe tu opinión*' : 'Escribe tu opinión*'}
+                           </FormLabel>
                             <Textarea
                                 {...field}
                                 placeholder={`¿Qué opinas de ${figure.name}?`}
