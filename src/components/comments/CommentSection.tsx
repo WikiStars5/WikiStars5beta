@@ -267,16 +267,6 @@ export function CommentSection({ figure, highlightedCommentId, sortPreference }:
                                 </FormItem>
                             )}
                         />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField control={control} name="countryCode" render={({ field }) => (
-                                <FormItem><FormLabel>País (Opcional)</FormLabel><CountryCombobox value={field.value || ''} onChange={field.onChange} /><FormMessage /></FormItem>
-                            )}/>
-                            <FormField control={control} name="gender" render={({ field }) => (
-                                <FormItem><FormLabel>Sexo (Opcional)</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger></FormControl>
-                                <SelectContent>{GENDER_OPTIONS.filter(o => o.value === 'male' || o.value === 'female').map(o => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>
-                            )}/>
-                        </div>
                      </AlertDescription>
                    </Alert>
                 )}
