@@ -38,16 +38,23 @@ const app: FirebaseApp = getFirebaseApp();
 
 // --- Inicialización de App Check (Solo en el Cliente) ---
 if (typeof window !== 'undefined') {
-  // Asegúrate de que la variable de entorno está definida.
-  if (!process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
-    console.error("Firebase App Check: NEXT_PUBLIC_RECAPTCHA_SITE_KEY no está definida en .env.local");
+  // La clave de ReCaptcha v3 se debe almacenar de forma segura.
+  // Usar una variable de entorno pública de Next.js es la práctica estándar.
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+
+  if (!recaptchaSiteKey) {
+    console.error("Firebase App Check: La variable de entorno NEXT_PUBLIC_RECAPTCHA_SITE_KEY no está definida. App Check no se inicializará.");
   } else {
     try {
+      // Declaramos `self.FIREBASE_APPCHECK_DEBUG_TOKEN` como `any` para evitar errores de tipo
+      // ya que esta es una variable de depuración que se define manualmente en la ventana.
+      (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = process.env.NODE_ENV === 'development';
+
       initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY),
+        provider: new ReCaptchaV3Provider(recaptchaSiteKey),
         isTokenAutoRefreshEnabled: true // Mantener la sesión del usuario verificada
       });
-      console.log("Firebase App Check inicializado.");
+      console.log("Firebase App Check inicializado correctamente.");
     } catch (error) {
       console.error("Error al inicializar Firebase App Check:", error);
     }
