@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Sparkles, Loader2, Check, ShieldAlert, ThumbsDown, Youtube, X, Plus, Camera } from 'lucide-react';
 import { doc, setDoc, serverTimestamp, writeBatch, Timestamp, collection, getDocs, deleteDoc, runTransaction } from 'firebase/firestore';
-import { db, callFirebaseFunction } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import type { Figure, EmotionKey, AttitudeKey, ProfileType, MediaSubcategory, Hashtag, YoutubeShort, TiktokVideo, InstagramPost } from '@/lib/types';
 import slugify from 'slugify'; 
 import { Checkbox } from '@/components/ui/checkbox';
@@ -378,7 +378,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       if(profileType === 'media') {
         delete (attitudeCounts as Partial<typeof attitudeCounts>).simp;
       }
-
+      
       let calculatedAge: number | null = null;
       if (birthDate) {
         try {
@@ -390,20 +390,19 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         calculatedAge = null;
       }
       
-      const figureData: Partial<Figure> & { id?: string } = {
-        id: initialData?.id,
+      const figureData: Partial<Figure> = {
         name: nameTrimmed,
+        nameSearch: nameTrimmed.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(),
+        nameKeywords: generateNameKeywords(nameTrimmed),
         profileType: profileType,
         description: description.trim() || null, 
         photoUrl: photoUrl.trim() || 'https://placehold.co/400x600.png',
         hashtags: hashtags,
+        hashtagsLower: hashtagsLower,
+        hashtagKeywords: generateHashtagKeywords(hashtags),
         socialLinks: socialLinks,
         isFeatured: isFeatured,
         nationalityCode: nationalityCode || null,
-        status: initialData?.status || 'approved',
-        nameKeywords: generateNameKeywords(nameTrimmed),
-        hashtagKeywords: generateHashtagKeywords(hashtags),
-        hashtagsLower: hashtagsLower,
         nationality: countryCodeToNameMap.get(nationalityCode) || null,
         age: calculatedAge,
         height: heightCm ? `${heightCm} cm` : null,
@@ -435,14 +434,27 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         founder: founder.trim() || null, 
         industry: industry.trim() || null, 
         websiteUrl: websiteUrl.trim() || null,
-        perceptionCounts: initialData?.perceptionCounts || { ...defaultPerceptionCounts },
-        attitudeCounts: initialData?.attitudeCounts || attitudeCounts,
-        ratingCounts: initialData?.ratingCounts || {},
       };
-      
-      const result = await callFirebaseFunction('saveFigure', figureData);
 
-      setSuccess(result.message || `Perfil "${name}" guardado exitosamente.`);
+      const finalFigureData = Object.fromEntries(
+        Object.entries(figureData).map(([key, value]) => [key, value === undefined ? null : value])
+      );
+      
+      const figureId = initialData?.id || slugify(nameTrimmed, { lower: true, strict: true });
+      const figureRef = doc(db, 'figures', figureId);
+      
+      await setDoc(figureRef, {
+        ...finalFigureData,
+        ...(!initialData && {
+            perceptionCounts: { ...defaultPerceptionCounts },
+            attitudeCounts: attitudeCounts,
+            ratingCounts: {},
+            createdAt: serverTimestamp(),
+            status: 'approved',
+        })
+      }, { merge: true });
+
+      setSuccess(`Perfil "${nameTrimmed}" guardado exitosamente.`);
       
       setTimeout(() => {
         router.push(`/admin/figures`);
