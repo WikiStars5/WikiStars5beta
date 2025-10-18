@@ -396,12 +396,14 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
     try {
       const figureData: Partial<Figure> & { id: string } = { ...formData, id: initialFigure.id };
       
-      // Calculate age if birthDate is provided
+      // Calculate age if birthDate is provided, otherwise ensure it's null
       if (figureData.birthDateOrAge) {
         try {
             const birthDate = new Date(figureData.birthDateOrAge);
             if (!isNaN(birthDate.getTime())) {
                 figureData.age = differenceInYears(new Date(), birthDate);
+            } else {
+                figureData.age = null; // Set to null if date is invalid
             }
         } catch (e) {
              console.error("Invalid date for age calculation", e);
@@ -410,8 +412,13 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
       } else {
         figureData.age = null; // Explicitly set to null if no birthdate
       }
+      
+      // Sanitize the final object right before sending it
+      const sanitizedData = Object.fromEntries(
+        Object.entries(figureData).map(([key, value]) => [key, value === undefined ? null : value])
+      );
 
-      await updateFigureInFirestore(figureData);
+      await updateFigureInFirestore(sanitizedData as Partial<Figure> & { id: string });
       
       toast({ title: "Perfil Actualizado", description: "Los cambios han sido guardados." });
       setIsEditing(false);

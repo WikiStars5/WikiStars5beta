@@ -49,7 +49,7 @@ export const saveFigure = onCall(async (request) => {
         throw new HttpsError('invalid-argument', 'The function must be called with a figure object containing a name.');
     }
 
-    // 3. Data Sanitization: Replace `undefined` with `null`.
+    // 3. Robust Data Sanitization: Replace `undefined` with `null`.
     const sanitizedData: { [key: string]: any } = {};
     for (const key in figureData) {
         if (Object.prototype.hasOwnProperty.call(figureData, key)) {
@@ -80,7 +80,7 @@ export const saveFigure = onCall(async (request) => {
             await figureRef.set({
                 ...dataToSave,
                 createdAt: admin.firestore.FieldValue.serverTimestamp()
-            });
+            }, { merge: true });
             return { success: true, message: `Figure "${dataToSave.name}" created successfully.` };
         } else {
             // For existing figures, merge the new data

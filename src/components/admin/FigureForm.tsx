@@ -441,7 +441,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
       
       // Strict sanitization: remove any key with an 'undefined' value
       const sanitizedFigureData = Object.fromEntries(
-        Object.entries(figureData).filter(([, value]) => value !== undefined)
+        Object.entries(figureData).map(([key, value]) => [key, value === undefined ? null : value])
       );
 
       const result = await callFirebaseFunction('saveFigure', sanitizedFigureData);
