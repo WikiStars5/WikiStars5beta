@@ -147,7 +147,7 @@ export const streakWarningJob = onSchedule("every 24 hours", async (event) => {
                             link: 'https://wikistars5.co/profile' // Direct link to their profile
                         },
                         notification: {
-                            icon: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194'
+                            icon: 'https://wikistars5.co/logo/logodia.png'
                         }
                     }
                 };

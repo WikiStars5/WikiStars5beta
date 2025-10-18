@@ -8,7 +8,7 @@ import { correctMalformedUrl } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { VerificationCountdown } from "./VerificationCountdown";
 
-const FIRE_GIF_URL = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/image%2Ffire.gif?alt=media&token=fd18d32d-c443-4da6-a369-e55ae241f7c5";
+const FIRE_GIF_URL = "/image/fire.gif";
 
 
 interface ProfileHeaderProps {

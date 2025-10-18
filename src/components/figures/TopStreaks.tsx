@@ -15,7 +15,7 @@ interface TopStreaksProps {
     figureId: string;
 }
 
-const FIRE_GIF_URL = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/image%2Ffire.gif?alt=media&token=fd18d32d-c443-4da6-a369-e55ae241f7c5";
+const FIRE_GIF_URL = "/image/fire.gif";
 
 const ATTITUDE_EMOJIS: Record<AttitudeKey, string> = {
     fan: '😍',
@@ -25,12 +25,12 @@ const ATTITUDE_EMOJIS: Record<AttitudeKey, string> = {
 };
 
 const EMOTION_IMAGES: Record<EmotionKey, string> = {
-  alegria: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/gif%2Falegria.gif?alt=media&token=ae532025-03c5-45a9-97d2-d475235bd74e',
-  envidia: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fenvidia.png?alt=media&token=940aa136-2235-48db-84d6-2c461730fde5',
-  tristeza: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/gif%2Ftrizteza-min.gif?alt=media&token=f9bc3bbf-eba1-4249-8c4b-128d56e4a6f0',
-  miedo: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fmiedo.png?alt=media&token=bef3711f-7f06-4a9c-8d24-dc0f32f1d985',
-  desagrado: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/emociones%2Fdesagrado.png?alt=media&token=3477f36d-357f-4982-b1d2-c735a8e1f4bb',
-  furia: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/gif%2Ffuria.gif?alt=media&token=18d1c677-2291-45b0-8001-99a1e5df6859',
+  alegria: '/gif/alegria.gif',
+  envidia: '/emociones/envidia.png',
+  tristeza: '/gif/trizteza-min.gif',
+  miedo: '/emociones/miedo.png',
+  desagrado: '/emociones/desagrado.png',
+  furia: '/gif/furia.gif',
 };
 
 

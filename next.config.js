@@ -32,7 +32,7 @@ const nextConfig = {
     return [
       {
         source: '/favicon.ico',
-        destination: 'https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194',
+        destination: '/logo/logodia.png',
         permanent: true,
       },
     ]
@@ -40,5 +40,3 @@ const nextConfig = {
 };
 
 module.exports = withPWA(nextConfig);
-
-// Force redeploy

@@ -1,5 +1,3 @@
-
-
 import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -8,7 +6,7 @@ import type { Metadata, Viewport } from 'next';
 import { ClientProviders } from '@/components/layout/ClientProviders';
 import Script from 'next/script';
 
-const logoUrl = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194";
+const logoUrl = "/logo/logodia.png";
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://wikistars5.co'),

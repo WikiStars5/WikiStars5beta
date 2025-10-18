@@ -1,4 +1,3 @@
-
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -7,8 +6,8 @@ interface LogoProps {
   className?: string;
 }
 
-const logoLightUrl = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogodia.png?alt=media&token=fc619841-d174-41ce-a613-3cb94cec8194";
-const logoDarkUrl = "https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/logo%2Flogonoche.png?alt=media&token=0ab973fd-2ec0-44a3-aef0-82850db98096";
+const logoLightUrl = "/logo/logodia.png";
+const logoDarkUrl = "/logo/logonoche.png";
 
 const LOGO_INTRINSIC_WIDTH = 200;
 const LOGO_INTRINSIC_HEIGHT = 50;

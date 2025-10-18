@@ -212,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const figureDoc = await getDoc(figureDocRef);
             const figureName = figureDoc.exists() ? figureDoc.data().name : 'un perfil';
             
-            const audio = new Audio('https://firebasestorage.googleapis.com/v0/b/wikistars5-2yctr.firebasestorage.app/o/audio%2Flivechat.mp3?alt=media&token=e24b4376-3067-4953-91cc-7076d9df9711');
+            const audio = new Audio('/audio/livechat.mp3');
             audio.play().catch(error => {
                 if (error.name !== 'NotAllowedError') {
                     console.error("Error playing notification sound:", error);
@@ -258,31 +258,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [firebaseUser, toast, isLoading, openCommentThread]);
 
   const handleUser = useCallback(async (user: FirebaseUser | null) => {
+    setIsLoading(true);
     if (user) {
       setFirebaseUser(user);
-      setIsLoading(false);
     } else {
       // If no user is found, actively try to sign in anonymously.
-      // This is a robust way to handle cases where persistence fails in production.
       try {
         const userCredential = await signInAnonymously(auth);
         setFirebaseUser(userCredential.user);
       } catch (error: any) {
         console.error('CRITICAL: Anonymous sign-in failed:', error);
-        // If even anonymous sign-in fails, there's a fundamental issue.
-        toast({ 
-          title: 'Error de Conexión', 
-          description: 'No se pudo establecer una sesión. Por favor, revisa tu conexión y recarga la página.', 
-          variant: 'destructive',
-          duration: Infinity
-        });
         setFirebaseUser(null);
         setCurrentUser(null);
-      } finally {
-        setIsLoading(false);
       }
     }
-  }, [toast]);
+    setIsLoading(false);
+  }, []);
   
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, handleUser);
@@ -291,7 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
       if (!firebaseUser) {
-        // isLoading is handled by handleUser now
+        setCurrentUser(null);
         return;
       }
       
@@ -300,8 +291,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (userDocSnap.exists()) {
           setCurrentUser(userDocSnap.data() as UserProfile);
         } else {
-          // Profile might be in the process of being created by the backend function.
-          // We don't set to null immediately to avoid UI flashes.
+            // This might happen for a new anonymous user before their profile is created
+            setCurrentUser(null);
         }
       }, (error) => {
         console.error("Error listening to user profile:", error);
@@ -330,7 +321,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await linkWithCredential(auth.currentUser, credential);
     
-    // Now that the user is permanent, update their profile with the new username and the old guest data
+    // Call Cloud Function to perform the profile update safely.
     await callFirebaseFunction('updateUserProfile', {
         username: newUsername,
         countryCode: guestProfile?.countryCode || '',
