@@ -58,6 +58,10 @@ export default function ProfilePage() {
           countryCode: localProfile.countryCode,
           gender: localProfile.gender,
         });
+        // Si el usuario anónimo no ha completado su perfil, abrir el modo edición.
+        if (!localProfile.countryCode || !localProfile.gender) {
+          setIsEditing(true);
+        }
       }
     } else if (currentUser) {
       reset({
