@@ -34,10 +34,11 @@ const messaging = admin.messaging();
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
-setGlobalOptions({ maxInstances: 10, region: "us-central1" });
+// Enforce App Check on all callable functions in this region.
+setGlobalOptions({ maxInstances: 10, region: "us-central1", enforceAppCheck: true });
 
 
-export const saveFigure = onCall(async (request) => {
+export const saveFigure = onCall({ enforceAppCheck: true }, async (request) => {
     // 1. Authentication and Authorization Check
     if (!request.auth || request.auth.uid !== ADMIN_UID) {
         throw new HttpsError('permission-denied', 'You must be an admin to perform this action.');
@@ -69,24 +70,17 @@ export const saveFigure = onCall(async (request) => {
 
 
     const { id, ...dataToSave } = sanitizedData;
-    const isNewFigure = !id;
     const figureId = id || dataToSave.name!.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
     const figureRef = db.collection('figures').doc(figureId);
 
     try {
-        if (isNewFigure) {
-            // For new figures, set the creation timestamp
-            await figureRef.set({
-                ...dataToSave,
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-            return { success: true, message: `Figure "${dataToSave.name}" created successfully.` };
-        } else {
-            // For existing figures, merge the new data
-            await figureRef.set(dataToSave, { merge: true });
-            return { success: true, message: `Figure "${dataToSave.name}" updated successfully.` };
-        }
+        // Use set with merge to handle both create and update operations cleanly.
+        await figureRef.set(dataToSave, { merge: true });
+        
+        const message = id ? `Figure "${dataToSave.name}" updated successfully.` : `Figure "${dataToSave.name}" created successfully.`;
+        return { success: true, message };
+
     } catch (error: any) {
         console.error("Error saving figure to Firestore:", error);
         throw new HttpsError('internal', 'Could not save figure data.', error.message);
@@ -94,13 +88,13 @@ export const saveFigure = onCall(async (request) => {
 });
 
 
-export const getAdminFiguresList = onCall(async (request) => {
+export const getAdminFiguresList = onCall({ enforceAppCheck: true }, async (request) => {
     // This function's logic has been moved back to the client-side (placeholder-data.ts)
     // to restore the original App Hosting behavior. It is intentionally left empty.
     return { success: false, message: "This function is deprecated." };
 });
 
-export const deleteAllFigures = onCall(async (request) => {
+export const deleteAllFigures = onCall({ enforceAppCheck: true }, async (request) => {
     // This feature has been disabled for safety.
     return { success: false, message: "This function is deprecated for safety reasons." };
 });
@@ -217,7 +211,7 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
 });
 
 
-export const updateUserProfile = onCall(async (request) => {
+export const updateUserProfile = onCall({ enforceAppCheck: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'You must be logged in to update your profile.');
     }
@@ -248,7 +242,7 @@ export const updateUserProfile = onCall(async (request) => {
     }
 });
 
-export const voteOnAttitude = onCall(async (request) => {
+export const voteOnAttitude = onCall({ enforceAppCheck: true }, async (request) => {
     // This function's logic has been moved back to the client-side (voteOnAttitudeClient)
     // to restore the original App Hosting behavior. It is intentionally left empty.
     return { success: false, message: "This function is deprecated." };
@@ -257,7 +251,7 @@ export const voteOnAttitude = onCall(async (request) => {
 
 // ---- Settings Functions ----
 
-export const getGlobalSettings = onCall(async (request) => {
+export const getGlobalSettings = onCall({ enforceAppCheck: true }, async (request) => {
     const settingsRef = db.collection('settings').doc('global');
     try {
         const docSnap = await settingsRef.get();
@@ -271,7 +265,7 @@ export const getGlobalSettings = onCall(async (request) => {
     }
 });
 
-export const updateGlobalSettings = onCall(async (request) => {
+export const updateGlobalSettings = onCall({ enforceAppCheck: true }, async (request) => {
     if (request.auth?.uid !== ADMIN_UID) {
         throw new HttpsError('permission-denied', 'You must be an admin to update settings.');
     }
@@ -288,7 +282,7 @@ export const updateGlobalSettings = onCall(async (request) => {
     }
 });
 
-export const toggleFeaturedStatus = onCall(async (request) => {
+export const toggleFeaturedStatus = onCall({ enforceAppCheck: true }, async (request) => {
     // This function's logic has been moved back to the client-side (FigureForm.tsx)
     // to restore the original App Hosting behavior. It is intentionally left empty.
     return { success: false, message: "This function is deprecated." };

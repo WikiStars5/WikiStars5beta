@@ -322,17 +322,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const linkAccount = async (credential: AuthCredential, newUsername: string) => {
     if (!auth.currentUser) throw new Error("No user to link.");
     
+    // Crucially, get the local profile *before* linking, as the UID will change.
+    const guestProfile = localProfile;
+    
     await linkWithCredential(auth.currentUser, credential);
-    await updateProfile(auth.currentUser, { displayName: newUsername });
+    
+    // Now that the user is permanent, update their profile with the new username and the old guest data
+    await callFirebaseFunction('updateUserProfile', {
+        username: newUsername,
+        countryCode: guestProfile?.countryCode || '',
+        gender: guestProfile?.gender || ''
+    });
 
-    if (localProfile) {
-        await callFirebaseFunction('updateUserProfile', {
-            username: newUsername,
-            countryCode: localProfile.countryCode,
-            gender: localProfile.gender
-        });
-        clearLocalProfile();
-    }
+    clearLocalProfile();
   };
 
   const updateUserProfile = async (username: string, countryCode: string, gender: string) => {

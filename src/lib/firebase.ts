@@ -43,7 +43,7 @@ if (typeof window !== 'undefined') {
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
   if (!recaptchaSiteKey) {
-    console.error("Firebase App Check: La variable de entorno NEXT_PUBLIC_RECAPTCHA_SITE_KEY no está definida. App Check no se inicializará.");
+    console.error("Firebase App Check: La variable de entorno NEXT_PUBLIC_RECAPTCHA_SITE_KEY no está definida. App Check no se inicializará. Esto causará errores en producción.");
   } else {
     try {
       // Declaramos `self.FIREBASE_APPCHECK_DEBUG_TOKEN` como `any` para evitar errores de tipo
