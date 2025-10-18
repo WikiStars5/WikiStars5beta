@@ -386,10 +386,11 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         } catch(e) {
           calculatedAge = null;
         }
+      } else {
+        calculatedAge = null;
       }
-
-      // Sanitize the data: convert undefined to null before sending
-      const figureData: Partial<Figure> = {
+      
+      const figureData: Partial<Figure> & { id?: string } = {
         id: initialData?.id,
         name: nameTrimmed,
         profileType: profileType,
@@ -439,12 +440,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         ratingCounts: initialData?.ratingCounts || {},
       };
       
-      // Strict sanitization: remove any key with an 'undefined' value
-      const sanitizedFigureData = Object.fromEntries(
-        Object.entries(figureData).map(([key, value]) => [key, value === undefined ? null : value])
-      );
-
-      const result = await callFirebaseFunction('saveFigure', sanitizedFigureData);
+      const result = await callFirebaseFunction('saveFigure', figureData);
 
       setSuccess(result.message || `Perfil "${name}" guardado exitosamente.`);
       
