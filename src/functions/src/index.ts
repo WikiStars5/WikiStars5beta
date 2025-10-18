@@ -54,18 +54,19 @@ export const saveFigure = onCall(async (request) => {
     for (const key in figureData) {
         if (Object.prototype.hasOwnProperty.call(figureData, key)) {
             const value = (figureData as any)[key];
-            if (value !== undefined) {
-                 if (typeof value === 'object' && value !== null && !Array.isArray(value) && !(value instanceof admin.firestore.Timestamp)) {
-                    // Sanitize nested objects like socialLinks
-                     sanitizedData[key] = Object.fromEntries(
-                        Object.entries(value).filter(([, subValue]) => subValue !== undefined)
-                    );
-                 } else {
-                    sanitizedData[key] = value;
-                 }
+            if (value === undefined) {
+                sanitizedData[key] = null;
+            } else if (typeof value === 'object' && value !== null && !Array.isArray(value) && !(value instanceof admin.firestore.Timestamp)) {
+                // Sanitize nested objects like socialLinks
+                 sanitizedData[key] = Object.fromEntries(
+                    Object.entries(value).map(([subKey, subValue]) => [subKey, subValue === undefined ? null : subValue])
+                );
+            } else {
+                sanitizedData[key] = value;
             }
         }
     }
+
 
     const { id, ...dataToSave } = sanitizedData;
     const isNewFigure = !id;
@@ -204,6 +205,7 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
     lastLoginAt: new Date().toISOString(),
     achievements: [],
     isAnonymous: isAnonymous,
+    fcmToken: null,
   };
 
   try {
