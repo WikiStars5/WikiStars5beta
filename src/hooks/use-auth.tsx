@@ -10,7 +10,7 @@ import {
   type ReactNode,
   useCallback,
 } from 'react';
-import { auth, db, callFirebaseFunction } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword,
@@ -30,6 +30,7 @@ import { useLocalProfile } from './use-local-profile';
 import { useToast } from './use-toast';
 import { useCommentThread } from './use-comment-thread';
 import { findRootCommentRef } from '@/lib/utils';
+import { callFirebaseFunction } from '@/lib/placeholder-data';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>;
@@ -257,26 +258,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [firebaseUser, toast, isLoading, openCommentThread]);
 
   const handleUser = useCallback(async (user: FirebaseUser | null) => {
-    setIsLoading(true);
     if (user) {
       setFirebaseUser(user);
-      // No need to create profile here, `onUserCreate` handles it.
+      setIsLoading(false);
     } else {
+      // If no user is found, actively try to sign in anonymously.
+      // This is a robust way to handle cases where persistence fails in production.
       try {
         const userCredential = await signInAnonymously(auth);
         setFirebaseUser(userCredential.user);
       } catch (error: any) {
-        console.error('Anonymous sign-in failed:', error);
+        console.error('CRITICAL: Anonymous sign-in failed:', error);
+        // If even anonymous sign-in fails, there's a fundamental issue.
         toast({ 
-          title: 'Error de Autenticación Crítico', 
-          description: error.message || 'Fallo desconocido de inicio de sesión. Por favor, recarga la página.', 
-          variant: 'destructive' 
+          title: 'Error de Conexión', 
+          description: 'No se pudo establecer una sesión. Por favor, revisa tu conexión y recarga la página.', 
+          variant: 'destructive',
+          duration: Infinity
         });
         setFirebaseUser(null);
         setCurrentUser(null);
+      } finally {
+        setIsLoading(false);
       }
     }
-    // Set loading to false after user state is determined and profile listener is set up
   }, [toast]);
   
   useEffect(() => {
@@ -286,7 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
       if (!firebaseUser) {
-        setIsLoading(false);
+        // isLoading is handled by handleUser now
         return;
       }
       
@@ -295,14 +300,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (userDocSnap.exists()) {
           setCurrentUser(userDocSnap.data() as UserProfile);
         } else {
-          // Profile is being created by the backend, wait for it.
-          setCurrentUser(null);
+          // Profile might be in the process of being created by the backend function.
+          // We don't set to null immediately to avoid UI flashes.
         }
-        setIsLoading(false);
       }, (error) => {
         console.error("Error listening to user profile:", error);
         setCurrentUser(null);
-        setIsLoading(false);
       });
 
       return () => unsubscribeProfile();
