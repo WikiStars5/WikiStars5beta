@@ -404,16 +404,14 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
                 figureData.age = differenceInYears(new Date(), birthDate);
             }
         } catch (e) {
-             console.error("Invalid date for age calculation", e)
+             console.error("Invalid date for age calculation", e);
+             figureData.age = null;
         }
+      } else {
+        figureData.age = null; // Explicitly set to null if no birthdate
       }
 
-      // Sanitize the data to remove undefined fields before sending to Firestore
-      const sanitizedData = Object.fromEntries(
-        Object.entries(figureData).map(([key, value]) => [key, value === undefined ? null : value])
-      );
-
-      await updateFigureInFirestore(sanitizedData as Partial<Figure> & { id: string });
+      await updateFigureInFirestore(figureData);
       
       toast({ title: "Perfil Actualizado", description: "Los cambios han sido guardados." });
       setIsEditing(false);

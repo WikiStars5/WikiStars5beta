@@ -379,6 +379,15 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         delete (attitudeCounts as Partial<typeof attitudeCounts>).simp;
       }
 
+      let calculatedAge: number | null = null;
+      if (birthDate) {
+        try {
+          calculatedAge = differenceInYears(new Date(), birthDate);
+        } catch(e) {
+          calculatedAge = null;
+        }
+      }
+
       // Sanitize the data: convert undefined to null before sending
       const figureData: Partial<Figure> = {
         id: initialData?.id,
@@ -395,7 +404,7 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
         hashtagKeywords: generateHashtagKeywords(hashtags),
         hashtagsLower: hashtagsLower,
         nationality: countryCodeToNameMap.get(nationalityCode) || null,
-        age: birthDate ? differenceInYears(new Date(), birthDate) : undefined, // Let backend calculate or handle undefined
+        age: calculatedAge,
         height: heightCm ? `${heightCm} cm` : null,
         category: category.trim() || null, 
         occupation: occupation.trim() || null, 
