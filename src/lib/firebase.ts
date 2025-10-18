@@ -36,7 +36,8 @@ const getFirebaseApp = (): FirebaseApp => {
 
 const app: FirebaseApp = getFirebaseApp();
 
-// --- Inicialización de App Check (Solo en el Cliente) ---
+// --- Inicialización de App Check (Temporalmente Desactivado para Debugging) ---
+/*
 if (typeof window !== 'undefined') {
   // La clave de ReCaptcha v3 se debe almacenar de forma segura.
   // Usar una variable de entorno pública de Next.js es la práctica estándar.
@@ -60,6 +61,7 @@ if (typeof window !== 'undefined') {
     }
   }
 }
+*/
 
 const storage: FirebaseStorage = getStorage(app);
 const db: Firestore = getFirestore(app);

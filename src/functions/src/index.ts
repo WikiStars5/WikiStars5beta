@@ -34,11 +34,11 @@ const messaging = admin.messaging();
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
-// Enforce App Check on all callable functions in this region.
-setGlobalOptions({ maxInstances: 10, region: "us-central1", enforceAppCheck: true });
+// App Check is temporarily disabled for debugging production issues.
+setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
 
-export const saveFigure = onCall({ enforceAppCheck: true }, async (request) => {
+export const saveFigure = onCall(async (request) => {
     // 1. Authentication and Authorization Check
     if (!request.auth || request.auth.uid !== ADMIN_UID) {
         throw new HttpsError('permission-denied', 'You must be an admin to perform this action.');
@@ -88,13 +88,13 @@ export const saveFigure = onCall({ enforceAppCheck: true }, async (request) => {
 });
 
 
-export const getAdminFiguresList = onCall({ enforceAppCheck: true }, async (request) => {
+export const getAdminFiguresList = onCall(async (request) => {
     // This function's logic has been moved back to the client-side (placeholder-data.ts)
     // to restore the original App Hosting behavior. It is intentionally left empty.
     return { success: false, message: "This function is deprecated." };
 });
 
-export const deleteAllFigures = onCall({ enforceAppCheck: true }, async (request) => {
+export const deleteAllFigures = onCall(async (request) => {
     // This feature has been disabled for safety.
     return { success: false, message: "This function is deprecated for safety reasons." };
 });
@@ -211,7 +211,7 @@ export const createProfileOnRegister = onUserCreate(async (event) => {
 });
 
 
-export const updateUserProfile = onCall({ enforceAppCheck: true }, async (request) => {
+export const updateUserProfile = onCall(async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'You must be logged in to update your profile.');
     }
@@ -242,7 +242,7 @@ export const updateUserProfile = onCall({ enforceAppCheck: true }, async (reques
     }
 });
 
-export const voteOnAttitude = onCall({ enforceAppCheck: true }, async (request) => {
+export const voteOnAttitude = onCall(async (request) => {
     // This function's logic has been moved back to the client-side (voteOnAttitudeClient)
     // to restore the original App Hosting behavior. It is intentionally left empty.
     return { success: false, message: "This function is deprecated." };
@@ -251,7 +251,7 @@ export const voteOnAttitude = onCall({ enforceAppCheck: true }, async (request) 
 
 // ---- Settings Functions ----
 
-export const getGlobalSettings = onCall({ enforceAppCheck: true }, async (request) => {
+export const getGlobalSettings = onCall(async (request) => {
     const settingsRef = db.collection('settings').doc('global');
     try {
         const docSnap = await settingsRef.get();
@@ -265,7 +265,7 @@ export const getGlobalSettings = onCall({ enforceAppCheck: true }, async (reques
     }
 });
 
-export const updateGlobalSettings = onCall({ enforceAppCheck: true }, async (request) => {
+export const updateGlobalSettings = onCall(async (request) => {
     if (request.auth?.uid !== ADMIN_UID) {
         throw new HttpsError('permission-denied', 'You must be an admin to update settings.');
     }
@@ -282,7 +282,7 @@ export const updateGlobalSettings = onCall({ enforceAppCheck: true }, async (req
     }
 });
 
-export const toggleFeaturedStatus = onCall({ enforceAppCheck: true }, async (request) => {
+export const toggleFeaturedStatus = onCall(async (request) => {
     // This function's logic has been moved back to the client-side (FigureForm.tsx)
     // to restore the original App Hosting behavior. It is intentionally left empty.
     return { success: false, message: "This function is deprecated." };
