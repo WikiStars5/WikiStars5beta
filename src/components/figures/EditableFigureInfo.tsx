@@ -38,6 +38,7 @@ import { VIDEO_GAME_GENRES } from '@/config/genres';
 import { Combobox } from '../shared/Combobox';
 import { searchHashtags } from '@/app/actions/searchHashtagsAction';
 import { differenceInYears } from 'date-fns';
+import { useAuth } from '@/hooks/use-auth';
 
 // Debounce function
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
@@ -96,7 +97,7 @@ const InfoItem: React.FC<{
   const getFaviconUrl = (link: string) => {
     try {
       const url = new URL(link);
-      return `https://www.google.com/s2/favicons?sz=64&domain_url=${url.hostname}`;
+      return `https://www.google.com/s2/favicons?sz=64&domain_url=${\'\'\'${url.hostname}\'\'\'}`;
     } catch (e) {
       return null;
     }
@@ -157,7 +158,7 @@ const SocialLink: React.FC<{ href?: string; label: string; icon?: React.ElementT
    const getFaviconUrl = (link: string) => {
     try {
         const url = new URL(link);
-        return `https://www.google.com/s2/favicons?sz=64&domain_url=${url.hostname}`;
+        return `https://www.google.com/s2/favicons?sz=64&domain_url=${\'\'\'${url.hostname}\'\'\'}`;
     } catch (e) {
         return null;
     }
@@ -184,7 +185,7 @@ const SocialLink: React.FC<{ href?: string; label: string; icon?: React.ElementT
 const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
     const nationalityFlagUrl = useMemo(() => {
       if (!figure.nationalityCode) return null;
-      return `https://flagcdn.com/w40/${figure.nationalityCode.toLowerCase()}.png`;
+      return `https://flagcdn.com/w40/${\'\'\'${figure.nationalityCode.toLowerCase()}\'\'\'}.png`;
     }, [figure.nationalityCode]);
 
     const birthDate = useMemo(() => {
@@ -233,7 +234,7 @@ const CharacterInfoTemplate = ({ figure }: { figure: Figure }) => {
                 <InfoItem icon={Users} label="Sexo" value={genderInfo} />
                 <InfoItem icon={Cake} label="Nacimiento" value={birthDate} />
                 <InfoItem icon={Skull} label="Fallecimiento" value={deathDate} />
-                <InfoItem icon={Globe} label="País de origen" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${figure.nationalityCode}`: undefined} imageUrl={nationalityFlagUrl} />
+                <InfoItem icon={Globe} label="País de origen" value={figure.nationality} href={figure.nationalityCode ? `/figures/nationality/${\'\'\'${figure.nationalityCode}\'\'\'}`: undefined} imageUrl={nationalityFlagUrl} />
                 <InfoItem icon={Briefcase} label="Ocupación" value={figure.occupation} />
                 <InfoItem icon={HeartHandshake} label="Estado civil" value={figure.maritalStatus} />
                 <InfoItem icon={StretchVertical} label="Altura" value={figure.height} />
@@ -315,6 +316,7 @@ const MAX_HASHTAGS = 10;
 
 export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfoProps) {
   const { toast } = useToast();
+  const { isAdmin } = useAuth(); // Use the auth hook to check for admin status
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Figure>>(initialFigure);
@@ -338,7 +340,7 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
     }
     setIsLoadingHashtags(true);
     const results = await searchHashtags(searchTerm);
-    const options = results.map(h => ({ value: h.id, label: `#${h.id}`}));
+    const options = results.map(h => ({ value: h.id, label: `#${\'\'\'${h.id}\'\'\'}`}));
     setHashtagOptions(options);
     setIsLoadingHashtags(false);
   }, 300), []);
@@ -368,7 +370,7 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
     if (currentHashtags.length >= MAX_HASHTAGS) {
         toast({
             title: "Límite de hashtags alcanzado",
-            description: `Solo puedes añadir hasta ${MAX_HASHTAGS} hashtags.`,
+            description: `Solo puedes añadir hasta ${\'\'\'${MAX_HASHTAGS}\'\'\'} hashtags.`,
             variant: "destructive",
         });
         return;
@@ -446,25 +448,27 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
               Datos biográficos y descriptivos de {initialFigure.name}.
           </CardDescription>
         </div>
-        <div className="flex gap-2">
-            {isEditing ? (
-            <>
-                <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
-                <X className="mr-2 h-4 w-4" />
-                Cancelar
+        {isAdmin && ( // Only show edit/save/cancel buttons to admins
+            <div className="flex gap-2">
+                {isEditing ? (
+                <>
+                    <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
+                    <X className="mr-2 h-4 w-4" />
+                    Cancelar
+                    </Button>
+                    <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Guardar
+                    </Button>
+                </>
+                ) : (
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                    <FilePenLine className="mr-2 h-4 w-4" />
+                    Editar
                 </Button>
-                <Button size="sm" onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Guardar
-                </Button>
-            </>
-            ) : (
-            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                <FilePenLine className="mr-2 h-4 w-4" />
-                Editar
-            </Button>
-            )}
-        </div>
+                )}
+            </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         {isEditing ? (
@@ -535,7 +539,7 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
                             </Select>
                         </div>
                         <div className="md:col-span-2">
-                           <Label>{`Altura: ${formData.heightCm ? `${formData.heightCm} cm` : 'No especificada'}`}</Label>
+                           <Label>{`Altura: ${\'\'\'${formData.heightCm ? `${\'\'\'${formData.heightCm}\'\'\'} cm` : 'No especificada'}\'\'\'}`}</Label>
                             <Slider
                                 min={40}
                                 max={250}
@@ -633,7 +637,7 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
                       type="button"
                       onClick={() => handleRemoveHashtag(tag)}
                       className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive"
-                      aria-label={`Eliminar ${tag}`}
+                      aria-label={`Eliminar ${\'\'\'${tag}\'\'\'}`}
                     >
                       <X className="h-3 w-3" />
                     </button>
