@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
 import { voteOnAttitude } from '@/lib/placeholder-data';
-import type { User as FirebaseUser } from 'firebase/auth';
+import { useAuth } from '@/hooks/use-auth';
 import {
   Tooltip,
   TooltipContent,
@@ -24,7 +24,6 @@ interface AttitudeVoteProps {
   profileType: ProfileType;
   attitudeCounts: Record<AttitudeKey, number>;
   onVote: (attitude: AttitudeKey | null) => void;
-  firebaseUser: FirebaseUser | null;
 }
 
 const ATTITUDE_OPTIONS: { key: AttitudeKey; label: string; icon: React.ElementType }[] = [
@@ -35,7 +34,8 @@ const ATTITUDE_OPTIONS: { key: AttitudeKey; label: string; icon: React.ElementTy
 ];
 
 
-export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, profileType, attitudeCounts, onVote, firebaseUser }) => {
+export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, profileType, attitudeCounts, onVote }) => {
+  const { firebaseUser, isLoading: isAuthLoading } = useAuth();
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const { toast } = useToast();
@@ -53,8 +53,8 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   }, [figureId, firebaseUser, storageKey]);
 
   const handleVote = async (newAttitude: AttitudeKey) => {
-    if (!firebaseUser || isVoting) {
-        if(!firebaseUser) toast({ title: "Error", description: "Debes iniciar sesión para votar.", variant: "destructive" });
+    if (isAuthLoading || !firebaseUser || isVoting) {
+        if(!firebaseUser && !isAuthLoading) toast({ title: "Error", description: "Debes iniciar sesión para votar.", variant: "destructive" });
         return;
     }
     
@@ -132,7 +132,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                         isSelected && "shadow-lg ring-2 ring-offset-2 ring-offset-black ring-primary"
                       )}
                       onClick={() => handleVote(key)}
-                      disabled={isVoting || !firebaseUser}
+                      disabled={isVoting || isAuthLoading}
                     >
                       {isVoting && isSelected ? (
                         <Loader2 className="h-6 w-6 animate-spin mb-1" />

@@ -179,7 +179,6 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
                     profileType={figure.profileType} 
                     attitudeCounts={figure.attitudeCounts}
                     onVote={setCommentSortPreference}
-                    firebaseUser={firebaseUser}
                   />
               </TabsContent>
               
