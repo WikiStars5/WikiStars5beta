@@ -69,14 +69,6 @@ export async function grantFirstGlanceAchievement(userId: string): Promise<Achie
   );
 }
 
-export async function grantActitudDefinidaAchievement(userId: string): Promise<AchievementResult> {
-    return grantAchievement(
-        userId,
-        'actitud_definida',
-        '¡Tu opinión cuenta! Has definido tu actitud. ¡Gracias por tu perspectiva!'
-    );
-}
-
 export async function grantEmocionAlDescubiertoAchievement(userId: string): Promise<AchievementResult> {
     return grantAchievement(
         userId,

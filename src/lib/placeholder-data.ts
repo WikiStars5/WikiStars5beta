@@ -436,48 +436,6 @@ export const getFiguresByNationality = async (nationalityCode: string): Promise<
   }
 };
 
-export async function voteOnAttitudeClient(
-  figureId: string,
-  newVote: AttitudeKey | null,
-  previousVote: AttitudeKey | null,
-): Promise<void> {
-  const figureRef = doc(db, 'figures', figureId);
-  try {
-    await runTransaction(db, async (transaction) => {
-      const figureDoc = await transaction.get(figureRef);
-      if (!figureDoc.exists()) {
-        throw new Error("La figura no existe.");
-      }
-
-      const currentData = figureDoc.data() as Figure;
-      const attitudeCounts = currentData.attitudeCounts || {
-        neutral: 0, fan: 0, simp: 0, hater: 0
-      };
-      
-      const newAttitudeCounts = { ...attitudeCounts };
-
-      // Decrement previous vote only if it exists
-      if (previousVote) {
-          newAttitudeCounts[previousVote] = Math.max(0, (newAttitudeCounts[previousVote] || 0) - 1);
-      }
-
-      // Increment new vote if it exists
-      if (newVote) {
-          newAttitudeCounts[newVote] = (newAttitudeCounts[newVote] || 0) + 1;
-      }
-      
-      transaction.update(figureRef, {
-          attitudeCounts: newAttitudeCounts
-      });
-    });
-  } catch (error) {
-    console.error("Error processing attitude vote on client:", error);
-    // Re-throw the error so the calling component can catch it and show a toast.
-    throw error;
-  }
-}
-
-
 // --- Comments ---
 
 export const mapDocToComment = (docSnap: DocumentData): Comment => {
