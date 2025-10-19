@@ -5,7 +5,6 @@ import type { ReactNode } from 'react';
 import type { Metadata, Viewport } from 'next';
 import { ClientProviders } from '@/components/layout/ClientProviders';
 import Script from 'next/script';
-import { FirebaseClientProvider } from '@/components/layout/FirebaseClientProvider';
 
 const logoUrl = "/logo/logodia.png";
 
