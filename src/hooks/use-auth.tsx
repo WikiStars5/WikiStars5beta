@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import {
@@ -10,12 +9,10 @@ import {
   type ReactNode,
   useCallback,
 } from 'react';
-import { auth, db } from '@/lib/firebase';
+import { useFirebase } from '@/components/layout/FirebaseProvider';
 import { 
-  onAuthStateChanged, 
-  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInAnonymously,
+  signInWithEmailAndPassword,
   signOut,
   updateProfile,
   linkWithCredential,
@@ -65,9 +62,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const { auth, db, firebaseUser, isLoading: isFirebaseLoading } = useFirebase();
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
   const { openCommentThread } = useCommentThread();
@@ -123,14 +119,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userDocRef = doc(db, 'users', user.uid);
       await updateDoc(userDocRef, { fcmToken: token });
     }
-  }, []);
+  }, [db]);
 
   const deleteFcmToken = useCallback(async (user: FirebaseUser) => {
     if (user) {
       const userDocRef = doc(db, 'users', user.uid);
       await updateDoc(userDocRef, { fcmToken: null });
     }
-  }, []);
+  }, [db]);
   
   const isAnonymous = firebaseUser ? firebaseUser.isAnonymous : true;
 
@@ -178,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // Global listener for new replies
   useEffect(() => {
-    if (!firebaseUser || isLoading) return;
+    if (!firebaseUser || isFirebaseLoading) return;
     
     const repliesQuery = query(
         collectionGroup(db, 'replies')
@@ -257,35 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [firebaseUser, toast, isLoading, openCommentThread]);
-
-  const handleUser = useCallback(async (user: FirebaseUser | null) => {
-    setIsLoading(true);
-    if (user) {
-      setFirebaseUser(user);
-    } else {
-      // If no user is found, actively try to sign in anonymously.
-      try {
-        const userCredential = await signInAnonymously(auth);
-        setFirebaseUser(userCredential.user);
-      } catch (error: any) {
-        console.error('CRITICAL: Anonymous sign-in failed:', error);
-        toast({
-            title: "Error de Conexión",
-            description: "No se pudo establecer una sesión. Por favor, revisa tu conexión y la configuración de tu navegador.",
-            variant: "destructive",
-        });
-        setFirebaseUser(null);
-        setCurrentUser(null);
-      }
-    }
-    setIsLoading(false);
-  }, [toast]);
-  
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, handleUser);
-    return () => unsubscribe();
-  }, [handleUser]);
+  }, [firebaseUser, toast, isFirebaseLoading, openCommentThread, db]);
 
   useEffect(() => {
       if (!firebaseUser) {
@@ -307,7 +275,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       return () => unsubscribeProfile();
-  }, [firebaseUser]);
+  }, [firebaseUser, db]);
 
   const isAdmin = currentUser?.role === 'admin' && currentUser?.uid === ADMIN_UID;
 
@@ -321,34 +289,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("No hay una sesión de invitado para vincular.");
     }
     
-    // Crucially, get the local profile *before* linking, as the UID will change.
     const guestProfile = localProfile;
     
     const credential = EmailAuthProvider.credential(email, pass);
     
     try {
       await linkWithCredential(anonymousUser, credential);
-
-      // Now call a cloud function to securely set the username and migrate data
       await callFirebaseFunction('linkAnonymousToUser', {
           username: username,
           countryCode: guestProfile?.countryCode || '',
           gender: guestProfile?.gender || '',
       });
-
-      // Clear local profile data for the old anonymous UID
       clearLocalProfile();
-
     } catch (error: any) {
         console.error("Error linking account:", error);
-        // Handle specific errors like 'auth/email-already-in-use'
         if (error.code === 'auth/email-already-in-use') {
             throw new Error("Este correo electrónico ya está en uso por otra cuenta.");
         }
         throw new Error("No se pudo crear la cuenta.");
     }
   };
-
 
   const logout = async () => {
     await signOut(auth);
@@ -368,7 +328,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("No authenticated user found.");
     }
     
-    // Call the Cloud Function to update the profile
     await callFirebaseFunction('updateUserProfile', { username, countryCode, gender });
   };
 
@@ -378,7 +337,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localProfile,
     setLocalProfile,
     isAdmin,
-    isLoading,
+    isLoading: isFirebaseLoading,
     isAnonymous,
     signIn,
     signUp,

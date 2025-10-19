@@ -7,6 +7,7 @@ import React, { type ReactNode } from 'react';
 import { AuthProvider } from '@/hooks/use-auth';
 import { CommentThreadProvider } from '@/hooks/use-comment-thread';
 import { CommentThreadDialog } from '@/components/comments/CommentThreadDialog';
+import { FirebaseProvider } from './FirebaseProvider';
 
 // This component provides client-side context, like the theme and toast notifications.
 export function ClientProviders({ children }: { children: ReactNode }) {
@@ -17,13 +18,15 @@ export function ClientProviders({ children }: { children: ReactNode }) {
       enableSystem
       forcedTheme="dark"
     >
-      <CommentThreadProvider>
-        <AuthProvider>
-            {children}
-            <CommentThreadDialog />
-            <Toaster />
-        </AuthProvider>
-      </CommentThreadProvider>
+      <FirebaseProvider>
+        <CommentThreadProvider>
+          <AuthProvider>
+              {children}
+              <CommentThreadDialog />
+              <Toaster />
+          </AuthProvider>
+        </CommentThreadProvider>
+      </FirebaseProvider>
     </ThemeProvider>
   );
 }

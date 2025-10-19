@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { Figure, EmotionKey, GenericEmotionVote, YoutubeShort, InstagramPost } from '@/lib/types';
-import { db } from '@/lib/firebase';
+import { useFirebase } from '@/components/layout/FirebaseProvider';
 import { doc, runTransaction } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,6 +46,7 @@ export const PerceptionEmotions: React.FC<PerceptionEmotionsProps> = ({
   onVote
 }) => {
   const { firebaseUser, isLoading: isAuthLoading } = useAuth();
+  const { db } = useFirebase();
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const { toast } = useToast();
