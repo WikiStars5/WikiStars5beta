@@ -1,22 +1,14 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, signInAnonymously, type Auth, type User as FirebaseUser } from 'firebase/auth';
-import { getFirestore, type Firestore } from 'firebase/firestore';
-import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import { onAuthStateChanged, signInAnonymously, type User as FirebaseUser } from 'firebase/auth';
+import { app, auth, db, storage } from '@/lib/firebase'; // Import instances directly
+import type { FirebaseApp } from 'firebase/app';
+import type { Auth } from 'firebase/auth';
+import type { Firestore } from 'firebase/firestore';
+import type { FirebaseStorage } from 'firebase/storage';
 import { Loader2 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-
-const firebaseConfig = {
-  "projectId": "wikistars5-2yctr",
-  "appId": "1:939359993461:web:8228c2d11941f46e95823c",
-  "storageBucket": "wikistars5-2yctr.firebasestorage.app",
-  "apiKey": "AIzaSyCwH29ruiIl_pohEoUHh7d26m5qCLCmYm0",
-  "authDomain": "wikistars5-2yctr.firebaseapp.com",
-  "measurementId": "G-8MY8KTGXP3",
-  "messagingSenderId": "939359993461"
-};
+import { useToast } from '@/hooks/use-toast';
 
 interface FirebaseContextType {
   app: FirebaseApp;
@@ -29,15 +21,10 @@ interface FirebaseContextType {
 
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
 
-// Garantiza una única inicialización de la app de Firebase
-const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const auth: Auth = getAuth(app);
-const db: Firestore = getFirestore(app);
-const storage: FirebaseStorage = getStorage(app);
-
 export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -46,13 +33,15 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       } else {
         try {
+            // This is the key part: if no user is found, we immediately try
+            // to sign in anonymously.
             const userCredential = await signInAnonymously(auth);
             setFirebaseUser(userCredential.user);
         } catch(error) {
             console.error("CRITICAL: Anonymous sign-in failed:", error);
             toast({
-                title: "Error de Sesión",
-                description: "No se pudo iniciar una sesión de invitado. La funcionalidad estará limitada.",
+                title: "Error de Conexión",
+                description: "No se pudo establecer una sesión. El sitio puede no funcionar correctamente.",
                 variant: "destructive",
             });
         } finally {
@@ -62,8 +51,9 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [toast]);
 
+  // The value now provides the pre-initialized instances from firebase.ts
   const value = { app, auth, db, storage, firebaseUser, isLoading };
 
   return (

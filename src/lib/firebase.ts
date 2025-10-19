@@ -1,15 +1,13 @@
 // === src/lib/firebase.ts ===
-// This file is now primarily for exporting types and the Cloud Function utility.
-// The main initialization logic has been moved to FirebaseProvider.tsx to ensure
-// it runs correctly in a client-only context within Next.js.
+// This file is now the central point for Firebase initialization,
+// providing instances for both client and server-side operations.
 
 import { initializeApp, getApp, getApps, type FirebaseApp } from "firebase/app";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
-import { getFirestore, type Firestore } from "firestore";
+import { getFirestore, type Firestore } from "firebase/firestore"; // Corrected import
 import { getAuth, type Auth } from "firebase/auth";
 import { getFunctions, httpsCallable, type Functions } from 'firebase/functions';
 
-// --- This configuration is now only used by Cloud Functions ---
 const firebaseConfig = {
   "projectId": "wikistars5-2yctr",
   "appId": "1:939359993461:web:8228c2d11941f46e95823c",
@@ -20,16 +18,19 @@ const firebaseConfig = {
   "messagingSenderId": "939359993461"
 };
 
+// --- Singleton Initialization ---
+// This pattern ensures that Firebase is initialized only once.
+const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const auth: Auth = getAuth(app);
+const db: Firestore = getFirestore(app);
+const storage: FirebaseStorage = getStorage(app);
+const functions: Functions = getFunctions(app, 'us-central1');
+
+// --- Exports for client and server ---
+export { app, auth, db, storage, functions };
+
 
 // --- CLOUD FUNCTIONS UTILITY ---
-// This part remains as it can be called from client components
-// that get the 'functions' instance from the FirebaseProvider.
-
-let functionsInstance: Functions | null = null;
-if (typeof window !== 'undefined') {
-    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-    functionsInstance = getFunctions(app, 'us-central1');
-}
 
 /**
  * A reusable utility function to call any Firebase Cloud Function from the client.
@@ -38,16 +39,12 @@ if (typeof window !== 'undefined') {
  * @returns The result from the Cloud Function.
  */
 export const callFirebaseFunction = async (functionName: string, data?: any): Promise<any> => {
-    if (!functionsInstance) {
-        throw new Error("Firebase Functions is not initialized on the client.");
-    }
-    const func = httpsCallable(functionsInstance, functionName);
+    const func = httpsCallable(functions, functionName);
     try {
         const response = await func(data);
         return response.data;
     } catch (error: any) {
         console.error(`Error calling function '${functionName}':`, error);
-        // Re-throw a more user-friendly error or the original error
         throw new Error(error.message || `An unknown error occurred while calling ${functionName}.`);
     }
 }
