@@ -1058,3 +1058,46 @@ export const getReplies = async (repliesPath: string): Promise<Comment[]> => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(mapDocToComment);
 };
+
+
+export async function voteOnAttitude(
+  figureId: string,
+  userId: string,
+  newAttitude: AttitudeKey | null,
+  previousAttitude: AttitudeKey | null,
+): Promise<void> {
+  const figureRef = doc(db, 'figures', figureId);
+  const userAttitudeRef = doc(db, 'userAttitudes', `${userId}_${figureId}`);
+
+  await runTransaction(db, async (transaction) => {
+    const figureDoc = await transaction.get(figureRef);
+    if (!figureDoc.exists()) {
+      throw new Error("Figure not found.");
+    }
+    
+    const currentCounts = figureDoc.data().attitudeCounts || defaultAttitudeCounts;
+    const newCounts = { ...currentCounts };
+
+    if (previousAttitude) {
+      newCounts[previousAttitude] = Math.max(0, (newCounts[previousAttitude] || 0) - 1);
+    }
+    if (newAttitude) {
+      newCounts[newAttitude] = (newCounts[newAttitude] || 0) + 1;
+    }
+
+    // Update figure's counts
+    transaction.update(figureRef, { attitudeCounts: newCounts });
+    
+    // Update or delete user's specific vote record
+    if (newAttitude) {
+      transaction.set(userAttitudeRef, { 
+        userId: userId, 
+        figureId: figureId, 
+        attitude: newAttitude,
+        updatedAt: serverTimestamp() 
+      });
+    } else {
+      transaction.delete(userAttitudeRef);
+    }
+  });
+}

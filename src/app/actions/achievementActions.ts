@@ -76,3 +76,11 @@ export async function grantEmocionAlDescubiertoAchievement(userId: string): Prom
         '¡Conectando emociones! Has expresado cómo te sientes. ¡Tu empatía es valiosa!'
     );
 }
+
+export async function grantActitudDefinidaAchievement(userId: string): Promise<AchievementResult> {
+    return grantAchievement(
+        userId,
+        'actitud_definida',
+        '¡Posición Tomada! Has definido tu actitud. Tu perspectiva enriquece la discusión.'
+    );
+}
