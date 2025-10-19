@@ -58,7 +58,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = routeParams?.id;
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, isLoading: isAuthLoading } = useAuth(); // Obtener isLoading de useAuth
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
@@ -179,6 +179,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
                     profileType={figure.profileType} 
                     attitudeCounts={figure.attitudeCounts}
                     onVote={setCommentSortPreference}
+                    isLoadingAuth={isAuthLoading} 
                   />
               </TabsContent>
               

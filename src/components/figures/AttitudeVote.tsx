@@ -24,6 +24,7 @@ interface AttitudeVoteProps {
   profileType: ProfileType;
   attitudeCounts: Record<AttitudeKey, number>;
   onVote: (attitude: AttitudeKey | null) => void;
+  isLoadingAuth: boolean; // <-- Nueva propiedad
 }
 
 const ATTITUDE_OPTIONS: { key: AttitudeKey; label: string; icon: React.ElementType }[] = [
@@ -34,8 +35,8 @@ const ATTITUDE_OPTIONS: { key: AttitudeKey; label: string; icon: React.ElementTy
 ];
 
 
-export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, profileType, attitudeCounts, onVote }) => {
-  const { firebaseUser, isLoading: isAuthLoading } = useAuth();
+export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName, profileType, attitudeCounts, onVote, isLoadingAuth }) => {
+  const { firebaseUser } = useAuth(); // Ya no necesitamos isAuthLoading aquí
   const [selectedAttitude, setSelectedAttitude] = useState<AttitudeKey | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const { toast } = useToast();
@@ -53,8 +54,9 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
   }, [figureId, firebaseUser, storageKey]);
 
   const handleVote = async (newAttitude: AttitudeKey) => {
-    if (isAuthLoading || !firebaseUser || isVoting) {
-        if(!isAuthLoading && !firebaseUser) toast({ title: "Error", description: "Debes iniciar sesión para votar.", variant: "destructive" });
+    // La comprobación ahora incluye la prop isLoadingAuth
+    if (isLoadingAuth || !firebaseUser || isVoting) {
+        if(!isLoadingAuth && !firebaseUser) toast({ title: "Error", description: "Debes iniciar sesión para votar.", variant: "destructive" });
         return;
     }
     
@@ -132,7 +134,7 @@ export const AttitudeVote: React.FC<AttitudeVoteProps> = ({ figureId, figureName
                         isSelected && "shadow-lg ring-2 ring-offset-2 ring-offset-black ring-primary"
                       )}
                       onClick={() => handleVote(key)}
-                      disabled={isVoting}
+                      disabled={isVoting || isLoadingAuth} // <-- Deshabilitar mientras carga auth
                     >
                       {isVoting && isSelected ? (
                         <Loader2 className="h-6 w-6 animate-spin mb-1" />
