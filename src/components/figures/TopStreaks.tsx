@@ -146,3 +146,5 @@ export function TopStreaks({ figureId }: TopStreaksProps) {
         </Card>
     );
 }
+
+    

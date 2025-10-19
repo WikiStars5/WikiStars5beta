@@ -686,12 +686,12 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
               <Combobox
                   options={hashtagOptions}
                   value={hashtagSearch}
-                  onChange={(value) => {
+                  onValueChange={setHashtagSearch}
+                  onSelect={(value) => {
                       if (value) handleAddHashtag(value);
                   }}
-                  onSearchChange={setHashtagSearch}
-                  isLoading={isLoadingHashtags}
                   placeholder="Busca un hashtag para añadir..."
+                  isLoading={isLoadingHashtags}
               />
           </div>
           <div className="space-y-2">
@@ -801,3 +801,5 @@ const FigureForm: React.FC<FigureFormProps> = ({ initialData }) => {
 };
 
 export default FigureForm;
+
+    
