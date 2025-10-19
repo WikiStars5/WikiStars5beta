@@ -24,7 +24,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type { Figure, Streak, AttitudeKey } from "@/lib/types";
 import { EditableFigureInfo } from '@/components/figures/FigureInfo';
 import { doc, onSnapshot, type Timestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getFirestore } from "firebase/firestore";
+import { getApp } from "firebase/app";
 import { mapDocToFigure } from "@/lib/placeholder-data";
 import { RelatedProfiles } from "@/components/figures/RelatedProfiles";
 import { CommentSection } from "@/components/comments/CommentSection";
@@ -55,10 +56,9 @@ const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
   const routeParams = useParams<{ id:string }>();
-  const searchParams = useSearchParams();
-  const router = useRouter();
   const id = routeParams?.id;
-  const { firebaseUser, isLoading: isAuthLoading } = useAuth(); 
+  const { firebaseUser, isLoading: isAuthLoading } = useAuth();
+  const db = getFirestore(getApp());
 
   const [figure, setFigure] = React.useState<Figure | null | undefined>(initialFigure); 
   const [viewerImageUrl, setViewerImageUrl] = React.useState<string | null>(null);
@@ -84,7 +84,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
     });
 
     return () => unsubscribe();
-  }, [id]);
+  }, [id, db]);
 
   // Add a real-time listener for the user's streak on this figure
   React.useEffect(() => {
@@ -114,7 +114,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
 
       return () => unsubscribeStreak();
 
-  }, [id, firebaseUser]);
+  }, [id, firebaseUser, db]);
 
   // Scroll to hash element if present in URL
   React.useEffect(() => {
@@ -141,7 +141,7 @@ export function FigureDetailClient({ initialFigure }: FigureDetailClientProps) {
     }
   };
 
-  if (figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (isAuthLoading || figure === undefined) return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!figure) return <div>Figura no encontrada.</div>;
 
   return (

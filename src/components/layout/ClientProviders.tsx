@@ -7,7 +7,27 @@ import React, { type ReactNode } from 'react';
 import { AuthProvider } from '@/hooks/use-auth';
 import { CommentThreadProvider } from '@/hooks/use-comment-thread';
 import { CommentThreadDialog } from '@/components/comments/CommentThreadDialog';
-import { FirebaseClientProvider } from './FirebaseClientProvider';
+import { usePathname } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+
+function AuthWrapper({ children }: { children: ReactNode }) {
+  const { isLoading } = useAuth();
+  const pathname = usePathname();
+  
+  const isAdminRoute = pathname.startsWith('/admin');
+
+  if (isLoading && !isAdminRoute) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background z-[200]">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  return <>{children}</>;
+}
+
 
 // This component provides client-side context, like the theme and toast notifications.
 export function ClientProviders({ children }: { children: ReactNode }) {
@@ -18,15 +38,15 @@ export function ClientProviders({ children }: { children: ReactNode }) {
       enableSystem
       forcedTheme="dark"
     >
-      <FirebaseClientProvider>
-        <CommentThreadProvider>
-          <AuthProvider>
-              {children}
-              <CommentThreadDialog />
-              <Toaster />
-          </AuthProvider>
-        </CommentThreadProvider>
-      </FirebaseClientProvider>
+      <CommentThreadProvider>
+        <AuthProvider>
+          <AuthWrapper>
+            {children}
+          </AuthWrapper>
+          <CommentThreadDialog />
+          <Toaster />
+        </AuthProvider>
+      </CommentThreadProvider>
     </ThemeProvider>
   );
 }
