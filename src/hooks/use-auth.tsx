@@ -13,11 +13,13 @@ import {
   getAuth,
   onAuthStateChanged,
   signInAnonymously,
-  type User as FirebaseUser
+  type User as FirebaseUser,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
 } from 'firebase/auth';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import type { UserProfile, LocalProfile, Notification } from '@/lib/types';
-import { doc, onSnapshot, getDoc, updateDoc, collectionGroup, query, Timestamp } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, updateDoc, setDoc, collectionGroup, query, Timestamp } from 'firebase/firestore';
 import { getFirestore } from 'firebase/firestore';
 import { ADMIN_UID } from '@/config/admin';
 import { useLocalProfile } from './use-local-profile';
@@ -26,6 +28,7 @@ import { useCommentThread } from './use-comment-thread';
 import { findRootCommentRef } from '@/lib/utils';
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { useRouter } from 'next/navigation';
+import { callFirebaseFunction } from '@/lib/firebase';
 
 // --- Firebase Initialization (Singleton Pattern for Client-Side) ---
 const firebaseConfig = {
@@ -199,16 +202,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAnonymous = firebaseUser ? firebaseUser.isAnonymous : true;
 
   const signIn = async (email: string, pass: string) => {
-    // Logic moved to a Server Action
+    return signInWithEmailAndPassword(auth, email, pass);
   };
   
   const signUp = async (email: string, pass: string, username: string) => {
-    // Logic moved to a Server Action
+     await createUserWithEmailAndPassword(auth, email, pass);
+     // The onUserCreate function will handle profile creation.
+     // We just need to ensure the username is set if provided.
+     if (auth.currentUser) {
+         const userRef = doc(db, "users", auth.currentUser.uid);
+         await updateDoc(userRef, { username: username });
+     }
   };
 
   const logout = async () => {
     await auth.signOut();
+    // After logging out, a new anonymous user will be created by onAuthStateChanged
+    // so we redirect to home.
     router.push('/');
+    // Clear any user-specific state if needed
+    setCurrentUser(null);
+    setFirebaseUser(null);
+    clearLocalProfile();
   };
 
   const updateUserProfile = async (username: string, countryCode: string, gender: string) => {
@@ -217,12 +232,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveLocalProfile(profile);
       window.dispatchEvent(new Event('local-profile-updated'));
     } else if(firebaseUser) {
-      // Call Server Action to update registered user profile
+        const payload = { username, countryCode, gender };
+        await callFirebaseFunction('updateUserProfile', payload);
     }
   };
 
   const requestNotificationPermission = async () => {
       // Notification permission logic here
+      if (!firebaseUser || isAnonymous) return;
+
+      try {
+        const messaging = getMessaging(app);
+        const currentToken = await getToken(messaging, { vapidKey: 'YOUR_VAPID_KEY_HERE' }); // You need to add your VAPID key
+        if (currentToken) {
+            await updateDoc(doc(db, 'users', firebaseUser.uid), { fcmToken: currentToken });
+            setIsNotificationsEnabled(true);
+            toast({ title: "¡Notificaciones activadas!" });
+        } else {
+            toast({ title: "Permiso de notificación necesario", description: "Por favor, permite las notificaciones en tu navegador."});
+        }
+      } catch (error) {
+        console.error('Error getting FCM token:', error);
+        toast({ title: "Error", description: "No se pudieron activar las notificaciones.", variant: "destructive" });
+      }
   };
 
   const triggerInstallPrompt = async () => {
@@ -241,7 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     currentUser,
     localProfile,
     isAdmin,
-    isLoading: isLoading || (firebaseUser === null),
+    isLoading,
     isAnonymous,
     signIn,
     signUp,

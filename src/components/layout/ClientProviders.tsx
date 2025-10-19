@@ -3,29 +3,27 @@
 
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from "@/components/ui/toaster";
-import React, { type ReactNode } from 'react';
+import React, { type ReactNode, Suspense } from 'react';
 import { AuthProvider } from '@/hooks/use-auth';
 import { CommentThreadProvider } from '@/hooks/use-comment-thread';
 import { CommentThreadDialog } from '@/components/comments/CommentThreadDialog';
 import { usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
 
-function AuthWrapper({ children }: { children: ReactNode }) {
-  const { isLoading } = useAuth();
-  const pathname = usePathname();
-  
-  const isAdminRoute = pathname.startsWith('/admin');
+function LoadingFallback() {
+    const pathname = usePathname();
+    const isAdminRoute = pathname.startsWith('/admin');
 
-  if (isLoading && !isAdminRoute) {
+    // Don't show global loader for admin routes as they have their own.
+    if (isAdminRoute) {
+        return null;
+    }
+    
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background z-[200]">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
+        <div className="fixed inset-0 flex items-center justify-center bg-background z-[200]">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
     );
-  }
-  
-  return <>{children}</>;
 }
 
 
@@ -40,9 +38,9 @@ export function ClientProviders({ children }: { children: ReactNode }) {
     >
       <CommentThreadProvider>
         <AuthProvider>
-          <AuthWrapper>
-            {children}
-          </AuthWrapper>
+            <Suspense fallback={<LoadingFallback/>}>
+              {children}
+            </Suspense>
           <CommentThreadDialog />
           <Toaster />
         </AuthProvider>
