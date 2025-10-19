@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Figure } from "@/lib/types";

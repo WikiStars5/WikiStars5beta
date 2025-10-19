@@ -38,6 +38,7 @@ import { VIDEO_GAME_GENRES } from '@/config/genres';
 import { Combobox } from '../shared/Combobox';
 import { searchHashtags } from '@/app/actions/searchHashtagsAction';
 import { differenceInYears } from 'date-fns';
+import { useAuth } from '@/hooks/use-auth';
 
 // Debounce function
 function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
@@ -315,6 +316,7 @@ const MAX_HASHTAGS = 10;
 
 export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfoProps) {
   const { toast } = useToast();
+  const { isAdmin } = useAuth(); // Use the auth hook to check for admin status
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Figure>>(initialFigure);
@@ -396,19 +398,29 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
     try {
       const figureData: Partial<Figure> & { id: string } = { ...formData, id: initialFigure.id };
       
-      // Calculate age if birthDate is provided
+      // Calculate age if birthDate is provided, otherwise ensure it's null
       if (figureData.birthDateOrAge) {
         try {
             const birthDate = new Date(figureData.birthDateOrAge);
             if (!isNaN(birthDate.getTime())) {
                 figureData.age = differenceInYears(new Date(), birthDate);
+            } else {
+                figureData.age = null; // Set to null if date is invalid
             }
         } catch (e) {
-             console.error("Invalid date for age calculation", e)
+             console.error("Invalid date for age calculation", e);
+             figureData.age = null;
         }
+      } else {
+        figureData.age = null; // Explicitly set to null if no birthdate
       }
+      
+      // Sanitize the final object right before sending it
+      const sanitizedData = Object.fromEntries(
+        Object.entries(figureData).map(([key, value]) => [key, value === undefined ? null : value])
+      );
 
-      await updateFigureInFirestore(figureData);
+      await updateFigureInFirestore(sanitizedData as Partial<Figure> & { id: string });
       
       toast({ title: "Perfil Actualizado", description: "Los cambios han sido guardados." });
       setIsEditing(false);
@@ -436,25 +448,27 @@ export function EditableFigureInfo({ figure: initialFigure }: EditableFigureInfo
               Datos biográficos y descriptivos de {initialFigure.name}.
           </CardDescription>
         </div>
-        <div className="flex gap-2">
-            {isEditing ? (
-            <>
-                <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
-                <X className="mr-2 h-4 w-4" />
-                Cancelar
+        {isAdmin && ( // Only show edit/save/cancel buttons to admins
+            <div className="flex gap-2">
+                {isEditing ? (
+                <>
+                    <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
+                    <X className="mr-2 h-4 w-4" />
+                    Cancelar
+                    </Button>
+                    <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Guardar
+                    </Button>
+                </>
+                ) : (
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                    <FilePenLine className="mr-2 h-4 w-4" />
+                    Editar
                 </Button>
-                <Button size="sm" onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Guardar
-                </Button>
-            </>
-            ) : (
-            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                <FilePenLine className="mr-2 h-4 w-4" />
-                Editar
-            </Button>
-            )}
-        </div>
+                )}
+            </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         {isEditing ? (

@@ -291,10 +291,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const guestProfile = localProfile;
     
-    const credential = EmailAuthProvider.credential(email, pass);
-    
     try {
-      await linkWithCredential(anonymousUser, credential);
+      // Create user first
+      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      const newUser = userCredential.user;
+      
+      // Update profile immediately
+      await updateProfile(newUser, { displayName: username });
+
+      // Now, call the function to link data
       await callFirebaseFunction('linkAnonymousToUser', {
           username: username,
           countryCode: guestProfile?.countryCode || '',

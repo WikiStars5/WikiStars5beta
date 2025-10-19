@@ -33,8 +33,6 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       } else {
         try {
-            // This is the key part: if no user is found, we immediately try
-            // to sign in anonymously.
             const userCredential = await signInAnonymously(auth);
             setFirebaseUser(userCredential.user);
         } catch(error) {
