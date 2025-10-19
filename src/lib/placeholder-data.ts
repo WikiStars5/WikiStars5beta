@@ -1,5 +1,4 @@
 
-
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue, YoutubeShort, TiktokVideo, InstagramPost } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
