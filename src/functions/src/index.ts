@@ -34,7 +34,7 @@ const messaging = admin.messaging();
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time.
-// App Check is temporarily disabled for debugging production issues.
+// We are disabling App Check enforcement temporarily to debug production issues.
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
 
@@ -239,6 +239,37 @@ export const updateUserProfile = onCall(async (request) => {
     } catch (error) {
         console.error("Error updating user profile in Firestore:", error);
         throw new HttpsError('internal', 'Could not update profile in Firestore.');
+    }
+});
+
+export const linkAnonymousToUser = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'You must be logged in to perform this action.');
+    }
+    const newUid = request.auth.uid;
+    const oldUid = request.auth.token.firebase.sign_in_provider === 'anonymous' ? newUid : null;
+    if (!oldUid) {
+        throw new HttpsError('failed-precondition', 'The current user is not anonymous.');
+    }
+
+    const { username, countryCode, gender } = request.data;
+
+    const userRef = db.collection('users').doc(newUid);
+    const countryName = COUNTRIES.find(c => c.code === countryCode)?.name || '';
+
+    const updateData = {
+        username,
+        country: countryName,
+        countryCode: countryCode || '',
+        gender: gender || '',
+    };
+
+    try {
+        await userRef.set(updateData, { merge: true });
+        return { success: true, message: 'Profile updated for new registered user.' };
+    } catch (error) {
+        console.error("Error updating user profile during anonymous linking:", error);
+        throw new HttpsError('internal', 'Could not update profile during linking.');
     }
 });
 

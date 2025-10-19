@@ -14,16 +14,18 @@ import { auth, db } from '@/lib/firebase';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signInAnonymously,
   signOut,
   updateProfile,
   linkWithCredential,
+  EmailAuthProvider,
   type User as FirebaseUser,
   type AuthCredential
 } from 'firebase/auth';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import type { UserProfile, LocalProfile, Comment, Notification } from '@/lib/types';
-import { doc, onSnapshot, getDoc, setDoc, collectionGroup, query, Timestamp, onSnapshot as onCollectionSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, setDoc, collectionGroup, query, Timestamp, onSnapshot as onCollectionSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
 import { ADMIN_UID } from '@/config/admin';
 import { useRouter } from 'next/navigation';
 import { useLocalProfile } from './use-local-profile';
@@ -53,9 +55,9 @@ interface AuthContextType {
   isNotificationsEnabled: boolean;
   requestNotificationPermission: () => void;
   signIn: (email: string, pass: string) => Promise<any>;
+  signUp: (email: string, pass: string, username: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserProfile: (username: string, countryCode: string, gender: string) => Promise<void>;
-  linkAccount: (credential: AuthCredential, newUsername: string) => Promise<void>;
   canInstall: boolean;
   triggerInstallPrompt: () => void;
 }
@@ -268,12 +270,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setFirebaseUser(userCredential.user);
       } catch (error: any) {
         console.error('CRITICAL: Anonymous sign-in failed:', error);
+        toast({
+            title: "Error de Conexión",
+            description: "No se pudo establecer una sesión. Por favor, revisa tu conexión y la configuración de tu navegador.",
+            variant: "destructive",
+        });
         setFirebaseUser(null);
         setCurrentUser(null);
       }
     }
     setIsLoading(false);
-  }, []);
+  }, [toast]);
   
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, handleUser);
@@ -308,27 +315,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return signInWithEmailAndPassword(auth, email, pass);
   };
   
-  const logout = async () => {
-    await signOut(auth);
-    router.push('/');
-  };
-  
-  const linkAccount = async (credential: AuthCredential, newUsername: string) => {
-    if (!auth.currentUser) throw new Error("No user to link.");
+  const signUp = async (email: string, pass: string, username: string) => {
+    const anonymousUser = auth.currentUser;
+    if (!anonymousUser || !anonymousUser.isAnonymous) {
+      throw new Error("No hay una sesión de invitado para vincular.");
+    }
     
     // Crucially, get the local profile *before* linking, as the UID will change.
     const guestProfile = localProfile;
     
-    await linkWithCredential(auth.currentUser, credential);
+    const credential = EmailAuthProvider.credential(email, pass);
     
-    // Call Cloud Function to perform the profile update safely.
-    await callFirebaseFunction('updateUserProfile', {
-        username: newUsername,
-        countryCode: guestProfile?.countryCode || '',
-        gender: guestProfile?.gender || ''
-    });
+    try {
+      await linkWithCredential(anonymousUser, credential);
 
-    clearLocalProfile();
+      // Now call a cloud function to securely set the username and migrate data
+      await callFirebaseFunction('linkAnonymousToUser', {
+          username: username,
+          countryCode: guestProfile?.countryCode || '',
+          gender: guestProfile?.gender || '',
+      });
+
+      // Clear local profile data for the old anonymous UID
+      clearLocalProfile();
+
+    } catch (error: any) {
+        console.error("Error linking account:", error);
+        // Handle specific errors like 'auth/email-already-in-use'
+        if (error.code === 'auth/email-already-in-use') {
+            throw new Error("Este correo electrónico ya está en uso por otra cuenta.");
+        }
+        throw new Error("No se pudo crear la cuenta.");
+    }
+  };
+
+
+  const logout = async () => {
+    await signOut(auth);
+    router.push('/');
   };
 
   const updateUserProfile = async (username: string, countryCode: string, gender: string) => {
@@ -357,9 +381,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     isAnonymous,
     signIn,
+    signUp,
     logout,
     updateUserProfile,
-    linkAccount,
     isNotificationsEnabled,
     requestNotificationPermission,
     canInstall: !!deferredPrompt,
