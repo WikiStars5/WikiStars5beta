@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Star, Heart, ThumbsDown, User, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { grantActitudDefinidaAchievement } from '@/app/actions/achievementActions';
 import { voteOnAttitude } from '@/lib/placeholder-data';
