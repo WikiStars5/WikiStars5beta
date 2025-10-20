@@ -2,7 +2,7 @@
 import type { Figure, PerceptionOption, EmotionKey, AttitudeKey, Comment, LocalUserStreak, Streak, StreakWithProfile, UserProfile, Attitude, EmotionVote, RatingVote, RatingValue, YoutubeShort, TiktokVideo, InstagramPost } from './types';
 import { Meh, Star, Heart, ThumbsDown } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove, getCountFromServer } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, type DocumentData, Timestamp, where, type QueryDocumentSnapshot, startAfter as firestoreStartAfter, endBefore as firestoreEndBefore, runTransaction, addDoc, serverTimestamp, writeBatch, arrayUnion, arrayRemove, getCountFromServer, increment } from "firebase/firestore";
 import { isSameDay, isYesterday } from 'date-fns';
 import { GENDER_OPTIONS } from '@/config/genderOptions';
 
@@ -572,7 +572,7 @@ export async function addReply(
     if (!parentDoc.exists()) throw new Error("Parent comment does not exist.");
 
     // 1. Update parent comment's reply count
-    transaction.update(parentRef, { replyCount: (parentDoc.data().replyCount || 0) + 1 });
+    transaction.update(parentRef, { replyCount: increment(1) });
 
     // 2. Set the new reply document
     transaction.set(newReplyRef, replyData);
@@ -1008,36 +1008,34 @@ const voteForContentEmotion = async (
 
     const contentData = contentDoc.data() as YoutubeShort | InstagramPost;
     const currentCounts = contentData.perceptionCounts || {};
-    const newCounts = { ...currentCounts };
-
-    // Decrement the count for the previous emotion, if one existed
+    
+    // Use increment for atomic operations
+    const updates: {[key: string]: any} = {};
     if (previousEmotion) {
-        newCounts[previousEmotion] = Math.max(0, (newCounts[previousEmotion] || 0) - 1);
+        updates[`perceptionCounts.${previousEmotion}`] = increment(-1);
     }
-    // Increment the count for the new emotion, if one is selected
     if (newEmotion) {
-        newCounts[newEmotion] = (newCounts[newEmotion] || 0) + 1;
+        updates[`perceptionCounts.${newEmotion}`] = increment(1);
     }
     
-    transaction.update(contentDocRef, { perceptionCounts: newCounts });
+    transaction.update(contentDocRef, updates);
   });
 
   const storageKey = `wikistars5-emotions-${userId}`;
-  let storedVotes: { figureId: string; emotion: EmotionKey }[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  let storedVotes: { itemId: string; emotion: EmotionKey }[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
   
-  // Find if there's a vote for this specific item (short or post)
-  // We'll use the figureId for simplicity, as we don't store individual item votes in profile activity
-  const voteIndex = storedVotes.findIndex(v => v.figureId === figureId);
+  const voteIndex = storedVotes.findIndex(v => v.itemId === contentId);
 
   if (newEmotion === null) { // Deselecting
     if (voteIndex > -1) {
       storedVotes.splice(voteIndex, 1);
     }
   } else { // Selecting or changing
+    const newVote = { itemId: contentId, emotion: newEmotion };
     if (voteIndex > -1) {
-      storedVotes[voteIndex].emotion = newEmotion;
+      storedVotes[voteIndex] = newVote;
     } else {
-      storedVotes.push({ figureId: figureId, emotion: newEmotion });
+      storedVotes.push(newVote);
     }
   }
   
@@ -1067,7 +1065,6 @@ export async function voteOnAttitude(
   previousAttitude: AttitudeKey | null,
 ): Promise<void> {
   const figureRef = doc(db, 'figures', figureId);
-  const userAttitudeRef = doc(db, 'userAttitudes', `${userId}_${figureId}`);
 
   await runTransaction(db, async (transaction) => {
     const figureDoc = await transaction.get(figureRef);
@@ -1075,29 +1072,15 @@ export async function voteOnAttitude(
       throw new Error("Figure not found.");
     }
     
-    const currentCounts = figureDoc.data().attitudeCounts || defaultAttitudeCounts;
-    const newCounts = { ...currentCounts };
+    const updates: {[key: string]: any} = {};
 
     if (previousAttitude) {
-      newCounts[previousAttitude] = Math.max(0, (newCounts[previousAttitude] || 0) - 1);
+      updates[`attitudeCounts.${previousAttitude}`] = increment(-1);
     }
     if (newAttitude) {
-      newCounts[newAttitude] = (newCounts[newAttitude] || 0) + 1;
+      updates[`attitudeCounts.${newAttitude}`] = increment(1);
     }
 
-    // Update figure's counts
-    transaction.update(figureRef, { attitudeCounts: newCounts });
-    
-    // Update or delete user's specific vote record
-    if (newAttitude) {
-      transaction.set(userAttitudeRef, { 
-        userId: userId, 
-        figureId: figureId, 
-        attitude: newAttitude,
-        updatedAt: serverTimestamp() 
-      });
-    } else {
-      transaction.delete(userAttitudeRef);
-    }
+    transaction.update(figureRef, updates);
   });
 }
