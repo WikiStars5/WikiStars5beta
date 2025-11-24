@@ -9,7 +9,6 @@ import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFunctions, httpsCallable, type Functions } from 'firebase/functions';
-import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 
 const firebaseConfig = {
@@ -32,24 +31,6 @@ const getFirebaseApp = (): FirebaseApp => {
 };
 
 const app: FirebaseApp = getFirebaseApp();
-
-// --- Inicialización de App Check (Solo en el Cliente) ---
-if (typeof window !== 'undefined') {
-  // Asegúrate de que la variable de entorno está definida.
-  if (!process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
-    console.error("Firebase App Check: NEXT_PUBLIC_RECAPTCHA_SITE_KEY no está definida en .env.local");
-  } else {
-    try {
-      initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY),
-        isTokenAutoRefreshEnabled: true // Mantener la sesión del usuario verificada
-      });
-      console.log("Firebase App Check inicializado.");
-    } catch (error) {
-      console.error("Error al inicializar Firebase App Check:", error);
-    }
-  }
-}
 
 const storage: FirebaseStorage = getStorage(app);
 const db: Firestore = getFirestore(app);
